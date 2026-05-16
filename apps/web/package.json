@@ -1,0 +1,45 @@
+{
+  "name": "@privance/web",
+  "version": "0.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "expo start --web",
+    "build": "expo export --platform web",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check-deps": "expo install --check"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "55.0.11",
+    "@privance/core": "workspace:*",
+    "expo": "55.0.24",
+    "expo-asset": "55.0.17",
+    "expo-constants": "55.0.16",
+    "expo-font": "55.0.7",
+    "expo-linking": "55.0.15",
+    "expo-router": "55.0.14",
+    "expo-splash-screen": "55.0.21",
+    "expo-status-bar": "55.0.6",
+    "nativewind": "4.2.4",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "react-native": "0.85.3",
+    "react-native-css-interop": "0.2.4",
+    "react-native-gesture-handler": "2.31.2",
+    "react-native-reanimated": "4.3.1",
+    "react-native-worklets": "0.8.3",
+    "react-native-safe-area-context": "5.7.0",
+    "react-native-screens": "4.25.0",
+    "react-native-web": "0.21.2",
+    "recharts": "3.8.1"
+  },
+  "devDependencies": {
+    "@babel/core": "7.29.0",
+    "@types/react": "19.2.14",
+    "babel-preset-expo": "55.0.21",
+    "tailwindcss": "3.4.17",
+    "typescript": "6.0.3",
+    "vitest": "4.1.6"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "privance",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.1.2",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=11.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "fmt": "biome format --write .",
+    "fmt:check": "biome format .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "dev": "turbo run dev --parallel",
+    "audit": "pnpm audit --audit-level=moderate",
+    "prepare": "test -d .git && lefthook install || true"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.15",
+    "lefthook": "2.1.6",
+    "turbo": "2.9.14",
+    "typescript": "6.0.3"
+  }
+}

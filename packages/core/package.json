@@ -1,0 +1,34 @@
+{
+  "name": "@privance/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./crypto": "./src/crypto/index.ts",
+    "./decimal": "./src/decimal/index.ts",
+    "./domain": "./src/domain/index.ts",
+    "./networth": "./src/networth/index.ts",
+    "./sync": "./src/sync/index.ts",
+    "./storage": "./src/storage/index.ts",
+    "./audit-events": "./src/audit-events/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@noble/ciphers": "2.2.0",
+    "@noble/hashes": "2.2.0",
+    "@scure/bip39": "2.2.0",
+    "hash-wasm": "4.12.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "4.1.6",
+    "fast-check": "4.8.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.6"
+  }
+}
