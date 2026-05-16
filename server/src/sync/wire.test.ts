@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
+import type { BatchResultItem, ChangesResult } from "./types.js";
+
 // ---------------------------------------------------------------------------
 // Wire-level tests (in-process, no real DB).
 //
@@ -23,9 +25,9 @@ const mockRepoGet = mock(async () => ({
   tombstone: false,
 }));
 const mockRepoDelete = mock(async () => {});
-const mockRepoChanges = mock(async () => ({ changes: [], next: null }));
-const mockRepoBatchPut = mock(async () => []);
-const mockRepoBatchDelete = mock(async () => []);
+const mockRepoChanges = mock(async (): Promise<ChangesResult> => ({ changes: [], next: null }));
+const mockRepoBatchPut = mock(async (): Promise<BatchResultItem[]> => []);
+const mockRepoBatchDelete = mock(async (): Promise<BatchResultItem[]> => []);
 const mockRepoLogEvent = mock(async () => {});
 
 mock.module("./repo.js", () => ({
