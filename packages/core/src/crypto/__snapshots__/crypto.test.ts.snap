@@ -1,0 +1,5 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Argon2id — known-vector test (parameter drift detection) > matches expected hash for fixed inputs and versioned params 1`] = `"879cb71e07e6db14c281790533c985703c99adeed60e40d215241b07be32e47b4eb044bcacdd0fdb76dafd903c9c6ae302cbeab46269ac2cae357112213a9a27"`;
+
+exports[`HKDF-SHA-256 — known-output vector (drift detection) > produces a stable output for fixed inputs (snapshot catches parameter drift) 1`] = `"0d0df8cba28c3c9de146c042366676596dcfa0e20f7429c46be2d9ac7ed9a82049528bf7b682271240b324be4ec0174d1ab7d98e6658ce1db6f73596b0d93d0836c3c54310d52d003a3a61e14dc049cf0725"`;
