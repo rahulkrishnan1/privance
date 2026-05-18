@@ -16,7 +16,8 @@ type HoldingFormProps = {
   investmentAccounts: InvestmentAccount[];
   groups: LocalGroup[];
   submitting: boolean;
-  onSubmit: (values: HoldingFormValues) => void | Promise<void>;
+  onSubmit: (values: HoldingFormValues, opts: { proxyPrice?: string }) => void | Promise<void>;
+  onLookupProxyPrice?: (ticker: string) => Promise<string | null>;
   onCreateGroup: (name: string) => Promise<string>;
 };
 
@@ -26,6 +27,7 @@ export function HoldingForm({
   groups,
   submitting,
   onSubmit,
+  onLookupProxyPrice,
   onCreateGroup,
 }: HoldingFormProps) {
   const [advancedOpen, setAdvancedOpen] = useState(
@@ -34,10 +36,12 @@ export function HoldingForm({
   const [newGroupName, setNewGroupName] = useState("");
   const [groupNameError, setGroupNameError] = useState<string | undefined>(undefined);
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const [lookingUp, setLookingUp] = useState(false);
 
   const {
     control,
     handleSubmit,
+    setError,
     setValue,
     watch,
     formState: { errors },
@@ -87,11 +91,37 @@ export function HoldingForm({
     }
   };
 
+  const handleFormSubmit = async (values: HoldingFormValues) => {
+    const proxyTicker = values.proxyTicker?.trim().toUpperCase();
+    const navFilled = (values.nav?.trim() ?? "").length > 0;
+
+    if (proxyTicker && navFilled && onLookupProxyPrice !== undefined) {
+      setLookingUp(true);
+      try {
+        const price = await onLookupProxyPrice(proxyTicker);
+        if (price === null) {
+          setError("proxyTicker", {
+            type: "manual",
+            message:
+              "We couldn't get a current price for this proxy. Try a different ticker or come back in a few minutes.",
+          });
+          return;
+        }
+        await onSubmit(values, { proxyPrice: price });
+      } finally {
+        setLookingUp(false);
+      }
+      return;
+    }
+
+    await onSubmit(values, {});
+  };
+
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        void handleSubmit(onSubmit)();
+        void handleSubmit(handleFormSubmit)();
       }}
       className="flex flex-col gap-4 pb-8"
       noValidate
@@ -370,13 +400,13 @@ export function HoldingForm({
       {/* Submit */}
       <Button
         type="submit"
-        disabled={submitting}
-        loading={submitting}
-        aria-label={submitting ? "Saving" : "Save holding"}
+        disabled={submitting || lookingUp}
+        loading={submitting || lookingUp}
+        aria-label={submitting || lookingUp ? "Saving" : "Save holding"}
         size="md"
         className="w-full"
       >
-        {submitting ? "Saving…" : "Save"}
+        {submitting || lookingUp ? "Saving…" : "Save"}
       </Button>
     </form>
   );

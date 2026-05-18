@@ -16,7 +16,12 @@ type HoldingDrawerProps = {
   investmentAccounts: InvestmentAccount[];
   groups: LocalGroup[];
   onClose: () => void;
-  onSubmit: (values: HoldingFormValues, mode: DrawerMode) => Promise<void>;
+  onSubmit: (
+    values: HoldingFormValues,
+    mode: DrawerMode,
+    opts: { proxyPrice?: string },
+  ) => Promise<void>;
+  onLookupProxyPrice?: (ticker: string) => Promise<string | null>;
   onCreateGroup: (name: string) => Promise<string>;
   submitting: boolean;
 };
@@ -61,6 +66,7 @@ export function HoldingDrawer({
   groups,
   onClose,
   onSubmit,
+  onLookupProxyPrice,
   onCreateGroup,
   submitting,
 }: HoldingDrawerProps) {
@@ -104,7 +110,8 @@ export function HoldingDrawer({
             investmentAccounts={investmentAccounts}
             groups={groups}
             submitting={submitting}
-            onSubmit={(values) => void onSubmit(values, mode)}
+            onSubmit={(values, opts) => void onSubmit(values, mode, opts)}
+            onLookupProxyPrice={onLookupProxyPrice}
             onCreateGroup={onCreateGroup}
           />
         </div>

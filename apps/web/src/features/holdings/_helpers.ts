@@ -1,4 +1,5 @@
 import { Decimal, HoldingPayloadSchema, SCALE_CRYPTO } from "@privance/core";
+import type { RefreshPricesResponse } from "@/lib/api/prices";
 import type { FilterState, LocalHolding, SortState } from "./types";
 
 type PriceEntry = { ticker: string; price: string };
@@ -68,6 +69,24 @@ export function computeAnchorScaleFactor(navStr: string, proxyPriceStr: string):
     throw new Error("Current price and proxy price must both be greater than zero.");
   }
   return nav.div(proxyPrice).toString();
+}
+
+export async function lookupProxyPrice(
+  ticker: string,
+  cachedPrice: string | undefined,
+  refresh: (tickers: string[], source: "yahoo") => Promise<RefreshPricesResponse>,
+  warm: (ticker: string, price: Decimal) => void,
+): Promise<string | null> {
+  if (cachedPrice !== undefined) return cachedPrice;
+  try {
+    const response = await refresh([ticker], "yahoo");
+    const entry = response.prices.find((p) => p.ticker === ticker);
+    if (entry === undefined) return null;
+    warm(ticker, Decimal.fromString(entry.price, 8));
+    return entry.price;
+  } catch {
+    return null;
+  }
 }
 
 function getCostBasis(h: LocalHolding): Decimal {
