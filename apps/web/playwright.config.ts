@@ -14,6 +14,9 @@ const serverEnv: Record<string, string> = {
   // Use deterministic fake price + profile upstreams so E2E doesn't depend on
   // live Yahoo / CoinGecko quotas. Real upstreams run in dev (no env override).
   PRICE_PROVIDER: "fake",
+  // PROXYBAD is not a real ticker; forces the proxy-failure path in E2E without
+  // affecting any other test that uses VOO, AAPL, etc.
+  PRICE_FAKE_UNKNOWN: "PROXYBAD",
 };
 
 // Root of the monorepo (two levels up from apps/web)

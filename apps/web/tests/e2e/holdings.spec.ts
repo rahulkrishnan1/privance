@@ -420,6 +420,39 @@ test.describe("holdings", () => {
     await expect(googCell).toContainText("$", { timeout: 5_000 });
   });
 
+  test("Add holding with unpriceable proxy shows inline error and keeps drawer open", async ({
+    page,
+  }) => {
+    await goToHoldings(page);
+
+    await page.getByRole("button", { name: "Add holding" }).first().click();
+    const dialog = page.getByRole("dialog", { name: /Add holding/i });
+    await expect(dialog).toBeVisible();
+
+    const tickerInput = dialog.getByRole("combobox", { name: "Ticker" });
+    await tickerInput.fill("AAPL");
+    const listbox = dialog.locator('[role="listbox"]');
+    if (await listbox.isVisible({ timeout: 1_000 }).catch(() => false)) {
+      await page.keyboard.press("Escape");
+    }
+
+    await dialog.getByLabel("Account").selectOption({ label: INVESTMENT_ACCOUNT_NAME });
+    await dialog.getByLabel("Shares").fill("10");
+    await dialog.getByLabel("Avg cost per share").fill("100.00");
+
+    await dialog.getByRole("button", { name: /advanced/i }).click();
+    await dialog.getByLabel("Proxy ticker").fill("PROXYBAD");
+    await expect(dialog.getByLabel("Current price per share")).toBeVisible();
+    await dialog.getByLabel("Current price per share").fill("123.45");
+
+    await dialog.getByRole("button", { name: "Save holding" }).click();
+
+    await expect(dialog.getByText(/couldn't get a current price for this proxy/i)).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(dialog).toBeVisible();
+  });
+
   test("Add holding form clears between opens", async ({ page }) => {
     await goToHoldings(page);
 
