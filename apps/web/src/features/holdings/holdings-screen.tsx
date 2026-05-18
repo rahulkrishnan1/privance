@@ -168,7 +168,12 @@ export function HoldingsScreen() {
 
   const handleLookupProxyPrice = useCallback(
     (ticker: string): Promise<string | null> =>
-      lookupProxyPrice(ticker, pricesMap.get(ticker)?.price, refreshPrices, warmPrice),
+      lookupProxyPrice(
+        ticker,
+        pricesMap.get(ticker)?.price,
+        (tickers) => refreshPrices(tickers, "yahoo"),
+        warmPrice,
+      ),
     [pricesMap],
   );
 

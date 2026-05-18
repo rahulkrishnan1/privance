@@ -91,7 +91,7 @@ export function HoldingForm({
     }
   };
 
-  const handleFormSubmit = async (values: HoldingFormValues) => {
+  const submit = handleSubmit(async (values) => {
     const proxyTicker = values.proxyTicker?.trim().toUpperCase();
     const navFilled = (values.nav?.trim() ?? "").length > 0;
 
@@ -115,13 +115,13 @@ export function HoldingForm({
     }
 
     await onSubmit(values, {});
-  };
+  });
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        void handleSubmit(handleFormSubmit)();
+        void submit();
       }}
       className="flex flex-col gap-4 pb-8"
       noValidate

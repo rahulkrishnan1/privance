@@ -74,12 +74,12 @@ export function computeAnchorScaleFactor(navStr: string, proxyPriceStr: string):
 export async function lookupProxyPrice(
   ticker: string,
   cachedPrice: string | undefined,
-  refresh: (tickers: string[], source: "yahoo") => Promise<RefreshPricesResponse>,
+  refresh: (tickers: string[]) => Promise<RefreshPricesResponse>,
   warm: (ticker: string, price: Decimal) => void,
 ): Promise<string | null> {
   if (cachedPrice !== undefined) return cachedPrice;
   try {
-    const response = await refresh([ticker], "yahoo");
+    const response = await refresh([ticker]);
     const entry = response.prices.find((p) => p.ticker === ticker);
     if (entry === undefined) return null;
     warm(ticker, Decimal.fromString(entry.price, 8));

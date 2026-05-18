@@ -376,6 +376,7 @@ describe("lookupProxyPrice", () => {
     const result = await lookupProxyPrice("VOO", undefined, refresh, warm);
     expect(result).toBe("679.44");
     expect(refresh).toHaveBeenCalledOnce();
+    expect(refresh).toHaveBeenCalledWith(["VOO"]);
     expect(warm).toHaveBeenCalledOnce();
     const [calledTicker, calledDecimal] = warm.mock.calls[0] as [string, Decimal];
     expect(calledTicker).toBe("VOO");
@@ -392,6 +393,14 @@ describe("lookupProxyPrice", () => {
 
   it("returns null when the network call throws", async () => {
     const refresh = vi.fn().mockRejectedValue(new Error("network failure"));
+    const warm = vi.fn();
+    const result = await lookupProxyPrice("VOO", undefined, refresh, warm);
+    expect(result).toBeNull();
+    expect(warm).not.toHaveBeenCalled();
+  });
+
+  it("returns null when server returns ticker in different case", async () => {
+    const refresh = makeRefresh([{ ticker: "voo", price: "679.44" }]);
     const warm = vi.fn();
     const result = await lookupProxyPrice("VOO", undefined, refresh, warm);
     expect(result).toBeNull();
