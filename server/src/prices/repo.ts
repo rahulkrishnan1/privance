@@ -44,7 +44,3 @@ export class PricesRepo {
       });
   }
 }
-
-export function createPricesRepo(db: Db): PricesRepo {
-  return new PricesRepo(db);
-}

@@ -46,7 +46,7 @@ afterAll(async () => {
 // ---------------------------------------------------------------------------
 
 describe("PricesRepo.getMany", () => {
-  it("returns [] immediately when tickers is empty, no DB round-trip required", async () => {
+  it("returns [] for empty tickers", async () => {
     const result = await repo.getMany({ source: TEST_SOURCE_A, tickers: [] });
     expect(result).toEqual([]);
   });
