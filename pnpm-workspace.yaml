@@ -1,0 +1,11 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "server"
+
+nodeLinker: hoisted
+
+allowBuilds:
+  esbuild: true
+  lefthook: true
+  sharp: false
