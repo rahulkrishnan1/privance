@@ -16,6 +16,7 @@ See [ARCHITECTURE.md](../ARCHITECTURE.md) for the full server design and
 | `src/auth/` | Signup, login, recovery, password-change, sessions, rate limiting |
 | `src/auth/rate-limit.ts` | Sliding-window + progressive backoff counters (in-memory) |
 | `src/auth/hibp.ts` | HIBP k-anonymity check on signup |
+| `src/prices/` | Public market-price refresh with Postgres cache (Yahoo + CoinGecko) |
 | `src/sync/` | Encrypted blob CRUD + change-feed endpoint |
 | `drizzle/` | Migration SQL files |
 
@@ -48,6 +49,8 @@ bun run typecheck
 | `SIGNUP_ALLOWLIST` | No | Comma-separated usernames allowed to sign up; empty = open registration |
 | `ALLOWED_ORIGINS` | No | Comma-separated origins for CORS. Dev default: `http://localhost:8081`. For Capacitor native builds, include `capacitor://localhost` (iOS) and `https://localhost` (Android). Production: `https://privance.app`. |
 | `PRIVANCE_SECRETS_DIR` | No | Directory to read `postgres_password` secret file from (Docker secrets pattern) |
+| `PRICE_PROVIDER` | No | Set to `fake` to use deterministic in-process prices instead of hitting Yahoo / CoinGecko. Used in E2E and local dev. |
+| `PRICE_FAKE_UNKNOWN` | No | Comma-separated tickers the fake upstream treats as unknown (no price returned). Only meaningful when `PRICE_PROVIDER=fake`. Used in E2E to exercise the proxy-failure path without touching real upstream quotas. |
 
 ## Module template
 
