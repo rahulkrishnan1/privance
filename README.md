@@ -1,10 +1,4 @@
-# Privance, self-hosted, zero-knowledge personal finance
-
-[![CI](https://github.com/rahulkrishnan1/privance/actions/workflows/ci.yml/badge.svg)](https://github.com/rahulkrishnan1/privance/actions/workflows/ci.yml)
-
-**v0.1, pre-release**
-
----
+# Privance, zero-knowledge personal finance app
 
 ## What this is
 
