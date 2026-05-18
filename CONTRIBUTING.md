@@ -212,7 +212,10 @@ Before opening a PR:
 5. If you changed the server API: document the change
 6. If you changed auth or crypto: manually verify a signup → recovery → login
    cycle in a real browser
-
-In the PR description: summarize what changed and why, note any security implications, and list anything not yet verified.
+7. Rebase the branch to one commit with a clean Conventional Commits message;
+   fill in `.github/pull_request_template.md` for the PR title and body. The
+   maintainer local-tests the pushed branch after CI passes, then merges with
+   `gh pr merge --squash --delete-branch` (no-op squash since the branch is
+   already one commit).
 
 For non-obvious design decisions, write an ADR under `docs/decisions/`.

@@ -18,6 +18,17 @@ Operating manual for code work in this repo. Architecture lives in `ARCHITECTURE
 
 Exact-pinned versions in the lockfile, never `^` or `~` (Shai-Hulud lesson).
 
+## Commands
+
+- Install: `pnpm install`
+- Dev (server + web): `pnpm dev`  (server :3000, web :8081)
+- Lint + format check: `pnpm lint` / `pnpm fmt:check`
+- Typecheck all workspaces: `pnpm typecheck`
+- Unit tests: `pnpm test`  (or per workspace: `pnpm --filter @privance/{core,server,web} test`)
+- Web E2E: `pnpm --filter @privance/web e2e`
+- Build (web static export): `pnpm --filter @privance/web build`
+- DB migrate (local): `pnpm --filter @privance/server db:migrate`
+
 ## Module template
 
 Mirror existing modules exactly. Don't invent new patterns; if tempted, justify it.
@@ -95,6 +106,7 @@ Backward-incompatible changes follow **expand → backfill → contract** (three
 - Conventional Commits (`feat / fix / refactor / chore / test / docs / ci`).
 - Identity = the GitHub noreply already configured in `git config user.email`. Never override per-commit; never reintroduce a real email.
 - **Never** add a `Co-Authored-By` trailer. Verify with `git log -1 --format=%B` before push.
+- Feature branches off `main`, squashed locally to one commit before push. Subject ≤72 chars, imperative mood; body leads with motivation (problem solved, debt closed, risk reduced), the diff shows what. PR title + body (per `.github/pull_request_template.md`) become the main-line commit verbatim on squash-merge. Merge only after CI green and maintainer local-test approval.
 - Make a backup branch (`git branch backup-<context>`) before any destructive git op (reset --hard, rebase, force-push). Stop and ask if a request needs destructive action you weren't explicitly authorized for.
 - **Never rewrite `main` history once anything has been pushed.** No force-push, no rebase, no reset onto remote main.
 - **No personal info in tracked files**, no real names, personal emails, GitHub handles, absolute `/Users/…` paths, or specific cities/regions in committed docs. Treat anything tracked as public-facing even when the repo is private.
