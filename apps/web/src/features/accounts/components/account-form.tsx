@@ -116,6 +116,7 @@ export function AccountForm({
     },
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: open is a trigger, not read in the body
   useEffect(() => {
     reset({
       name: account?.payload.name ?? "",
@@ -123,7 +124,7 @@ export function AccountForm({
       currency: account?.payload.currency ?? "USD",
       balance: deriveBalanceString(account),
     });
-  }, [defaultKind, reset, account]);
+  }, [defaultKind, reset, account, open]);
 
   useEffect(() => {
     const dialog = dialogRef.current;

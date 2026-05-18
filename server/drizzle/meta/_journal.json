@@ -36,6 +36,13 @@
       "when": 1779000000000,
       "tag": "0004_drop_server_salt_and_login_attempts",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779080343296,
+      "tag": "0005_clever_owl",
+      "breakpoints": true
     }
   ]
 }

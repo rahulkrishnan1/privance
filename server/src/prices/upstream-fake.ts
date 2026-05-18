@@ -17,10 +17,18 @@ const FAKE_PRICES: Record<string, string> = {
   ethereum: "3000.00",
 };
 
+const FAKE_UNKNOWN: Set<string> = new Set(
+  (process.env.PRICE_FAKE_UNKNOWN ?? "")
+    .split(",")
+    .map((t) => t.trim().toLowerCase())
+    .filter((t) => t.length > 0),
+);
+
 export function fetchFakePrices(tickers: string[]): Map<string, UpstreamPrice> {
   const result = new Map<string, UpstreamPrice>();
   const fetchedAt = new Date().toISOString();
   for (const ticker of tickers) {
+    if (FAKE_UNKNOWN.has(ticker.toLowerCase())) continue;
     const price = FAKE_PRICES[ticker];
     if (price !== undefined) {
       result.set(ticker, { price, fetchedAt });

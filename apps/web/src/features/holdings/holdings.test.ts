@@ -1,8 +1,9 @@
 import { Decimal, SCALE_CRYPTO } from "@privance/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   computeAnchorScaleFactor,
   filterHoldings,
+  lookupProxyPrice,
   parseStoredHolding,
   sortHoldings,
 } from "./_helpers";
@@ -345,5 +346,64 @@ describe("computeAnchorScaleFactor", () => {
 
   it("throws on malformed numbers", () => {
     expect(() => computeAnchorScaleFactor("not-a-price", "100")).toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// lookupProxyPrice
+// ---------------------------------------------------------------------------
+
+function makeRefresh(prices: Array<{ ticker: string; price: string }>) {
+  return vi.fn().mockResolvedValue({
+    prices: prices.map((e) => ({ ...e, fetchedAt: "2026-05-17T00:00:00Z" })),
+    unknown: [],
+  });
+}
+
+describe("lookupProxyPrice", () => {
+  it("returns the cached string without fetching when a cache hit exists", async () => {
+    const refresh = vi.fn();
+    const warm = vi.fn();
+    const result = await lookupProxyPrice("VOO", "679.44", refresh, warm);
+    expect(result).toBe("679.44");
+    expect(refresh).not.toHaveBeenCalled();
+    expect(warm).not.toHaveBeenCalled();
+  });
+
+  it("fetches, warms the cache, and returns the price on a cache miss", async () => {
+    const refresh = makeRefresh([{ ticker: "VOO", price: "679.44" }]);
+    const warm = vi.fn();
+    const result = await lookupProxyPrice("VOO", undefined, refresh, warm);
+    expect(result).toBe("679.44");
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(refresh).toHaveBeenCalledWith(["VOO"]);
+    expect(warm).toHaveBeenCalledOnce();
+    const [calledTicker, calledDecimal] = warm.mock.calls[0] as [string, Decimal];
+    expect(calledTicker).toBe("VOO");
+    expect(calledDecimal.toString()).toBe("679.44000000");
+  });
+
+  it("returns null when the server lists the ticker as unknown", async () => {
+    const refresh = vi.fn().mockResolvedValue({ prices: [], unknown: ["VOO"] });
+    const warm = vi.fn();
+    const result = await lookupProxyPrice("VOO", undefined, refresh, warm);
+    expect(result).toBeNull();
+    expect(warm).not.toHaveBeenCalled();
+  });
+
+  it("returns null when the network call throws", async () => {
+    const refresh = vi.fn().mockRejectedValue(new Error("network failure"));
+    const warm = vi.fn();
+    const result = await lookupProxyPrice("VOO", undefined, refresh, warm);
+    expect(result).toBeNull();
+    expect(warm).not.toHaveBeenCalled();
+  });
+
+  it("returns null when server returns ticker in different case", async () => {
+    const refresh = makeRefresh([{ ticker: "voo", price: "679.44" }]);
+    const warm = vi.fn();
+    const result = await lookupProxyPrice("VOO", undefined, refresh, warm);
+    expect(result).toBeNull();
+    expect(warm).not.toHaveBeenCalled();
   });
 });

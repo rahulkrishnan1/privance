@@ -1,7 +1,8 @@
 import { logger } from "../core/logger.js";
 import * as rateLimit from "./rate-limit.js";
-import type { DataSource, FetchLike, RefreshResult } from "./types.js";
-import { InvalidSourceError } from "./types.js";
+import type { CachedPriceRow } from "./repo.js";
+import type { DataSource, FetchLike, PriceEntry, RefreshResult } from "./types.js";
+import { InvalidSourceError, UpstreamUnavailableError } from "./types.js";
 import { fetchCoinGeckoPrices } from "./upstream-coingecko.js";
 import { fetchFakePrices } from "./upstream-fake.js";
 import { fetchYahooPrices } from "./upstream-yahoo.js";
@@ -15,27 +16,34 @@ const USE_FAKE_UPSTREAM = process.env.PRICE_PROVIDER === "fake";
 const EFFECTIVE_COOLDOWN_MS = USE_FAKE_UPSTREAM ? 0 : null;
 
 const COOLDOWN_MS = 30_000;
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+type PricesRepoLike = {
+  getMany(opts: { source: string; tickers: string[] }): Promise<CachedPriceRow[]>;
+  upsertMany(rows: CachedPriceRow[]): Promise<void>;
+};
 
 export type PriceServiceOptions = {
+  pricesRepo: PricesRepoLike;
   fetcher?: FetchLike;
   cooldownMs?: number;
 };
 
 export class PriceService {
+  readonly #pricesRepo: PricesRepoLike;
   readonly #fetcher: FetchLike;
   readonly #cooldownMs: number;
 
-  constructor({ fetcher = globalThis.fetch, cooldownMs = COOLDOWN_MS }: PriceServiceOptions = {}) {
+  constructor({
+    pricesRepo,
+    fetcher = globalThis.fetch,
+    cooldownMs = COOLDOWN_MS,
+  }: PriceServiceOptions) {
+    this.#pricesRepo = pricesRepo;
     this.#fetcher = fetcher;
     this.#cooldownMs = EFFECTIVE_COOLDOWN_MS ?? cooldownMs;
   }
 
-  /**
-   * Gate, fetch upstream, record cooldown. Throws:
-   *  - RateLimitedError if within cooldown window
-   *  - InvalidSourceError if source is not recognised
-   *  - UpstreamUnavailableError on network failure or upstream 5xx/429
-   */
   async refresh(input: {
     userId: string;
     tickers: string[];
@@ -43,25 +51,59 @@ export class PriceService {
   }): Promise<RefreshResult> {
     const { userId, tickers, source } = input;
 
-    // Validate source before gating so we don't consume a cooldown slot.
     if (source !== "yahoo" && source !== "coingecko") {
       throw new InvalidSourceError(source);
     }
     const dataSource: DataSource = source;
 
-    // Per-user cooldown gate (throws RateLimitedError if too soon).
+    const now = Date.now();
+    const cached = await this.#pricesRepo.getMany({ source: dataSource, tickers });
+
+    const freshCached = cached.filter((r) => now - r.fetchedAt.getTime() < CACHE_TTL_MS);
+    const freshMap = new Map(freshCached.map((r) => [r.ticker, r]));
+    const needFetch = tickers.filter((t) => !freshMap.has(t));
+
+    if (needFetch.length === 0) {
+      return {
+        prices: freshCached.map((r) => ({
+          ticker: r.ticker,
+          price: r.price,
+          fetchedAt: r.fetchedAt.toISOString(),
+        })),
+        unknown: [],
+      };
+    }
+
     rateLimit.gateRefresh(userId, this.#cooldownMs);
 
-    const upstream = USE_FAKE_UPSTREAM
-      ? fetchFakePrices(tickers)
-      : dataSource === "yahoo"
-        ? await fetchYahooPrices(tickers, this.#fetcher)
-        : await fetchCoinGeckoPrices(tickers, this.#fetcher);
+    let upstream: Map<string, { price: string; fetchedAt: string }>;
+    let upstreamFailed = false;
 
-    // Consume cooldown only when the user got something back. An empty
-    // result is usually a bad ticker, locking them out for 60 s on a fixable
-    // typo is hostile.
-    if (upstream.size > 0) {
+    try {
+      upstream = USE_FAKE_UPSTREAM
+        ? fetchFakePrices(needFetch)
+        : dataSource === "yahoo"
+          ? await fetchYahooPrices(needFetch, this.#fetcher)
+          : await fetchCoinGeckoPrices(needFetch, this.#fetcher);
+    } catch (err) {
+      if (err instanceof UpstreamUnavailableError) {
+        upstream = new Map();
+        upstreamFailed = true;
+      } else {
+        throw err;
+      }
+    }
+
+    const gotSomething = upstream.size > 0;
+
+    if (gotSomething) {
+      const newRows = [...upstream.entries()].map(([ticker, entry]) => ({
+        source: dataSource,
+        ticker,
+        price: entry.price,
+        fetchedAt: new Date(entry.fetchedAt),
+      }));
+      await this.#pricesRepo.upsertMany(newRows);
       rateLimit.recordRefresh(userId, this.#cooldownMs);
     }
 
@@ -71,26 +113,41 @@ export class PriceService {
         source: dataSource,
         requested: tickers.length,
         fetched: upstream.size,
+        cacheHits: freshCached.length,
+        upstreamFailed,
       },
       "price refresh completed",
     );
 
-    const prices = [];
-    const unknown = [];
+    const staleByTicker = new Map(
+      cached.filter((r) => !freshMap.has(r.ticker)).map((r) => [r.ticker, r]),
+    );
+
+    const prices: PriceEntry[] = [];
+    const unknown: string[] = [];
 
     for (const ticker of tickers) {
-      const entry = upstream.get(ticker);
-      if (entry !== undefined) {
-        prices.push({ ticker, price: entry.price, fetchedAt: entry.fetchedAt });
+      const freshRow = freshMap.get(ticker);
+      if (freshRow !== undefined) {
+        prices.push({ ticker, price: freshRow.price, fetchedAt: freshRow.fetchedAt.toISOString() });
       } else {
-        unknown.push(ticker);
+        const upstreamEntry = upstream.get(ticker);
+        if (upstreamEntry !== undefined) {
+          prices.push({ ticker, price: upstreamEntry.price, fetchedAt: upstreamEntry.fetchedAt });
+        } else {
+          const stale = staleByTicker.get(ticker);
+          if (stale !== undefined) {
+            prices.push({ ticker, price: stale.price, fetchedAt: stale.fetchedAt.toISOString() });
+          } else {
+            unknown.push(ticker);
+          }
+        }
       }
     }
 
     return { prices, unknown };
   }
 
-  /** Returns ms until the user may refresh again (0 = free to refresh). */
   msUntilNextRefresh(userId: string): number {
     return rateLimit.msUntilNextRefresh(userId, this.#cooldownMs);
   }

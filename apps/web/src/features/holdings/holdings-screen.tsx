@@ -10,7 +10,12 @@ import { refreshPrices } from "@/lib/api/prices";
 import { usePricesQuery, warmPrice } from "@/lib/queries/prices";
 import { useCooldown } from "@/lib/use-cooldown";
 import { useSync } from "@/providers/sync-context";
-import { computeAnchorScaleFactor, filterHoldings, sortHoldings } from "./_helpers";
+import {
+  computeAnchorScaleFactor,
+  filterHoldings,
+  lookupProxyPrice,
+  sortHoldings,
+} from "./_helpers";
 import { FilterChip } from "./components/filter-chip";
 import { GroupsManager } from "./components/groups-manager";
 import { type DrawerMode, HoldingDrawer } from "./components/holding-drawer";
@@ -161,8 +166,19 @@ export function HoldingsScreen() {
     [holdings, filter, sort, pricesMap],
   );
 
+  const handleLookupProxyPrice = useCallback(
+    (ticker: string): Promise<string | null> =>
+      lookupProxyPrice(
+        ticker,
+        pricesMap.get(ticker)?.price,
+        (tickers) => refreshPrices(tickers, "yahoo"),
+        warmPrice,
+      ),
+    [pricesMap],
+  );
+
   const handleSubmit = useCallback(
-    async (values: HoldingFormValues, mode: DrawerMode) => {
+    async (values: HoldingFormValues, mode: DrawerMode, opts: { proxyPrice?: string }) => {
       setError(null);
       try {
         const sharesScale = 8;
@@ -190,25 +206,12 @@ export function HoldingsScreen() {
         let scaleFactor: string | undefined;
         let proxyAnchoredAt: string | undefined;
         if (proxyTicker === null) {
-          // No proxy: clear any prior anchor.
           scaleFactor = undefined;
           proxyAnchoredAt = undefined;
-        } else if (navStr.length > 0) {
-          let proxyPrice = pricesMap.get(proxyTicker)?.price;
-          if (proxyPrice === undefined) {
-            const response = await refreshPrices([proxyTicker], "yahoo");
-            proxyPrice = response.prices.find((p) => p.ticker === proxyTicker)?.price;
-            if (proxyPrice === undefined) {
-              throw new Error(
-                `Couldn't get a current price for proxy ${proxyTicker}. Check the ticker.`,
-              );
-            }
-            warmPrice(proxyTicker, Decimal.fromString(proxyPrice, 8));
-          }
-          scaleFactor = computeAnchorScaleFactor(navStr, proxyPrice);
+        } else if (navStr.length > 0 && opts.proxyPrice !== undefined) {
+          scaleFactor = computeAnchorScaleFactor(navStr, opts.proxyPrice);
           proxyAnchoredAt = new Date().toISOString().slice(0, 10);
         } else if (!proxyChanged) {
-          // Edit with proxy unchanged and no new NAV: keep existing anchor.
           scaleFactor = existingScaleFactor;
           proxyAnchoredAt = existingAnchoredAt;
         } else {
@@ -230,22 +233,6 @@ export function HoldingsScreen() {
           ...(proxyAnchoredAt !== undefined ? { proxyAnchoredAt } : {}),
         } as const;
 
-        // Warm the cache so the new row renders with a value, not "-".
-        const priceTicker = proxyTicker ?? normalizedTicker;
-        if (!pricesMap.has(priceTicker)) {
-          try {
-            const source =
-              values.assetType === "crypto" && proxyTicker === null ? "coingecko" : "yahoo";
-            const response = await refreshPrices([priceTicker], source);
-            const entry = response.prices.find((p) => p.ticker === priceTicker);
-            if (entry !== undefined) {
-              warmPrice(priceTicker, Decimal.fromString(entry.price, 8));
-            }
-          } catch {
-            // Best-effort; the background poll picks it up on the next tick.
-          }
-        }
-
         if (mode.kind === "add") {
           await holdingMutations.createHolding(baseInput);
         } else {
@@ -259,7 +246,7 @@ export function HoldingsScreen() {
         setError(err instanceof Error ? err.message : "Failed to save holding");
       }
     },
-    [holdingMutations, pricesMap],
+    [holdingMutations],
   );
 
   const handleCreateGroup = useCallback(
@@ -420,6 +407,7 @@ export function HoldingsScreen() {
         groups={groups}
         onClose={() => setDrawerOpen(false)}
         onSubmit={handleSubmit}
+        onLookupProxyPrice={handleLookupProxyPrice}
         onCreateGroup={handleCreateGroup}
         submitting={holdingMutations.creating || holdingMutations.updating}
       />
