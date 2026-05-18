@@ -7,8 +7,37 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import { PriceService } from "./price-service.js";
 import * as rateLimit from "./rate-limit.js";
+import type { CachedPriceRow } from "./repo.js";
 import { InvalidSourceError, RateLimitedError, UpstreamUnavailableError } from "./types.js";
 import { fetchYahooPrices } from "./upstream-yahoo.js";
+
+// ---------------------------------------------------------------------------
+// Stub repo
+// ---------------------------------------------------------------------------
+
+type StubRepo = {
+  rows: Map<string, CachedPriceRow>;
+  getMany(opts: { source: string; tickers: string[] }): Promise<CachedPriceRow[]>;
+  upsertMany(rows: CachedPriceRow[]): Promise<void>;
+};
+
+function createStubRepo(initial: CachedPriceRow[] = []): StubRepo {
+  const rows = new Map(initial.map((r) => [`${r.source} ${r.ticker}`, r]));
+  return {
+    rows,
+    async getMany({ source, tickers }) {
+      const out: CachedPriceRow[] = [];
+      for (const t of tickers) {
+        const r = rows.get(`${source} ${t}`);
+        if (r) out.push(r);
+      }
+      return out;
+    },
+    async upsertMany(input) {
+      for (const r of input) rows.set(`${r.source} ${r.ticker}`, r);
+    },
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Mock fetcher helpers
@@ -77,7 +106,11 @@ describe("PriceService, Yahoo happy path", () => {
       return new Response("not found", { status: 404 });
     };
 
-    const service = new PriceService({ fetcher, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
     const result = await service.refresh({
       userId: "user-1",
       tickers: ["AAPL", "MSFT"],
@@ -104,7 +137,11 @@ describe("PriceService, unknown ticker", () => {
       return new Response("not found", { status: 404 });
     };
 
-    const service = new PriceService({ fetcher, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
     const result = await service.refresh({
       userId: "user-1",
       tickers: ["AAPL", "UNKNOWN_TICKER"],
@@ -117,7 +154,11 @@ describe("PriceService, unknown ticker", () => {
 
   it("handles empty chart result as unknown ticker", async () => {
     const fetcher = async () => yahooEmptyResponse();
-    const service = new PriceService({ fetcher, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
     const result = await service.refresh({
       userId: "user-1",
       tickers: ["GONE"],
@@ -135,7 +176,11 @@ describe("PriceService, unknown ticker", () => {
 describe("PriceService, upstream 5xx", () => {
   it("single ticker 5xx → that ticker lands in unknown, does not throw", async () => {
     const fetcher = async () => new Response("error", { status: 500 });
-    const service = new PriceService({ fetcher, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
 
     const result = await service.refresh({ userId: "user-1", tickers: ["AAPL"], source: "yahoo" });
     expect(result.prices).toEqual([]);
@@ -153,7 +198,11 @@ describe("PriceService, upstream 5xx", () => {
       return new Response("not found", { status: 404 });
     };
 
-    const service = new PriceService({ fetcher, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
     const result = await service.refresh({
       userId: "user-1",
       tickers: ["A1", "A2", "A3", "A4", "FAIL"],
@@ -172,7 +221,11 @@ describe("PriceService, upstream 5xx", () => {
 describe("PriceService, upstream 429 masked", () => {
   it("upstream 429 on a ticker → lands in unknown, not RateLimitedError", async () => {
     const fetcher = async () => new Response("rate limited", { status: 429 });
-    const service = new PriceService({ fetcher, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
 
     const result = await service.refresh({ userId: "user-1", tickers: ["AAPL"], source: "yahoo" });
     expect(result.prices).toEqual([]);
@@ -191,7 +244,11 @@ describe("PriceService, malformed response", () => {
         status: 200,
         headers: { "Content-Type": "text/html" },
       });
-    const service = new PriceService({ fetcher, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
 
     const result = await service.refresh({ userId: "user-1", tickers: ["AAPL"], source: "yahoo" });
     expect(result.prices).toEqual([]);
@@ -211,7 +268,11 @@ describe("PriceService, partial response", () => {
       return new Response("not found", { status: 404 });
     };
 
-    const service = new PriceService({ fetcher, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
     const result = await service.refresh({
       userId: "user-1",
       tickers: ["AAPL", "NOPE1", "NOPE2"],
@@ -230,7 +291,11 @@ describe("PriceService, partial response", () => {
 describe("PriceService, CoinGecko happy path", () => {
   it("returns fetched prices from CoinGecko", async () => {
     const fetcher = async () => coingeckoResponse({ bitcoin: 65000.5, ethereum: 3200.0 });
-    const service = new PriceService({ fetcher, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
     const result = await service.refresh({
       userId: "user-1",
       tickers: ["bitcoin", "ethereum"],
@@ -245,7 +310,11 @@ describe("PriceService, CoinGecko happy path", () => {
 
   it("places missing CoinGecko id in unknown", async () => {
     const fetcher = async () => coingeckoResponse({ bitcoin: 65000.5 });
-    const service = new PriceService({ fetcher, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
     const result = await service.refresh({
       userId: "user-1",
       tickers: ["bitcoin", "not-a-coin"],
@@ -256,22 +325,38 @@ describe("PriceService, CoinGecko happy path", () => {
     expect(result.unknown).toEqual(["not-a-coin"]);
   });
 
-  it("throws UpstreamUnavailableError on CoinGecko 500", async () => {
+  it("CoinGecko 500 with no cache row → ticker in unknown, no throw", async () => {
     const fetcher = async () => new Response("error", { status: 500 });
-    const service = new PriceService({ fetcher, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
 
-    await expect(
-      service.refresh({ userId: "user-1", tickers: ["bitcoin"], source: "coingecko" }),
-    ).rejects.toBeInstanceOf(UpstreamUnavailableError);
+    const result = await service.refresh({
+      userId: "user-1",
+      tickers: ["bitcoin"],
+      source: "coingecko",
+    });
+    expect(result.prices).toEqual([]);
+    expect(result.unknown).toEqual(["bitcoin"]);
   });
 
-  it("throws UpstreamUnavailableError on CoinGecko 429", async () => {
+  it("CoinGecko 429 with no cache row → ticker in unknown, no throw", async () => {
     const fetcher = async () => new Response("throttled", { status: 429 });
-    const service = new PriceService({ fetcher, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
 
-    await expect(
-      service.refresh({ userId: "user-1", tickers: ["bitcoin"], source: "coingecko" }),
-    ).rejects.toBeInstanceOf(UpstreamUnavailableError);
+    const result = await service.refresh({
+      userId: "user-1",
+      tickers: ["bitcoin"],
+      source: "coingecko",
+    });
+    expect(result.prices).toEqual([]);
+    expect(result.unknown).toEqual(["bitcoin"]);
   });
 });
 
@@ -281,7 +366,11 @@ describe("PriceService, CoinGecko happy path", () => {
 
 describe("PriceService, invalid source", () => {
   it("throws InvalidSourceError for unknown source", async () => {
-    const service = new PriceService({ fetcher: fetch, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher: fetch,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
     await expect(
       service.refresh({ userId: "user-1", tickers: ["AAPL"], source: "bloomberg" }),
     ).rejects.toBeInstanceOf(InvalidSourceError);
@@ -295,26 +384,44 @@ describe("PriceService, invalid source", () => {
 describe("PriceService, per-user cooldown", () => {
   it("allows first request", async () => {
     const fetcher = async () => yahooResponse("AAPL", 182.5);
-    const service = new PriceService({ fetcher, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
     await expect(
       service.refresh({ userId: "user-cooldown", tickers: ["AAPL"], source: "yahoo" }),
     ).resolves.toBeDefined();
   });
 
   it("throws RateLimitedError on second request within cooldown window", async () => {
-    const fetcher = async () => yahooResponse("AAPL", 182.5);
-    const service = new PriceService({ fetcher, cooldownMs: TEST_COOLDOWN_MS });
+    // First request fetches AAPL and populates cache. Second request uses MSFT
+    // (not cached) so it must go to upstream and hits the rate-limit gate.
+    const fetcher = async (url: string | URL | Request) => {
+      if (String(url).includes("AAPL")) return yahooResponse("AAPL", 182.5);
+      if (String(url).includes("MSFT")) return yahooResponse("MSFT", 420.0);
+      return new Response("not found", { status: 404 });
+    };
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
 
     await service.refresh({ userId: "user-cooldown", tickers: ["AAPL"], source: "yahoo" });
 
     await expect(
-      service.refresh({ userId: "user-cooldown", tickers: ["AAPL"], source: "yahoo" }),
+      service.refresh({ userId: "user-cooldown", tickers: ["MSFT"], source: "yahoo" }),
     ).rejects.toBeInstanceOf(RateLimitedError);
   });
 
   it("allows request after cooldown window elapses", async () => {
     const fetcher = async () => yahooResponse("AAPL", 182.5);
-    const service = new PriceService({ fetcher, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
 
     await service.refresh({ userId: "user-cooldown", tickers: ["AAPL"], source: "yahoo" });
 
@@ -328,7 +435,11 @@ describe("PriceService, per-user cooldown", () => {
 
   it("cooldown is per-user, different users do not share cooldown", async () => {
     const fetcher = async () => yahooResponse("AAPL", 182.5);
-    const service = new PriceService({ fetcher, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
 
     await service.refresh({ userId: "user-A", tickers: ["AAPL"], source: "yahoo" });
 
@@ -339,13 +450,20 @@ describe("PriceService, per-user cooldown", () => {
   });
 
   it("msUntilNextRefresh returns 0 before any refresh", () => {
-    const service = new PriceService({ cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
     expect(service.msUntilNextRefresh("no-refresh-yet")).toBe(0);
   });
 
   it("msUntilNextRefresh returns positive value immediately after refresh", async () => {
     const fetcher = async () => yahooResponse("AAPL", 182.5);
-    const service = new PriceService({ fetcher, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
     await service.refresh({ userId: "user-ms", tickers: ["AAPL"], source: "yahoo" });
     expect(service.msUntilNextRefresh("user-ms")).toBeGreaterThan(0);
   });
@@ -397,5 +515,180 @@ describe("upstream-yahoo, error messages contain no ticker symbols", () => {
         expect(err.message).not.toContain(TICKER);
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cache layer
+// ---------------------------------------------------------------------------
+
+describe("PriceService, cache layer", () => {
+  it("serves from fresh cache without hitting fetcher", async () => {
+    const now = new Date();
+    const repo = createStubRepo([
+      { source: "yahoo", ticker: "AAPL", price: "100.00000000", fetchedAt: now },
+    ]);
+    const fetcher = async (): Promise<Response> => {
+      throw new Error("fetcher must not be called for fresh cache hit");
+    };
+    const service = new PriceService({ pricesRepo: repo, fetcher, cooldownMs: TEST_COOLDOWN_MS });
+
+    const result = await service.refresh({
+      userId: "cache-user-1",
+      tickers: ["AAPL"],
+      source: "yahoo",
+    });
+
+    expect(result.prices).toHaveLength(1);
+    expect(result.prices[0]?.price).toBe("100.00000000");
+    expect(result.prices[0]?.fetchedAt).toBe(now.toISOString());
+    expect(result.unknown).toEqual([]);
+    expect(service.msUntilNextRefresh("cache-user-1")).toBe(0);
+  });
+
+  it("stale cache row triggers upstream fetch", async () => {
+    const staleDate = new Date(Date.now() - 10 * 60 * 1000);
+    const repo = createStubRepo([
+      { source: "yahoo", ticker: "AAPL", price: "99.00000000", fetchedAt: staleDate },
+    ]);
+    const fetcher = async (url: string | URL | Request) => {
+      if (String(url).includes("AAPL")) return yahooResponse("AAPL", 182.5);
+      return new Response("not found", { status: 404 });
+    };
+    const service = new PriceService({ pricesRepo: repo, fetcher, cooldownMs: TEST_COOLDOWN_MS });
+
+    const result = await service.refresh({
+      userId: "cache-user-2",
+      tickers: ["AAPL"],
+      source: "yahoo",
+    });
+
+    expect(result.prices).toHaveLength(1);
+    expect(result.prices[0]?.price).toMatch(/^182\./);
+    expect(repo.rows.get("yahoo AAPL")?.price).toMatch(/^182\./);
+  });
+
+  it("upstream success upserts cache", async () => {
+    const repo = createStubRepo();
+    const fetcher = async (url: string | URL | Request) => {
+      if (String(url).includes("AAPL")) return yahooResponse("AAPL", 180.0);
+      return new Response("not found", { status: 404 });
+    };
+    const service = new PriceService({ pricesRepo: repo, fetcher, cooldownMs: TEST_COOLDOWN_MS });
+
+    await service.refresh({ userId: "cache-user-3", tickers: ["AAPL"], source: "yahoo" });
+
+    const cached = repo.rows.get("yahoo AAPL");
+    expect(cached).toBeDefined();
+    expect(cached?.price).toMatch(/^180\./);
+  });
+
+  it("upstream UpstreamUnavailable falls back to stale cache", async () => {
+    const staleDate = new Date(Date.now() - 10 * 60 * 1000);
+    const repo = createStubRepo([
+      { source: "yahoo", ticker: "AAPL", price: "99.00000000", fetchedAt: staleDate },
+    ]);
+    // Yahoo per-ticker isolation swallows 5xx → upstream returns empty map.
+    const fetcher = async () => new Response("error", { status: 500 });
+    const service = new PriceService({ pricesRepo: repo, fetcher, cooldownMs: TEST_COOLDOWN_MS });
+
+    const result = await service.refresh({
+      userId: "cache-user-4",
+      tickers: ["AAPL"],
+      source: "yahoo",
+    });
+
+    expect(result.prices).toHaveLength(1);
+    expect(result.prices[0]?.price).toBe("99.00000000");
+    expect(result.unknown).toEqual([]);
+    expect(service.msUntilNextRefresh("cache-user-4")).toBe(0);
+  });
+
+  it("upstream empty result with no cache row → unknown", async () => {
+    const repo = createStubRepo();
+    const fetcher = async () => new Response("not found", { status: 404 });
+    const service = new PriceService({ pricesRepo: repo, fetcher, cooldownMs: TEST_COOLDOWN_MS });
+
+    const result = await service.refresh({
+      userId: "cache-user-5",
+      tickers: ["NOPE"],
+      source: "yahoo",
+    });
+
+    expect(result.prices).toEqual([]);
+    expect(result.unknown).toEqual(["NOPE"]);
+    expect(service.msUntilNextRefresh("cache-user-5")).toBe(0);
+  });
+
+  it("mix: one fresh cached, one fetched", async () => {
+    const now = new Date();
+    const repo = createStubRepo([
+      { source: "yahoo", ticker: "AAPL", price: "100.00000000", fetchedAt: now },
+    ]);
+    const fetcher = async (url: string | URL | Request) => {
+      if (String(url).includes("MSFT")) return yahooResponse("MSFT", 420.0);
+      return new Response("not found", { status: 404 });
+    };
+    const service = new PriceService({ pricesRepo: repo, fetcher, cooldownMs: TEST_COOLDOWN_MS });
+
+    const result = await service.refresh({
+      userId: "cache-user-6",
+      tickers: ["AAPL", "MSFT"],
+      source: "yahoo",
+    });
+
+    expect(result.prices).toHaveLength(2);
+    expect(result.unknown).toEqual([]);
+    expect(repo.rows.has("yahoo MSFT")).toBe(true);
+    // Cooldown consumed because we hit upstream.
+    expect(service.msUntilNextRefresh("cache-user-6")).toBeGreaterThan(0);
+  });
+
+  it("cooldown NOT consumed when fully served from cache", async () => {
+    const now = new Date();
+    const repo = createStubRepo([
+      { source: "yahoo", ticker: "AAPL", price: "100.00000000", fetchedAt: now },
+    ]);
+    const fetcher = async (): Promise<Response> => {
+      throw new Error("fetcher must not be called");
+    };
+    const service = new PriceService({ pricesRepo: repo, fetcher, cooldownMs: TEST_COOLDOWN_MS });
+
+    await service.refresh({ userId: "cache-user-7", tickers: ["AAPL"], source: "yahoo" });
+
+    expect(service.msUntilNextRefresh("cache-user-7")).toBe(0);
+  });
+
+  it("cooldown consumed when upstream is hit", async () => {
+    const repo = createStubRepo();
+    const fetcher = async (url: string | URL | Request) => {
+      if (String(url).includes("AAPL")) return yahooResponse("AAPL", 180.0);
+      return new Response("not found", { status: 404 });
+    };
+    const service = new PriceService({ pricesRepo: repo, fetcher, cooldownMs: TEST_COOLDOWN_MS });
+
+    await service.refresh({ userId: "cache-user-8", tickers: ["AAPL"], source: "yahoo" });
+
+    expect(service.msUntilNextRefresh("cache-user-8")).toBeGreaterThan(0);
+  });
+
+  it("CoinGecko UpstreamUnavailableError falls back to cache", async () => {
+    const staleDate = new Date(Date.now() - 10 * 60 * 1000);
+    const repo = createStubRepo([
+      { source: "coingecko", ticker: "bitcoin", price: "60000.00000000", fetchedAt: staleDate },
+    ]);
+    const fetcher = async () => new Response("error", { status: 500 });
+    const service = new PriceService({ pricesRepo: repo, fetcher, cooldownMs: TEST_COOLDOWN_MS });
+
+    const result = await service.refresh({
+      userId: "cache-user-9",
+      tickers: ["bitcoin"],
+      source: "coingecko",
+    });
+
+    expect(result.prices).toHaveLength(1);
+    expect(result.prices[0]?.price).toBe("60000.00000000");
+    expect(result.unknown).toEqual([]);
+    expect(service.msUntilNextRefresh("cache-user-9")).toBe(0);
   });
 });

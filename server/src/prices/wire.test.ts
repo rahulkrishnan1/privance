@@ -15,8 +15,31 @@ import { secureHeaders } from "hono/secure-headers";
 import { requireCsrfHeader } from "../core/middleware.js";
 import { PriceService } from "./price-service.js";
 import * as rateLimit from "./rate-limit.js";
+import type { CachedPriceRow } from "./repo.js";
 import type { FetchLike } from "./types.js";
 import { createFeatureRouter } from "./wire.js";
+
+type StubRepo = {
+  getMany(opts: { source: string; tickers: string[] }): Promise<CachedPriceRow[]>;
+  upsertMany(rows: CachedPriceRow[]): Promise<void>;
+};
+
+function createStubRepo(initial: CachedPriceRow[] = []): StubRepo {
+  const rows = new Map(initial.map((r) => [`${r.source} ${r.ticker}`, r]));
+  return {
+    async getMany({ source, tickers }) {
+      const out: CachedPriceRow[] = [];
+      for (const t of tickers) {
+        const r = rows.get(`${source} ${t}`);
+        if (r) out.push(r);
+      }
+      return out;
+    },
+    async upsertMany(input) {
+      for (const r of input) rows.set(`${r.source} ${r.ticker}`, r);
+    },
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -84,7 +107,7 @@ function buildTestApp(
   fetcher: FetchLike,
   cooldownMs = TEST_COOLDOWN_MS,
 ): { fetch: (req: Request) => Promise<Response> } {
-  const service = new PriceService({ fetcher, cooldownMs });
+  const service = new PriceService({ pricesRepo: createStubRepo(), fetcher, cooldownMs });
   const { router } = createFeatureRouter(mockSessionMiddleware(), service);
 
   const app = new Hono();
@@ -239,7 +262,11 @@ describe("POST /refresh, invalid input", () => {
       // Should never be reached, validation rejects before service is called.
       return yahooOkFetcher({ AAPL: 182.5 })(url, init);
     };
-    const service = new PriceService({ fetcher: trackingFetcher, cooldownMs: TEST_COOLDOWN_MS });
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher: trackingFetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
     // Patch recordRefresh detection via msUntilNextRefresh: if > 0, cooldown was burned.
     const { router } = createFeatureRouter(mockSessionMiddleware(), service);
     const app = new Hono();
@@ -299,7 +326,9 @@ describe("POST /refresh, upstream errors (per-ticker isolation)", () => {
 
 describe("POST /refresh, per-user rate-limit", () => {
   it("second request within cooldown → 429 with Retry-After", async () => {
-    const server = buildTestApp(yahooOkFetcher({ AAPL: 182.5 }));
+    // First request fetches AAPL and populates the cache. Second request uses
+    // MSFT (not cached) so it must hit upstream and triggers the rate-limit gate.
+    const server = buildTestApp(yahooOkFetcher({ AAPL: 182.5, MSFT: 420 }));
 
     const first = await server.fetch(
       new Request(`${BASE}/api/prices/refresh`, {
@@ -314,7 +343,7 @@ describe("POST /refresh, per-user rate-limit", () => {
       new Request(`${BASE}/api/prices/refresh`, {
         method: "POST",
         headers: headers("POST"),
-        body: JSON.stringify({ tickers: ["AAPL"], source: "yahoo" }),
+        body: JSON.stringify({ tickers: ["MSFT"], source: "yahoo" }),
       }),
     );
     expect(second.status).toBe(429);

@@ -3,7 +3,9 @@ import { HTTPException } from "hono/http-exception";
 import type { MiddlewareHandler } from "hono/types";
 
 import type { FeatureRouter } from "../core/app.js";
+import { db } from "../core/db.js";
 import { PriceService } from "./price-service.js";
+import { PricesRepo } from "./repo.js";
 import { InvalidSourceError, RateLimitedError, UpstreamUnavailableError } from "./types.js";
 
 // ---------------------------------------------------------------------------
@@ -97,12 +99,16 @@ function buildRouter(sessionMiddleware: MiddlewareHandler, service: PriceService
   return router;
 }
 
+function makeService(): PriceService {
+  return new PriceService({ pricesRepo: new PricesRepo(db) });
+}
+
 export function createFeatureRouter(
   sessionMiddleware: MiddlewareHandler,
   service?: PriceService,
 ): FeatureRouter {
   return {
     basePath: "/api/prices",
-    router: buildRouter(sessionMiddleware, service ?? new PriceService()),
+    router: buildRouter(sessionMiddleware, service ?? makeService()),
   };
 }
