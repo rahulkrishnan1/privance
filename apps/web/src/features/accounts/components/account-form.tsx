@@ -116,7 +116,7 @@ export function AccountForm({
     },
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: open is intentional so the reset fires on each open even when account stays undefined
+  // biome-ignore lint/correctness/useExhaustiveDependencies: open is a trigger, not read in the body
   useEffect(() => {
     reset({
       name: account?.payload.name ?? "",
