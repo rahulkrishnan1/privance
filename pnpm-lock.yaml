@@ -34,7 +34,7 @@ importers:
         version: 8.3.4(@capacitor/core@8.3.4)
       '@hookform/resolvers':
         specifier: ^5.2.2
-        version: 5.2.2(react-hook-form@7.75.0(react@19.2.4))
+        version: 5.2.2(react-hook-form@7.76.0(react@19.2.4))
       '@privance/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -57,8 +57,8 @@ importers:
         specifier: 19.2.4
         version: 19.2.4(react@19.2.4)
       react-hook-form:
-        specifier: ^7.75.0
-        version: 7.75.0(react@19.2.4)
+        specifier: ^7.76.0
+        version: 7.76.0(react@19.2.4)
       recharts:
         specifier: 3.8.1
         version: 3.8.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react-is@19.2.6)(react@19.2.4)(redux@5.0.1)
@@ -2105,8 +2105,8 @@ packages:
     peerDependencies:
       react: ^19.2.4
 
-  react-hook-form@7.75.0:
-    resolution: {integrity: sha512-Ovv94H+0p3sJ7B9B5QxPuCP1u8V/cHuVGyH55cSwodYDtoJwK+fqk3vjfIgSX59I2U/bU4z0nRJ9HMLpNiWEmw==}
+  react-hook-form@7.76.0:
+    resolution: {integrity: sha512-eKtLGgFeSgkHqQD8J59AMZ9a4uD1D83iSIzt4YlTGD7liDen5rrjcUO1rVIGd9yC1gofryjtHbv+4ny4hkLWlw==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
@@ -2833,10 +2833,10 @@ snapshots:
   '@esbuild/win32-x64@0.28.0':
     optional: true
 
-  '@hookform/resolvers@5.2.2(react-hook-form@7.75.0(react@19.2.4))':
+  '@hookform/resolvers@5.2.2(react-hook-form@7.76.0(react@19.2.4))':
     dependencies:
       '@standard-schema/utils': 0.3.0
-      react-hook-form: 7.75.0(react@19.2.4)
+      react-hook-form: 7.76.0(react@19.2.4)
 
   '@img/colour@1.1.0':
     optional: true
@@ -4000,7 +4000,7 @@ snapshots:
       react: 19.2.4
       scheduler: 0.27.0
 
-  react-hook-form@7.75.0(react@19.2.4):
+  react-hook-form@7.76.0(react@19.2.4):
     dependencies:
       react: 19.2.4
 
