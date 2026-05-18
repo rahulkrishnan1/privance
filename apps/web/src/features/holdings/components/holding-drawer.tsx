@@ -71,6 +71,11 @@ export function HoldingDrawer({
   submitting,
 }: HoldingDrawerProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const openSeq = useRef(0);
+
+  useEffect(() => {
+    if (open) openSeq.current += 1;
+  }, [open]);
 
   // Idempotent, calling showModal() on an already-open dialog throws.
   useEffect(() => {
@@ -105,7 +110,7 @@ export function HoldingDrawer({
 
         <div className="p-5 flex-1 overflow-y-auto [padding-bottom:max(env(safe-area-inset-bottom),5rem)] sm:[padding-bottom:1.25rem]">
           <HoldingForm
-            key={mode.kind === "edit" ? mode.holding.id : "new"}
+            key={mode.kind === "edit" ? mode.holding.id : `new-${openSeq.current}`}
             initialValues={deriveInitialValues(mode)}
             investmentAccounts={investmentAccounts}
             groups={groups}

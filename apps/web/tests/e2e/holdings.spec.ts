@@ -419,4 +419,20 @@ test.describe("holdings", () => {
     // means the cell is populated on first paint.
     await expect(googCell).toContainText("$", { timeout: 5_000 });
   });
+
+  test("Add holding form clears between opens", async ({ page }) => {
+    await goToHoldings(page);
+
+    await page.getByRole("button", { name: "Add holding" }).first().click();
+    let dialog = page.getByRole("dialog", { name: /Add holding/i });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("combobox", { name: "Ticker" }).fill("WILLBEDISCARDED");
+    await page.getByRole("button", { name: "Close" }).click();
+    await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+
+    await page.getByRole("button", { name: "Add holding" }).first().click();
+    dialog = page.getByRole("dialog", { name: /Add holding/i });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("combobox", { name: "Ticker" })).toHaveValue("");
+  });
 });

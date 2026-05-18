@@ -144,6 +144,28 @@ test.describe("accounts", () => {
     await expect(page.getByText(updatedName)).toBeVisible({ timeout: 10_000 });
   });
 
+  test("Add account form clears between opens", async ({ page }) => {
+    await goToAccounts(page);
+
+    await page
+      .getByRole("button", { name: /Add.*account/i })
+      .first()
+      .click();
+    let dialog = page.getByRole("dialog", { name: /Add account/i });
+    await expect(dialog).toBeVisible();
+    await dialog.getByLabel("Account name").fill("WILL_BE_DISCARDED");
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+
+    await page
+      .getByRole("button", { name: /Add.*account/i })
+      .first()
+      .click();
+    dialog = page.getByRole("dialog", { name: /Add account/i });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByLabel("Account name")).toHaveValue("");
+  });
+
   test("deletes an account and it disappears from the list", async ({ page }) => {
     await goToAccounts(page);
 

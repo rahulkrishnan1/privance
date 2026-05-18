@@ -116,6 +116,7 @@ export function AccountForm({
     },
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: open is intentional so the reset fires on each open even when account stays undefined
   useEffect(() => {
     reset({
       name: account?.payload.name ?? "",
@@ -123,7 +124,7 @@ export function AccountForm({
       currency: account?.payload.currency ?? "USD",
       balance: deriveBalanceString(account),
     });
-  }, [defaultKind, reset, account]);
+  }, [defaultKind, reset, account, open]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
