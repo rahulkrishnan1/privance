@@ -1,3 +1,5 @@
+export type { CachedPriceRow, PricesRepo } from "./repo.js";
+export { createPricesRepo } from "./repo.js";
 export type { DataSource, PriceEntry, RefreshResult, UpstreamPrice } from "./types.js";
 export {
   InvalidSourceError,
