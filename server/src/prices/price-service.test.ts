@@ -691,4 +691,27 @@ describe("PriceService, cache layer", () => {
     expect(result.unknown).toEqual([]);
     expect(service.msUntilNextRefresh("cache-user-9")).toBe(0);
   });
+
+  it("cache hit on a different source does not satisfy the requested source", async () => {
+    const now = new Date();
+    const repo = createStubRepo([
+      { source: "coingecko", ticker: "AAPL", price: "999.00000000", fetchedAt: now },
+    ]);
+    const fetcher = async (url: string | URL | Request) => {
+      if (String(url).includes("AAPL")) return yahooResponse("AAPL", 180.0);
+      return new Response("not found", { status: 404 });
+    };
+    const service = new PriceService({ pricesRepo: repo, fetcher, cooldownMs: TEST_COOLDOWN_MS });
+
+    const result = await service.refresh({
+      userId: "cache-user-10",
+      tickers: ["AAPL"],
+      source: "yahoo",
+    });
+
+    expect(result.prices[0]?.price).toMatch(/^180\./);
+    expect(repo.rows.has("yahoo AAPL")).toBe(true);
+    expect(repo.rows.has("coingecko AAPL")).toBe(true);
+    expect(service.msUntilNextRefresh("cache-user-10")).toBeGreaterThan(0);
+  });
 });

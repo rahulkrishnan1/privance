@@ -18,19 +18,19 @@ const EFFECTIVE_COOLDOWN_MS = USE_FAKE_UPSTREAM ? 0 : null;
 const COOLDOWN_MS = 30_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
-type PricesRepoShape = {
+type PricesRepoLike = {
   getMany(opts: { source: string; tickers: string[] }): Promise<CachedPriceRow[]>;
   upsertMany(rows: CachedPriceRow[]): Promise<void>;
 };
 
 export type PriceServiceOptions = {
-  pricesRepo: PricesRepoShape;
+  pricesRepo: PricesRepoLike;
   fetcher?: FetchLike;
   cooldownMs?: number;
 };
 
 export class PriceService {
-  readonly #pricesRepo: PricesRepoShape;
+  readonly #pricesRepo: PricesRepoLike;
   readonly #fetcher: FetchLike;
   readonly #cooldownMs: number;
 
@@ -119,7 +119,6 @@ export class PriceService {
       "price refresh completed",
     );
 
-    // Build stale fallback map for tickers that need it (upstream failed or returned nothing).
     const staleByTicker = new Map(
       cached.filter((r) => !freshMap.has(r.ticker)).map((r) => [r.ticker, r]),
     );
@@ -149,7 +148,6 @@ export class PriceService {
     return { prices, unknown };
   }
 
-  /** Returns ms until the user may refresh again (0 = free to refresh). */
   msUntilNextRefresh(userId: string): number {
     return rateLimit.msUntilNextRefresh(userId, this.#cooldownMs);
   }
