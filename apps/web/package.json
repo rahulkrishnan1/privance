@@ -1,0 +1,47 @@
+{
+  "name": "@privance/web",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack --port 8081",
+    "build": "next build --webpack",
+    "start": "next start --port 8081",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "cap:sync": "next build && cap sync",
+    "cap:ios": "next build && cap sync ios && cap open ios",
+    "cap:android": "next build && cap sync android && cap open android",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
+    "e2e:ui": "playwright test --ui",
+    "e2e:install": "playwright install chromium firefox"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
+    "@capacitor/ios": "^8.3.4",
+    "@hookform/resolvers": "^5.2.2",
+    "@privance/core": "workspace:*",
+    "@sqlite.org/sqlite-wasm": "3.53.0-build1",
+    "@tanstack/react-query": "5.100.10",
+    "lucide-react": "^0.460.0",
+    "next": "16.2.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-hook-form": "^7.75.0",
+    "recharts": "3.8.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.3.4",
+    "@playwright/test": "^1.60.0",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "happy-dom": "^20.9.0",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "4.1.6"
+  }
+}

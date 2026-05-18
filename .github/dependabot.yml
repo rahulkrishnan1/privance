@@ -1,0 +1,28 @@
+version: 2
+updates:
+  # npm workspace (pnpm-lock.yaml is compatible with dependabot npm ecosystem)
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      # Group minor/patch updates to reduce PR noise
+      dev-tools:
+        patterns:
+          - "@biomejs/*"
+          - "lefthook"
+          - "turbo"
+          - "typescript"
+        update-types:
+          - minor
+          - patch
+
+  # GitHub Actions — keep action versions current
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5

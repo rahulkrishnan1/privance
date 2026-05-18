@@ -1,0 +1,5 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Argon2id, known-vector test (parameter drift detection) > matches expected hash for fixed inputs and versioned params 1`] = `"879cb71e07e6db14c281790533c985703c99adeed60e40d215241b07be32e47b4eb044bcacdd0fdb76dafd903c9c6ae302cbeab46269ac2cae357112213a9a27"`;
+
+exports[`Argon2id, known-vector test (parameter drift detection) matches expected hash for fixed inputs and versioned params 1`] = `"879cb71e07e6db14c281790533c985703c99adeed60e40d215241b07be32e47b4eb044bcacdd0fdb76dafd903c9c6ae302cbeab46269ac2cae357112213a9a27"`;

@@ -1,0 +1,253 @@
+"use client";
+
+import {
+  decryptAead,
+  encryptAead,
+  KDF_PARAM_VERSION,
+  LABEL_VERSION,
+  type Nonce,
+} from "@privance/core";
+import type { LocalStore } from "@privance/core/storage";
+import type { SyncClient } from "@privance/core/sync";
+import type { ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { serverUrl } from "@/lib/api/client";
+import { readItemsKey, useAuth } from "./auth-context";
+
+type StoreState = {
+  store: LocalStore | null;
+  client: SyncClient | null;
+  initialising: boolean;
+  decrypt: (opts: {
+    ciphertext: Uint8Array;
+    nonce: Uint8Array;
+    objectId: string;
+    kind: string;
+  }) => Uint8Array;
+};
+
+export type SyncContextValue = StoreState & {
+  /** Monotonically-increasing counter. Increments after every local mutation so
+   *  queries can add it to their useEffect dep array to re-run after a write. */
+  storeClock: number;
+  /** Call after a successful mutation to trigger dependent query re-runs. */
+  tick: () => void;
+};
+
+const SyncContext = createContext<SyncContextValue | null>(null);
+
+function makeLockedDecrypt(): StoreState["decrypt"] {
+  return () => {
+    throw new Error("locked");
+  };
+}
+
+export function SyncProvider({ children }: { children: ReactNode }) {
+  const { state, lock } = useAuth();
+
+  const [storeClock, setStoreClock] = useState(0);
+  const tick = useCallback(() => setStoreClock((c) => c + 1), []);
+
+  const [storeState, setStoreState] = useState<StoreState>({
+    store: null,
+    client: null,
+    initialising: false,
+    decrypt: makeLockedDecrypt(),
+  });
+
+  const storeRef = useRef<LocalStore | null>(null);
+  const clientRef = useRef<SyncClient | null>(null);
+
+  // lock is referenced inside setup() below but is stable via useCallback in
+  // AuthProvider, so we deliberately omit it from the dep list to avoid
+  // tearing down and re-initialising the store on every render.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: lock is stable
+  useEffect(() => {
+    if (state !== "unlocked") {
+      clientRef.current?.stop();
+      void storeRef.current?.close();
+      clientRef.current = null;
+      storeRef.current = null;
+      setStoreState({
+        store: null,
+        client: null,
+        initialising: false,
+        decrypt: makeLockedDecrypt(),
+      });
+      setStoreClock(0);
+      return;
+    }
+
+    let cancelled = false;
+    setStoreState((prev) => ({
+      ...prev,
+      initialising: true,
+      decrypt: makeLockedDecrypt(),
+    }));
+
+    const setup = async () => {
+      const [{ createLocalStore }, { createSyncClient }] = await Promise.all([
+        import("@privance/core/storage"),
+        import("@privance/core/sync"),
+      ]);
+
+      const store = createLocalStore({ workerUrl: "/sqlite/privance-worker.mjs" });
+
+      const encryptEnvelope = async (input: {
+        plaintext: Uint8Array;
+        objectId: string;
+        kind: string;
+      }): Promise<{ ciphertext: Uint8Array; nonce: Uint8Array }> => {
+        const key = readItemsKey();
+        if (key === null) throw new Error("locked");
+        return encryptAead({
+          plaintext: input.plaintext,
+          key,
+          aad: {
+            recordUuid: input.objectId,
+            kind: input.kind,
+            labelVersion: LABEL_VERSION,
+            kdfParamVersion: KDF_PARAM_VERSION,
+          },
+        });
+      };
+
+      const decryptEnvelope = async (input: {
+        ciphertext: Uint8Array;
+        nonce: Uint8Array;
+        objectId: string;
+        kind: string;
+      }): Promise<Uint8Array> => {
+        const key = readItemsKey();
+        if (key === null) throw new Error("locked");
+        return decryptAead({
+          ciphertext: input.ciphertext,
+          nonce: input.nonce as Nonce,
+          key,
+          aad: {
+            recordUuid: input.objectId,
+            kind: input.kind,
+            labelVersion: LABEL_VERSION,
+            kdfParamVersion: KDF_PARAM_VERSION,
+          },
+        });
+      };
+
+      // Request durable OPFS so the browser doesn't evict our local DB when
+      // the PWA is closed. Without this, "best-effort" storage can be cleared,
+      // which makes deleted records reappear (server's pre-delete copy gets
+      // re-pulled because the local tombstone is gone).
+      // Firefox can hang persist() waiting for user gesture, so race against
+      // a short timeout so init never blocks on this best-effort call.
+      if (typeof navigator !== "undefined" && navigator.storage?.persist !== undefined) {
+        try {
+          await Promise.race([
+            navigator.storage.persist(),
+            new Promise((resolve) => setTimeout(resolve, 500)),
+          ]);
+        } catch {
+          // best-effort; nothing to do if the API throws
+        }
+      }
+
+      await store.init();
+
+      if (cancelled) {
+        await store.close();
+        return;
+      }
+
+      const client = createSyncClient({
+        config: {
+          serverUrl: serverUrl(),
+          onAuthError: () => {
+            // Background sync got a 401/403. The session is gone server-side;
+            // lock so the user can re-authenticate instead of seeing a stuck UI.
+            lock();
+          },
+          onDecryptError: (objectId, err) => {
+            // Don't crash the sync loop; surface so the failure isn't invisible.
+            // The pull cursor stalls just before the failing record so the
+            // next pull retries it. If the user's DEK changed on another
+            // device they'll need to re-auth to fetch the new wrap.
+            // biome-ignore lint/suspicious/noConsole: surfacing sync errors
+            console.warn("[sync] decrypt error", { objectId, err });
+          },
+        },
+        store,
+        encryptEnvelope,
+        decryptEnvelope,
+      });
+
+      const decrypt: StoreState["decrypt"] = (opts) => {
+        const key = readItemsKey();
+        if (key === null) throw new Error("locked");
+        return decryptAead({
+          ciphertext: opts.ciphertext,
+          nonce: opts.nonce as Nonce,
+          key,
+          aad: {
+            recordUuid: opts.objectId,
+            kind: opts.kind,
+            labelVersion: LABEL_VERSION,
+            kdfParamVersion: KDF_PARAM_VERSION,
+          },
+        });
+      };
+
+      storeRef.current = store;
+      clientRef.current = client;
+
+      // Push pending mutations from the previous session BEFORE pulling. If a
+      // delete sat in the outbound queue when the user closed the PWA, this
+      // gets it to the server before any pull could see a stale pre-delete
+      // copy. Errors silenced; the polling tick retries.
+      try {
+        await client.pushPending();
+      } catch {
+        // Silenced, polling tick will retry.
+      }
+
+      // Drain all pages from the server so the local store is fully populated
+      // before queries run. Using drainAllChanges() instead of a single-page
+      // pullChanges() avoids missing high-seq objects when many records have
+      // accumulated (>100) from prior sessions.
+      try {
+        await client.drainAllChanges();
+      } catch {
+        // Silenced, queries fall back to whatever is in the local store.
+      }
+
+      if (cancelled) {
+        await store.close();
+        return;
+      }
+
+      // Start background polling (30 s interval) after the initial pull.
+      client.start({ pollIntervalMs: 30_000 });
+      setStoreState({ store, client, initialising: false, decrypt });
+    };
+
+    void setup();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state]);
+
+  const syncValue: SyncContextValue = {
+    ...storeState,
+    storeClock,
+    tick,
+  };
+
+  return <SyncContext.Provider value={syncValue}>{children}</SyncContext.Provider>;
+}
+
+export function useSync(): SyncContextValue {
+  const ctx = useContext(SyncContext);
+  if (ctx === null) {
+    throw new Error("useSync() must be used within <SyncProvider>");
+  }
+  return ctx;
+}

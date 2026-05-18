@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Privance</string>
+    <string name="title_activity_main">Privance</string>
+    <string name="package_name">app.privance</string>
+    <string name="custom_url_scheme">app.privance</string>
+</resources>

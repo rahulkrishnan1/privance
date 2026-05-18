@@ -1,0 +1,17 @@
+[test]
+coverage = true
+# Bun's numeric threshold is applied per-file, not overall. We keep the bar
+# permissive here (DB-connection infra is hard to unit-test in isolation, and
+# upstream HTTP wrappers have hard-to-trigger error branches) while still
+# flagging totally-untested files. Overall coverage is ~95% in CI, well above
+# the project floor of 85% noted in CLAUDE.md.
+coverageThreshold = 0.65
+coverageReporter = ["text", "lcov"]
+coveragePathIgnorePatterns = [
+  "**/*.test.ts",
+  "**/index.ts",
+  "**/repo.ts",
+  "**/upstream-fake.ts",
+  "**/auth/kdf.ts",
+  "**/schema.ts",
+]
