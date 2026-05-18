@@ -21,12 +21,7 @@ export class PricesRepo {
       .from(prices)
       .where(and(eq(prices.source, source), inArray(prices.ticker, tickers)));
 
-    return rows.map((r) => ({
-      source: r.source,
-      ticker: r.ticker,
-      price: r.price,
-      fetchedAt: r.fetchedAt,
-    }));
+    return rows as CachedPriceRow[];
   }
 
   async upsertMany(rows: CachedPriceRow[]): Promise<void> {

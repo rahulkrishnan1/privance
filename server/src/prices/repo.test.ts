@@ -83,9 +83,7 @@ describe("PricesRepo round-trip", () => {
     const row = rows[0];
     expect(row?.source).toBe(TEST_SOURCE_A);
     expect(row?.ticker).toBe(TEST_TICKER);
-    // Postgres numeric preserves significant digits; the decimal string must
-    // represent the same value (exact string depends on server formatting).
-    expect(parseFloat(row?.price ?? "0")).toBeCloseTo(182.345, 3);
+    expect(row?.price).toBe("182.34500000");
     expect(row?.fetchedAt.toISOString()).toBe(fetchedAt.toISOString());
   });
 
@@ -102,7 +100,7 @@ describe("PricesRepo round-trip", () => {
 
     const rows = await repo.getMany({ source: TEST_SOURCE_A, tickers: [TEST_TICKER] });
     expect(rows).toHaveLength(1);
-    expect(parseFloat(rows[0]?.price ?? "0")).toBeCloseTo(200, 0);
+    expect(rows[0]?.price).toBe("200.00000000");
     expect(rows[0]?.fetchedAt.toISOString()).toBe(second.toISOString());
   });
 });
@@ -122,11 +120,11 @@ describe("PricesRepo multi-source isolation", () => {
     const yahooRows = await repo.getMany({ source: TEST_SOURCE_A, tickers: [TEST_TICKER] });
     expect(yahooRows).toHaveLength(1);
     expect(yahooRows[0]?.source).toBe(TEST_SOURCE_A);
-    expect(parseFloat(yahooRows[0]?.price ?? "0")).toBeCloseTo(400, 0);
+    expect(yahooRows[0]?.price).toBe("400.00000000");
 
     const cgRows = await repo.getMany({ source: TEST_SOURCE_B, tickers: [TEST_TICKER] });
     expect(cgRows).toHaveLength(1);
     expect(cgRows[0]?.source).toBe(TEST_SOURCE_B);
-    expect(parseFloat(cgRows[0]?.price ?? "0")).toBeCloseTo(999, 0);
+    expect(cgRows[0]?.price).toBe("999.00000000");
   });
 });
