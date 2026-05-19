@@ -1,4 +1,4 @@
-# Privance, zero-knowledge personal finance app
+# Privance, zero-knowledge encryption personal finance app
 
 ## What this is
 
