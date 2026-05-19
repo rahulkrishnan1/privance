@@ -4,7 +4,7 @@ Operating manual for code work in this repo. Architecture lives in `ARCHITECTURE
 
 ## Identity
 
-**Privance**, self-hostable, zero-knowledge personal finance app. Server stores ciphertext only; all crypto runs in the browser. Loss of master password + recovery phrase = permanent data loss by design.
+**Privance**, self-hostable, zero-knowledge encryption personal finance app. Server stores ciphertext only; all crypto runs in the browser. Loss of master password + recovery phrase = permanent data loss by design.
 
 ## Stack
 
@@ -56,6 +56,32 @@ apps/web/src/features/<feature>/   # reference: apps/web/src/features/accounts/
 ├── mutations.ts
 └── components/
 ```
+
+## Working principles
+
+**Think before coding.** Don't assume; don't hide confusion.
+- When a clear industry standard exists, use it.
+- When no clear standard exists, surface tradeoffs and ask - don't pick silently.
+- State your assumptions explicitly. If uncertain, ask.
+- Present interpretations when the request is ambiguous.
+
+**Simplicity first.** Minimum code that solves the problem.
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- No comments restating what the code already says; explain why when it isn't obvious.
+- If you write 200 lines and it could be 50, rewrite it.
+
+**Surgical changes.** Touch only what the task demands.
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- Address every flagged finding (Critical / Important / Minor) with the minimum diff per fix.
+
+**Goal-driven execution.** Define success criteria; loop until verified.
+- Transform tasks into verifiable goals: "Fix the bug" becomes "test reproduces, then passes."
+- For multi-step work, state the checks up front.
 
 ## Wiring rules
 
@@ -123,12 +149,3 @@ Backward-incompatible changes follow **expand → backfill → contract** (three
 6. Manual: signup → recovery → login cycle in a real browser for any auth-touching change
 
 Skipping any of these → state it explicitly. Don't claim "verified" without backing.
-
-## What NOT to do
-
-- Don't invent new module patterns, mirror existing ones
-- Don't add `// @ts-ignore` / `@ts-expect-error`, solve the underlying type problem
-- Comments should be concise and help the reader, *why*, intent, gotchas, workarounds. Skip restating *what* the code already says.
-- Don't reach into a `_private` name from another module, add a public helper
-- Don't restate rules from this doc as code comments
-- Don't enforce LOC limits as rules, they're smells; split when there's a real conceptual seam, not because of a number
