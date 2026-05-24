@@ -12,6 +12,7 @@ export {
   AuthError,
   HibpUnavailableError,
   InvalidCredentialsError,
+  InvalidInviteError,
   RateLimitedError,
   RecoveryFailedError,
   SESSION_LIFETIME_MS,

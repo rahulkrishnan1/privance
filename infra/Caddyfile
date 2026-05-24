@@ -1,0 +1,59 @@
+# {$LOCAL_HTTP_ONLY} is empty in production; "auto_https off" only for local smoke (never in prod).
+{
+	email {$ACME_EMAIL}
+	{$LOCAL_HTTP_ONLY}
+	log default {
+		output stderr
+		format console
+		level INFO
+	}
+}
+
+# Single site block covering apex + www produces a SAN cert for both hostnames.
+{$DOMAIN}, {$WWW_DOMAIN} {
+	encode gzip zstd
+
+	# Scope security headers to non-API responses: hono/secure-headers already
+	# emits HSTS, CSP, X-Content-Type-Options, and X-Frame-Options on /api/*,
+	# and duplicates are interpreted as the most-restrictive intersection.
+	@notapi {
+		not path /api/*
+	}
+
+	header @notapi {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		X-Frame-Options DENY
+		# script-src 'unsafe-inline': the Next.js App Router static export emits
+		#   inline self.__next_f.push(...) RSC hydration scripts and a dark-mode
+		#   detection script with no nonce attributes; nonces require SSR.
+		# 'wasm-unsafe-eval': Argon2id (hash-wasm) and SQLite (sqlite-wasm) load
+		#   WebAssembly; without this Chromium blocks every WebAssembly.instantiate
+		#   and the client crypto path fails. This is the narrowest CSP knob that
+		#   re-enables WASM and does NOT permit `eval`.
+		# worker-src 'self' blob:: SQLite worker is created from a blob URL.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+	}
+
+	# Preserve the /api prefix: Hono feature routers are mounted at /api/auth,
+	# /api/sync, etc. Using `handle` (not `handle_path`) avoids stripping it.
+	handle /api/* {
+		reverse_proxy server:3000
+	}
+
+	# try_files resolves /accounts/ to /srv/web/accounts/index.html for the
+	# Next.js App Router static export.
+	handle {
+		root * /srv/web
+		try_files {path} {path}/index.html =404
+		file_server
+	}
+
+	handle_errors {
+		root * /srv/web
+		rewrite * /404.html
+		file_server
+	}
+}

@@ -1,5 +1,6 @@
 import { logger } from "../core/logger.js";
 import { authHashToHex, isBreached as defaultIsBreached } from "./hibp.js";
+import type { InviteService } from "./invite-service.js";
 import { hashAuthHash as hashArgon2 } from "./kdf.js";
 import type { AuthRepo } from "./repo.js";
 import { SessionService } from "./session-service.js";
@@ -29,14 +30,24 @@ type HibpChecker = (hex: string) => Promise<boolean | null>;
 export class SignupService {
   private readonly sessionService: SessionService;
   private readonly checkHibp: HibpChecker;
+  private readonly inviteService: InviteService | undefined;
+  private readonly inviteRequired: boolean;
+  private readonly repo: AuthRepo;
+  private readonly allowedUsernames: ReadonlySet<string>;
 
-  constructor(
-    private readonly repo: AuthRepo,
-    private readonly allowedUsernames: ReadonlySet<string>,
-    hibpChecker: HibpChecker = defaultIsBreached,
-  ) {
-    this.sessionService = new SessionService(repo);
-    this.checkHibp = hibpChecker;
+  constructor(opts: {
+    repo: AuthRepo;
+    allowedUsernames: ReadonlySet<string>;
+    hibpChecker?: HibpChecker;
+    inviteService?: InviteService;
+    inviteRequired?: boolean;
+  }) {
+    this.repo = opts.repo;
+    this.allowedUsernames = opts.allowedUsernames;
+    this.sessionService = new SessionService(opts.repo);
+    this.checkHibp = opts.hibpChecker ?? defaultIsBreached;
+    this.inviteService = opts.inviteService;
+    this.inviteRequired = opts.inviteRequired ?? false;
   }
 
   async signup(opts: {
@@ -51,8 +62,21 @@ export class SignupService {
     wrappedDekIv: Buffer;
     wrappedDekRecovery: Buffer;
     wrappedDekRecoveryIv: Buffer;
+    inviteToken?: string;
   }): Promise<SignupResult> {
     const username = opts.username.toLowerCase();
+
+    // Invite gate runs before allowlist, HIBP, and Argon2id so reject is cheap.
+    // Pre-allocate userId so the token claim records the consumer before the user row exists.
+    let preAllocatedUserId: string | undefined;
+    if (this.inviteRequired) {
+      preAllocatedUserId = crypto.randomUUID();
+      await this.inviteService?.validateAndClaim({
+        token: opts.inviteToken,
+        userId: preAllocatedUserId,
+        now: new Date(),
+      });
+    }
 
     if (this.allowedUsernames.size > 0 && !this.allowedUsernames.has(username)) {
       await this.repo.logEvent({ userId: null, eventClass: "signup_blocked_allowlist" });
@@ -76,6 +100,7 @@ export class SignupService {
     let user: Awaited<ReturnType<AuthRepo["createUser"]>>;
     try {
       user = await this.repo.createUser({
+        ...(preAllocatedUserId !== undefined ? { userId: preAllocatedUserId } : {}),
         username,
         authHashHash: Buffer.from(authHashHash),
         kdfParams: opts.kdfParams,

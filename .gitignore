@@ -33,6 +33,7 @@ Thumbs.db
 # AI working artifacts — plans, scratch, research outputs.
 # Decisions worth keeping flow into docs/decisions/ as ADRs.
 .plans/
+.planning/
 .claude/plans/
 .claude/scratch/
 scratch/
@@ -42,3 +43,8 @@ NOTES.local.md
 *.tgz
 .pnpm-store/
 .playwright-mcp/
+
+# Local Docker Compose override file used during operator smoke tests.
+# The committed compose.prod.yaml is the source of truth; overrides stay local.
+infra/compose.override.yaml
+infra/compose.override.yml

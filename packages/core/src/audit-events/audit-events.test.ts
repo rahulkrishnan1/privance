@@ -17,6 +17,9 @@ describe("AUDIT_EVENT_CLASSES", () => {
       "signup_succeeded",
       "signup_fail_username_taken",
       "signup_blocked_allowlist",
+      "invite_minted",
+      "signup_fail_invite_required",
+      "signup_fail_invite_invalid",
       "kdf_params_query",
       "login_succeeded",
       "login_fail_unknown_user",
@@ -45,8 +48,8 @@ describe("AUDIT_EVENT_CLASSES", () => {
     expect(AUDIT_EVENT_CLASSES).toStrictEqual(expected);
   });
 
-  it("contains exactly 26 event classes", () => {
-    expect(AUDIT_EVENT_CLASSES).toHaveLength(26);
+  it("contains exactly 29 event classes", () => {
+    expect(AUDIT_EVENT_CLASSES).toHaveLength(29);
   });
 
   it("has no duplicate entries", () => {

@@ -1,7 +1,7 @@
 // Privance service worker — offline shell + static asset caching.
 // Hand-written; no Workbox or next-pwa dependency.
 // Version bump here triggers activate → cache cleanup.
-const SW_VERSION = "v1";
+const SW_VERSION = "v2";
 const CACHE_NAME = `privance-${SW_VERSION}`;
 
 // Files that must be cached on install for the offline shell to work.
@@ -22,12 +22,9 @@ const PRECACHE_URLS = [
 // ─── Install ─────────────────────────────────────────────────────────────────
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting()),
-  );
+  // No skipWaiting(): a new SW activates only on the next fresh navigation, so
+  // asset/version skew cannot land mid-session during an active crypto flow.
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)));
 });
 
 // ─── Activate ────────────────────────────────────────────────────────────────

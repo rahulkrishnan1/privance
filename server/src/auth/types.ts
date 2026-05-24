@@ -35,6 +35,13 @@ export class AllowlistDeniedError extends AuthError {
   }
 }
 
+export class InvalidInviteError extends AuthError {
+  constructor(message = "invite required or invalid") {
+    super("invalid_invite", message);
+    this.name = "InvalidInviteError";
+  }
+}
+
 export class WeakPasswordError extends AuthError {
   constructor(message = "password found in breach database") {
     super("weak_password", message);

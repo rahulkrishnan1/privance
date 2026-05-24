@@ -112,7 +112,8 @@ test.describe("accounts", () => {
     // The cash account created in the first test should exist (same user, same DB)
     const tile = page.getByRole("button", { name: new RegExp(existingName) }).first();
 
-    // If not present yet (re-run scenario), create it first
+    // If not present yet (re-run scenario), create it first. The form
+    // requires a type, so this mirrors the canonical create-cash test.
     if ((await tile.count()) === 0) {
       await page
         .getByRole("button", { name: /Add.*account/i })
@@ -120,9 +121,11 @@ test.describe("accounts", () => {
         .click();
       const d = page.getByRole("dialog", { name: /Add account/i });
       await d.getByLabel("Account name").fill(existingName);
+      await d.getByRole("button", { name: "Cash" }).click();
       await d.getByLabel("Balance").fill("100.00");
       await d.getByRole("button", { name: "Save" }).click();
       await expect(d).not.toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText(existingName).first()).toBeVisible({ timeout: 10_000 });
     }
 
     // Open tile menu

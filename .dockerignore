@@ -1,0 +1,48 @@
+# Version control
+.git
+.gitignore
+
+# Planning artifacts (never in image)
+.planning/
+.plans/
+.claude/
+scratch/
+
+# Web app (not needed for server build)
+apps/
+
+# Build outputs
+node_modules
+*/node_modules
+**/node_modules
+dist/
+**/dist/
+build/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+
+# Test and coverage
+coverage/
+.nyc_output/
+
+# Dev tooling
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local env and secrets (never in image)
+.env
+.env.local
+.env.*.local
+server/.env
+server/.env.local
+secrets/
+
+# Docs and infra configs (not needed for build)
+*.md
+docs/
+infra/

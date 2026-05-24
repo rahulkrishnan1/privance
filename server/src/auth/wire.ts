@@ -8,6 +8,7 @@ import type { FeatureRouter } from "../core/app.js";
 import { db } from "../core/db.js";
 import { logger } from "../core/logger.js";
 import { isBreached as defaultIsBreached } from "./hibp.js";
+import { InviteService } from "./invite-service.js";
 import { LoginService } from "./login-service.js";
 import { PasswordService } from "./password-service.js";
 import * as rateLimit from "./rate-limit.js";
@@ -33,6 +34,7 @@ import {
   AllowlistDeniedError,
   HibpUnavailableError,
   InvalidCredentialsError,
+  InvalidInviteError,
   RateLimitedError,
   RecoveryFailedError,
   SessionExpiredError,
@@ -60,6 +62,10 @@ function getSignupAllowlist(): ReadonlySet<string> {
   return new Set(raw.split(",").map((u) => u.trim().toLowerCase()));
 }
 
+function getInviteRequired(): boolean {
+  return process.env.INVITE_REQUIRED === "true";
+}
+
 type AuthServices = {
   signup: SignupService;
   login: LoginService;
@@ -79,8 +85,15 @@ function getServices(): AuthServices {
   const repo = new AuthRepo(db);
   const secret = getEnumerationSecret();
   const allowlist = getSignupAllowlist();
+  const inviteService = new InviteService(repo);
   _cachedServices = {
-    signup: new SignupService(repo, allowlist, _hibpChecker),
+    signup: new SignupService({
+      repo,
+      allowedUsernames: allowlist,
+      hibpChecker: _hibpChecker,
+      inviteService,
+      inviteRequired: getInviteRequired(),
+    }),
     login: new LoginService(repo, secret),
     session: new SessionService(repo),
     recovery: new RecoveryService(repo, secret),
@@ -165,6 +178,9 @@ function errorToHttp(err: unknown): never {
   if (err instanceof AllowlistDeniedError) {
     throw new HTTPException(403, { message: err.code });
   }
+  if (err instanceof InvalidInviteError) {
+    throw new HTTPException(403, { message: err.code });
+  }
   if (err instanceof UsernameTakenError) {
     throw new HTTPException(409, { message: err.code });
   }
@@ -238,6 +254,7 @@ router.post("/signup", async (c) => {
   const wrappedDekIv = parseB64Buf(body.wrapped_dek_iv, "wrapped_dek_iv");
   const wrappedDekRecovery = parseB64Buf(body.wrapped_dek_recovery, "wrapped_dek_recovery");
   const wrappedDekRecoveryIv = parseB64Buf(body.wrapped_dek_recovery_iv, "wrapped_dek_recovery_iv");
+  const inviteToken = typeof body.invite_token === "string" ? body.invite_token : undefined;
 
   const ip = hashIp(c.req.header("x-forwarded-for") ?? "unknown");
 
@@ -261,6 +278,7 @@ router.post("/signup", async (c) => {
       wrappedDekIv,
       wrappedDekRecovery,
       wrappedDekRecoveryIv,
+      ...(inviteToken !== undefined ? { inviteToken } : {}),
     });
     setSessionCookie(c, result.token, result.expiresAt);
     return c.json({ user_id: result.userId }, 201);

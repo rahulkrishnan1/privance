@@ -18,6 +18,7 @@ import sqlite3InitModule from "./index.mjs";
 
 const CURSOR_KEY = "server_seq";
 
+let sqlite3 = null;
 let pool = null;
 let db = null;
 let dbFilename = "/privance.sqlite3";
@@ -28,7 +29,7 @@ let dbFilename = "/privance.sqlite3";
 
 // Retry on OPFS access-handle contention only. Reload/HMR can leave a prior
 // worker holding the handles for a brief window.
-async function installVfsWithRetry(sqlite3, { attempts = 8, baseDelayMs = 150 } = {}) {
+async function installVfsWithRetry({ attempts = 8, baseDelayMs = 150 } = {}) {
   let lastErr = null;
   for (let i = 0; i < attempts; i++) {
     try {
@@ -42,10 +43,17 @@ async function installVfsWithRetry(sqlite3, { attempts = 8, baseDelayMs = 150 } 
   throw lastErr ?? new Error("installOpfsSAHPoolVfs exhausted retries");
 }
 
+// OPFS is unavailable on Safari Private Browsing and some restricted WKWebView
+// hosts; fall back to an in-memory DB so the app still functions per-tab. The
+// sync client re-populates from the server's ciphertext each session.
 try {
-  const sqlite3 = await sqlite3InitModule();
-  pool = await installVfsWithRetry(sqlite3);
-  self.postMessage({ ready: true });
+  sqlite3 = await sqlite3InitModule();
+  try {
+    pool = await installVfsWithRetry();
+  } catch {
+    pool = null;
+  }
+  self.postMessage({ ready: true, mode: pool !== null ? "opfs" : "memory" });
 } catch (e) {
   self.postMessage({ ready: false, error: e?.message ?? String(e) });
 }
@@ -117,7 +125,7 @@ async function openDbWithRetry({ attempts = 8, baseDelayMs = 150 } = {}) {
 async function methodInit({ dbFilename: filename, ddl }) {
   if (db !== null) return null;
   if (filename) dbFilename = filename;
-  db = await openDbWithRetry();
+  db = pool !== null ? await openDbWithRetry() : new sqlite3.oo1.DB(":memory:");
   db.exec(ddl);
   return null;
 }
@@ -251,7 +259,9 @@ function methodAckQueueItem({ id }) {
 }
 
 function methodClose() {
-  // Null out the handle; the SAHPool itself stays open.
+  // SAHPool case: null the handle, the pool stays open. In-memory case: close
+  // the DB explicitly because there is no pool holding the file.
+  if (pool === null && db !== null) db.close();
   db = null;
   return null;
 }
@@ -264,7 +274,7 @@ function methodDestroy() {
     d.exec("DELETE FROM outbound_queue");
   });
   db = null;
-  pool.unlink(dbFilename);
+  if (pool !== null) pool.unlink(dbFilename);
   return null;
 }
 

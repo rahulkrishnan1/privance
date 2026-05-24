@@ -1,0 +1,6 @@
+# m h dom mon dow command
+# 03:30 UTC is 30 minutes after the host's nightly unattended-upgrade reboot
+# window, so a kernel-reboot night still completes its backup.
+30 03 * * * /usr/local/bin/backup.sh
+# Weekly structural check (no --read-data) at 04:00 UTC Sundays.
+0 04 * * 0 /usr/local/bin/check.sh

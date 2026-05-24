@@ -1,0 +1,110 @@
+# Run from the infra/ directory: docker compose -f compose.prod.yaml up -d
+
+services:
+
+  server:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    image: privance-server:latest
+    env_file:
+      - ${PRIVANCE_ENV_DIR:-/etc/privance/env.d}/server.env
+    environment:
+      PRIVANCE_SECRETS_DIR: /run/secrets
+    volumes:
+      - "${PRIVANCE_ENV_DIR:-/etc/privance/env.d}/postgres_password:/run/secrets/postgres_password:ro"
+    networks:
+      - privance_net
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      server-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  server-migrate:
+    image: privance-server:latest
+    command: ["bun", "run", "db:migrate"]
+    restart: "no"
+    env_file:
+      - ${PRIVANCE_ENV_DIR:-/etc/privance/env.d}/server.env
+    volumes:
+      - "${PRIVANCE_ENV_DIR:-/etc/privance/env.d}/postgres_password:/run/secrets/postgres_password:ro"
+    networks:
+      - privance_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine@sha256:979c4379dd698aba0b890599a6104e082035f98ef31d9b9291ec22f2b13059ca
+    env_file:
+      - ${PRIVANCE_ENV_DIR:-/etc/privance/env.d}/postgres.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - "${PRIVANCE_ENV_DIR:-/etc/privance/env.d}/postgres_password:/run/secrets/postgres_password:ro"
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - privance_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U privance -d privance -q"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  caddy:
+    image: caddy:2-alpine@sha256:86deaf5e3d3408a6ccec08fbb79989783dd26e206ae10bcf78a801dc8c9ab794
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - "./../apps/web/out:/srv/web:ro"
+    env_file:
+      - ${PRIVANCE_ENV_DIR:-/etc/privance/env.d}/caddy.env
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    networks:
+      - privance_net
+    restart: unless-stopped
+    depends_on:
+      - server
+
+  restic-runner:
+    build:
+      context: ./restic-runner
+      dockerfile: Dockerfile
+    image: privance-restic-runner:0.18.1
+    env_file:
+      - ${PRIVANCE_ENV_DIR:-/etc/privance/env.d}/restic.env
+    environment:
+      TZ: UTC
+    volumes:
+      - "${PRIVANCE_ENV_DIR:-/etc/privance/env.d}/restic_password:/run/secrets/restic_password:ro"
+      - "${PRIVANCE_ENV_DIR:-/etc/privance/env.d}/postgres_password:/run/secrets/postgres_password:ro"
+      - "restic_cache:/root/.cache/restic"
+    networks:
+      - privance_net
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+  restic_cache:
+
+networks:
+  privance_net:

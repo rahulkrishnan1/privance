@@ -25,7 +25,7 @@ User's device  (browser or Capacitor WKWebView / Android WebView)
 │   └─ networth/    Net-worth aggregation
 │
 └─ Web Worker  (/sqlite/privance-worker.mjs)
-    └─ @sqlite.org/sqlite-wasm + SAH Pool VFS  (OPFS-backed)
+    └─ @sqlite.org/sqlite-wasm: SAH Pool VFS (OPFS-backed) with in-memory fallback
 
          ↕  HTTPS + CSRF (X-Requested-With)
             only encrypted blobs + session cookie cross this line
@@ -41,7 +41,7 @@ Bun + Hono server  (server/)
          ↓  postgres.js + Drizzle ORM
 
 PostgreSQL 17
-├─ auth schema   users, sessions, audit_events
+├─ auth schema   users, sessions, audit_events, invite_tokens
 └─ sync schema   sync_objects  (kind, object_id, ciphertext, nonce)
 ```
 
@@ -106,6 +106,7 @@ server/src/
 │   ├── recovery-service.ts
 │   ├── password-service.ts
 │   ├── session-service.ts
+│   ├── invite-service.ts  # Invite-token mint + atomic single-use claim
 │   ├── repo.ts         # Only layer that queries auth tables
 │   ├── rate-limit.ts   # Sliding-window + progressive backoff (in-memory)
 │   ├── hibp.ts         # HIBP k-anonymity check
@@ -250,14 +251,11 @@ User enters password
 
 In the browser, storage is managed by `packages/core/src/storage/web-adapter.ts` (`WebSqliteAdapter`):
 
-- A dedicated Web Worker is spawned at `/sqlite/privance-worker.mjs` (served as a
-  static asset from `apps/web/public/`).
-- The worker hosts `@sqlite.org/sqlite-wasm` running the **SAH Pool VFS**, which
-  provides an OPFS-backed persistent database using `createSyncAccessHandle`.
-- All SQLite operations are dispatched via a message-based RPC protocol from the
-  main thread to the worker, because `createSyncAccessHandle` requires a dedicated worker context.
-- In tests (Node.js), an injected synchronous `Database` object bypasses the Worker,
-  enabling full unit test coverage without a browser.
+- A dedicated Web Worker is spawned at `/sqlite/privance-worker.mjs` (served as a static asset from `apps/web/public/`).
+- The worker hosts `@sqlite.org/sqlite-wasm`. It first tries to install the **SAH Pool VFS** for OPFS-backed persistence (`createSyncAccessHandle`); if OPFS is unavailable (Safari Private Browsing, restricted WKWebView hosts, ephemeral profiles), it falls back to an in-memory `sqlite3.oo1.DB`. The startup message includes a `mode: "opfs" | "memory"` field for consumers that want to surface ephemeral-session UX.
+- In the in-memory branch the local store re-populates from the server's ciphertext on every session via `drainAllChanges()`. Per-tab persistence only; no data is lost because the server is the authoritative store.
+- All SQLite operations are dispatched via a message-based RPC protocol from the main thread to the worker, because `createSyncAccessHandle` requires a dedicated worker context.
+- In tests (Node.js), an injected synchronous `Database` object bypasses the Worker, enabling full unit test coverage without a browser.
 
 ### Schema
 

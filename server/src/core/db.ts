@@ -29,4 +29,6 @@ const sql = postgres(buildConnectionUrl());
 
 export const db = drizzle(sql);
 
+export { sql };
+
 export type Db = typeof db;

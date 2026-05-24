@@ -44,3 +44,14 @@ export const auditEvents = pgTable(
   },
   (table) => [index("audit_events_user_time_idx").on(table.userId, table.occurredAt)],
 );
+
+export const inviteTokens = pgTable("invite_tokens", {
+  tokenId: uuid("token_id").primaryKey().defaultRandom(),
+  tokenHash: bytea("token_hash").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // operator-side audit label, e.g. "ops"; not user PII.
+  createdBy: text("created_by").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  usedByUserId: uuid("used_by_user_id"),
+});

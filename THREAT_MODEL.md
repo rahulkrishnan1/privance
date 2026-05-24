@@ -34,6 +34,7 @@ This document covers the assets Privance protects, the actors that might threate
 | **Username** | Plaintext account identifier | Postgres, server sees this |
 | **KDF parameters and salt** | Argon2id parameters and per-user salt | Postgres, required for login |
 | **Object metadata** | Record kind, UUID, version, tombstone flag | Postgres `sync_objects`, server sees kind and count, not contents |
+| **Invite token hash** | SHA-256 of plaintext mint token; consumed atomically on signup | Postgres `invite_tokens.token_hash` |
 
 ---
 
@@ -84,19 +85,31 @@ This document covers the assets Privance protects, the actors that might threate
 | Session fixation | Attacker pre-sets a known token | Sessions are server-generated and cryptographically random; no pre-set is accepted | None |
 | Session hijacking (network) | Unencrypted traffic | Cookie is `Secure` in production; not sent over HTTP | Only mitigated by TLS; operator must configure it |
 
-### 3.6 Username
+### 3.6 Invite tokens
+
+| Threat | Vector | Mitigation | Residual risk |
+|---|---|---|---|
+| Token guessing | Online brute force against `POST /api/auth/signup` | 256-bit base64url random token at mint; SHA-256 at rest; atomic single-use claim via `UPDATE ... WHERE used_at IS NULL` | None if entropy is preserved on mint |
+| Token reuse after claim | Replay of a previously-consumed token | Atomic UPDATE with `IS NULL` condition rejects the second claim | None |
+| Operator-side token disclosure | Plaintext token visible to whoever sees the mint output | Tokens are written to stdout once at mint then unrecoverable; operator must hand off plaintext over a single-use ephemeral channel | Operator discipline |
+
+### 3.7 Username
 
 | Threat | Vector | Mitigation | Residual risk |
 |---|---|---|---|
 | Username enumeration | Probe `/api/auth/kdf-params` for different usernames | Unknown usernames receive deterministic fake KDF params derived via HMAC-SHA256 keyed on `ENUMERATION_SECRET`; response timing is matched by running the fake derivation (`server/src/auth/login-service.ts:deriveFakeKdfSalt`) | Timing differences from OS scheduling are not fully eliminated |
 | Username brute-force | Enumerate usernames in the Postgres DB | Requires DB access; once attacker has DB access, username confidentiality is already lost | Inherent to storing usernames |
 
-### 3.7 Supply chain
+### 3.8 Supply chain
 
 | Threat | Vector | Mitigation | Residual risk |
 |---|---|---|---|
 | Malicious npm package | Dependency compromise | `pnpm audit` in CI and pre-push hook; exact-pinned versions in the lockfile | Zero-day in a pinned package before audit catches it |
 | Compromised build pipeline | CI system compromise | _Planned:_ deterministic builds and artifact signing (not yet implemented) | Build-time injection is an acknowledged gap |
+
+### 3.9 Operational bound
+
+The zero-knowledge guarantee protects data **at rest**. Server-side records are ciphertext only and a database or filesystem grab reveals only ciphertext, salts, hashed session and invite tokens, and audit-event metadata. The guarantee does NOT extend to a user's NEXT interaction with a compromised host: the browser executes whatever JS the host serves, so an attacker with control of the served bundle can exfiltrate the master password on the next login. Native Capacitor builds reduce this risk because the JS is bundled into the signed app-store binary instead of fetched per session.
 
 ---
 
@@ -168,7 +181,8 @@ The server-side check (`server/src/auth/hibp.ts`) uses the k-anonymity range API
 
 ## 6. Future work
 
-- Deterministic builds and artifact signing (planned)
+- Deterministic builds and artifact signing
 - Subresource Integrity for all first-party scripts
-- Content-Security-Policy headers: API side done (`server/src/core/app.ts` sets `default-src 'none'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'`). Web-side CSP belongs in the reverse-proxy / deploy config, not the static export, this is tracked in the deploy infra backlog.
 - Formal security audit of the crypto layer
+
+Content-Security-Policy headers are already in place: API responses are set by `server/src/core/app.ts` (`default-src 'none'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'`); web responses are set by the reverse proxy in `infra/Caddyfile`.

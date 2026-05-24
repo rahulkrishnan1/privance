@@ -47,6 +47,7 @@ export function createApp(features: FeatureRouter[] = []): Hono {
   app.use("/api/*", requireCsrfHeader);
 
   app.get("/health", (c) => c.json({ ok: true, service: "privance", ts: Date.now() }));
+  app.get("/api/health", (c) => c.json({ ok: true, service: "privance", ts: Date.now() }));
 
   for (const { basePath, router } of features) {
     app.route(basePath, router);
