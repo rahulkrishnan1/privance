@@ -1,17 +1,10 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import { createHmac } from "node:crypto";
 
-// ---------------------------------------------------------------------------
-// Wire-level auth tests, in-process, no real DB, no real HIBP.
-//
-// Strategy: mock db, repo, rate-limit, hibp at module level so the real
-// service classes run, giving service + wire coverage in one pass.
-// ---------------------------------------------------------------------------
-
 mock.module("../core/db.js", () => ({ db: {} }));
 
-// Mock ./kdf.js (not hash-wasm) so the global hash-wasm module stays real
-// for packages/core tests that run in the same bun process.
+// Mock ./kdf.js (not hash-wasm) so the global hash-wasm module stays real for
+// packages/core tests that run in the same bun process.
 const MOCK_ENCODED = "$argon2id$v=19$m=65536,t=3,p=4$abc$def";
 const mockVerifyAuthHash = mock(async (): Promise<boolean> => true);
 const mockHashAuthHash = mock(
@@ -27,7 +20,8 @@ mock.module("./kdf.js", () => ({
   hashAuthHash: mockHashAuthHash,
   verifyAuthHash: mockVerifyAuthHash,
   generateSessionToken: () => ({ token: VALID_TOKEN_B64, raw: VALID_TOKEN_RAW }),
-  hashSessionToken: (raw: Buffer) => raw, // identity, hash = raw in tests
+  hashSessionToken: (raw: Buffer) => raw,
+  hashInviteToken: (raw: Buffer) => raw,
   decodeSessionToken: (encoded: string) => {
     const padded = encoded + "=".repeat(-encoded.length & 3);
     return Buffer.from(padded, "base64url");
@@ -45,7 +39,6 @@ mock.module("./kdf.js", () => ({
   CLIENT_KDF_PARAMS: { memoryCost: 65536, timeCost: 3, parallelism: 4, hashLength: 64 },
 }));
 
-// VALID_TOKEN matches what generateSessionToken() returns in the kdf mock above.
 const VALID_TOKEN = VALID_TOKEN_B64;
 
 import type { SessionRow, UserRow } from "./repo.js";
@@ -82,6 +75,12 @@ const mockTouchSession = mock(async (): Promise<void> => undefined);
 const mockRevokeSession = mock(async (): Promise<void> => undefined);
 const mockRevokeAllUserSessions = mock(async (): Promise<void> => undefined);
 const mockLogEvent = mock(async (): Promise<void> => undefined);
+const mockClaimInviteToken = mock(
+  async (): Promise<{ tokenId: string } | null> => ({ tokenId: "invite-uuid-1" }),
+);
+const mockCreateInviteToken = mock(
+  async (): Promise<{ tokenId: string }> => ({ tokenId: "tok-mocked" }),
+);
 
 mock.module("./repo.js", () => ({
   AuthRepo: class {
@@ -94,6 +93,8 @@ mock.module("./repo.js", () => ({
     revokeSession = mockRevokeSession;
     revokeAllUserSessions = mockRevokeAllUserSessions;
     logEvent = mockLogEvent;
+    claimInviteToken = mockClaimInviteToken;
+    createInviteToken = mockCreateInviteToken;
   },
 }));
 
@@ -105,7 +106,6 @@ const { _setHibpCheckerForTests, _resetHibpChecker, _resetCachedServicesForTests
   "./wire.js"
 );
 
-// Default HIBP mock: password not breached.
 let mockHibpResult: boolean | null = false;
 _setHibpCheckerForTests(async () => mockHibpResult);
 
@@ -149,12 +149,10 @@ function resetMocks(): void {
     hash: MOCK_ENCODED,
     salt: Buffer.from("mocksalt"),
   }));
+  mockClaimInviteToken.mockImplementation(async () => ({ tokenId: "invite-uuid-1" }));
+  mockCreateInviteToken.mockImplementation(async () => ({ tokenId: "tok-mocked" }));
   resetRateLimit();
 }
-
-// ---------------------------------------------------------------------------
-// CSRF, state-changing auth routes
-// ---------------------------------------------------------------------------
 
 describe("CSRF on auth routes", () => {
   beforeEach(resetMocks);
@@ -198,10 +196,6 @@ describe("CSRF on auth routes", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// KDF params
-// ---------------------------------------------------------------------------
-
 describe("POST /api/auth/kdf-params", () => {
   beforeEach(resetMocks);
 
@@ -242,10 +236,6 @@ describe("POST /api/auth/kdf-params", () => {
     expect(b1.kdf_salt).toBe(b2.kdf_salt);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Signup
-// ---------------------------------------------------------------------------
 
 describe("POST /api/auth/signup", () => {
   beforeEach(resetMocks);
@@ -309,7 +299,7 @@ describe("POST /api/auth/signup", () => {
 
   it("allowlist denied → 403", async () => {
     process.env.SIGNUP_ALLOWLIST = "bob,carol";
-    _resetCachedServicesForTests(); // re-read env on next request
+    _resetCachedServicesForTests();
     const res = await server.fetch(
       new Request(`${BASE}/api/auth/signup`, {
         method: "POST",
@@ -318,14 +308,10 @@ describe("POST /api/auth/signup", () => {
       }),
     );
     process.env.SIGNUP_ALLOWLIST = "";
-    _resetCachedServicesForTests(); // restore empty allowlist
+    _resetCachedServicesForTests();
     expect(res.status).toBe(403);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Login
-// ---------------------------------------------------------------------------
 
 describe("POST /api/auth/login", () => {
   beforeEach(resetMocks);
@@ -379,10 +365,6 @@ describe("POST /api/auth/login", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Session
-// ---------------------------------------------------------------------------
-
 describe("GET /api/auth/session", () => {
   beforeEach(resetMocks);
 
@@ -430,10 +412,6 @@ describe("GET /api/auth/session", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Logout
-// ---------------------------------------------------------------------------
-
 describe("POST /api/auth/logout", () => {
   beforeEach(resetMocks);
 
@@ -461,10 +439,6 @@ describe("POST /api/auth/logout", () => {
     expect(res.status).toBe(401);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Recovery derive-params
-// ---------------------------------------------------------------------------
 
 describe("POST /api/auth/recovery/derive-params", () => {
   beforeEach(resetMocks);
@@ -544,10 +518,6 @@ describe("POST /api/auth/recovery/derive-params", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Recovery reset
-// ---------------------------------------------------------------------------
-
 describe("POST /api/auth/recovery/reset", () => {
   beforeEach(resetMocks);
 
@@ -619,10 +589,6 @@ describe("POST /api/auth/recovery/reset", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Password change
-// ---------------------------------------------------------------------------
-
 describe("POST /api/auth/password/change", () => {
   beforeEach(resetMocks);
 
@@ -670,11 +636,7 @@ describe("POST /api/auth/password/change", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// IP hashing — only the HMAC lands in audit/rate-limit storage, never the raw IP.
-// ---------------------------------------------------------------------------
-
-describe("hashIp, HMAC-SHA256 keyed on ENUMERATION_SECRET", () => {
+describe("hashIp (HMAC-SHA256 keyed on ENUMERATION_SECRET) only stores hashes, never raw IPs", () => {
   const secret = Buffer.alloc(32, 0x42);
 
   function hashIpRef(ip: string): string {
@@ -700,6 +662,112 @@ describe("hashIp, HMAC-SHA256 keyed on ENUMERATION_SECRET", () => {
   it("'unknown' placeholder is also hashed (absent x-forwarded-for)", () => {
     const hash = hashIpRef("unknown");
     expect(hash).not.toContain("unknown");
-    expect(hash).toHaveLength(64); // 32 bytes hex
+    expect(hash).toHaveLength(64);
+  });
+});
+
+const INVITE_TOKEN_RAW = Buffer.alloc(32, 0xcd);
+const INVITE_TOKEN_B64 = INVITE_TOKEN_RAW.toString("base64url").replace(/=/g, "");
+
+describe("POST /api/auth/signup with INVITE_REQUIRED", () => {
+  beforeEach(resetMocks);
+
+  it("INVITE_REQUIRED=true + missing invite_token → 403 invalid_invite", async () => {
+    process.env.INVITE_REQUIRED = "true";
+    _resetCachedServicesForTests();
+    mockClaimInviteToken.mockImplementation(async () => null);
+    const res = await server.fetch(
+      new Request(`${BASE}/api/auth/signup`, {
+        method: "POST",
+        headers: { ...JSON_CT, ...CSRF },
+        body: JSON.stringify(VALID_SIGNUP_BODY),
+      }),
+    );
+    delete process.env.INVITE_REQUIRED;
+    _resetCachedServicesForTests();
+    expect(res.status).toBe(403);
+    const text = await res.text();
+    expect(text).toContain("invalid_invite");
+  });
+
+  it("INVITE_REQUIRED=true + missing invite_token → claimInviteToken was called (matched-latency parity)", async () => {
+    process.env.INVITE_REQUIRED = "true";
+    _resetCachedServicesForTests();
+    mockClaimInviteToken.mockImplementation(async () => null);
+    await server.fetch(
+      new Request(`${BASE}/api/auth/signup`, {
+        method: "POST",
+        headers: { ...JSON_CT, ...CSRF },
+        body: JSON.stringify(VALID_SIGNUP_BODY),
+      }),
+    );
+    delete process.env.INVITE_REQUIRED;
+    _resetCachedServicesForTests();
+    expect(mockClaimInviteToken.mock.calls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("INVITE_REQUIRED=true + used/expired invite_token (claimInviteToken returns null) → 403 invalid_invite", async () => {
+    process.env.INVITE_REQUIRED = "true";
+    _resetCachedServicesForTests();
+    mockClaimInviteToken.mockImplementation(async () => null);
+    const res = await server.fetch(
+      new Request(`${BASE}/api/auth/signup`, {
+        method: "POST",
+        headers: { ...JSON_CT, ...CSRF },
+        body: JSON.stringify({ ...VALID_SIGNUP_BODY, invite_token: INVITE_TOKEN_B64 }),
+      }),
+    );
+    delete process.env.INVITE_REQUIRED;
+    _resetCachedServicesForTests();
+    expect(res.status).toBe(403);
+    const text = await res.text();
+    expect(text).toContain("invalid_invite");
+  });
+
+  it("INVITE_REQUIRED=true + valid invite_token → 201 success", async () => {
+    process.env.INVITE_REQUIRED = "true";
+    _resetCachedServicesForTests();
+    mockClaimInviteToken.mockImplementation(async () => ({ tokenId: "tok-1" }));
+    const res = await server.fetch(
+      new Request(`${BASE}/api/auth/signup`, {
+        method: "POST",
+        headers: { ...JSON_CT, ...CSRF },
+        body: JSON.stringify({ ...VALID_SIGNUP_BODY, invite_token: INVITE_TOKEN_B64 }),
+      }),
+    );
+    delete process.env.INVITE_REQUIRED;
+    _resetCachedServicesForTests();
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { user_id: string };
+    expect(body.user_id).toBe("user-uuid-1");
+  });
+
+  it("INVITE_REQUIRED=true + malformed invite_token → 403 invalid_invite", async () => {
+    process.env.INVITE_REQUIRED = "true";
+    _resetCachedServicesForTests();
+    mockClaimInviteToken.mockImplementation(async () => null);
+    const res = await server.fetch(
+      new Request(`${BASE}/api/auth/signup`, {
+        method: "POST",
+        headers: { ...JSON_CT, ...CSRF },
+        body: JSON.stringify({ ...VALID_SIGNUP_BODY, invite_token: "!!!" }),
+      }),
+    );
+    delete process.env.INVITE_REQUIRED;
+    _resetCachedServicesForTests();
+    expect(res.status).toBe(403);
+    const text = await res.text();
+    expect(text).toContain("invalid_invite");
+  });
+
+  it("INVITE_REQUIRED unset + missing invite_token → existing signup behavior (201)", async () => {
+    const res = await server.fetch(
+      new Request(`${BASE}/api/auth/signup`, {
+        method: "POST",
+        headers: { ...JSON_CT, ...CSRF },
+        body: JSON.stringify(VALID_SIGNUP_BODY),
+      }),
+    );
+    expect(res.status).toBe(201);
   });
 });

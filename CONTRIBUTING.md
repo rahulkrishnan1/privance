@@ -28,7 +28,7 @@ cp .env.example server/.env
 #     generate: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 # Web app
-echo "NEXT_PUBLIC_SERVER_URL=http://localhost:3000" > apps/web/.env.local
+echo "NEXT_PUBLIC_SERVER_URL=http://localhost:3000" > apps/web/.env.development.local
 ```
 
 ### Database setup
@@ -208,7 +208,7 @@ Before opening a PR:
 1. `pnpm lint` passes with no new errors
 2. `pnpm typecheck` passes in all workspaces
 3. `pnpm test` passes with no regressions
-4. E2E tests pass on chromium and firefox
+4. E2E tests pass on chromium, firefox, and webkit (storage specs)
 5. If you changed the server API: document the change
 6. If you changed auth or crypto: manually verify a signup → recovery → login
    cycle in a real browser

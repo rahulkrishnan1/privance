@@ -40,8 +40,9 @@ pnpm install
 cp .env.example server/.env
 # Edit server/.env, set DATABASE_URL and ENUMERATION_SECRET (min 32 bytes base64)
 
-# Set the web app to point at the local server
-echo "NEXT_PUBLIC_SERVER_URL=http://localhost:3000" > apps/web/.env.local
+# Point the web app at the local server in dev (production builds default to
+# same-origin and need no env var; Caddy proxies /api/* on the same host).
+echo "NEXT_PUBLIC_SERVER_URL=http://localhost:3000" > apps/web/.env.development.local
 
 # Run database migrations
 pnpm --filter @privance/server db:migrate
@@ -59,8 +60,10 @@ The web app will be available at `http://localhost:8081` and the API server at `
 | `DATABASE_URL` | `server/.env` | PostgreSQL connection string |
 | `ENUMERATION_SECRET` | `server/.env` | Base64-encoded secret (≥ 32 bytes) for HMAC-keyed username-enumeration prevention |
 | `NODE_ENV` | `server/.env` | Set to `production` in prod; controls secure cookie flag |
-| `NEXT_PUBLIC_SERVER_URL` | `apps/web/.env.local` | Where the browser should send API requests |
+| `NEXT_PUBLIC_SERVER_URL` | `apps/web/.env.development.local` (dev) or build-time env (Capacitor) | Where the browser sends API requests. Unset in production web builds: the bundle calls relative paths and Caddy proxies them on the same origin. Required in dev (web :8081 and server :3000 are different origins) and Capacitor (custom scheme cannot use relative URLs). |
 | `SIGNUP_ALLOWLIST` | `server/.env` | Optional comma-separated list of usernames allowed to sign up; empty = open |
+| `INVITE_REQUIRED` | `server/.env` | Set to `"true"` to require invite tokens on signup. Empty / unset = open registration (subject to `SIGNUP_ALLOWLIST`). Mint tokens via the bun script in `server/scripts/mint-invite.ts` (see `infra/README.md` for the in-container command). |
+| `ALLOWED_ORIGINS` | `server/.env` | Comma-separated allow-list of CORS origins for the API. CORS rejects all origins when unset. Production example: `https://privance.app`. |
 
 ---
 
@@ -86,6 +89,20 @@ privance/
 ## Security model
 
 Privance implements a zero-knowledge architecture. See [SECURITY.md](SECURITY.md) for the security policy and guaranteed properties, and [THREAT_MODEL.md](THREAT_MODEL.md) for the full STRIDE-style threat analysis.
+
+---
+
+## Self-host
+
+Privance is designed to be self-hosted. The reference deployment at `https://privance.app` runs on a single small VPS with a Docker Compose stack (server + Postgres + Caddy + encrypted nightly backups to Backblaze B2). The architecture rationale is in [`docs/decisions/0002-deployment.md`](docs/decisions/0002-deployment.md); the step-by-step bring-up procedure is in [`infra/README.md`](infra/README.md).
+
+What you need:
+
+- A small VPS (Hetzner CPX21 or similar; 2 vCPU / 4 GB minimum).
+- A domain you control, with DNS managed somewhere that supports A + AAAA records (Cloudflare DNS-only mode is what the reference deployment uses).
+- A Backblaze B2 account for encrypted offsite backups (the reference deployment uses EU Central; any region works).
+
+For the full bring-up procedure (provisioning, hardening, TLS, backups, invite-only signup, deploys), see [`infra/README.md`](infra/README.md).
 
 ---
 

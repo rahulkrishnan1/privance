@@ -229,7 +229,7 @@ describe("accountFormSchema", () => {
 // ---------------------------------------------------------------------------
 
 describe("SECTION_ORDER", () => {
-  it("renders Cash → Investment → Manual Asset → Liability", () => {
+  it("renders Cash -> Investment -> Manual Asset -> Liability", () => {
     expect(SECTION_ORDER).toEqual(["cash", "investment", "manual_asset", "liability"]);
   });
 });

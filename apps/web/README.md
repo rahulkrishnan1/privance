@@ -7,7 +7,7 @@ All crypto runs in the browser. This workspace has no server-side rendering; the
 `output: "export"` Next.js config produces a static `/out` directory.
 
 CI is defined in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) and runs
-lint, typecheck, unit tests (core / web / server), E2E (Playwright chromium + firefox),
+lint, typecheck, unit tests (core / web / server), E2E (Playwright chromium + firefox + webkit storage specs),
 static build, and a dependency audit on every push to `main` and on pull requests.
 
 ## Key files
@@ -35,14 +35,9 @@ WASM, icons) is pre-cached on first load; data sync requires network.
 | **Android (Chrome)** | Tap the install icon in the address bar, or Menu → "Add to Home Screen" |
 | **Desktop (Chrome / Edge)** | Click the install icon in the address bar, or Menu → "Install Privance" |
 
-**Offline behavior:** The app shell loads offline after first visit. Account
-data is stored locally via SQLite-WASM + OPFS and syncs to the server when
-network is available. A full offline experience (no network ever) is not
-currently supported, authentication and initial sync require connectivity.
+**Offline behavior:** The app shell loads offline after first visit. Account data is stored locally via SQLite-WASM, OPFS-backed where the browser allows it and in-memory when it does not (Safari Private Browsing, restricted WKWebView hosts). In the in-memory mode the local store re-populates from the server on every session; the server holds ciphertext only. A full offline experience (no network ever) is not supported because authentication and initial sync require connectivity.
 
-**Service worker:** `/public/sw.js` is a hand-written service worker (no
-Workbox or next-pwa). It is registered only in production builds and skipped
-inside Capacitor WebViews (which manage their own asset caching).
+**Service worker:** `/public/sw.js` is a hand-written service worker (no Workbox or next-pwa). It is registered only in production builds and skipped inside Capacitor WebViews (which manage their own asset caching).
 
 ## Development
 
@@ -163,6 +158,7 @@ pnpm -F @privance/web exec cap open android
 
 5. **Signup allowlist** must be disabled (empty `SIGNUP_ALLOWLIST`). The
    default `server/.env` already has `SIGNUP_ALLOWLIST=` (empty).
+   `INVITE_REQUIRED` is left unset so E2E signup flows do not require minted invite tokens.
 
 ### Running
 
@@ -198,6 +194,8 @@ pnpm -F @privance/web e2e:ui
 - The Playwright config boots the bun server (:3000) and Next.js dev server
   (:8081) automatically. Both are reused across tests if already running
   (`reuseExistingServer: true` for local runs).
-- WebKit is excluded: argon2-wasm crypto is consistently flaky on macOS CI.
-  Core crypto coverage for all platforms is provided by vitest unit tests in
+- WebKit runs the storage specs only (`webkit-storage`, `fallback-storage`)
+  to cover the OPFS fallback path on Safari. The remaining specs run on
+  chromium and firefox; argon2-wasm timing on macOS WebKit is too flaky for
+  full-suite coverage, and core crypto is exercised by vitest unit tests in
   `packages/core`.

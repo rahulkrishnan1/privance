@@ -43,6 +43,13 @@
       "when": 1779080343296,
       "tag": "0005_clever_owl",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779564411728,
+      "tag": "0006_certain_thundra",
+      "breakpoints": true
     }
   ]
 }

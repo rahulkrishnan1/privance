@@ -35,10 +35,10 @@ const MONOREPO_ROOT = path.resolve(__dirname, "../..");
  *
  * Each test uses a distinct username so no cross-test DB state leaks.
  *
- * WebKit is skipped: on macOS CI it regularly fails on argon2-wasm crypto
- * timing. Chromium + Firefox provide sufficient cross-engine coverage.
- * WebKit coverage gap: password derivation path. The core crypto logic is
- * covered by vitest unit tests (packages/core) on all platforms.
+ * Chromium and Firefox run the full suite. WebKit runs only the storage specs
+ * (webkit-storage, fallback-storage) because argon2-wasm on macOS WebKit is
+ * flaky on timing; the core crypto path is covered by vitest unit tests in
+ * packages/core on all platforms.
  */
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -75,12 +75,18 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      testIgnore: /(webkit-storage|fallback-storage)\.spec\.ts$/,
     },
     {
       name: "firefox",
       use: { ...devices["Desktop Firefox"] },
+      testIgnore: /(webkit-storage|fallback-storage)\.spec\.ts$/,
     },
-    // WebKit excluded: see docstring above.
+    {
+      name: "webkit",
+      use: { ...devices["Desktop Safari"] },
+      testMatch: /(webkit-storage|fallback-storage)\.spec\.ts$/,
+    },
   ],
 
   webServer: [

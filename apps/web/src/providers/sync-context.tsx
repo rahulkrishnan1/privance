@@ -18,6 +18,7 @@ type StoreState = {
   store: LocalStore | null;
   client: SyncClient | null;
   initialising: boolean;
+  setupError: Error | null;
   decrypt: (opts: {
     ciphertext: Uint8Array;
     nonce: Uint8Array;
@@ -52,6 +53,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     store: null,
     client: null,
     initialising: false,
+    setupError: null,
     decrypt: makeLockedDecrypt(),
   });
 
@@ -72,6 +74,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         store: null,
         client: null,
         initialising: false,
+        setupError: null,
         decrypt: makeLockedDecrypt(),
       });
       setStoreClock(0);
@@ -82,6 +85,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     setStoreState((prev) => ({
       ...prev,
       initialising: true,
+      setupError: null,
       decrypt: makeLockedDecrypt(),
     }));
 
@@ -225,10 +229,22 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
       // Start background polling (30 s interval) after the initial pull.
       client.start({ pollIntervalMs: 30_000 });
-      setStoreState({ store, client, initialising: false, decrypt });
+      setStoreState({ store, client, initialising: false, setupError: null, decrypt });
     };
 
-    void setup();
+    setup().catch((cause) => {
+      if (cancelled) return;
+      const err = cause instanceof Error ? cause : new Error(String(cause));
+      // biome-ignore lint/suspicious/noConsole: surfacing sync-init failures
+      console.error("[sync] setup failed", err);
+      setStoreState({
+        store: null,
+        client: null,
+        initialising: false,
+        setupError: err,
+        decrypt: makeLockedDecrypt(),
+      });
+    });
 
     return () => {
       cancelled = true;

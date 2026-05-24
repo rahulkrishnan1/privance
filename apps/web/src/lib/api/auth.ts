@@ -29,6 +29,7 @@ export type SignupRequest = {
   wrapped_dek_iv: string; // base64
   wrapped_dek_recovery: string; // base64
   wrapped_dek_recovery_iv: string; // base64
+  invite_token?: string;
 };
 
 export type SignupResponse = {

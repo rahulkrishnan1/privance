@@ -11,7 +11,12 @@ import { deriveSignupCrypto } from "@/lib/auth-crypto";
 import { PASSWORD_MAX, USERNAME_MAX, validatePassword, validateUsername } from "@/lib/validation";
 import { useAuth } from "@/providers/auth-context";
 
-type FieldError = { username?: string; password?: string; banner?: string };
+type FieldError = {
+  username?: string;
+  password?: string;
+  inviteToken?: string;
+  banner?: string;
+};
 
 export default function SignupPage() {
   const router = useRouter();
@@ -20,6 +25,7 @@ export default function SignupPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [inviteToken, setInviteToken] = useState("");
   const [pending, setPending] = useState(false);
   const [errors, setErrors] = useState<FieldError>({});
 
@@ -55,6 +61,7 @@ export default function SignupPage() {
 
     setPending(true);
     try {
+      const trimmedInvite = inviteToken.trim();
       const crypto = await deriveSignupCrypto({ password });
       const result = await authApi.signup({
         username: trimmedUsername,
@@ -68,6 +75,7 @@ export default function SignupPage() {
         wrapped_dek_iv: crypto.wrappedDekIv,
         wrapped_dek_recovery: crypto.wrappedDekRecovery,
         wrapped_dek_recovery_iv: crypto.wrappedDekRecoveryIv,
+        ...(trimmedInvite ? { invite_token: trimmedInvite } : {}),
       });
 
       setPhrase(crypto.phrase);
@@ -80,6 +88,11 @@ export default function SignupPage() {
           setErrors({ password: "Password is too weak or appears in known breach lists." });
         } else if (e.code === "hibp_unavailable" || e.status === 503) {
           setErrors({ banner: "Password breach check unavailable. Try again." });
+        } else if (e.code === "invalid_invite") {
+          setErrors({
+            inviteToken:
+              "That invite is invalid, used, or expired. Ask whoever sent it for a fresh one.",
+          });
         } else if (e.code === "allowlist_denied" || e.status === 403) {
           setErrors({ banner: "Signups are currently disabled." });
         } else if (e.status === 0) {
@@ -220,6 +233,19 @@ export default function SignupPage() {
           autoComplete="new-password"
           maxLength={PASSWORD_MAX}
           placeholder="Repeat your password"
+        />
+
+        <Input
+          label="Invite code"
+          type="text"
+          value={inviteToken}
+          onChange={(e) => setInviteToken(e.target.value)}
+          autoComplete="off"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          placeholder="Paste your invite code if you have one"
+          error={errors.inviteToken}
         />
 
         <Button type="submit" loading={pending} className="w-full">

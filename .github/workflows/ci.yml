@@ -234,7 +234,7 @@ jobs:
   # runs only the stable specs explicitly via --grep or project filter.
   # ---------------------------------------------------------------------------
   test-e2e:
-    name: E2E (chromium + firefox)
+    name: E2E (chromium + firefox + webkit)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: [lint, typecheck, test-unit-core, test-unit-web, test-unit-server]
@@ -309,6 +309,9 @@ jobs:
 
       - name: Run E2E tests (firefox)
         run: pnpm -F @privance/web e2e --project=firefox
+
+      - name: Run E2E tests (webkit, storage specs)
+        run: pnpm -F @privance/web e2e --project=webkit
 
       - name: Upload Playwright report
         if: failure()

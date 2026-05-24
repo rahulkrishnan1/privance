@@ -80,6 +80,8 @@ The following properties are enforced by the design and verified in code:
 10. **Session cookies are HttpOnly, Secure (in production), and SameSite=Lax.**
     Session tokens are not readable by JavaScript.
 
+11. **Invite-only signup gate.** When `INVITE_REQUIRED=true`, signup requires a 256-bit random base64url token; tokens are SHA-256-hashed at rest, single-use via atomic UPDATE, and validated BEFORE HIBP and Argon2id so an attacker without a valid invite cannot consume server CPU.
+
 ---
 
 ## Hardening choices

@@ -20,7 +20,7 @@ system.
 | `src/crypto/aead.ts` | AES-256-GCM encrypt/decrypt with AAD binding |
 | `src/crypto/recovery.ts` | BIP39 phrase encode/decode for the recovery seed |
 | `src/storage/schema.ts` | SQLite DDL (sync_objects, outbound_queue, sync_cursor) |
-| `src/storage/web-adapter.ts` | `WebSqliteAdapter`: Worker RPC + OPFS SAH Pool VFS |
+| `src/storage/web-adapter.ts` | `WebSqliteAdapter`: Worker RPC over OPFS SAH Pool VFS with in-memory fallback |
 | `src/sync/client.ts` | `SyncClient`: push/pull/reconcile loop |
 | `src/sync/push.ts` | Outbound queue drain + batch push to server |
 | `src/sync/pull.ts` | Change feed pull + local store merge |

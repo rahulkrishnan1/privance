@@ -1,7 +1,7 @@
 import type { AuditEventClass } from "@privance/core/audit-events";
-import { and, eq, isNull, lt, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
 import type { Db } from "../core/db.js";
-import { auditEvents, sessions, users } from "./schema.js";
+import { auditEvents, inviteTokens, sessions, users } from "./schema.js";
 import type { KdfParamsJson } from "./types.js";
 
 export type UserRow = {
@@ -55,6 +55,7 @@ export class AuthRepo {
   }
 
   async createUser(opts: {
+    userId?: string;
     username: string;
     authHashHash: Buffer;
     kdfParams: KdfParamsJson;
@@ -70,6 +71,7 @@ export class AuthRepo {
     const rows = await this.db
       .insert(users)
       .values({
+        ...(opts.userId !== undefined ? { userId: opts.userId } : {}),
         username: opts.username.toLowerCase(),
         authHashHash: opts.authHashHash,
         kdfParams: opts.kdfParams,
@@ -192,6 +194,43 @@ export class AuthRepo {
       .update(sessions)
       .set({ revokedAt: new Date() })
       .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
+  }
+
+  async createInviteToken(opts: {
+    tokenHash: Buffer;
+    createdBy: string;
+    expiresAt?: Date | null;
+  }): Promise<{ tokenId: string }> {
+    const rows = await this.db
+      .insert(inviteTokens)
+      .values({
+        tokenHash: opts.tokenHash,
+        createdBy: opts.createdBy,
+        expiresAt: opts.expiresAt ?? null,
+      })
+      .returning({ tokenId: inviteTokens.tokenId });
+    const row = rows[0];
+    if (!row) throw new Error("insert returned no rows");
+    return { tokenId: row.tokenId };
+  }
+
+  async claimInviteToken(opts: {
+    tokenHash: Buffer;
+    userId: string;
+    now: Date;
+  }): Promise<{ tokenId: string } | null> {
+    const rows = await this.db
+      .update(inviteTokens)
+      .set({ usedAt: opts.now, usedByUserId: opts.userId })
+      .where(
+        and(
+          eq(inviteTokens.tokenHash, opts.tokenHash),
+          isNull(inviteTokens.usedAt),
+          or(isNull(inviteTokens.expiresAt), gt(inviteTokens.expiresAt, opts.now)),
+        ),
+      )
+      .returning({ tokenId: inviteTokens.tokenId });
+    return rows[0] ?? null;
   }
 
   async logEvent(opts: { userId: string | null; eventClass: AuditEventClass }): Promise<void> {

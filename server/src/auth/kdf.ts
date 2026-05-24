@@ -65,6 +65,12 @@ export function hashSessionToken(raw: Buffer): Buffer {
   return Buffer.from(h.digest());
 }
 
+export function hashInviteToken(raw: Buffer): Buffer {
+  const h = sha256.create();
+  h.update(raw);
+  return Buffer.from(h.digest());
+}
+
 export function decodeSessionToken(encoded: string): Buffer {
   const padded = encoded + "=".repeat(-encoded.length & 3);
   return Buffer.from(padded, "base64url");

@@ -25,7 +25,7 @@ Constraints that shaped the stack:
 | Client   | Next.js 16 (App Router, static export) + React 19 + Tailwind 4 + Recharts. |
 | Mobile   | Capacitor 8 wrapping the Next.js static export (iOS WKWebView, Android WebView). |
 | Crypto   | `@noble/hashes` + `@noble/ciphers` + `@scure/bip39` + `hash-wasm`. |
-| Storage  | SQLite via `@sqlite.org/sqlite-wasm` + OPFS (SAH Pool VFS) in a dedicated Web Worker. The same WASM runs inside the Capacitor WebView on mobile. |
+| Storage  | SQLite via `@sqlite.org/sqlite-wasm` in a dedicated Web Worker, OPFS SAH Pool VFS where available, in-memory fallback otherwise. The same WASM runs inside the Capacitor WebView on mobile. |
 | Decimals | `BigInt` minor-units + a thin `Decimal` wrapper in `packages/core`. |
 | Monorepo | pnpm 11 workspaces (`nodeLinker: hoisted`) + Turborepo. |
 | Tooling  | Biome 2.4 (lint + format), TypeScript 6 strict + `noUncheckedIndexedAccess`, Vitest + fast-check + Playwright. |
@@ -44,7 +44,7 @@ Constraints that shaped the stack:
 
 - Bun is younger than Node; some ecosystem packages still ship Node-only assumptions. Mitigation: `@types/bun`, Hono is Bun-native, postgres.js works on both.
 - oRPC ≥ 1.0 is recent. Mitigation: it composes cleanly with Hono; we can swap procedures for raw Hono routes per-feature if we hit a wall.
-- Capacitor depends on WebView feature support for OPFS and WASM. Minimum targets in the shipped projects are iOS 15.0 (`IPHONEOS_DEPLOYMENT_TARGET` in `apps/web/ios/App/App.xcodeproj/project.pbxproj`) and Android API 24 (`minSdkVersion` in `apps/web/android/variables.gradle`). OPFS is available in iOS 15.2+ Safari and Android System WebView ≥ 108; older devices fall back to the IndexedDB-backed SAH Pool path inside sqlite-wasm.
+- Capacitor depends on WebView feature support for WASM. Minimum targets in the shipped projects are iOS 15.0 (`IPHONEOS_DEPLOYMENT_TARGET` in `apps/web/ios/App/App.xcodeproj/project.pbxproj`) and Android API 24 (`minSdkVersion` in `apps/web/android/variables.gradle`). OPFS is available in iOS 15.2+ Safari and Android System WebView ≥ 108; older runtimes fall back to an in-memory store that re-populates from the server each session.
 
 **Locked out of (until reversed):**
 

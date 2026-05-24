@@ -13,6 +13,9 @@ export type AuditEventClass =
   | "signup_succeeded"
   | "signup_fail_username_taken"
   | "signup_blocked_allowlist"
+  | "invite_minted"
+  | "signup_fail_invite_required"
+  | "signup_fail_invite_invalid"
   // Auth, login
   | "kdf_params_query"
   | "login_succeeded"
@@ -56,6 +59,9 @@ export const AUDIT_EVENT_CLASSES: readonly AuditEventClass[] = [
   "signup_succeeded",
   "signup_fail_username_taken",
   "signup_blocked_allowlist",
+  "invite_minted",
+  "signup_fail_invite_required",
+  "signup_fail_invite_invalid",
   "kdf_params_query",
   "login_succeeded",
   "login_fail_unknown_user",
