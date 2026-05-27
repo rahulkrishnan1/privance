@@ -79,7 +79,7 @@ export function AccountsScreen() {
         <div className="flex flex-col gap-6">
           {SECTION_ORDER.map((kind) => (
             <div key={kind} className="flex flex-col gap-2">
-              <div className="h-4 w-1/4 rounded bg-neutral-200 dark:bg-neutral-800 animate-pulse" />
+              <div className="h-4 w-1/4 rounded bg-white/5 animate-pulse" />
               <SkeletonRow />
               <SkeletonRow />
             </div>
@@ -95,13 +95,11 @@ export function AccountsScreen() {
   if (query.status === "error") {
     return (
       <Screen width="wide">
-        <div className="flex flex-col gap-4 items-center py-8 px-4 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-neutral-900">
-          <p className="text-base font-semibold text-red-700 dark:text-red-400 text-center">
+        <div className="flex flex-col gap-4 items-center py-8 px-4 rounded-xl border border-app-red/40 bg-app-red/10">
+          <p className="text-base font-semibold text-app-red text-center">
             Could not load accounts
           </p>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 text-center">
-            {query.error.message}
-          </p>
+          <p className="text-sm text-app-muted text-center">{query.error.message}</p>
           <Button
             variant="secondary"
             onClick={() => {
@@ -154,7 +152,12 @@ export function AccountsScreen() {
     <Screen width="wide">
       {/* Page header */}
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-50">Accounts</h1>
+        <h1
+          className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
+          style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
+        >
+          Accounts
+        </h1>
         <Button onClick={() => openAdd()} aria-label="Add a new account">
           Add account
         </Button>

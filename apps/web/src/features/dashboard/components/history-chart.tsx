@@ -89,14 +89,12 @@ export function HistoryChart({ points }: HistoryChartProps) {
 
   return (
     <div
-      className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 mb-4"
+      className="rounded-xl border border-app-line bg-app-panel p-4 mb-4"
       role="img"
       aria-label="Net worth history chart"
     >
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-          Net Worth History
-        </p>
+        <p className="text-sm font-semibold text-app-text">Net Worth History</p>
       </div>
 
       <div className="mb-3">
@@ -105,7 +103,7 @@ export function HistoryChart({ points }: HistoryChartProps) {
 
       {chartData.length === 0 ? (
         <div className="h-48 flex items-center justify-center">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 text-center">
+          <p className="text-sm text-app-muted text-center">
             Net worth history will appear after a few days of usage.
           </p>
         </div>

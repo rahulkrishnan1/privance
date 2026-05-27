@@ -27,24 +27,23 @@ export function RefreshButton({ cooldownMs, onRefresh, refreshing }: RefreshButt
       }
       aria-disabled={disabled}
       className={[
-        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none cursor-pointer disabled:cursor-not-allowed",
+        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none cursor-pointer disabled:cursor-not-allowed",
         disabled
-          ? "border-neutral-200 dark:border-neutral-800 opacity-50"
-          : "border-gold-300 dark:border-gold-700 hover:bg-gold-50 dark:hover:bg-gold-950",
+          ? "border-app-line opacity-50"
+          : "border-gold-accent/30 hover:bg-gold-accent/[0.06]",
       ].join(" ")}
     >
       <RefreshCw
         size={14}
         className={[
-          refreshing ? "animate-spin text-gold-600" : "",
-          disabled && !refreshing ? "text-neutral-400" : "text-gold-600",
+          refreshing ? "animate-spin text-gold-accent" : "",
+          disabled && !refreshing ? "text-app-dim" : "text-gold-accent",
         ].join(" ")}
       />
       <span
-        className={[
-          "text-xs font-medium",
-          disabled ? "text-neutral-400 dark:text-neutral-600" : "text-gold-600 dark:text-gold-400",
-        ].join(" ")}
+        className={["text-xs font-medium", disabled ? "text-app-dim" : "text-gold-accent"].join(
+          " ",
+        )}
       >
         {inCooldown ? `${secondsLeft}s` : "Refresh"}
       </span>

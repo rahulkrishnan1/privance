@@ -25,11 +25,9 @@ export function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
   const dateStr = entry?.payload?.date ?? label ?? "";
 
   return (
-    <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3 shadow-sm">
-      {dateStr ? (
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">{formatDate(dateStr)}</p>
-      ) : null}
-      <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
+    <div className="rounded-xl border border-app-line bg-app-panel-2 p-3 shadow-sm">
+      {dateStr ? <p className="text-xs text-app-muted mb-1">{formatDate(dateStr)}</p> : null}
+      <p className="text-sm font-semibold text-app-text">
         {decimal !== undefined ? formatCurrency(decimal) : "-"}
       </p>
     </div>

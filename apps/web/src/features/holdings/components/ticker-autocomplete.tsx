@@ -116,7 +116,7 @@ export function TickerAutocomplete({
         <div
           id={listboxId}
           role="listbox"
-          className="absolute top-full left-0 right-0 z-50 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-md overflow-hidden mt-1"
+          className="absolute top-full left-0 right-0 z-50 rounded-lg border border-app-line bg-app-panel shadow-md overflow-hidden mt-1"
         >
           {topResults.map((item, index) => (
             <div
@@ -129,22 +129,14 @@ export function TickerAutocomplete({
               onMouseEnter={() => setActiveIndex(index)}
               className={[
                 "w-full px-3 py-2 flex items-center gap-2 text-left cursor-pointer min-h-11",
-                index < topResults.length - 1
-                  ? "border-b border-neutral-100 dark:border-neutral-800"
-                  : "",
-                index === activeIndex
-                  ? "bg-neutral-100 dark:bg-neutral-800"
-                  : "hover:bg-neutral-50 dark:hover:bg-neutral-800",
+                index < topResults.length - 1 ? "border-b border-app-line-soft" : "",
+                index === activeIndex ? "bg-white/5" : "hover:bg-white/[0.03]",
               ].join(" ")}
             >
-              <span className="text-sm font-bold text-neutral-900 dark:text-neutral-50 w-14 truncate">
-                {item.ticker}
-              </span>
+              <span className="text-sm font-bold text-app-text w-14 truncate">{item.ticker}</span>
               <span className="flex-1 flex flex-col min-w-0">
-                <span className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
-                  {item.displayName}
-                </span>
-                <span className="text-xs text-neutral-400 dark:text-neutral-500 truncate">
+                <span className="text-xs text-app-muted truncate">{item.displayName}</span>
+                <span className="text-xs text-app-dim truncate">
                   {[item.assetClass, item.exchange].filter(Boolean).join(" · ")}
                 </span>
               </span>

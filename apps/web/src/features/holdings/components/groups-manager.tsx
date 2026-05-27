@@ -68,35 +68,31 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
     <dialog
       ref={dialogRef}
       onClose={onClose}
-      className="m-0 sm:m-auto rounded-none sm:rounded-2xl p-0 shadow-xl w-full h-svh sm:h-auto max-w-none sm:max-w-sm max-h-none sm:max-h-[90vh] bg-white dark:bg-neutral-900 border-0 backdrop:bg-black/50 focus-visible:outline-none overflow-y-auto"
+      className="m-0 sm:m-auto rounded-none sm:rounded-2xl p-0 shadow-xl w-full h-svh sm:h-auto max-w-none sm:max-w-sm max-h-none sm:max-h-[90vh] bg-app-panel border-0 backdrop:bg-black/50 focus-visible:outline-none overflow-y-auto"
       aria-modal="true"
       aria-label="Manage groups"
     >
       <div className="p-5 flex flex-col gap-4 [padding-bottom:max(env(safe-area-inset-bottom),5rem)] sm:[padding-bottom:1.25rem]">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">
-            Manage groups
-          </h2>
+          <h2 className="text-lg font-semibold text-app-text">Manage groups</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none cursor-pointer"
+            className="p-1 rounded-full hover:bg-white/[0.03] focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none cursor-pointer"
           >
-            <X size={20} className="text-neutral-600 dark:text-neutral-400" />
+            <X size={20} className="text-app-muted" />
           </button>
         </div>
 
         {groups.length === 0 && (
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 text-center py-4">
-            No groups yet
-          </p>
+          <p className="text-sm text-app-muted text-center py-4">No groups yet</p>
         )}
 
         {groups.map((group) => (
           <div
             key={group.id}
-            className="flex items-center gap-2 py-2 border-b border-neutral-100 dark:border-neutral-800"
+            className="flex items-center gap-2 py-2 border-b border-app-line-soft"
           >
             {editingId === group.id ? (
               <div className="flex-1 flex items-center gap-2">
@@ -105,7 +101,7 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
                   onChange={(e) => setEditName(e.target.value)}
                   aria-label="Group name"
                   autoFocus
-                  className="flex-1 rounded-lg border border-gold-400 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-50 bg-white dark:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:outline-none min-h-9"
+                  className="flex-1 rounded-lg border border-gold-accent/30 px-3 py-2 text-sm text-app-text bg-app-panel-2 focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none min-h-9"
                 />
                 <Button
                   onClick={() => void commitRename(group.id)}
@@ -120,14 +116,14 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
                   type="button"
                   onClick={cancelEdit}
                   aria-label="Cancel edit"
-                  className="rounded-lg px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-sm text-neutral-600 dark:text-neutral-400 min-h-9 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none cursor-pointer"
+                  className="rounded-lg px-3 py-2 hover:bg-white/[0.03] text-sm text-app-muted min-h-9 focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none cursor-pointer"
                 >
                   Cancel
                 </button>
               </div>
             ) : pendingDelete === group.id ? (
               <div className="flex-1 flex items-center gap-2">
-                <span className="flex-1 text-sm text-neutral-900 dark:text-neutral-50">
+                <span className="flex-1 text-sm text-app-text">
                   Delete &quot;{group.name}&quot;?
                 </span>
                 <Button
@@ -144,21 +140,19 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
                   type="button"
                   onClick={() => setPendingDelete(null)}
                   aria-label="Cancel delete"
-                  className="rounded-lg px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-sm text-neutral-600 dark:text-neutral-400 min-h-9 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none cursor-pointer"
+                  className="rounded-lg px-3 py-2 hover:bg-white/[0.03] text-sm text-app-muted min-h-9 focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none cursor-pointer"
                 >
                   Cancel
                 </button>
               </div>
             ) : (
               <>
-                <span className="flex-1 text-sm font-medium text-neutral-900 dark:text-neutral-50">
-                  {group.name}
-                </span>
+                <span className="flex-1 text-sm font-medium text-app-text">{group.name}</span>
                 <button
                   type="button"
                   onClick={() => startEdit(group)}
                   aria-label={`Rename ${group.name}`}
-                  className="px-3 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-xs text-gold-600 dark:text-gold-400 font-medium focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none min-h-9 cursor-pointer"
+                  className="px-3 py-1 rounded hover:bg-white/[0.03] text-xs text-gold-accent font-medium focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none min-h-9 cursor-pointer"
                 >
                   Rename
                 </button>
@@ -169,7 +163,7 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
                     setEditingId(null);
                   }}
                   aria-label={`Delete ${group.name}`}
-                  className="px-3 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-xs text-red-600 dark:text-red-400 font-medium focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none min-h-9 cursor-pointer"
+                  className="px-3 py-1 rounded hover:bg-white/[0.03] text-xs text-app-red font-medium focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none min-h-9 cursor-pointer"
                 >
                   Delete
                 </button>

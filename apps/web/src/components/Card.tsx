@@ -10,11 +10,7 @@ export function Card({ children, className, ...rest }: CardProps) {
   return (
     <div
       {...rest}
-      className={[
-        "rounded-xl border border-neutral-200 dark:border-neutral-800",
-        "bg-white dark:bg-neutral-900 p-6",
-        className,
-      ]
+      className={["rounded-xl border border-app-line", "bg-app-panel p-6", className]
         .filter(Boolean)
         .join(" ")}
     >

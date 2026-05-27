@@ -110,11 +110,9 @@ function DashboardContent() {
 
   if (data.status === "error") {
     return (
-      <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-neutral-900 p-4">
-        <p className="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">
-          Failed to load dashboard
-        </p>
-        <p className="text-xs text-neutral-600 dark:text-neutral-400">{data.error.message}</p>
+      <div className="rounded-xl border border-app-red/40 bg-app-red/10 p-4">
+        <p className="text-sm font-semibold text-app-red mb-1">Failed to load dashboard</p>
+        <p className="text-xs text-app-muted">{data.error.message}</p>
       </div>
     );
   }
@@ -138,6 +136,12 @@ function DashboardContent() {
 export function DashboardScreen() {
   return (
     <Screen width="wide">
+      <h1
+        className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text mb-4"
+        style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
+      >
+        Dashboard
+      </h1>
       <ErrorBoundary>
         <DashboardContent />
       </ErrorBoundary>

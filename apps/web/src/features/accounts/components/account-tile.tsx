@@ -52,28 +52,24 @@ export function AccountTile({ account, onEdit, onDelete }: AccountTileProps) {
         aria-label={`${account.payload.name}, click for options`}
         aria-haspopup="menu"
         aria-expanded={menuOpen}
-        className="w-full flex items-center gap-3 px-4 py-3 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none min-h-11 cursor-pointer"
+        className="w-full flex items-center gap-3 px-4 py-3 bg-app-panel rounded-xl border border-app-line hover:bg-white/[0.03] transition-colors focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none min-h-11 cursor-pointer"
       >
         {/* Kind icon */}
-        <div className="w-10 h-10 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center shrink-0">
-          <Icon size={20} className="text-neutral-600 dark:text-neutral-400" />
+        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center shrink-0">
+          <Icon size={20} className="text-app-muted" />
         </div>
 
         {/* Account name + currency */}
         <div className="flex-1 text-left min-w-0">
-          <p className="text-sm font-bold text-neutral-900 dark:text-neutral-50 truncate">
-            {account.payload.name}
-          </p>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            {account.payload.currency}
-          </p>
+          <p className="text-sm font-bold text-app-text truncate">{account.payload.name}</p>
+          <p className="text-xs text-app-muted">{account.payload.currency}</p>
         </div>
 
         {/* Balance */}
         <span
           className={[
-            "font-mono text-sm font-bold",
-            isNegative ? "text-red-600 dark:text-red-400" : "text-neutral-900 dark:text-neutral-50",
+            "font-editorial text-[22px] font-normal tracking-[-0.01em]",
+            isNegative ? "text-app-red" : "text-app-text",
           ].join(" ")}
         >
           {balanceText}
@@ -89,7 +85,7 @@ export function AccountTile({ account, onEdit, onDelete }: AccountTileProps) {
             onClick={() => setMenuOpen(false)}
             aria-hidden="true"
           />
-          <div className="absolute right-2 top-14 z-20 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-md min-w-32 overflow-hidden">
+          <div className="absolute right-2 top-14 z-20 bg-app-panel border border-app-line rounded-lg shadow-md min-w-32 overflow-hidden">
             <button
               type="button"
               role="menuitem"
@@ -98,11 +94,11 @@ export function AccountTile({ account, onEdit, onDelete }: AccountTileProps) {
                 onEdit(account);
               }}
               aria-label={`Edit ${account.payload.name}`}
-              className="w-full px-4 py-3 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm text-neutral-900 dark:text-neutral-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-400 focus-visible:outline-none min-h-11"
+              className="w-full px-4 py-3 text-left hover:bg-white/[0.03] text-sm text-app-text focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-accent/40 focus-visible:outline-none min-h-11"
             >
               Edit
             </button>
-            <div className="h-px bg-neutral-200 dark:bg-neutral-700" />
+            <div className="h-px bg-app-line" />
             <button
               type="button"
               role="menuitem"
@@ -111,7 +107,7 @@ export function AccountTile({ account, onEdit, onDelete }: AccountTileProps) {
                 onDelete(account);
               }}
               aria-label={`Delete ${account.payload.name}`}
-              className="w-full px-4 py-3 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm text-red-600 dark:text-red-400 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-400 focus-visible:outline-none min-h-11"
+              className="w-full px-4 py-3 text-left hover:bg-white/[0.03] text-sm text-app-red focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-accent/40 focus-visible:outline-none min-h-11"
             >
               Delete
             </button>

@@ -8,14 +8,14 @@ import Link from "next/link";
 export function EmptyState() {
   return (
     <div className="flex-1 flex items-center justify-center px-6 py-16">
-      <div className="w-full max-w-sm rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-8 flex flex-col items-center">
+      <div className="w-full max-w-sm rounded-xl border border-app-line bg-app-panel p-8 flex flex-col items-center">
         <span className="text-4xl mb-4" aria-hidden="true">
           💼
         </span>
-        <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-50 mb-2 text-center">
+        <h2 className="text-xl font-semibold text-app-text mb-2 text-center">
           Welcome to Privance
         </h2>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6 text-center">
+        <p className="text-sm text-app-muted mb-6 text-center">
           Add your first account to start tracking your net worth.
         </p>
         <Link

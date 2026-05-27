@@ -38,11 +38,11 @@ export function AllocationPie({ title, slices }: AllocationPieProps) {
 
   return (
     <div
-      className="flex-1 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4"
+      className="flex-1 rounded-xl border border-app-line bg-app-panel p-4"
       role="img"
       aria-label={`${title} allocation chart`}
     >
-      <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-3">{title}</p>
+      <p className="text-sm font-semibold text-app-text mb-3">{title}</p>
 
       <div style={{ height: 240 }}>
         {isEmpty ? (
@@ -95,14 +95,10 @@ export function AllocationPie({ title, slices }: AllocationPieProps) {
       </div>
 
       {isEmpty ? (
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center mt-2">
-          Add holdings to see allocation
-        </p>
+        <p className="text-xs text-app-muted text-center mt-2">Add holdings to see allocation</p>
       ) : (
         <>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center mt-1">
-            Total: {formatCurrency(total)}
-          </p>
+          <p className="text-xs text-app-muted text-center mt-1">Total: {formatCurrency(total)}</p>
           <AllocationLegend slices={slices} hoveredIndex={hoveredIndex} />
         </>
       )}

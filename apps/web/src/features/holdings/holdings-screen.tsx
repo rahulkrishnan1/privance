@@ -282,7 +282,12 @@ export function HoldingsScreen() {
     <Screen scrollable={false} width="wide">
       {/* Page header */}
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-50">Holdings</h1>
+        <h1
+          className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
+          style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
+        >
+          Holdings
+        </h1>
 
         <div className="flex items-center gap-2">
           <RefreshButton
@@ -310,16 +315,16 @@ export function HoldingsScreen() {
       {(anyError !== null || error !== null) && (
         <div
           role="alert"
-          className="rounded-lg bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 px-4 py-3 mb-3 flex items-center justify-between"
+          className="rounded-lg bg-app-red/10 border border-app-red/40 px-4 py-3 mb-3 flex items-center justify-between"
         >
-          <p className="text-sm text-red-700 dark:text-red-300 flex-1">
+          <p className="text-sm text-app-red flex-1">
             {anyError?.message ?? error ?? "An error occurred"}
           </p>
           <button
             type="button"
             onClick={reloadAll}
             aria-label="Retry"
-            className="ml-2 text-sm font-medium text-red-700 dark:text-red-300 hover:underline cursor-pointer"
+            className="ml-2 text-sm font-medium text-app-red hover:underline cursor-pointer"
           >
             Retry
           </button>
@@ -350,11 +355,11 @@ export function HoldingsScreen() {
       )}
 
       <div role="toolbar" aria-label="Filter by group" className="flex flex-col gap-1 mb-4">
-        <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">Groups</span>
+        <span className="text-sm font-semibold text-app-text">Groups</span>
         <button
           type="button"
           onClick={() => setGroupsManagerOpen(true)}
-          className="self-start text-xs text-gold-600 dark:text-gold-400 mb-1 hover:underline focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none rounded cursor-pointer"
+          className="self-start text-xs text-gold-accent mb-1 hover:underline focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none rounded cursor-pointer"
         >
           Manage groups
         </button>

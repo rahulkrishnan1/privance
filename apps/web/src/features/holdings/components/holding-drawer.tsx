@@ -89,22 +89,22 @@ export function HoldingDrawer({
     <dialog
       ref={dialogRef}
       onClose={onClose}
-      className="m-0 sm:m-auto rounded-none sm:rounded-2xl p-0 shadow-xl w-full h-svh sm:h-auto max-w-none sm:max-w-md max-h-none sm:max-h-[90vh] bg-white dark:bg-neutral-900 border-0 backdrop:bg-black/50 focus-visible:outline-none"
+      className="m-0 sm:m-auto rounded-none sm:rounded-2xl p-0 shadow-xl w-full h-svh sm:h-auto max-w-none sm:max-w-md max-h-none sm:max-h-[90vh] bg-app-panel border-0 backdrop:bg-black/50 focus-visible:outline-none"
       aria-modal="true"
       aria-label={mode.kind === "add" ? "Add holding" : "Edit holding"}
     >
       <div className="flex flex-col h-full">
-        <div className="flex items-center justify-between p-5 border-b border-neutral-100 dark:border-neutral-800 shrink-0">
-          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">
+        <div className="flex items-center justify-between p-5 border-b border-app-line-soft shrink-0">
+          <h2 className="text-lg font-semibold text-app-text">
             {mode.kind === "add" ? "Add holding" : "Edit holding"}
           </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none cursor-pointer"
+            className="p-1 rounded-full hover:bg-white/[0.03] focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none cursor-pointer"
           >
-            <X size={20} className="text-neutral-600 dark:text-neutral-400" />
+            <X size={20} className="text-app-muted" />
           </button>
         </div>
 

@@ -132,13 +132,11 @@ export function HoldingForm({
         name="assetType"
         render={({ field }) => (
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-              Asset type
-            </span>
+            <span className="text-sm font-medium text-app-text">Asset type</span>
             <div
               role="radiogroup"
               aria-label="Asset type"
-              className="inline-flex rounded-lg border border-neutral-300 dark:border-neutral-700 p-0.5 self-start"
+              className="inline-flex rounded-lg border border-app-line p-0.5 self-start"
             >
               {(["stock", "crypto"] as const).map((type) => (
                 // biome-ignore lint/a11y/useSemanticElements: styled segmented control needs button, role+aria provide radio semantics
@@ -149,10 +147,10 @@ export function HoldingForm({
                   aria-checked={field.value === type}
                   onClick={() => field.onChange(type)}
                   className={[
-                    "px-3 py-1.5 text-sm rounded-md min-h-9 cursor-pointer focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none",
+                    "px-3 py-1.5 text-sm rounded-md min-h-9 cursor-pointer focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none",
                     field.value === type
-                      ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
-                      : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800",
+                      ? "bg-app-text text-app-bg"
+                      : "text-app-text hover:bg-white/[0.03]",
                   ].join(" ")}
                 >
                   {type === "stock" ? "Stock" : "Crypto"}
@@ -192,7 +190,7 @@ export function HoldingForm({
                 placeholder="e.g. bitcoin"
                 error={errors.ticker?.message}
               />
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              <p className="text-xs text-app-muted">
                 Find IDs at coingecko.com (URL ends with the ID). Use{" "}
                 <span className="font-mono">bitcoin</span>, not{" "}
                 <span className="font-mono">BTC</span>.
@@ -204,10 +202,7 @@ export function HoldingForm({
 
       {/* Account */}
       <div className="flex flex-col gap-1">
-        <label
-          htmlFor="holding-account"
-          className="text-sm font-medium text-neutral-700 dark:text-neutral-300"
-        >
+        <label htmlFor="holding-account" className="text-sm font-medium text-app-text">
           Account
         </label>
         <Controller
@@ -218,8 +213,8 @@ export function HoldingForm({
               id="holding-account"
               {...field}
               className={[
-                "rounded-lg border px-3 py-2 text-sm bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-50 min-h-11 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none cursor-pointer",
-                errors.accountId ? "border-red-500" : "border-neutral-300 dark:border-neutral-700",
+                "rounded-lg border px-3 py-2 text-sm bg-app-panel text-app-text min-h-11 focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none cursor-pointer",
+                errors.accountId ? "border-app-red/40" : "border-app-line",
               ].join(" ")}
               disabled={investmentAccounts.length === 0}
             >
@@ -241,7 +236,7 @@ export function HoldingForm({
           )}
         />
         {errors.accountId && (
-          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          <p role="alert" className="text-sm text-app-red">
             {errors.accountId.message}
           </p>
         )}
@@ -279,9 +274,7 @@ export function HoldingForm({
 
       {/* Group picker */}
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-          Group (optional)
-        </span>
+        <span className="text-sm font-medium text-app-text">Group (optional)</span>
         <div className="flex flex-wrap gap-2">
           {groups.map((g) => (
             <GroupChip
@@ -305,7 +298,7 @@ export function HoldingForm({
               placeholder="New group name"
               aria-label="New group name"
               maxLength={64}
-              className="flex-1 rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-50 bg-white dark:bg-neutral-900 placeholder:text-neutral-400 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none min-h-9"
+              className="flex-1 rounded-lg border border-app-line px-3 py-2 text-sm text-app-text bg-app-panel placeholder:text-app-dim/70 focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none min-h-9"
             />
             <Button
               onClick={() => void handleCreateGroup()}
@@ -318,14 +311,14 @@ export function HoldingForm({
             </Button>
           </div>
           {groupNameError !== undefined && (
-            <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+            <p role="alert" className="text-sm text-app-red">
               {groupNameError}
             </p>
           )}
         </div>
 
         {selectedGroup !== undefined && (
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          <p className="text-xs text-app-muted">
             Selected: {selectedGroup.name}, click to deselect
           </p>
         )}
@@ -337,20 +330,18 @@ export function HoldingForm({
         onClick={() => setAdvancedOpen((o) => !o)}
         aria-label={advancedOpen ? "Collapse advanced options" : "Expand advanced options"}
         aria-expanded={advancedOpen}
-        className="flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none rounded min-h-9 cursor-pointer"
+        className="flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none rounded min-h-9 cursor-pointer"
       >
-        <span className="text-sm font-medium text-gold-600 dark:text-gold-400">
-          Advanced options
-        </span>
+        <span className="text-sm font-medium text-gold-accent">Advanced options</span>
         {advancedOpen ? (
-          <ChevronUp size={16} className="text-gold-600" />
+          <ChevronUp size={16} className="text-gold-accent" />
         ) : (
-          <ChevronDown size={16} className="text-gold-600" />
+          <ChevronDown size={16} className="text-gold-accent" />
         )}
       </button>
 
       {advancedOpen && (
-        <div className="flex flex-col gap-4 pl-2 border-l-2 border-neutral-200 dark:border-neutral-700">
+        <div className="flex flex-col gap-4 pl-2 border-l-2 border-app-line">
           <Controller
             control={control}
             name="proxyTicker"
@@ -365,7 +356,7 @@ export function HoldingForm({
                   placeholder="e.g. VOO"
                   error={errors.proxyTicker?.message}
                 />
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                <p className="text-xs text-app-muted">
                   Use a public ticker to track an asset we can't price directly (mutual funds,
                   private holdings). Leave blank if your ticker already has a live price.
                 </p>
@@ -386,7 +377,7 @@ export function HoldingForm({
                     placeholder="e.g. 342.19"
                     error={errors.nav?.message}
                   />
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  <p className="text-xs text-app-muted">
                     Today's per-share price of your actual asset. We anchor the proxy to this so
                     your market value tracks reality. Re-anchor anytime by editing this holding.
                   </p>

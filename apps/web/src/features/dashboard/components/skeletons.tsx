@@ -2,18 +2,14 @@
 
 function SkeletonBox({ className }: { className?: string }) {
   return (
-    <div
-      className={["bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse", className]
-        .filter(Boolean)
-        .join(" ")}
-    />
+    <div className={["bg-white/5 rounded animate-pulse", className].filter(Boolean).join(" ")} />
   );
 }
 
 export function NetWorthTileSkeleton() {
   return (
     <div
-      className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 mb-4"
+      className="rounded-xl border border-app-line bg-app-panel p-4 mb-4"
       role="status"
       aria-label="Loading net worth"
     >
@@ -27,7 +23,7 @@ export function NetWorthTileSkeleton() {
 export function AllocationGridSkeleton() {
   return (
     <div
-      className="mb-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 flex flex-col items-center"
+      className="mb-4 rounded-xl border border-app-line bg-app-panel p-4 flex flex-col items-center"
       role="status"
       aria-label="Loading allocation"
     >
@@ -41,7 +37,7 @@ export function AllocationGridSkeleton() {
 export function HistoryChartSkeleton() {
   return (
     <div
-      className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 mb-4"
+      className="rounded-xl border border-app-line bg-app-panel p-4 mb-4"
       role="status"
       aria-label="Loading history chart"
     >
@@ -55,7 +51,7 @@ export function HistoryChartSkeleton() {
 export function TopHoldingsSkeleton() {
   return (
     <div
-      className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4"
+      className="rounded-xl border border-app-line bg-app-panel p-4"
       role="status"
       aria-label="Loading holdings"
     >

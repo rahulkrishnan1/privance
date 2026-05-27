@@ -61,18 +61,15 @@ export function ConfirmDialog({
     <dialog
       ref={dialogRef}
       onClose={onCancel}
-      className="rounded-2xl p-6 shadow-xl w-full max-w-sm bg-white dark:bg-neutral-900 border-0 backdrop:bg-black/50 focus-visible:outline-none"
+      className="rounded-2xl p-6 shadow-xl w-full max-w-sm bg-app-panel border-0 backdrop:bg-black/50 focus-visible:outline-none"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
       aria-describedby="confirm-dialog-body"
     >
-      <h2
-        id="confirm-dialog-title"
-        className="text-lg font-semibold text-neutral-900 dark:text-neutral-50 mb-3"
-      >
+      <h2 id="confirm-dialog-title" className="text-lg font-semibold text-app-text mb-3">
         {title}
       </h2>
-      <p id="confirm-dialog-body" className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+      <p id="confirm-dialog-body" className="text-sm text-app-muted mb-4">
         {body}
       </p>
       <div className="flex gap-3 justify-end">
@@ -80,7 +77,7 @@ export function ConfirmDialog({
           type="button"
           onClick={onCancel}
           disabled={busy}
-          className="rounded-lg px-4 py-2 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm font-medium text-neutral-700 dark:text-neutral-300 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none min-h-11 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg px-4 py-2 border border-app-line hover:bg-white/[0.03] text-sm font-medium text-app-text focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none min-h-11 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
         >
           Cancel
         </button>

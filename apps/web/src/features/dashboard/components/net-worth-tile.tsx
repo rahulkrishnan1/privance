@@ -51,19 +51,17 @@ export function NetWorthTile({
   }));
 
   return (
-    <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 mb-4">
+    <div className="rounded-xl border border-app-line bg-app-panel p-4 mb-4">
       {/* Header row */}
       <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">
-          Last refreshed: {formatTime(lastRefreshedMs)}
-        </p>
+        <p className="text-sm text-app-muted">Last refreshed: {formatTime(lastRefreshedMs)}</p>
         <RefreshButton cooldownMs={cooldownMs} onRefresh={onRefresh} refreshing={refreshing} />
       </div>
 
       {/* Net worth + sparkline */}
       <div className="flex items-start justify-between">
         <div className="flex-1 mr-4">
-          <p className="text-4xl font-bold text-neutral-900 dark:text-neutral-50 tabular-nums">
+          <p className="font-editorial text-[44px] font-normal tracking-[-0.02em] text-app-text leading-none">
             {formatCurrency(breakdown.netWorth)}
           </p>
 
@@ -71,27 +69,23 @@ export function NetWorthTile({
           {delta !== null ? (
             <div className="flex items-center gap-1.5 mt-2">
               {deltaPositive ? (
-                <TrendingUp size={16} className="text-green-600" />
+                <TrendingUp size={16} className="text-app-green" />
               ) : deltaZero ? null : (
-                <TrendingDown size={16} className="text-red-600" />
+                <TrendingDown size={16} className="text-app-red" />
               )}
               <span
                 className={[
                   "text-sm tabular-nums font-medium",
-                  deltaZero
-                    ? "text-neutral-500"
-                    : deltaPositive
-                      ? "text-green-600 dark:text-green-400"
-                      : "text-red-600 dark:text-red-400",
+                  deltaZero ? "text-app-muted" : deltaPositive ? "text-app-green" : "text-app-red",
                 ].join(" ")}
               >
                 {deltaPositive && "+"}
                 {formatCurrency(delta.dollar)} ({formatPercent(delta.pct, { signed: true })})
               </span>
-              <span className="text-xs text-neutral-500 dark:text-neutral-400">today</span>
+              <span className="text-xs text-app-muted">today</span>
             </div>
           ) : (
-            <p className="text-sm text-neutral-400 dark:text-neutral-600 mt-2">No prior data</p>
+            <p className="text-sm text-app-dim mt-2">No prior data</p>
           )}
         </div>
 
@@ -107,7 +101,7 @@ export function NetWorthTile({
                 <Line
                   type="monotone"
                   dataKey="v"
-                  stroke="#b18a1c"
+                  stroke="#e6d39a"
                   strokeWidth={2}
                   dot={false}
                   isAnimationActive={false}

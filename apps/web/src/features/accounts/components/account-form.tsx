@@ -47,9 +47,7 @@ type KindSegmentProps = {
 function KindSegmentControl({ value, onChange, disabled = false }: KindSegmentProps) {
   return (
     <fieldset className="flex flex-col gap-1 border-0 p-0 m-0">
-      <legend className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-        Account type
-      </legend>
+      <legend className="text-sm font-medium text-app-text mb-1">Account type</legend>
       <div className="flex flex-wrap gap-2">
         {accountKindValues.map((k) => {
           const active = k === value;
@@ -62,10 +60,10 @@ function KindSegmentControl({ value, onChange, disabled = false }: KindSegmentPr
               aria-label={KIND_META[k].label}
               disabled={disabled}
               className={[
-                "px-3 py-2 rounded-lg border text-xs font-medium focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none min-h-11 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50",
+                "px-3 py-2 rounded-lg border text-xs font-medium focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none min-h-11 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50",
                 active
                   ? "bg-gold-600 border-gold-600 text-white font-semibold"
-                  : "bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300",
+                  : "bg-app-panel border-app-line text-app-text",
               ].join(" ")}
             >
               {KIND_META[k].label}
@@ -144,12 +142,12 @@ export function AccountForm({
     <dialog
       ref={dialogRef}
       onClose={onClose}
-      className="m-0 sm:m-auto rounded-none sm:rounded-2xl p-0 shadow-xl w-full h-svh sm:h-auto max-w-none sm:max-w-sm max-h-none sm:max-h-[90vh] bg-white dark:bg-neutral-900 border-0 backdrop:bg-black/50 focus-visible:outline-none overflow-y-auto"
+      className="m-0 sm:m-auto rounded-none sm:rounded-2xl p-0 shadow-xl w-full h-svh sm:h-auto max-w-none sm:max-w-sm max-h-none sm:max-h-[90vh] bg-app-panel border-0 backdrop:bg-black/50 focus-visible:outline-none overflow-y-auto"
       aria-modal="true"
       aria-label={isEditMode ? "Edit account" : "Add account"}
     >
       <div className="p-6 flex flex-col gap-5 [padding-bottom:max(env(safe-area-inset-bottom),5rem)] sm:[padding-bottom:1.5rem]">
-        <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">
+        <h2 className="text-lg font-bold text-app-text">
           {isEditMode ? "Edit account" : "Add account"}
         </h2>
 
