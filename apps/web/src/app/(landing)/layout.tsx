@@ -1,13 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces } from "next/font/google";
 import type { ReactNode } from "react";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  axes: ["opsz", "SOFT"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Privance · personal finance, encrypted on your device",
@@ -27,7 +19,7 @@ const GRAIN_SVG =
 export default function LandingLayout({ children }: { children: ReactNode }) {
   return (
     <div
-      className={`${fraunces.variable} relative min-h-svh bg-stone-950 text-stone-100 antialiased selection:bg-gold-600/30 selection:text-stone-50`}
+      className="relative min-h-svh bg-stone-950 text-stone-100 antialiased selection:bg-gold-600/30 selection:text-stone-50"
       style={{ scrollBehavior: "smooth" }}
     >
       <style>{`
