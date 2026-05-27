@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/index";
+import { useAuth } from "@/providers/auth-context";
 
 const NAV_LINKS = [
   { label: "Features", href: "#features" },
@@ -689,8 +690,14 @@ function Footer() {
   );
 }
 
-export default function MarketingLanding() {
+export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
+  const { state } = useAuth();
+
+  useEffect(() => {
+    if (state === "unlocked") window.location.replace("/app/");
+    else if (state === "locked") window.location.replace("/unlock/");
+  }, [state]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -698,6 +705,9 @@ export default function MarketingLanding() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Avoid flashing the landing for signed-in users mid-redirect.
+  if (state !== "unauthenticated") return null;
 
   return (
     <>

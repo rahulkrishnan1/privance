@@ -58,8 +58,8 @@ test.describe("auth — sign up", () => {
     const page = await ctx.newPage();
     await restoreSession(page, session);
 
-    await page.goto("/");
-    await expect(page).toHaveURL("/", { timeout: 15_000 });
+    await page.goto("/app/");
+    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
     await expect(page.getByRole("link", { name: "Dashboard" }).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -77,8 +77,8 @@ test.describe("auth — login", () => {
     const page = await ctx.newPage();
     await restoreSession(page, sharedSession);
 
-    await page.goto("/");
-    await expect(page).toHaveURL("/", { timeout: 15_000 });
+    await page.goto("/app/");
+    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
     await expect(page.getByRole("link", { name: "Dashboard" }).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -164,8 +164,8 @@ test.describe("auth — account recovery", () => {
     const verifyCtx = await browser.newContext({ baseURL: "http://localhost:8081" });
     const verifyPage = await verifyCtx.newPage();
     await restoreSession(verifyPage, loginSession);
-    await verifyPage.goto("/");
-    await expect(verifyPage).toHaveURL("/", { timeout: 15_000 });
+    await verifyPage.goto("/app/");
+    await expect(verifyPage).toHaveURL("/app/", { timeout: 15_000 });
     await expect(verifyPage.getByRole("link", { name: "Dashboard" }).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -186,8 +186,8 @@ test.describe("auth — logout", () => {
     await restoreSession(page, sharedSession);
 
     // Confirm we are on the dashboard
-    await page.goto("/");
-    await expect(page).toHaveURL("/", { timeout: 15_000 });
+    await page.goto("/app/");
+    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
     await expect(page.getByRole("link", { name: "Dashboard" }).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -204,7 +204,7 @@ test.describe("auth — logout", () => {
     // navigation within a page's lifetime — the fresh context has no such script.
     const freshCtx = await browser.newContext({ baseURL: "http://localhost:8081" });
     const freshPage = await freshCtx.newPage();
-    await freshPage.goto("/");
+    await freshPage.goto("/app/");
     await expect(freshPage).toHaveURL(/\/auth\/login/, { timeout: 15_000 });
     await freshCtx.close();
   });
@@ -217,7 +217,7 @@ test.describe("auth — logout", () => {
 test.describe("auth — protected route redirects", () => {
   test("protected route redirects to login when unauthenticated", async ({ page }) => {
     // Fresh context = no cookies, no DEK
-    await page.goto("/");
+    await page.goto("/app/");
     // The React effect fires after mount and redirects to /auth/login
     await expect(page).toHaveURL(/\/auth\/login/, { timeout: 15_000 });
   });
@@ -242,8 +242,8 @@ test.describe("auth — protected route redirects", () => {
     await ctx.addCookies(snapshot.cookies);
     const page = await ctx.newPage();
 
-    // "/" redirects to login (no DEK in globalThis)
-    await page.goto("/");
+    // "/app/" redirects to login (no DEK in globalThis)
+    await page.goto("/app/");
     await expect(page).toHaveURL(/\/auth\/login/, { timeout: 15_000 });
 
     // /unlock/ verifies the server session and shows the unlock form

@@ -115,7 +115,7 @@ export default function SignupPage() {
       itemsKey: pendingLogin.itemsKey,
       persistence: "memory",
     });
-    router.replace("/");
+    router.replace("/app/");
   }
 
   // Phrase acknowledgement screen

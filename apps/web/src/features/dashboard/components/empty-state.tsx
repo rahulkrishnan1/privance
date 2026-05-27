@@ -19,7 +19,7 @@ export function EmptyState() {
           Add your first account to start tracking your net worth.
         </p>
         <Link
-          href="/accounts"
+          href="/app/accounts"
           className="rounded-lg bg-gold-600 hover:bg-gold-700 px-6 py-3 text-white text-base font-semibold text-center w-full focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:outline-none"
           aria-label="Add account"
         >

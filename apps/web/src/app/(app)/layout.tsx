@@ -20,10 +20,10 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", href: "/", Icon: BarChart3 },
-  { label: "Accounts", href: "/accounts", Icon: Wallet },
-  { label: "Holdings", href: "/holdings", Icon: TrendingUp },
-  { label: "Settings", href: "/settings", Icon: Settings },
+  { label: "Dashboard", href: "/app", Icon: BarChart3 },
+  { label: "Accounts", href: "/app/accounts", Icon: Wallet },
+  { label: "Holdings", href: "/app/holdings", Icon: TrendingUp },
+  { label: "Settings", href: "/app/settings", Icon: Settings },
 ];
 
 // ---------------------------------------------------------------------------
@@ -37,7 +37,7 @@ function Sidebar({ onLogout }: { onLogout: () => void | Promise<void> }) {
     <aside className="hidden md:flex md:w-44 md:flex-col md:fixed md:inset-y-0 bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800">
       {/* Brand */}
       <div className="px-6 py-5 border-b border-neutral-200 dark:border-neutral-800 flex items-center gap-2.5">
-        <Logo size={28} />
+        <Logo size={28} className="text-gold-600 dark:text-gold-400" />
         <span className="text-lg font-bold text-neutral-900 dark:text-neutral-50 tracking-tight">
           Privance
         </span>
@@ -46,7 +46,10 @@ function Sidebar({ onLogout }: { onLogout: () => void | Promise<void> }) {
       {/* Nav links */}
       <nav className="flex-1 px-3 py-4 space-y-1" aria-label="Main navigation">
         {NAV_ITEMS.map(({ label, href, Icon }) => {
-          const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          const active =
+            href === "/app"
+              ? pathname === "/app" || pathname === "/app/"
+              : pathname.startsWith(href);
           return (
             <Link
               key={href}
@@ -100,7 +103,8 @@ function BottomTabBar() {
       aria-label="Main navigation"
     >
       {NAV_ITEMS.map(({ label, href, Icon }) => {
-        const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+        const active =
+          href === "/app" ? pathname === "/app" || pathname === "/app/" : pathname.startsWith(href);
         return (
           <Link
             key={href}

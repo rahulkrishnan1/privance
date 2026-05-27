@@ -52,7 +52,7 @@ export default function LoginPage() {
         itemsKey,
         persistence: "memory",
       });
-      router.replace("/");
+      router.replace("/app/");
     } catch (e) {
       if (e instanceof ApiError) {
         if (e.status === 401 || e.status === 404) {

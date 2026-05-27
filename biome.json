@@ -22,7 +22,8 @@
       "!**/public/sqlite",
       "!**/ios",
       "!**/android",
-      "!**/.playwright-fixtures.json"
+      "!**/.playwright-fixtures.json",
+      "!**/.superpowers"
     ]
   },
   "formatter": {

@@ -30,12 +30,13 @@ Thumbs.db
 
 .claude/settings.local.json
 
-# AI working artifacts — plans, scratch, research outputs.
+# AI working artifacts, plans, scratch, research outputs.
 # Decisions worth keeping flow into docs/decisions/ as ADRs.
 .plans/
 .planning/
 .claude/plans/
 .claude/scratch/
+.superpowers/
 scratch/
 TODO.local.md
 NOTES.local.md
@@ -48,6 +49,3 @@ NOTES.local.md
 # The committed compose.prod.yaml is the source of truth; overrides stay local.
 infra/compose.override.yaml
 infra/compose.override.yml
-
-# Visual brainstorming companion (Superpowers skill) — local mockup sessions.
-.superpowers/

@@ -94,7 +94,7 @@ export function TopHoldingsTable({ byHolding, tickerById, totalNetWorth }: TopHo
       </div>
 
       <Link
-        href="/holdings"
+        href="/app/holdings"
         className="flex items-center justify-end mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 hover:opacity-80 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none rounded"
         aria-label="View all holdings"
       >
