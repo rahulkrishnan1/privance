@@ -67,6 +67,11 @@ const DEFAULT_AUTO_LOCK_MS = 30 * 60 * 1000;
  *  instead of falling all the way back to "unauthenticated". */
 const LOCKED_MARKER = "privance.lockedMarker";
 
+/** Persisted alongside the lock marker so /unlock can pre-fill the username and
+ *  skip an unnecessary field. The server already knows it; sessionStorage clears
+ *  on tab close, same lifetime as the session cookie. */
+const USERNAME_KEY = "privance.username";
+
 // ---------------------------------------------------------------------------
 // Context
 // ---------------------------------------------------------------------------
@@ -92,7 +97,16 @@ export function AuthProvider({
     if (sessionStorage.getItem(LOCKED_MARKER) === "1") return "locked";
     return "unauthenticated";
   });
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    if (typeof window === "undefined") return null;
+    const username = sessionStorage.getItem(USERNAME_KEY);
+    if (sessionStorage.getItem(LOCKED_MARKER) === "1" && username !== null) {
+      // userId is unknown post-reload; /unlock only needs the username for the
+      // KDF params lookup, and login() will rehydrate userId on success.
+      return { userId: "", username };
+    }
+    return null;
+  });
   const [persistence, setPersistence] = useState<PersistenceLevel>("memory");
   const autoLockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastActivityMs = useRef<number>(Date.now());
@@ -162,6 +176,7 @@ export function AuthProvider({
   const login = useCallback((payload: AuthPayload) => {
     setDekStore({ itemsKey: payload.itemsKey });
     sessionStorage.removeItem(LOCKED_MARKER);
+    sessionStorage.setItem(USERNAME_KEY, payload.user.username);
     setUser(payload.user);
     setPersistence(payload.persistence);
     setState("unlocked");
@@ -170,6 +185,7 @@ export function AuthProvider({
   const unlock = useCallback((payload: AuthPayload) => {
     setDekStore({ itemsKey: payload.itemsKey });
     sessionStorage.removeItem(LOCKED_MARKER);
+    sessionStorage.setItem(USERNAME_KEY, payload.user.username);
     setUser(payload.user);
     setPersistence(payload.persistence);
     setState("unlocked");
@@ -189,6 +205,7 @@ export function AuthProvider({
     clearDekStore();
     clearIdleTimer();
     sessionStorage.removeItem(LOCKED_MARKER);
+    sessionStorage.removeItem(USERNAME_KEY);
     setUser(null);
     setState("unauthenticated");
   }, [clearIdleTimer]);
