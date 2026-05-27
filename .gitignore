@@ -48,3 +48,6 @@ NOTES.local.md
 # The committed compose.prod.yaml is the source of truth; overrides stay local.
 infra/compose.override.yaml
 infra/compose.override.yml
+
+# Visual brainstorming companion (Superpowers skill) — local mockup sessions.
+.superpowers/
