@@ -16,14 +16,14 @@ test.describe("landing page", () => {
 
     await expect(page.getByText("Track your wealth.").first()).toBeVisible();
     await expect(page.getByText(/AGPL-3\.0 licensed/).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: /Request an invite/i }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: /Sign up/i }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Sign in" }).first()).toBeVisible();
   });
 
-  test("Request an invite CTA navigates to /auth/signup", async ({ page }) => {
+  test("Sign up CTA navigates to /auth/signup", async ({ page }) => {
     await page.goto("/");
     await page
-      .getByRole("link", { name: /Request an invite/i })
+      .getByRole("link", { name: /Sign up/i })
       .first()
       .click();
     await expect(page).toHaveURL(/\/auth\/signup/, { timeout: 10_000 });
