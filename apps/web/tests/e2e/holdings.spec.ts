@@ -33,8 +33,8 @@ const INVESTMENT_ACCOUNT_NAME = `Holdings-Brokerage-${RUN}`;
 // ---------------------------------------------------------------------------
 
 async function goToHoldings(page: import("@playwright/test").Page): Promise<void> {
-  await page.goto("/holdings/");
-  await expect(page).toHaveURL("/holdings/", { timeout: 10_000 });
+  await page.goto("/app/holdings/");
+  await expect(page).toHaveURL("/app/holdings/", { timeout: 10_000 });
   await expect(page.getByRole("heading", { name: "Holdings", exact: true })).toBeVisible({
     timeout: 10_000,
   });
@@ -48,7 +48,7 @@ test.describe("holdings", () => {
   test.beforeAll(async ({ browser }) => {
     const { sharedUser } = loadFixtures();
     // Capture DEK bytes via exposeFunction before the hard page navigation
-    // caused by router.replace("/") clears globalThis.
+    // caused by router.replace("/app/") clears globalThis.
     savedSession = await loginAndCapture(browser, {
       username: sharedUser.username,
       password: sharedUser.password,
@@ -60,7 +60,7 @@ test.describe("holdings", () => {
       const page = await ctx.newPage();
       await restoreSession(page, savedSession);
 
-      await page.goto("/accounts/");
+      await page.goto("/app/accounts/");
       await expect(
         page
           .getByRole("heading", { name: "Accounts" })
@@ -410,9 +410,9 @@ test.describe("holdings", () => {
     await expect(googCell).toContainText("$", { timeout: 60_000 });
 
     await page.getByRole("link", { name: "Dashboard" }).first().click();
-    await expect(page).toHaveURL("/", { timeout: 10_000 });
+    await expect(page).toHaveURL("/app/", { timeout: 10_000 });
     await page.getByRole("link", { name: "Holdings" }).first().click();
-    await expect(page).toHaveURL("/holdings/", { timeout: 10_000 });
+    await expect(page).toHaveURL("/app/holdings/", { timeout: 10_000 });
 
     // Regression: prior version mounted a fresh prices state per screen,
     // briefly rendering "-" before the refetch completed. Module-level cache

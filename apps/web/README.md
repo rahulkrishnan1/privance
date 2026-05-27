@@ -15,7 +15,8 @@ static build, and a dependency audit on every push to `main` and on pull request
 | Path | Purpose |
 |---|---|
 | `src/app/layout.tsx` | Root layout: QueryProvider > AuthProvider > SyncProvider |
-| `src/app/(app)/layout.tsx` | Auth-gated shell with sidebar + mobile tab bar |
+| `src/app/(landing)/page.tsx` | Landing at `/` (auth-aware redirect for signed-in users) |
+| `src/app/(app)/layout.tsx` | Auth-gated shell with sidebar + mobile tab bar (mounts under `/app/*`) |
 | `src/providers/auth-context.tsx` | DEK store, auth state machine, auto-lock idle timer |
 | `src/providers/sync-context.tsx` | LocalStore + SyncClient lifecycle |
 | `src/features/accounts/` | Reference feature module (queries, mutations, components) |

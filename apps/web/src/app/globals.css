@@ -26,6 +26,10 @@
   --color-gold-800: #735715;
   --color-gold-900: #5d4516;
   --color-gold-950: #2a2009;
+
+  /* Brand accent (pale luxury). Used on the landing. */
+  --color-gold-accent: #e6d39a;
+  --color-gold-accent-hover: #f0e3b0;
 }
 
 .dark {

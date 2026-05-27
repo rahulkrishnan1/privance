@@ -27,7 +27,7 @@ let savedSession: SessionSnapshot;
 // ---------------------------------------------------------------------------
 
 async function goToAccounts(page: import("@playwright/test").Page): Promise<void> {
-  await page.goto("/accounts/");
+  await page.goto("/app/accounts/");
   // Wait for the accounts screen to fully render (empty state or list)
   await expect(
     page
@@ -44,7 +44,7 @@ test.describe("accounts", () => {
   test.beforeAll(async ({ browser }) => {
     const { sharedUser } = loadFixtures();
     // Capture DEK bytes via exposeFunction before the hard page navigation
-    // caused by router.replace("/") clears globalThis.
+    // caused by router.replace("/app/") clears globalThis.
     savedSession = await loginAndCapture(browser, {
       username: sharedUser.username,
       password: sharedUser.password,

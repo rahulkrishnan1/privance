@@ -28,6 +28,10 @@ export const metadata: Metadata = {
     title: "Privance",
   },
   icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
     apple: "/icon-192.png",
   },
 };
@@ -36,7 +40,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#b18a1c",
+  themeColor: "#e6d39a",
 };
 
 export default function RootLayout({

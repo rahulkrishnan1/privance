@@ -32,8 +32,8 @@ test.describe("dashboard — empty state", () => {
     const page = await ctx.newPage();
     await restoreSession(page, session);
 
-    await page.goto("/");
-    await expect(page).toHaveURL("/", { timeout: 15_000 });
+    await page.goto("/app/");
+    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
 
     // recoveryUser has no accounts → empty dashboard state
     await expect(page.getByRole("heading", { name: "Welcome to Privance" })).toBeVisible({
@@ -67,7 +67,7 @@ async function ensureDataSetup(browser: import("@playwright/test").Browser): Pro
   const page = await ctx.newPage();
   await restoreSession(page, savedSession);
 
-  await page.goto("/accounts/");
+  await page.goto("/app/accounts/");
   await expect(
     page
       .getByRole("heading", { name: "Accounts" })
@@ -100,8 +100,8 @@ test.describe("dashboard — with data", () => {
     await restoreSession(page, savedSession);
 
     // Navigate to the dashboard
-    await page.goto("/");
-    await expect(page).toHaveURL("/", { timeout: 15_000 });
+    await page.goto("/app/");
+    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
   });
 
   test("shows the net worth tile after accounts are added", async ({ page }) => {

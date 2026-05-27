@@ -7,9 +7,10 @@ User's device  (browser or Capacitor WKWebView / Android WebView)
 │
 ├─ apps/web  ── Next.js 16 static export
 │   ├─ React 19 + Tailwind 4 + TanStack Query 5 + Zod
+│   ├─ /          landing page  (auth-aware: redirects signed-in users to /app/)
 │   ├─ /auth/*    unauthenticated flows  (signup, login, recovery)
 │   ├─ /unlock    session exists but DEK lost on reload
-│   └─ /(app)/*   auth-gated  (dashboard, accounts, holdings, settings)
+│   └─ /app/*     auth-gated  (dashboard, accounts, holdings, settings)
 │
 ├─ providers/  ── React-context wiring
 │   ├─ AuthProvider    auth state machine + DEK store
@@ -296,20 +297,26 @@ The schema is identical in structure to the server's `sync_objects` table, enabl
 
 ```
 app/
-├── layout.tsx              # Root: providers (Query, Auth, Sync)
-├── (app)/                  # Auth-gated group
-│   ├── layout.tsx          # Redirects to /auth/login or /unlock if not unlocked
-│   ├── page.tsx            # Dashboard (/)
-│   ├── accounts/page.tsx   # Account list (/accounts)
-│   ├── holdings/page.tsx   # Holdings (/holdings)
-│   └── settings/page.tsx   # Settings (/settings)
+├── layout.tsx                  # Root: providers (Query, Auth, Sync)
+├── (landing)/                  # Public landing page group
+│   ├── layout.tsx              # Dark-forced layout with Fraunces display font
+│   └── page.tsx                # Landing page (/), redirects signed-in users to /app/
+├── (app)/                      # Auth-gated group
+│   ├── layout.tsx              # Redirects to /auth/login or /unlock if not unlocked
+│   └── app/
+│       ├── page.tsx            # Dashboard (/app)
+│       ├── accounts/page.tsx   # Account list (/app/accounts)
+│       ├── holdings/page.tsx   # Holdings (/app/holdings)
+│       └── settings/page.tsx   # Settings (/app/settings)
 ├── auth/
-│   ├── layout.tsx          # Auth shell layout
-│   ├── login/page.tsx      # /auth/login
-│   ├── signup/page.tsx     # /auth/signup
-│   └── recovery/page.tsx   # /auth/recovery
-└── unlock/page.tsx         # /unlock (cookie present, DEK missing)
+│   ├── layout.tsx              # Auth shell layout
+│   ├── login/page.tsx          # /auth/login
+│   ├── signup/page.tsx         # /auth/signup
+│   └── recovery/page.tsx       # /auth/recovery
+└── unlock/page.tsx             # /unlock (cookie present, DEK missing)
 ```
+
+**Landing page:** `(landing)/page.tsx` serves the landing page at `/`. It reads `useAuth()` and redirects signed-in users (`unlocked` → `/app/`, `locked` → `/unlock/`) so they never see the landing.
 
 **Auth gate:** `(app)/layout.tsx` uses `useAuth()` and redirects via `window.location.replace()` to `/auth/login/` (unauthenticated) or `/unlock/` (session cookie present but DEK lost due to page reload).
 

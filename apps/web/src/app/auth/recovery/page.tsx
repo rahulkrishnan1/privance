@@ -148,7 +148,7 @@ export default function RecoveryPage() {
       itemsKey: pendingLogin.itemsKey,
       persistence: "memory",
     });
-    router.replace("/");
+    router.replace("/app/");
   }
 
   if (step === "new-phrase" && newPhrase !== null && pendingLogin !== undefined) {

@@ -19,7 +19,7 @@ export type SessionSnapshot = {
  * exposed function fires and resolves the returned Promise with the DEK bytes.
  *
  * Why this is needed: Next.js 16 with output:"export" triggers a hard page
- * reload when router.replace("/") crosses layout-group boundaries (auth/ →
+ * reload when router.replace("/app/") crosses layout-group boundaries (auth/ →
  * (app)/). The hard reload clears globalThis, so the DEK is gone before any
  * post-navigation page.evaluate could read it. exposeFunction survives the
  * hard reload and fires in the page context BEFORE the reload, giving us the
@@ -227,10 +227,10 @@ export async function acknowledgePhrase(page: Page): Promise<void> {
  * Logs in with an existing account and waits for the URL to change.
  * Argon2 derivation takes 3–8 s; caller must use a 60 s test timeout.
  *
- * Note: after the DEK is set and router.replace("/") fires, Next.js does a
- * hard navigation that clears globalThis. The resulting page at "/" will
- * redirect to /auth/login/ because the DEK is gone. Use loginAndCapture +
- * restoreSession when you need the dashboard to actually render.
+ * Note: after the DEK is set and router.replace("/app/") fires, Next.js does
+ * a hard navigation that clears globalThis. The resulting page at "/app/"
+ * will redirect to /auth/login/ because the DEK is gone. Use loginAndCapture
+ * + restoreSession when you need the dashboard to actually render.
  */
 export async function login(
   page: Page,

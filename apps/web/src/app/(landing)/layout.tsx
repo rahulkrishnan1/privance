@@ -1,0 +1,64 @@
+import type { Metadata } from "next";
+import { Fraunces } from "next/font/google";
+import type { ReactNode } from "react";
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
+  axes: ["opsz", "SOFT"],
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: "Privance · personal finance, encrypted on your device",
+  description:
+    "A self-hostable, zero-knowledge personal finance app. Your money, your math. The server never sees your data.",
+  openGraph: {
+    title: "Privance · personal finance, encrypted on your device",
+    description:
+      "A self-hostable, zero-knowledge personal finance app. Open source, end-to-end encrypted, yours.",
+    type: "website",
+  },
+};
+
+const GRAIN_SVG =
+  "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
+
+export default function LandingLayout({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className={`${fraunces.variable} relative min-h-svh bg-stone-950 text-stone-100 antialiased selection:bg-gold-600/30 selection:text-stone-50`}
+      style={{ scrollBehavior: "smooth" }}
+    >
+      <style>{`
+        html { scroll-behavior: smooth; }
+        @keyframes reveal-up {
+          from { opacity: 0; transform: translateY(14px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes reveal-fade {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .reveal-up { animation: reveal-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .reveal-fade { animation: reveal-fade 1.2s ease-out both; }
+        .fraunces { font-family: var(--font-fraunces), Georgia, serif; font-variation-settings: "opsz" 96, "SOFT" 50; }
+        .fraunces-display { font-family: var(--font-fraunces), Georgia, serif; font-variation-settings: "opsz" 144, "SOFT" 50; }
+        .fraunces-italic { font-family: var(--font-fraunces), Georgia, serif; font-style: italic; font-variation-settings: "opsz" 96, "SOFT" 100; }
+      `}</style>
+
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.04] mix-blend-overlay"
+        style={{ backgroundImage: GRAIN_SVG }}
+      />
+
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[60vh] bg-[radial-gradient(ellipse_at_top,_rgba(177,138,28,0.10),_transparent_60%)]"
+      />
+
+      <div className="relative z-10">{children}</div>
+    </div>
+  );
+}
