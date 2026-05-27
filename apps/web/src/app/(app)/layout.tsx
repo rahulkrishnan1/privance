@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, LogOut, Settings, TrendingUp, Wallet } from "lucide-react";
+import { BarChart3, Settings, TrendingUp, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -8,10 +8,6 @@ import { useEffect } from "react";
 import { Logo } from "@/components/index";
 import { logout as apiLogout } from "@/lib/api/auth";
 import { useAuth } from "@/providers/auth-context";
-
-// ---------------------------------------------------------------------------
-// Nav items
-// ---------------------------------------------------------------------------
 
 type NavItem = {
   label: string;
@@ -26,98 +22,102 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Settings", href: "/app/settings", Icon: Settings },
 ];
 
-// ---------------------------------------------------------------------------
-// Desktop sidebar
-// ---------------------------------------------------------------------------
+function isActive(pathname: string, href: string) {
+  return href === "/app" ? pathname === "/app" || pathname === "/app/" : pathname.startsWith(href);
+}
 
-function Sidebar({ onLogout }: { onLogout: () => void | Promise<void> }) {
+function TopBar({ onLogout }: { onLogout: () => void | Promise<void> }) {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex md:w-44 md:flex-col md:fixed md:inset-y-0 bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800">
-      {/* Brand */}
-      <div className="px-6 py-5 border-b border-neutral-200 dark:border-neutral-800 flex items-center gap-2.5">
-        <Logo size={28} className="text-gold-600 dark:text-gold-400" />
-        <span className="text-lg font-bold text-neutral-900 dark:text-neutral-50 tracking-tight">
-          Privance
-        </span>
-      </div>
-
-      {/* Nav links */}
-      <nav className="flex-1 px-3 py-4 space-y-1" aria-label="Main navigation">
-        {NAV_ITEMS.map(({ label, href, Icon }) => {
-          const active =
-            href === "/app"
-              ? pathname === "/app" || pathname === "/app/"
-              : pathname.startsWith(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={[
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none",
-                active
-                  ? "bg-gold-50 dark:bg-gold-950 text-gold-700 dark:text-gold-300"
-                  : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-50",
-              ].join(" ")}
-            >
-              <Icon
-                size={18}
-                className={active ? "text-gold-600 dark:text-gold-400" : ""}
-                aria-hidden="true"
-              />
-              {label}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Logout */}
-      <div className="px-3 py-4 border-t border-neutral-200 dark:border-neutral-800">
+    <header className="hidden md:block sticky top-0 z-30 bg-app-panel-2/95 backdrop-blur border-b border-app-line">
+      <div className="flex items-center gap-9 px-7 h-16">
+        <Link href="/app" className="flex items-center gap-2.5 group">
+          <Logo size={22} className="text-gold-accent" />
+          <span
+            className="font-serif text-[17px] text-app-text"
+            style={{ fontVariationSettings: '"opsz" 24, "SOFT" 80' }}
+          >
+            Privance
+          </span>
+        </Link>
+        <span aria-hidden="true" className="h-5 w-px bg-app-line" />
+        <nav className="flex-1 flex gap-1" aria-label="Main navigation">
+          {NAV_ITEMS.map(({ label, href }) => {
+            const active = isActive(pathname, href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-current={active ? "page" : undefined}
+                className={[
+                  "relative px-3.5 py-2 rounded-lg text-[13.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-accent/40",
+                  active ? "text-gold-accent" : "text-app-muted hover:text-app-text",
+                ].join(" ")}
+              >
+                {label}
+                {active && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute left-3.5 right-3.5 -bottom-[23px] h-0.5 bg-gold-accent"
+                  />
+                )}
+              </Link>
+            );
+          })}
+        </nav>
         <button
           type="button"
           onClick={onLogout}
           aria-label="Log out"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-50 transition-colors w-full focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none cursor-pointer"
+          className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim hover:text-app-text transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-accent/40 rounded-sm"
         >
-          <LogOut size={18} aria-hidden="true" />
           Log out
         </button>
       </div>
-    </aside>
+    </header>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Mobile bottom tab bar
-// ---------------------------------------------------------------------------
+function MobileHeader() {
+  return (
+    <header className="md:hidden sticky top-0 z-30 bg-app-panel-2/95 backdrop-blur border-b border-app-line [padding-top:env(safe-area-inset-top)]">
+      <div className="flex items-center justify-center px-5 h-14">
+        <Link href="/app" className="flex items-center gap-2">
+          <Logo size={20} className="text-gold-accent" />
+          <span
+            className="font-serif text-[15px] text-app-text"
+            style={{ fontVariationSettings: '"opsz" 24, "SOFT" 80' }}
+          >
+            Privance
+          </span>
+        </Link>
+      </div>
+    </header>
+  );
+}
 
 function BottomTabBar() {
   const pathname = usePathname();
 
-  // Show only the main 4 nav items (no logout, accessible via settings)
   return (
     <nav
-      className="md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-800 flex [padding-bottom:env(safe-area-inset-bottom)]"
+      className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-app-panel-2 border-t border-app-line flex [padding-bottom:env(safe-area-inset-bottom)]"
       aria-label="Main navigation"
     >
       {NAV_ITEMS.map(({ label, href, Icon }) => {
-        const active =
-          href === "/app" ? pathname === "/app" || pathname === "/app/" : pathname.startsWith(href);
+        const active = isActive(pathname, href);
         return (
           <Link
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
             className={[
-              "flex-1 flex flex-col items-center justify-center py-2 gap-0.5 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-400 focus-visible:outline-none min-h-14",
-              active
-                ? "text-gold-600 dark:text-gold-400"
-                : "text-neutral-500 dark:text-neutral-500",
+              "flex-1 flex flex-col items-center justify-center py-2 gap-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-accent/40 min-h-14",
+              active ? "text-gold-accent" : "text-app-dim",
             ].join(" ")}
           >
-            <Icon size={22} aria-hidden="true" />
+            <Icon size={20} aria-hidden="true" />
             <span className="text-[10px] font-medium leading-none">{label}</span>
           </Link>
         );
@@ -125,10 +125,6 @@ function BottomTabBar() {
     </nav>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Layout
-// ---------------------------------------------------------------------------
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { state, logout } = useAuth();
@@ -148,17 +144,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-svh bg-neutral-50 dark:bg-neutral-950">
-      {/* Desktop sidebar */}
-      <Sidebar onLogout={handleLogout} />
-
-      {/* Main content, offset by sidebar width on desktop */}
-      <div className="md:pl-44">
-        {/* Content area; add bottom padding on mobile for the tab bar */}
-        <div className="pb-16 md:pb-0">{children}</div>
-      </div>
-
-      {/* Mobile bottom tab bar */}
+    <div className="dark min-h-svh bg-app-bg text-app-text">
+      <TopBar onLogout={handleLogout} />
+      <MobileHeader />
+      <main className="pb-16 md:pb-0">{children}</main>
       <BottomTabBar />
     </div>
   );
