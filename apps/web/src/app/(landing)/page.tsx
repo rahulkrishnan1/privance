@@ -217,7 +217,7 @@ function NavBar({ scrolled }: { scrolled: boolean }) {
         <div className="flex items-center gap-3 md:gap-5">
           <Link
             href="/auth/login"
-            className="hidden md:inline-block font-mono text-[11px] uppercase tracking-[0.18em] text-stone-400 hover:text-stone-100 transition-colors"
+            className="font-mono text-[11px] uppercase tracking-[0.18em] text-stone-400 hover:text-stone-100 transition-colors"
           >
             Sign in
           </Link>
@@ -225,7 +225,7 @@ function NavBar({ scrolled }: { scrolled: boolean }) {
             href="/auth/signup"
             className="inline-flex items-center gap-2 bg-stone-100 text-stone-950 hover:bg-white px-4 py-2 text-[13px] font-medium rounded-full transition-colors"
           >
-            Get an invite
+            Sign up
           </Link>
         </div>
       </div>
@@ -275,7 +275,7 @@ function Hero() {
           href="/auth/signup"
           className="group relative inline-flex items-center gap-3 bg-gold-accent hover:bg-gold-accent-hover text-stone-950 px-7 py-3.5 text-sm font-medium tracking-wide rounded-full transition-colors"
         >
-          Request an invite
+          Sign up
           <span aria-hidden="true" className="transition-transform group-hover:translate-x-1">
             →
           </span>
@@ -636,7 +636,7 @@ function Footer() {
                 href="/auth/signup"
                 className="group inline-flex items-center gap-3 bg-gold-accent hover:bg-gold-accent-hover text-stone-950 px-7 py-3.5 text-sm font-medium tracking-wide rounded-full transition-colors"
               >
-                Request an invite
+                Sign up
                 <span aria-hidden="true" className="transition-transform group-hover:translate-x-1">
                   →
                 </span>
