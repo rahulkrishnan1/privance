@@ -20,16 +20,25 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   }, [state, router]);
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 px-4 py-12">
+    <div className="dark relative flex min-h-svh flex-col items-center justify-center bg-app-bg text-app-text px-4 py-12">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[55vh] bg-[radial-gradient(ellipse_at_top,_rgba(230,211,154,0.08),_transparent_60%)]"
+      />
       <Link
         href="/"
         aria-label="Back to home"
-        className="mb-8 flex items-center gap-2.5 text-neutral-900 dark:text-neutral-50 transition-opacity hover:opacity-80"
+        className="relative z-10 mb-10 flex items-center gap-2.5 transition-opacity hover:opacity-80"
       >
-        <Logo size={28} className="text-gold-600 dark:text-gold-400" />
-        <span className="text-lg font-bold tracking-tight">Privance</span>
+        <Logo size={26} className="text-gold-accent" />
+        <span
+          className="font-serif text-[17px] text-app-text"
+          style={{ fontVariationSettings: '"opsz" 24, "SOFT" 80' }}
+        >
+          Privance
+        </span>
       </Link>
-      <div className="w-full max-w-md">{children}</div>
+      <div className="relative z-10 w-full max-w-md">{children}</div>
     </div>
   );
 }

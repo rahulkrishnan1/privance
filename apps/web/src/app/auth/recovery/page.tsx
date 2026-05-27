@@ -154,49 +154,45 @@ export default function RecoveryPage() {
   if (step === "new-phrase" && newPhrase !== null && pendingLogin !== undefined) {
     const numberedWords = newPhrase.split(" ").map((word, i) => ({ word, num: i + 1 }));
     return (
-      <div className="flex flex-col gap-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
-          Save your new recovery phrase
+      <div className="flex flex-col gap-8">
+        <h1
+          className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
+          style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
+        >
+          Save your new <span className="font-editorial italic text-gold-accent">phrase.</span>
         </h1>
 
         <div
           role="alert"
-          className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 px-4 py-3"
+          className="rounded-lg border border-gold-accent/30 bg-gold-accent/[0.06] px-4 py-3"
         >
-          <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+          <p className="text-[13px] text-gold-accent">
             Your old recovery phrase no longer works. Write down this new phrase now.
           </p>
         </div>
 
-        {/* 4×3 numbered grid */}
-        <fieldset className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
+        <fieldset className="rounded-xl border border-app-line bg-app-panel p-5">
           <legend className="sr-only">Recovery phrase words</legend>
           <div className="grid grid-cols-4 gap-3">
             {numberedWords.map(({ word, num }) => (
               <div key={num} className="flex flex-col gap-0.5">
-                <span className="font-mono text-[10px] text-neutral-400 dark:text-neutral-600">
-                  {num}
-                </span>
-                <span className="font-mono text-sm font-medium text-neutral-900 dark:text-neutral-50 break-all">
-                  {word}
-                </span>
+                <span className="font-mono text-[10px] text-app-dim">{num}</span>
+                <span className="font-mono text-[13px] text-app-text break-all">{word}</span>
               </div>
             ))}
           </div>
         </fieldset>
 
-        <p className="text-xs text-red-600 dark:text-red-400">
-          This phrase will not be shown again.
-        </p>
+        <p className="text-[12px] text-app-red">This phrase will not be shown again.</p>
 
         <label className="flex cursor-pointer items-start gap-3">
           <input
             type="checkbox"
             checked={newPhraseAcknowledged}
             onChange={(e) => setNewPhraseAcknowledged(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-neutral-400 accent-gold-600 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none"
+            className="mt-0.5 h-4 w-4 rounded border-app-line accent-gold-accent focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none"
           />
-          <span className="text-sm text-neutral-700 dark:text-neutral-300">
+          <span className="text-[14px] text-app-text">
             I have written down my new recovery phrase in a safe place.
           </span>
         </label>
@@ -214,26 +210,26 @@ export default function RecoveryPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
-          Recover your account
+        <h1
+          className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
+          style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
+        >
+          Recover your <span className="font-editorial italic text-gold-accent">account.</span>
         </h1>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-[14px] text-app-muted">
           Use your 12-word recovery phrase to set a new master password.
         </p>
       </div>
 
       {banner && (
-        <div
-          role="alert"
-          className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 px-4 py-3"
-        >
-          <p className="text-sm text-red-700 dark:text-red-300">{banner}</p>
+        <div role="alert" className="rounded-lg border border-app-red/40 bg-app-red/10 px-4 py-3">
+          <p className="text-[13px] text-app-red">{banner}</p>
         </div>
       )}
 
-      <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-5" noValidate>
+      <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-6" noValidate>
         <Input
           label="Username"
           type="text"
@@ -244,14 +240,14 @@ export default function RecoveryPage() {
           autoCorrect="off"
           spellCheck={false}
           maxLength={USERNAME_MAX}
-          placeholder="Username"
+          placeholder="you"
           error={usernameError}
         />
 
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <label
             htmlFor="recovery-phrase"
-            className="text-sm font-medium text-neutral-700 dark:text-neutral-300"
+            className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim"
           >
             Recovery phrase (12 words)
           </label>
@@ -268,24 +264,22 @@ export default function RecoveryPage() {
             aria-invalid={phraseError !== undefined}
             aria-describedby={phraseError !== undefined ? "phrase-error" : undefined}
             className={[
-              "w-full rounded-lg border px-3 py-2.5 font-mono text-sm text-neutral-900 dark:text-neutral-50",
-              "bg-white dark:bg-neutral-900",
-              "placeholder:text-neutral-400 dark:placeholder:text-neutral-600",
-              "resize-none transition-colors duration-150",
-              "focus-visible:ring-2 focus-visible:outline-none",
+              "w-full bg-transparent border-b px-1 py-2.5 font-mono text-sm text-app-text",
+              "placeholder:text-app-dim/70 resize-none transition-colors duration-150",
+              "focus:outline-none",
               phraseError
-                ? "border-red-500 focus-visible:ring-red-400"
+                ? "border-app-red"
                 : phrase.length > 0 && phraseValid
-                  ? "border-gold-500 focus-visible:ring-gold-400"
-                  : "border-neutral-300 dark:border-neutral-700 focus-visible:ring-neutral-400",
+                  ? "border-gold-accent"
+                  : "border-app-line focus:border-gold-accent",
             ].join(" ")}
           />
           {phraseError ? (
-            <p id="phrase-error" role="alert" className="text-sm text-red-600 dark:text-red-400">
+            <p id="phrase-error" role="alert" className="text-[13px] text-app-red">
               {phraseError}
             </p>
           ) : phrase.length > 0 && phraseValid ? (
-            <p className="text-sm text-gold-600 dark:text-gold-400">Phrase looks valid.</p>
+            <p className="text-[13px] text-gold-accent">Phrase looks valid.</p>
           ) : null}
         </div>
 
@@ -310,17 +304,17 @@ export default function RecoveryPage() {
           placeholder="Repeat your new password"
         />
 
-        <Button type="submit" loading={pending} className="w-full">
+        <Button type="submit" loading={pending} className="w-full mt-2">
           {pending ? "Recovering account…" : "Recover account"}
         </Button>
       </form>
 
-      <p className="text-center text-sm text-neutral-500">
+      <p className="text-center font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
         <Link
           href="/auth/login"
-          className="text-gold-600 dark:text-gold-400 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 rounded"
+          className="hover:text-app-text transition-colors focus-visible:outline-none focus-visible:text-gold-accent"
         >
-          Back to login
+          Back to sign in
         </Link>
       </p>
     </div>
