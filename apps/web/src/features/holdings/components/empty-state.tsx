@@ -9,17 +9,31 @@ type EmptyStateProps = {
 
 export function EmptyState({ onAdd }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 gap-4">
-      <div className="rounded-full bg-gold-accent/[0.06] p-5">
-        <TrendingUp size={40} className="text-gold-accent" />
+    <div className="flex justify-center pt-2 md:pt-4 pb-16">
+      <div className="w-full max-w-md flex flex-col items-center text-center gap-6">
+        <div className="flex items-center gap-3 font-mono text-[10px] tracking-[0.24em] uppercase text-gold-accent">
+          <span className="w-1 h-1 rounded-full bg-gold-accent" />
+          No holdings yet
+        </div>
+        <div className="w-[84px] h-[84px] rounded-full border border-gold-accent/20 bg-[radial-gradient(circle_at_50%_35%,rgba(230,211,154,0.10),rgba(230,211,154,0.02))] flex items-center justify-center text-gold-accent mb-2">
+          <TrendingUp size={32} strokeWidth={1.25} />
+        </div>
+        <div className="flex flex-col gap-3">
+          <h1
+            className="font-serif text-[36px] leading-tight font-light tracking-[-0.018em] text-app-text"
+            style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
+          >
+            Track your <span className="font-editorial italic text-gold-accent">portfolio.</span>
+          </h1>
+          <p className="text-[14px] text-app-muted leading-relaxed">
+            Add a holding to track individual stock or crypto positions across your investment
+            accounts. Live prices, day deltas, and your real cost basis.
+          </p>
+        </div>
+        <Button onClick={onAdd} aria-label="Add holding">
+          Add holding
+        </Button>
       </div>
-      <h2 className="text-xl font-semibold text-app-text">No holdings yet</h2>
-      <p className="text-sm text-app-muted text-center px-8">
-        Add your first holding to start tracking your portfolio across investment accounts.
-      </p>
-      <Button onClick={onAdd} aria-label="Add holding" size="lg">
-        Add holding
-      </Button>
     </div>
   );
 }

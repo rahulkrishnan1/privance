@@ -247,10 +247,10 @@ export async function login(
 }
 
 /**
- * Clicks the Log out button in the top bar.
+ * Clicks the Sign out button in the top bar.
  */
 export async function logout(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Log out" }).click();
+  await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL("/auth/login/", { timeout: 10_000 });
 }
 

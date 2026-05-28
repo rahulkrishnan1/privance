@@ -16,6 +16,7 @@ import {
   lookupProxyPrice,
   sortHoldings,
 } from "./_helpers";
+import { EmptyState } from "./components/empty-state";
 import { FilterChip } from "./components/filter-chip";
 import { GroupsManager } from "./components/groups-manager";
 import { type DrawerMode, HoldingDrawer } from "./components/holding-drawer";
@@ -277,9 +278,34 @@ export function HoldingsScreen() {
 
   const loading = holdingsLoading || groupsLoading || store === null;
   const anyError = holdingsError ?? groupsError;
+  const showEmptyState = !loading && anyError === null && holdings.length === 0;
+
+  if (showEmptyState) {
+    return (
+      <Screen width="wide">
+        <EmptyState
+          onAdd={() => {
+            setDrawerMode({ kind: "add" });
+            setDrawerOpen(true);
+          }}
+        />
+        <HoldingDrawer
+          open={drawerOpen}
+          mode={drawerMode}
+          investmentAccounts={investmentAccounts}
+          groups={groups}
+          onClose={() => setDrawerOpen(false)}
+          onSubmit={handleSubmit}
+          onLookupProxyPrice={handleLookupProxyPrice}
+          onCreateGroup={handleCreateGroup}
+          submitting={holdingMutations.creating || holdingMutations.updating}
+        />
+      </Screen>
+    );
+  }
 
   return (
-    <Screen scrollable={false} width="wide">
+    <Screen width="wide">
       {/* Page header */}
       <div className="flex items-center justify-between mb-4">
         <h1
@@ -303,7 +329,6 @@ export function HoldingsScreen() {
                 setDrawerOpen(true);
               }}
               aria-label="Add holding"
-              size="sm"
             >
               Add holding
             </Button>
@@ -354,12 +379,14 @@ export function HoldingsScreen() {
         </div>
       )}
 
-      <div role="toolbar" aria-label="Filter by group" className="flex flex-col gap-1 mb-4">
-        <span className="text-sm font-semibold text-app-text">Groups</span>
+      <div role="toolbar" aria-label="Filter by group" className="flex flex-col gap-2 mb-4">
+        <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
+          Groups
+        </span>
         <button
           type="button"
           onClick={() => setGroupsManagerOpen(true)}
-          className="self-start text-xs text-gold-accent mb-1 hover:underline focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none rounded cursor-pointer"
+          className="self-start text-xs text-gold-accent mb-1 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] rounded cursor-pointer"
         >
           Manage groups
         </button>

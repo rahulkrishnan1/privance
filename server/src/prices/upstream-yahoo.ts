@@ -3,8 +3,13 @@ import { UpstreamUnavailableError } from "./types.js";
 
 const YAHOO_BASE = "https://query1.finance.yahoo.com";
 // Yahoo v8 chart endpoint, one ticker per call; batch via Promise.all.
+// `range=1d` so `chartPreviousClose` aligns with the broker's "previous close"
+// (close before the only bar in the range = previous session close). With
+// wider ranges, `chartPreviousClose` is the close before the *first* bar and
+// drifts multiple sessions back. `previousClose` (preferred) matches what
+// brokers display; we read it primarily and fall back to chartPreviousClose.
 const YAHOO_CHART_PATH = (ticker: string) =>
-  `${YAHOO_BASE}/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=2d`;
+  `${YAHOO_BASE}/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`;
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -13,6 +18,8 @@ type YahooChartResponse = {
     result: Array<{
       meta?: {
         regularMarketPrice?: number;
+        previousClose?: number;
+        chartPreviousClose?: number;
         currency?: string;
       };
     }> | null;
@@ -65,10 +72,18 @@ async function fetchOneTicker(ticker: string, fetcher: FetchLike): Promise<Upstr
   const price = result[0].meta?.regularMarketPrice;
   if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) return null;
 
-  // Represent price as a fixed-8 decimal string (no floating-point arithmetic on the value).
+  // Represent prices as fixed-8 decimal strings (no floating-point arithmetic on the value).
   const decimal = price.toFixed(8);
+
+  const prev = result[0].meta?.previousClose ?? result[0].meta?.chartPreviousClose;
+  // Reject sub-cent priors (1e-8) to avoid `"0.00000000"` slipping through as
+  // a divide-by-zero hazard for downstream day-change math.
+  const previousPrice =
+    typeof prev === "number" && Number.isFinite(prev) && prev >= 1e-8 ? prev.toFixed(8) : null;
+
   return {
     price: decimal,
+    previousPrice,
     fetchedAt: new Date().toISOString(),
   };
 }

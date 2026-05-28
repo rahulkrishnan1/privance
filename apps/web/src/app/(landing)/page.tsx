@@ -245,7 +245,7 @@ function SectionLabel({ n, label }: { n: string; label: string }) {
 
 function Hero() {
   return (
-    <section className="relative px-6 md:px-10 pt-20 pb-16 md:pt-28 md:pb-24 max-w-7xl mx-auto">
+    <section className="relative px-6 md:px-10 pt-24 pb-16 md:pt-20 md:pb-20 max-w-7xl mx-auto">
       <div className="reveal-fade">
         <SectionLabel n="001" label="Privance · personal finance, encrypted" />
       </div>

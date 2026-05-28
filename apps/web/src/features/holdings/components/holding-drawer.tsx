@@ -95,14 +95,17 @@ export function HoldingDrawer({
     >
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between p-5 border-b border-app-line-soft shrink-0">
-          <h2 className="text-lg font-semibold text-app-text">
+          <h2
+            className="font-serif text-[26px] leading-tight font-light tracking-[-0.015em] text-app-text"
+            style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
+          >
             {mode.kind === "add" ? "Add holding" : "Edit holding"}
           </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="p-1 rounded-full hover:bg-white/[0.03] focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none cursor-pointer"
+            className="p-1 rounded-full hover:bg-white/[0.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] cursor-pointer"
           >
             <X size={20} className="text-app-muted" />
           </button>

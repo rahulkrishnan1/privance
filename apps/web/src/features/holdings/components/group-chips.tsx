@@ -17,10 +17,10 @@ export function GroupChip({ group, onPress, selected = false }: GroupChipProps) 
         aria-label={group.name}
         aria-pressed={selected}
         className={[
-          "inline-flex items-center justify-center rounded-full px-3 h-8 border text-xs font-medium focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:outline-none cursor-pointer whitespace-nowrap",
+          "inline-flex items-center justify-center rounded-full px-4 sm:px-5 h-9 sm:h-10 border text-xs sm:text-[13px] font-medium tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] cursor-pointer whitespace-nowrap transition-colors",
           selected
-            ? "bg-gold-600 border-gold-600 text-white"
-            : "bg-gold-50 dark:bg-gold-950 border-gold-200 dark:border-gold-800 text-gold-700 dark:text-gold-300 hover:bg-gold-100 dark:hover:bg-gold-900",
+            ? "bg-gold-accent/10 border-gold-accent text-gold-accent"
+            : "bg-transparent border-app-line text-app-muted hover:text-app-text hover:border-app-muted/40",
         ].join(" ")}
       >
         {group.name}
@@ -28,11 +28,7 @@ export function GroupChip({ group, onPress, selected = false }: GroupChipProps) 
     );
   }
 
-  return (
-    <span className="text-xs font-medium text-gold-700 dark:text-gold-300 truncate">
-      {group.name}
-    </span>
-  );
+  return <span className="text-xs font-medium text-gold-accent truncate">{group.name}</span>;
 }
 
 type GroupChipsRowProps = {

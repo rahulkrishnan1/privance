@@ -32,7 +32,11 @@ function buildQueryKey(tickers: string[]): [string, ...string[]] {
 
 function priceResponse(entries: Array<{ ticker: string; price: string }>): RefreshPricesResponse {
   return {
-    prices: entries.map((e) => ({ ...e, fetchedAt: "2026-05-16T00:00:00Z" })),
+    prices: entries.map((e) => ({
+      ...e,
+      previousPrice: null,
+      fetchedAt: "2026-05-16T00:00:00Z",
+    })),
     unknown: [],
   };
 }
@@ -102,7 +106,14 @@ describe("buildPricesMap", () => {
 
   it("omits tickers whose prices are absent in the response (unknown)", async () => {
     mockRefresh.mockResolvedValueOnce({
-      prices: [{ ticker: "AAPL", price: "182.00", fetchedAt: "2026-05-16T00:00:00Z" }],
+      prices: [
+        {
+          ticker: "AAPL",
+          price: "182.00",
+          previousPrice: null,
+          fetchedAt: "2026-05-16T00:00:00Z",
+        },
+      ],
       unknown: ["UNKNOWN_TKR"],
     });
     const map = await buildPricesMap(["AAPL", "UNKNOWN_TKR"], mockRefresh);

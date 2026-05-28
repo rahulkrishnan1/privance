@@ -46,8 +46,10 @@ type KindSegmentProps = {
 
 function KindSegmentControl({ value, onChange, disabled = false }: KindSegmentProps) {
   return (
-    <fieldset className="flex flex-col gap-1 border-0 p-0 m-0">
-      <legend className="text-sm font-medium text-app-text mb-1">Account type</legend>
+    <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
+      <legend className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim mb-1">
+        Account type
+      </legend>
       <div className="flex flex-wrap gap-2">
         {accountKindValues.map((k) => {
           const active = k === value;
@@ -60,10 +62,10 @@ function KindSegmentControl({ value, onChange, disabled = false }: KindSegmentPr
               aria-label={KIND_META[k].label}
               disabled={disabled}
               className={[
-                "px-3 py-2 rounded-lg border text-xs font-medium focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none min-h-11 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50",
+                "rounded-full border px-4 sm:px-5 h-9 sm:h-10 text-xs sm:text-[13px] font-medium tracking-tight whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50",
                 active
-                  ? "bg-gold-600 border-gold-600 text-white font-semibold"
-                  : "bg-app-panel border-app-line text-app-text",
+                  ? "bg-gold-accent/10 border-gold-accent text-gold-accent"
+                  : "bg-transparent border-app-line text-app-muted hover:text-app-text hover:border-app-muted/40",
               ].join(" ")}
             >
               {KIND_META[k].label}
@@ -103,6 +105,7 @@ export function AccountForm({
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<AccountFormValues>({
     resolver: zodResolver(accountFormSchema),
@@ -113,6 +116,14 @@ export function AccountForm({
       balance: deriveBalanceString(account),
     },
   });
+
+  const selectedKind = watch("kind");
+  const balanceLabel =
+    selectedKind === "investment"
+      ? "Cash balance"
+      : selectedKind === "manual_asset"
+        ? "Value"
+        : "Balance";
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: open is a trigger, not read in the body
   useEffect(() => {
@@ -146,8 +157,11 @@ export function AccountForm({
       aria-modal="true"
       aria-label={isEditMode ? "Edit account" : "Add account"}
     >
-      <div className="p-6 flex flex-col gap-5 [padding-bottom:max(env(safe-area-inset-bottom),5rem)] sm:[padding-bottom:1.5rem]">
-        <h2 className="text-lg font-bold text-app-text">
+      <div className="p-6 flex flex-col gap-6 [padding-bottom:max(env(safe-area-inset-bottom),5rem)] sm:[padding-bottom:1.5rem]">
+        <h2
+          className="font-serif text-[26px] leading-tight font-light tracking-[-0.015em] text-app-text"
+          style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
+        >
           {isEditMode ? "Edit account" : "Add account"}
         </h2>
 
@@ -204,13 +218,13 @@ export function AccountForm({
             )}
           />
 
-          {/* Balance */}
+          {/* Balance / Cash / Value, label varies by account kind */}
           <Controller
             control={control}
             name="balance"
             render={({ field }) => (
               <Input
-                label="Balance"
+                label={balanceLabel}
                 {...field}
                 inputMode="decimal"
                 placeholder="0.00"

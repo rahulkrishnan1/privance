@@ -49,6 +49,8 @@ export type PriceEntry = {
   ticker: string;
   /** Decimal string, e.g. "182.34" */
   price: string;
+  /** Prior session close, when upstream provides it. Decimal string. */
+  previousPrice: string | null;
   fetchedAt: string; // ISO-8601
 };
 
@@ -60,5 +62,6 @@ export type RefreshResult = {
 
 export type UpstreamPrice = {
   price: string; // decimal string
+  previousPrice: string | null;
   fetchedAt: string; // ISO-8601
 };

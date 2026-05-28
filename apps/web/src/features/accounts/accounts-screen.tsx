@@ -1,14 +1,17 @@
 "use client";
 
-import type { Account, AccountKind } from "@privance/core";
-import { useState } from "react";
+import type { Account, AccountKind, Decimal } from "@privance/core";
+import { useMemo, useState } from "react";
 import { Button, ConfirmDialog, Screen } from "@/components/index";
+import { useHoldingsQuery } from "@/features/holdings/queries";
+import { getMarketValue } from "@/lib/market-value";
+import { usePricesQuery } from "@/lib/queries/prices";
 import { AccountForm } from "./components/account-form";
 import { AccountSection } from "./components/account-section";
 import { EmptyState } from "./components/empty-state";
 import { SkeletonRow } from "./components/skeleton-row";
 import { useCreateAccount, useDeleteAccount, useUpdateAccount } from "./mutations";
-import { useAccountsQuery } from "./queries";
+import { centsToDecimal, getBalanceCents, useAccountsQuery } from "./queries";
 import { type AccountFormValues, KIND_META, SECTION_ORDER } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -26,6 +29,7 @@ type DrawerState =
 
 export function AccountsScreen() {
   const query = useAccountsQuery();
+  const { holdings } = useHoldingsQuery();
   const { create, state: createState } = useCreateAccount();
   const { update, state: updateState } = useUpdateAccount();
   const { deleteAccount } = useDeleteAccount();
@@ -33,6 +37,43 @@ export function AccountsScreen() {
   const [pendingDelete, setPendingDelete] = useState<Account | null>(null);
 
   const submitting = createState === "pending" || updateState === "pending";
+
+  // Route tickers so holdings get a current price for investment-account totals.
+  // Stock/proxy tickers go to Yahoo; crypto IDs go to CoinGecko.
+  const { yahooTickers, coingeckoTickers } = useMemo(() => {
+    const yahoo = new Set<string>();
+    const coingecko = new Set<string>();
+    for (const h of holdings) {
+      if (h.proxyTicker !== null) yahoo.add(h.proxyTicker);
+      else if (h.assetType === "crypto") coingecko.add(h.ticker);
+      else yahoo.add(h.ticker);
+    }
+    return { yahooTickers: [...yahoo], coingeckoTickers: [...coingecko] };
+  }, [holdings]);
+  const { prices } = usePricesQuery({ yahooTickers, coingeckoTickers });
+  const pricesMap = useMemo(() => {
+    const m = new Map<string, { ticker: string; price: string }>();
+    for (const [ticker, decimal] of prices) {
+      m.set(ticker, { ticker, price: decimal.toString() });
+    }
+    return m;
+  }, [prices]);
+
+  // Investment-account total = cash sweep + sum of holdings' market value.
+  const valuesByAccount = useMemo(() => {
+    if (query.status !== "success") return new Map<string, Decimal>();
+    const map = new Map<string, Decimal>();
+    for (const account of query.data) {
+      if (account.payload.kind !== "investment") continue;
+      let total = centsToDecimal(getBalanceCents(account));
+      for (const h of holdings) {
+        if (h.accountId !== account.id) continue;
+        total = total.add(getMarketValue(h, pricesMap));
+      }
+      map.set(account.id, total);
+    }
+    return map;
+  }, [query, holdings, pricesMap]);
 
   function openAdd(kind: AccountKind = "cash") {
     setDrawer({ mode: "add", defaultKind: kind });
@@ -168,10 +209,9 @@ export function AccountsScreen() {
         {SECTION_ORDER.map((kind) => (
           <AccountSection
             key={kind}
-            kind={kind}
             meta={KIND_META[kind]}
             accounts={byKind[kind]}
-            onAdd={openAdd}
+            valuesByAccount={valuesByAccount}
             onEdit={openEdit}
             onDelete={(account) => setPendingDelete(account)}
           />

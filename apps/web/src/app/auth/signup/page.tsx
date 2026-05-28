@@ -157,7 +157,7 @@ export default function SignupPage() {
             type="checkbox"
             checked={phraseAcknowledged}
             onChange={(e) => setPhraseAcknowledged(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-app-line accent-gold-accent focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none"
+            className="mt-0.5 h-4 w-4 rounded border-app-line accent-gold-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit]"
           />
           <span className="text-[14px] text-app-text">
             I have written down my recovery phrase in a safe place.
@@ -178,7 +178,10 @@ export default function SignupPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
+        <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-gold-accent">
+          Invite-only beta
+        </span>
         <h1
           className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
           style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
@@ -186,8 +189,7 @@ export default function SignupPage() {
           Create your <span className="font-editorial italic text-gold-accent">account.</span>
         </h1>
         <p className="text-[14px] text-app-muted">
-          Your master password is the only key to your data. There is no reset; only your recovery
-          phrase can restore access.
+          Your master password is the only key. Save it carefully.
         </p>
       </div>
 
@@ -208,7 +210,6 @@ export default function SignupPage() {
           autoCorrect="off"
           spellCheck={false}
           maxLength={USERNAME_MAX}
-          placeholder="you"
           error={errors.username}
         />
 
@@ -219,7 +220,6 @@ export default function SignupPage() {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
           maxLength={PASSWORD_MAX}
-          placeholder="At least 12 characters"
           error={errors.password}
         />
 
@@ -230,7 +230,6 @@ export default function SignupPage() {
           onChange={(e) => setConfirm(e.target.value)}
           autoComplete="new-password"
           maxLength={PASSWORD_MAX}
-          placeholder="Repeat your password"
         />
 
         <Input
@@ -242,7 +241,6 @@ export default function SignupPage() {
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
-          placeholder="Paste your invite code if you have one"
           error={errors.inviteToken}
         />
 

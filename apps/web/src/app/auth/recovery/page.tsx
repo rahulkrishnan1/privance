@@ -190,7 +190,7 @@ export default function RecoveryPage() {
             type="checkbox"
             checked={newPhraseAcknowledged}
             onChange={(e) => setNewPhraseAcknowledged(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-app-line accent-gold-accent focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none"
+            className="mt-0.5 h-4 w-4 rounded border-app-line accent-gold-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit]"
           />
           <span className="text-[14px] text-app-text">
             I have written down my new recovery phrase in a safe place.
@@ -240,7 +240,6 @@ export default function RecoveryPage() {
           autoCorrect="off"
           spellCheck={false}
           maxLength={USERNAME_MAX}
-          placeholder="you"
           error={usernameError}
         />
 
@@ -290,7 +289,6 @@ export default function RecoveryPage() {
           onChange={(e) => setNewPassword(e.target.value)}
           autoComplete="new-password"
           maxLength={PASSWORD_MAX}
-          placeholder="At least 12 characters"
           error={passwordError}
         />
 
@@ -301,7 +299,6 @@ export default function RecoveryPage() {
           onChange={(e) => setConfirmPassword(e.target.value)}
           autoComplete="new-password"
           maxLength={PASSWORD_MAX}
-          placeholder="Repeat your new password"
         />
 
         <Button type="submit" loading={pending} className="w-full mt-2">

@@ -26,7 +26,13 @@ function isActive(pathname: string, href: string) {
   return href === "/app" ? pathname === "/app" || pathname === "/app/" : pathname.startsWith(href);
 }
 
-function TopBar({ onLogout }: { onLogout: () => void | Promise<void> }) {
+function TopBar({
+  onLock,
+  onLogout,
+}: {
+  onLock: () => void;
+  onLogout: () => void | Promise<void>;
+}) {
   const pathname = usePathname();
 
   return (
@@ -51,7 +57,7 @@ function TopBar({ onLogout }: { onLogout: () => void | Promise<void> }) {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={[
-                  "relative px-3.5 py-2 rounded-lg text-[13.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-accent/40",
+                  "relative px-3.5 py-2 rounded-lg text-[13.5px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit]",
                   active ? "text-gold-accent" : "text-app-muted hover:text-app-text",
                 ].join(" ")}
               >
@@ -66,14 +72,24 @@ function TopBar({ onLogout }: { onLogout: () => void | Promise<void> }) {
             );
           })}
         </nav>
-        <button
-          type="button"
-          onClick={onLogout}
-          aria-label="Log out"
-          className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim hover:text-app-text transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-accent/40 rounded-sm"
-        >
-          Log out
-        </button>
+        <div className="flex items-center gap-5">
+          <button
+            type="button"
+            onClick={onLock}
+            aria-label="Lock"
+            className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim hover:text-app-text transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] rounded-sm"
+          >
+            Lock
+          </button>
+          <button
+            type="button"
+            onClick={onLogout}
+            aria-label="Sign out"
+            className="font-mono text-[10px] tracking-[0.22em] uppercase text-gold-accent hover:text-gold-accent-hover transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] rounded-sm"
+          >
+            Sign out
+          </button>
+        </div>
       </div>
     </header>
   );
@@ -113,7 +129,7 @@ function BottomTabBar() {
             href={href}
             aria-current={active ? "page" : undefined}
             className={[
-              "flex-1 flex flex-col items-center justify-center py-2 gap-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-accent/40 min-h-14",
+              "flex-1 flex flex-col items-center justify-center py-2 gap-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-gold-accent min-h-14",
               active ? "text-gold-accent" : "text-app-dim",
             ].join(" ")}
           >
@@ -127,7 +143,7 @@ function BottomTabBar() {
 }
 
 export default function AppLayout({ children }: { children: ReactNode }) {
-  const { state, logout } = useAuth();
+  const { state, lock, logout } = useAuth();
 
   useEffect(() => {
     if (state === "unauthenticated") {
@@ -145,7 +161,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="dark min-h-svh bg-app-bg text-app-text">
-      <TopBar onLogout={handleLogout} />
+      <TopBar onLock={lock} onLogout={handleLogout} />
       <MobileHeader />
       <main className="pb-16 md:pb-0">{children}</main>
       <BottomTabBar />

@@ -37,7 +37,10 @@ export type AuthState = "unauthenticated" | "locked" | "unlocked";
 export type PersistenceLevel = "memory" | "session" | "biometric";
 
 export type AuthUser = {
-  userId: string;
+  /** Absent when the auth state was rehydrated from sessionStorage in `locked`
+   *  state — only username is persisted across the lock-induced reload. login()
+   *  populates this on a successful unlock. */
+  userId?: string;
   username: string;
 };
 
@@ -101,9 +104,7 @@ export function AuthProvider({
     if (typeof window === "undefined") return null;
     const username = sessionStorage.getItem(USERNAME_KEY);
     if (sessionStorage.getItem(LOCKED_MARKER) === "1" && username !== null) {
-      // userId is unknown post-reload; /unlock only needs the username for the
-      // KDF params lookup, and login() will rehydrate userId on success.
-      return { userId: "", username };
+      return { username };
     }
     return null;
   });

@@ -74,17 +74,12 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <h1
-          className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
-          style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
-        >
-          Sign in.
-        </h1>
-        <p className="text-[14px] text-app-muted">
-          Enter your master password to unlock your vault.
-        </p>
-      </div>
+      <h1
+        className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
+        style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
+      >
+        Sign in.
+      </h1>
 
       {banner && (
         <div role="alert" className="rounded-lg border border-app-red/40 bg-app-red/10 px-4 py-3">
@@ -103,7 +98,6 @@ export default function LoginPage() {
           autoCorrect="off"
           spellCheck={false}
           maxLength={USERNAME_MAX}
-          placeholder="you"
           // credError is attached to username only (not password) to prevent field-level
           // enumeration; 401 and 404 map to the same generic message.
           error={credError}
@@ -116,7 +110,6 @@ export default function LoginPage() {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
           maxLength={PASSWORD_MAX}
-          placeholder="••••••••"
         />
 
         <Button type="submit" loading={pending} className="w-full mt-2">
@@ -136,7 +129,7 @@ export default function LoginPage() {
           href="/auth/recovery"
           className="hover:text-app-text transition-colors focus-visible:outline-none focus-visible:text-gold-accent"
         >
-          Recover
+          Recover account
         </Link>
       </p>
     </div>

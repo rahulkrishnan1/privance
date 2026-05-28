@@ -36,10 +36,10 @@ test.describe("dashboard — empty state", () => {
     await expect(page).toHaveURL("/app/", { timeout: 15_000 });
 
     // recoveryUser has no accounts → empty dashboard state
-    await expect(page.getByRole("heading", { name: "Welcome to Privance" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /Track your net worth/ })).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.getByRole("link", { name: "Add account" })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Add your first account/ })).toBeVisible();
     await ctx.close();
   });
 });
@@ -105,8 +105,8 @@ test.describe("dashboard — with data", () => {
   });
 
   test("shows the net worth tile after accounts are added", async ({ page }) => {
-    // With a cash account present, the dashboard shows the net worth tile
-    await expect(page.getByText(/Last refreshed:/)).toBeVisible({ timeout: 15_000 });
+    // With a cash account present, the dashboard shows the Net Worth label and Refresh control.
+    await expect(page.getByText("Net worth", { exact: true })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("button", { name: /Refresh prices/i })).toBeVisible();
   });
 

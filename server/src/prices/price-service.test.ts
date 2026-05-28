@@ -43,22 +43,21 @@ function createStubRepo(initial: CachedPriceRow[] = []): StubRepo {
 // Mock fetcher helpers
 // ---------------------------------------------------------------------------
 
-function yahooResponse(_ticker: string, price: number, status = 200): Response {
-  const body = {
-    chart: {
-      result: [
-        {
-          meta: {
-            regularMarketPrice: price,
-            currency: "USD",
-          },
-        },
-      ],
-      error: null,
-    },
-  };
+function yahooResponse(
+  _ticker: string,
+  price: number,
+  opts: { previousClose?: number | null; chartPreviousClose?: number | null; status?: number } = {},
+): Response {
+  const meta: Record<string, unknown> = { regularMarketPrice: price, currency: "USD" };
+  if (opts.previousClose !== undefined && opts.previousClose !== null) {
+    meta.previousClose = opts.previousClose;
+  }
+  if (opts.chartPreviousClose !== undefined && opts.chartPreviousClose !== null) {
+    meta.chartPreviousClose = opts.chartPreviousClose;
+  }
+  const body = { chart: { result: [{ meta }], error: null } };
   return new Response(JSON.stringify(body), {
-    status,
+    status: opts.status ?? 200,
     headers: { "Content-Type": "application/json" },
   });
 }
@@ -71,10 +70,16 @@ function yahooEmptyResponse(): Response {
   });
 }
 
-function coingeckoResponse(entries: Record<string, number>, status = 200): Response {
-  const body: Record<string, { usd: number }> = {};
-  for (const [id, price] of Object.entries(entries)) {
-    body[id] = { usd: price };
+function coingeckoResponse(
+  entries: Record<string, { usd: number; usd_24h_change?: number | null }>,
+  status = 200,
+): Response {
+  const body: Record<string, { usd: number; usd_24h_change?: number }> = {};
+  for (const [id, e] of Object.entries(entries)) {
+    body[id] =
+      e.usd_24h_change !== undefined && e.usd_24h_change !== null
+        ? { usd: e.usd, usd_24h_change: e.usd_24h_change }
+        : { usd: e.usd };
   }
   return new Response(JSON.stringify(body), {
     status,
@@ -290,7 +295,8 @@ describe("PriceService, partial response", () => {
 
 describe("PriceService, CoinGecko happy path", () => {
   it("returns fetched prices from CoinGecko", async () => {
-    const fetcher = async () => coingeckoResponse({ bitcoin: 65000.5, ethereum: 3200.0 });
+    const fetcher = async () =>
+      coingeckoResponse({ bitcoin: { usd: 65000.5 }, ethereum: { usd: 3200.0 } });
     const service = new PriceService({
       pricesRepo: createStubRepo(),
       fetcher,
@@ -309,7 +315,7 @@ describe("PriceService, CoinGecko happy path", () => {
   });
 
   it("places missing CoinGecko id in unknown", async () => {
-    const fetcher = async () => coingeckoResponse({ bitcoin: 65000.5 });
+    const fetcher = async () => coingeckoResponse({ bitcoin: { usd: 65000.5 } });
     const service = new PriceService({
       pricesRepo: createStubRepo(),
       fetcher,
@@ -526,7 +532,13 @@ describe("PriceService, cache layer", () => {
   it("serves from fresh cache without hitting fetcher", async () => {
     const now = new Date();
     const repo = createStubRepo([
-      { source: "yahoo", ticker: "AAPL", price: "100.00000000", fetchedAt: now },
+      {
+        source: "yahoo",
+        ticker: "AAPL",
+        previousPrice: null,
+        price: "100.00000000",
+        fetchedAt: now,
+      },
     ]);
     const fetcher = async (): Promise<Response> => {
       throw new Error("fetcher must not be called for fresh cache hit");
@@ -549,7 +561,13 @@ describe("PriceService, cache layer", () => {
   it("stale cache row triggers upstream fetch", async () => {
     const staleDate = new Date(Date.now() - 10 * 60 * 1000);
     const repo = createStubRepo([
-      { source: "yahoo", ticker: "AAPL", price: "99.00000000", fetchedAt: staleDate },
+      {
+        source: "yahoo",
+        ticker: "AAPL",
+        previousPrice: null,
+        price: "99.00000000",
+        fetchedAt: staleDate,
+      },
     ]);
     const fetcher = async (url: string | URL | Request) => {
       if (String(url).includes("AAPL")) return yahooResponse("AAPL", 182.5);
@@ -586,7 +604,13 @@ describe("PriceService, cache layer", () => {
   it("upstream UpstreamUnavailable falls back to stale cache", async () => {
     const staleDate = new Date(Date.now() - 10 * 60 * 1000);
     const repo = createStubRepo([
-      { source: "yahoo", ticker: "AAPL", price: "99.00000000", fetchedAt: staleDate },
+      {
+        source: "yahoo",
+        ticker: "AAPL",
+        previousPrice: null,
+        price: "99.00000000",
+        fetchedAt: staleDate,
+      },
     ]);
     // Yahoo per-ticker isolation swallows 5xx → upstream returns empty map.
     const fetcher = async () => new Response("error", { status: 500 });
@@ -623,7 +647,13 @@ describe("PriceService, cache layer", () => {
   it("mix: one fresh cached, one fetched", async () => {
     const now = new Date();
     const repo = createStubRepo([
-      { source: "yahoo", ticker: "AAPL", price: "100.00000000", fetchedAt: now },
+      {
+        source: "yahoo",
+        ticker: "AAPL",
+        previousPrice: null,
+        price: "100.00000000",
+        fetchedAt: now,
+      },
     ]);
     const fetcher = async (url: string | URL | Request) => {
       if (String(url).includes("MSFT")) return yahooResponse("MSFT", 420.0);
@@ -647,7 +677,13 @@ describe("PriceService, cache layer", () => {
   it("cooldown NOT consumed when fully served from cache", async () => {
     const now = new Date();
     const repo = createStubRepo([
-      { source: "yahoo", ticker: "AAPL", price: "100.00000000", fetchedAt: now },
+      {
+        source: "yahoo",
+        ticker: "AAPL",
+        previousPrice: null,
+        price: "100.00000000",
+        fetchedAt: now,
+      },
     ]);
     const fetcher = async (): Promise<Response> => {
       throw new Error("fetcher must not be called");
@@ -675,7 +711,13 @@ describe("PriceService, cache layer", () => {
   it("CoinGecko UpstreamUnavailableError falls back to cache", async () => {
     const staleDate = new Date(Date.now() - 10 * 60 * 1000);
     const repo = createStubRepo([
-      { source: "coingecko", ticker: "bitcoin", price: "60000.00000000", fetchedAt: staleDate },
+      {
+        source: "coingecko",
+        ticker: "bitcoin",
+        previousPrice: null,
+        price: "60000.00000000",
+        fetchedAt: staleDate,
+      },
     ]);
     const fetcher = async () => new Response("error", { status: 500 });
     const service = new PriceService({ pricesRepo: repo, fetcher, cooldownMs: TEST_COOLDOWN_MS });
@@ -695,7 +737,13 @@ describe("PriceService, cache layer", () => {
   it("cache hit on a different source does not satisfy the requested source", async () => {
     const now = new Date();
     const repo = createStubRepo([
-      { source: "coingecko", ticker: "AAPL", price: "999.00000000", fetchedAt: now },
+      {
+        source: "coingecko",
+        ticker: "AAPL",
+        previousPrice: null,
+        price: "999.00000000",
+        fetchedAt: now,
+      },
     ]);
     const fetcher = async (url: string | URL | Request) => {
       if (String(url).includes("AAPL")) return yahooResponse("AAPL", 180.0);
@@ -713,5 +761,139 @@ describe("PriceService, cache layer", () => {
     expect(repo.rows.has("yahoo AAPL")).toBe(true);
     expect(repo.rows.has("coingecko AAPL")).toBe(true);
     expect(service.msUntilNextRefresh("cache-user-10")).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// previousPrice round-trip across all three return paths
+// ---------------------------------------------------------------------------
+
+describe("PriceService, previousPrice round-trip", () => {
+  it("upstream-fresh path preserves Yahoo previousClose", async () => {
+    const repo = createStubRepo();
+    const fetcher = async (url: string | URL | Request) => {
+      if (String(url).includes("VOO")) return yahooResponse("VOO", 520.0, { previousClose: 519.5 });
+      return new Response("not found", { status: 404 });
+    };
+    const service = new PriceService({ pricesRepo: repo, fetcher, cooldownMs: TEST_COOLDOWN_MS });
+
+    const result = await service.refresh({ userId: "pp-1", tickers: ["VOO"], source: "yahoo" });
+
+    expect(result.prices[0]?.previousPrice).toBe("519.50000000");
+    expect(repo.rows.get("yahoo VOO")?.previousPrice).toBe("519.50000000");
+  });
+
+  it("Yahoo prefers previousClose over chartPreviousClose (the VOO 2-day-stale bug)", async () => {
+    // chartPreviousClose is 2 sessions back when range > 1d. previousClose is
+    // always the prior session close. The upstream parser must read previousClose.
+    const repo = createStubRepo();
+    const fetcher = async () =>
+      yahooResponse("VOO", 520.0, { previousClose: 519.95, chartPreviousClose: 516.15 });
+    const service = new PriceService({ pricesRepo: repo, fetcher, cooldownMs: TEST_COOLDOWN_MS });
+
+    const result = await service.refresh({ userId: "pp-2", tickers: ["VOO"], source: "yahoo" });
+
+    expect(result.prices[0]?.previousPrice).toBe("519.95000000");
+  });
+
+  it("Yahoo falls back to chartPreviousClose when previousClose is absent", async () => {
+    const repo = createStubRepo();
+    const fetcher = async () => yahooResponse("VOO", 520.0, { chartPreviousClose: 519.5 });
+    const service = new PriceService({ pricesRepo: repo, fetcher, cooldownMs: TEST_COOLDOWN_MS });
+
+    const result = await service.refresh({ userId: "pp-3", tickers: ["VOO"], source: "yahoo" });
+
+    expect(result.prices[0]?.previousPrice).toBe("519.50000000");
+  });
+
+  it("Yahoo returns null previousPrice when upstream omits both fields", async () => {
+    const repo = createStubRepo();
+    const fetcher = async () => yahooResponse("VOO", 520.0);
+    const service = new PriceService({ pricesRepo: repo, fetcher, cooldownMs: TEST_COOLDOWN_MS });
+
+    const result = await service.refresh({ userId: "pp-4", tickers: ["VOO"], source: "yahoo" });
+
+    expect(result.prices[0]?.previousPrice).toBeNull();
+  });
+
+  it("CoinGecko derives previousPrice from usd_24h_change", async () => {
+    const repo = createStubRepo();
+    // current 105, +5% → prev = 100. Use a value with a clean inverse.
+    const fetcher = async () => coingeckoResponse({ bitcoin: { usd: 105, usd_24h_change: 5 } });
+    const service = new PriceService({
+      pricesRepo: repo,
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
+
+    const result = await service.refresh({
+      userId: "pp-5",
+      tickers: ["bitcoin"],
+      source: "coingecko",
+    });
+
+    // 105 / 1.05 = 100 exactly
+    expect(result.prices[0]?.previousPrice).toBe("100.00000000");
+  });
+
+  it("CoinGecko returns null previousPrice when 24h_change is -100", async () => {
+    const repo = createStubRepo();
+    const fetcher = async () =>
+      coingeckoResponse({ doomcoin: { usd: 0.01, usd_24h_change: -100 } });
+    const service = new PriceService({
+      pricesRepo: repo,
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
+
+    const result = await service.refresh({
+      userId: "pp-6",
+      tickers: ["doomcoin"],
+      source: "coingecko",
+    });
+
+    expect(result.prices[0]?.previousPrice).toBeNull();
+  });
+
+  it("fresh-cache fast-path preserves previousPrice (CR-01 regression test)", async () => {
+    // The bug: when every requested ticker was a fresh cache hit, the service
+    // returned without previousPrice, silently breaking day-change everywhere.
+    const now = new Date();
+    const repo = createStubRepo([
+      {
+        source: "yahoo",
+        ticker: "AAPL",
+        price: "180.00000000",
+        previousPrice: "178.50000000",
+        fetchedAt: now,
+      },
+    ]);
+    const fetcher = async (): Promise<Response> => {
+      throw new Error("fetcher must not be called for fresh cache hit");
+    };
+    const service = new PriceService({ pricesRepo: repo, fetcher, cooldownMs: TEST_COOLDOWN_MS });
+
+    const result = await service.refresh({ userId: "pp-7", tickers: ["AAPL"], source: "yahoo" });
+
+    expect(result.prices[0]?.previousPrice).toBe("178.50000000");
+  });
+
+  it("stale-cache fallback path preserves previousPrice", async () => {
+    const staleDate = new Date(Date.now() - 10 * 60 * 1000);
+    const repo = createStubRepo([
+      {
+        source: "yahoo",
+        ticker: "AAPL",
+        price: "99.00000000",
+        previousPrice: "97.50000000",
+        fetchedAt: staleDate,
+      },
+    ]);
+    const fetcher = async () => new Response("error", { status: 500 });
+    const service = new PriceService({ pricesRepo: repo, fetcher, cooldownMs: TEST_COOLDOWN_MS });
+
+    const result = await service.refresh({ userId: "pp-8", tickers: ["AAPL"], source: "yahoo" });
+
+    expect(result.prices[0]?.previousPrice).toBe("97.50000000");
   });
 });

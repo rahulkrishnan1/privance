@@ -7,6 +7,8 @@ import { apiFetch } from "./client";
 export type PriceEntry = {
   ticker: string;
   price: string; // decimal string
+  /** Prior session close as decimal string, or null when upstream didn't provide it. */
+  previousPrice: string | null;
   fetchedAt: string; // ISO-8601
 };
 

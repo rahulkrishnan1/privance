@@ -5,8 +5,6 @@ import {
   type AccountId,
   AccountPayloadSchema,
   type AllocationSlice,
-  allocationByAssetClass,
-  allocationByRegion,
   asId,
   asIsoDateTime,
   computeNetWorth,
@@ -19,13 +17,12 @@ import {
   type NetWorthSnapshotId,
   NetWorthSnapshotPayloadSchema,
   SCALE_CENTS,
-  type SymbolProfile,
   type UserId,
 } from "@privance/core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePricesQuery } from "@/lib/queries/prices";
-import { useProfilesQuery } from "@/lib/queries/profiles";
 import { useSync } from "@/providers/sync-context";
+import { computeDayChangeByHoldingId, splitCashAndInvestments } from "./_math";
 import type { HistoryPoint } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -94,150 +91,163 @@ export type DashboardData =
       breakdown: ReturnType<typeof computeNetWorth>;
       holdings: Holding[];
       allocationByKind: AllocationSlice[];
-      allocationByAssetClass: AllocationSlice[];
-      allocationByRegion: AllocationSlice[];
       historyPoints: HistoryPoint[];
       snapshots: NetWorthSnapshot[];
       lastRefreshedMs: number;
+      /** Per-holding day change in cents; absent when prior price isn't available. */
+      dayChangeByHoldingId: Map<HoldingId, Decimal>;
     };
 
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 
+type DecryptedData = {
+  accounts: Account[];
+  holdings: Holding[];
+  snapshots: NetWorthSnapshot[];
+};
+
 export function useDashboardData(): DashboardData {
   const { store, initialising, decrypt, storeClock } = useSync();
   const [data, setData] = useState<DashboardData>({ status: "loading" });
+  const [decryptedData, setDecryptedData] = useState<DecryptedData | null>(null);
   const [yahooTickers, setYahooTickers] = useState<string[]>([]);
   const [coingeckoTickers, setCoingeckoTickers] = useState<string[]>([]);
-  const cancelRef = useRef(false);
 
-  const { prices } = usePricesQuery({ yahooTickers, coingeckoTickers });
-  // Yahoo's symbol-lookup powers profile metadata; CoinGecko slugs don't have
-  // exchange/sector data so we only look up the stock side.
-  const { profiles } = useProfilesQuery(yahooTickers);
+  const { prices, previousPrices } = usePricesQuery({ yahooTickers, coingeckoTickers });
 
-  const load = useCallback(async () => {
-    if (store === null) {
+  // ---------------------------------------------------------------------------
+  // Decrypt-only effect: re-runs ONLY when the local store changes (add/edit/
+  // delete via storeClock, or initialising/store identity). Crucially does NOT
+  // depend on prices, so a price tick won't re-decrypt every account/holding.
+  // storeClock is a tick signal, not read in the body.
+  // ---------------------------------------------------------------------------
+  // biome-ignore lint/correctness/useExhaustiveDependencies: storeClock is a tick signal, not read in the effect body
+  useEffect(() => {
+    if (initialising || store === null) {
       setData({ status: "loading" });
       return;
     }
 
-    cancelRef.current = false;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [rawAccounts, rawHoldings, rawSnapshots] = await Promise.all([
+          store.list({ kind: KIND_ACCOUNT }),
+          store.list({ kind: KIND_HOLDING }),
+          store.list({ kind: KIND_SNAPSHOT }),
+        ]);
+        if (cancelled) return;
+
+        const nowIso = asIsoDateTime(new Date().toISOString());
+
+        const accounts: Account[] = [];
+        for (const obj of rawAccounts) {
+          if (obj.tombstone) continue;
+          try {
+            const bytes = decrypt({
+              ciphertext: obj.ciphertext,
+              nonce: obj.nonce,
+              objectId: obj.objectId,
+              kind: KIND_ACCOUNT,
+            });
+            accounts.push(
+              parseAccount(parseJson(bytes), {
+                id: obj.objectId,
+                createdAt: nowIso,
+                lastUpdatedAt: nowIso,
+              }),
+            );
+          } catch {
+            // skip undecryptable objects
+          }
+        }
+        if (cancelled) return;
+
+        if (accounts.length === 0) {
+          setDecryptedData(null);
+          setData({ status: "empty" });
+          return;
+        }
+
+        const holdings: Holding[] = [];
+        for (const obj of rawHoldings) {
+          if (obj.tombstone) continue;
+          try {
+            const bytes = decrypt({
+              ciphertext: obj.ciphertext,
+              nonce: obj.nonce,
+              objectId: obj.objectId,
+              kind: KIND_HOLDING,
+            });
+            holdings.push(parseHolding(parseJson(bytes), obj.objectId, obj.updatedAt));
+          } catch {
+            // skip undecryptable objects
+          }
+        }
+        if (cancelled) return;
+
+        // Route tickers by asset type: stocks/ETFs (and any proxy ticker — always
+        // a public ETF) → Yahoo; crypto holdings without a proxy → CoinGecko.
+        const yahooSet = new Set<string>();
+        const coingeckoSet = new Set<string>();
+        for (const h of holdings) {
+          const p = h.payload;
+          if (p.proxyTicker !== null) yahooSet.add(p.proxyTicker);
+          else if (p.assetType === "crypto") coingeckoSet.add(p.ticker);
+          else yahooSet.add(p.ticker);
+        }
+        const nextYahoo = [...yahooSet].sort();
+        const nextCoingecko = [...coingeckoSet].sort();
+        const sameAsPrev = (prev: string[], next: string[]) =>
+          prev.length === next.length && prev.every((t, i) => t === next[i]);
+        setYahooTickers((prev) => (sameAsPrev(prev, nextYahoo) ? prev : nextYahoo));
+        setCoingeckoTickers((prev) => (sameAsPrev(prev, nextCoingecko) ? prev : nextCoingecko));
+
+        const snapshots: NetWorthSnapshot[] = [];
+        for (const obj of rawSnapshots) {
+          if (obj.tombstone) continue;
+          try {
+            const bytes = decrypt({
+              ciphertext: obj.ciphertext,
+              nonce: obj.nonce,
+              objectId: obj.objectId,
+              kind: KIND_SNAPSHOT,
+            });
+            snapshots.push(parseSnapshot(parseJson(bytes), obj.objectId));
+          } catch {
+            // skip undecryptable objects
+          }
+        }
+        if (cancelled) return;
+
+        setDecryptedData({ accounts, holdings, snapshots });
+      } catch (err) {
+        if (cancelled) return;
+        setData({
+          status: "error",
+          error: err instanceof Error ? err : new Error(String(err)),
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialising, store, decrypt, storeClock]);
+
+  // ---------------------------------------------------------------------------
+  // Compute effect: re-runs on price ticks WITHOUT re-decrypting. Reads the
+  // already-decrypted snapshot from state and rebuilds breakdown + day change.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (decryptedData === null) return;
+    const { accounts, holdings, snapshots } = decryptedData;
 
     try {
-      const [rawAccounts, rawHoldings, rawSnapshots] = await Promise.all([
-        store.list({ kind: KIND_ACCOUNT }),
-        store.list({ kind: KIND_HOLDING }),
-        store.list({ kind: KIND_SNAPSHOT }),
-      ]);
-
-      if (cancelRef.current) return;
-
-      const nowIso = asIsoDateTime(new Date().toISOString());
-
-      const accounts: Account[] = [];
-      for (const obj of rawAccounts) {
-        if (obj.tombstone) continue;
-        try {
-          const bytes = decrypt({
-            ciphertext: obj.ciphertext,
-            nonce: obj.nonce,
-            objectId: obj.objectId,
-            kind: KIND_ACCOUNT,
-          });
-          accounts.push(
-            parseAccount(parseJson(bytes), {
-              id: obj.objectId,
-              createdAt: nowIso,
-              lastUpdatedAt: nowIso,
-            }),
-          );
-        } catch {
-          // skip undecryptable objects
-        }
-      }
-
-      if (cancelRef.current) return;
-
-      if (accounts.length === 0) {
-        setData({ status: "empty" });
-        return;
-      }
-
-      const holdings: Holding[] = [];
-      for (const obj of rawHoldings) {
-        if (obj.tombstone) continue;
-        try {
-          const bytes = decrypt({
-            ciphertext: obj.ciphertext,
-            nonce: obj.nonce,
-            objectId: obj.objectId,
-            kind: KIND_HOLDING,
-          });
-          holdings.push(parseHolding(parseJson(bytes), obj.objectId, obj.updatedAt));
-        } catch {
-          // skip undecryptable objects
-        }
-      }
-
-      if (cancelRef.current) return;
-
-      // Route prices by asset type: stocks/ETFs (and any proxy ticker, which
-      // is always a public ETF) go to Yahoo; crypto holdings without a proxy
-      // go to CoinGecko using the slug stored as the ticker.
-      const yahooSet = new Set<string>();
-      const coingeckoSet = new Set<string>();
-      for (const h of holdings) {
-        const p = h.payload;
-        if (p.proxyTicker !== null) {
-          yahooSet.add(p.proxyTicker);
-        } else if (p.assetType === "crypto") {
-          coingeckoSet.add(p.ticker);
-        } else {
-          yahooSet.add(p.ticker);
-        }
-      }
-      const nextYahoo = [...yahooSet].sort();
-      const nextCoingecko = [...coingeckoSet].sort();
-      const sameAsPrev = (prev: string[], next: string[]) =>
-        prev.length === next.length && prev.every((t, i) => t === next[i]);
-      setYahooTickers((prev) => (sameAsPrev(prev, nextYahoo) ? prev : nextYahoo));
-      setCoingeckoTickers((prev) => (sameAsPrev(prev, nextCoingecko) ? prev : nextCoingecko));
-
-      const snapshots: NetWorthSnapshot[] = [];
-      for (const obj of rawSnapshots) {
-        if (obj.tombstone) continue;
-        try {
-          const bytes = decrypt({
-            ciphertext: obj.ciphertext,
-            nonce: obj.nonce,
-            objectId: obj.objectId,
-            kind: KIND_SNAPSHOT,
-          });
-          snapshots.push(parseSnapshot(parseJson(bytes), obj.objectId));
-        } catch {
-          // skip undecryptable objects
-        }
-      }
-
-      if (cancelRef.current) return;
-
       const breakdown = computeNetWorth({ accounts, holdings, prices });
-
-      // The allocation functions look up by holding.payload.ticker, but
-      // profiles are fetched against `proxyTicker || ticker`. Re-key here so
-      // every holding can find a profile regardless of proxy setup.
-      const profilesByHoldingTicker = new Map<string, SymbolProfile>();
-      for (const h of holdings) {
-        const key = h.payload.proxyTicker ?? h.payload.ticker;
-        const profile = profiles.get(key);
-        if (profile !== undefined) profilesByHoldingTicker.set(h.payload.ticker, profile);
-      }
-
       const byKind: AllocationSlice[] = buildKindSlices(breakdown);
-      const byAsset = allocationByAssetClass(holdings, prices, profilesByHoldingTicker);
-      const byRegion = allocationByRegion(holdings, prices, profilesByHoldingTicker);
 
       const historyPoints: HistoryPoint[] = snapshots
         .slice()
@@ -252,39 +262,25 @@ export function useDashboardData(): DashboardData {
           };
         });
 
+      const dayChangeByHoldingId = computeDayChangeByHoldingId(holdings, prices, previousPrices);
+
       setData({
         status: "ready",
         breakdown,
         holdings,
         allocationByKind: byKind,
-        allocationByAssetClass: byAsset,
-        allocationByRegion: byRegion,
         historyPoints,
         snapshots,
         lastRefreshedMs: breakdown.asOf,
+        dayChangeByHoldingId,
       });
     } catch (err) {
-      if (cancelRef.current) return;
       setData({
         status: "error",
         error: err instanceof Error ? err : new Error(String(err)),
       });
     }
-  }, [store, decrypt, prices, profiles]);
-
-  // storeClock ticks on every local mutation, ensuring the dashboard refreshes
-  // after add/edit/delete in any feature without waiting for a price tick.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: storeClock is a tick signal, not read in load
-  useEffect(() => {
-    if (initialising) {
-      setData({ status: "loading" });
-      return;
-    }
-    void load();
-    return () => {
-      cancelRef.current = true;
-    };
-  }, [initialising, load, storeClock]);
+  }, [decryptedData, prices, previousPrices]);
 
   return data;
 }
@@ -293,26 +289,22 @@ export function useDashboardData(): DashboardData {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function buildKindSlices(breakdown: ReturnType<typeof computeNetWorth>): AllocationSlice[] {
-  // Bucket by what the money *is*, not which account holds it:
-  // an investment account's cash sweep belongs in the Cash bucket, not
-  // Investments. Holdings market value is the only thing in Investments.
-  const investments = breakdown.byHolding.reduce(
-    (acc, h) => acc.add(h.marketValue),
-    Decimal.zero(SCALE_CENTS),
-  );
-  const investmentAccountCash = breakdown.byAccountKind.investment.sub(investments);
-  const cash = breakdown.byAccountKind.cash.add(investmentAccountCash);
-  const manualAsset = breakdown.byAccountKind.manualAsset;
-  const liability = breakdown.byAccountKind.liability;
+export type { Delta } from "./_math";
+export { deriveAggregateDeltas, splitCashAndInvestments } from "./_math";
 
-  const total = cash.add(investments).add(manualAsset).add(liability);
+// Assets-only allocation: liabilities are excluded so the pie shows parts of
+// a positive whole (gross assets). This matches every personal-finance app's
+// convention; mixing in negative liabilities would make "% of total" lie.
+function buildKindSlices(breakdown: ReturnType<typeof computeNetWorth>): AllocationSlice[] {
+  const { cash, investments } = splitCashAndInvestments(breakdown);
+  const manualAsset = breakdown.byAccountKind.manualAsset;
+
+  const total = cash.add(investments).add(manualAsset);
 
   const candidates: Array<{ label: string; value: Decimal }> = [
     { label: "Cash", value: cash },
     { label: "Investments", value: investments },
     { label: "Manual assets", value: manualAsset },
-    { label: "Liabilities", value: liability },
   ];
 
   return candidates

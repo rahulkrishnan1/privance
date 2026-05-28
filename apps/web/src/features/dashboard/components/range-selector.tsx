@@ -25,10 +25,10 @@ export function RangeSelector({ selected, onChange }: RangeSelectorProps) {
             aria-pressed={isSelected}
             aria-label={`${range} range`}
             className={[
-              "px-3 py-1.5 rounded-lg text-sm font-medium focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none cursor-pointer",
+              "px-3 py-1.5 rounded-full text-xs font-medium tracking-tight border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] cursor-pointer transition-colors",
               isSelected
-                ? "bg-gold-600 text-white border border-gold-600"
-                : "border border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800",
+                ? "bg-gold-accent/10 border-gold-accent text-gold-accent"
+                : "border-app-line text-app-muted hover:text-app-text hover:border-app-muted/40",
             ].join(" ")}
           >
             {range}

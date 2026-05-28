@@ -4,70 +4,80 @@ import type { HoldingId } from "@privance/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { Screen } from "@/components/index";
+import { RefreshButton, Screen } from "@/components/index";
 import { useCooldown } from "@/lib/use-cooldown";
-import { AllocationGrid } from "./components/allocation-grid";
+import { AllocationPie } from "./components/allocation-pie";
+import { DeltaLine } from "./components/delta-line";
 import { EmptyState } from "./components/empty-state";
 import { HistoryChart } from "./components/history-chart";
 import { NetWorthTile } from "./components/net-worth-tile";
 import {
-  AllocationGridSkeleton,
+  AllocationPieSkeleton,
   HistoryChartSkeleton,
-  NetWorthTileSkeleton,
+  KpiRowSkeleton,
   TopHoldingsSkeleton,
 } from "./components/skeletons";
+import { SummaryTile } from "./components/summary-tile";
 import { TopHoldingsTable } from "./components/top-holdings-table";
 import type { DashboardData } from "./queries";
-import { useDashboardData } from "./queries";
+import { deriveAggregateDeltas, splitCashAndInvestments, useDashboardData } from "./queries";
 
 // ---------------------------------------------------------------------------
 // Inner content
 // ---------------------------------------------------------------------------
 
-type ReadyContentProps = Extract<DashboardData, { status: "ready" }> & {
-  cooldownMs: number;
-  onRefresh: () => void;
-  refreshing: boolean;
-};
+type ReadyContentProps = Extract<DashboardData, { status: "ready" }>;
 
 function ReadyContent({
   breakdown,
   holdings,
   allocationByKind,
-  allocationByAssetClass,
-  allocationByRegion,
   historyPoints,
-  lastRefreshedMs,
-  cooldownMs,
-  onRefresh,
-  refreshing,
+  dayChangeByHoldingId,
 }: ReadyContentProps) {
-  const tickerById = useMemo(() => {
-    const m = new Map<HoldingId, string>();
-    for (const h of holdings) m.set(h.id, h.payload.ticker);
-    return m;
+  const { tickerById, groupKeyById } = useMemo(() => {
+    const tickerMap = new Map<HoldingId, string>();
+    const groupMap = new Map<HoldingId, string>();
+    for (const h of holdings) {
+      tickerMap.set(h.id, h.payload.ticker);
+      // proxyTicker is the price-fetch ticker; including it in the merge key
+      // prevents two distinct underlyings with the same display ticker from
+      // collapsing into a single row.
+      groupMap.set(h.id, `${h.payload.ticker}|${h.payload.proxyTicker ?? ""}`);
+    }
+    return { tickerById: tickerMap, groupKeyById: groupMap };
   }, [holdings]);
+
+  const { cash, investments } = useMemo(() => splitCashAndInvestments(breakdown), [breakdown]);
+
+  const { investments: investmentsDelta, netWorth: netWorthDelta } = useMemo(
+    () => deriveAggregateDeltas(breakdown, dayChangeByHoldingId),
+    [breakdown, dayChangeByHoldingId],
+  );
 
   return (
     <>
-      <NetWorthTile
-        breakdown={breakdown}
-        historyPoints={historyPoints}
-        lastRefreshedMs={lastRefreshedMs}
-        cooldownMs={cooldownMs}
-        onRefresh={onRefresh}
-        refreshing={refreshing}
-      />
-      <AllocationGrid
-        byKind={allocationByKind}
-        byAssetClass={allocationByAssetClass}
-        byRegion={allocationByRegion}
-      />
-      <HistoryChart points={historyPoints} />
+      <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr_1fr] gap-4 mb-4">
+        <NetWorthTile breakdown={breakdown} historyPoints={historyPoints} delta={netWorthDelta} />
+        <SummaryTile label="Cash" value={cash} />
+        <SummaryTile
+          label="Investments"
+          value={investments}
+          subline={investmentsDelta !== null ? <DeltaLine {...investmentsDelta} /> : null}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4 mb-4">
+        <HistoryChart points={historyPoints} />
+        <AllocationPie title="Composition" slices={allocationByKind} />
+      </div>
+
       <TopHoldingsTable
         byHolding={breakdown.byHolding}
         tickerById={tickerById}
-        totalNetWorth={breakdown.netWorth}
+        groupKeyById={groupKeyById}
+        totalInvestments={investments}
+        dayChangeByHoldingId={dayChangeByHoldingId}
       />
     </>
   );
@@ -97,12 +107,37 @@ function DashboardContent() {
     }
   }, [refreshing, cooldownMs, refreshCooldown, queryClient]);
 
+  if (data.status === "empty") {
+    return <EmptyState />;
+  }
+
+  const header = (
+    <div className="flex items-end justify-between gap-3 mb-4">
+      <h1
+        className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
+        style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
+      >
+        Dashboard
+      </h1>
+      <RefreshButton
+        cooldownMs={cooldownMs}
+        onRefresh={() => {
+          void handleRefresh();
+        }}
+        refreshing={refreshing}
+      />
+    </div>
+  );
+
   if (data.status === "loading") {
     return (
       <>
-        <NetWorthTileSkeleton />
-        <AllocationGridSkeleton />
-        <HistoryChartSkeleton />
+        {header}
+        <KpiRowSkeleton />
+        <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4 mb-4">
+          <HistoryChartSkeleton />
+          <AllocationPieSkeleton />
+        </div>
         <TopHoldingsSkeleton />
       </>
     );
@@ -110,38 +145,27 @@ function DashboardContent() {
 
   if (data.status === "error") {
     return (
-      <div className="rounded-xl border border-app-red/40 bg-app-red/10 p-4">
-        <p className="text-sm font-semibold text-app-red mb-1">Failed to load dashboard</p>
-        <p className="text-xs text-app-muted">{data.error.message}</p>
-      </div>
+      <>
+        {header}
+        <div className="rounded-xl border border-app-red/40 bg-app-red/10 p-4">
+          <p className="text-sm font-semibold text-app-red mb-1">Failed to load dashboard</p>
+          <p className="text-xs text-app-muted">{data.error.message}</p>
+        </div>
+      </>
     );
   }
 
-  if (data.status === "empty") {
-    return <EmptyState />;
-  }
-
   return (
-    <ReadyContent
-      {...data}
-      cooldownMs={cooldownMs}
-      onRefresh={() => {
-        void handleRefresh();
-      }}
-      refreshing={refreshing}
-    />
+    <>
+      {header}
+      <ReadyContent {...data} />
+    </>
   );
 }
 
 export function DashboardScreen() {
   return (
     <Screen width="wide">
-      <h1
-        className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text mb-4"
-        style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
-      >
-        Dashboard
-      </h1>
       <ErrorBoundary>
         <DashboardContent />
       </ErrorBoundary>

@@ -74,12 +74,17 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
     >
       <div className="p-5 flex flex-col gap-4 [padding-bottom:max(env(safe-area-inset-bottom),5rem)] sm:[padding-bottom:1.25rem]">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-app-text">Manage groups</h2>
+          <h2
+            className="font-serif text-[26px] leading-tight font-light tracking-[-0.015em] text-app-text"
+            style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
+          >
+            Manage groups
+          </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="p-1 rounded-full hover:bg-white/[0.03] focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none cursor-pointer"
+            className="p-1 rounded-full hover:bg-white/[0.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] cursor-pointer"
           >
             <X size={20} className="text-app-muted" />
           </button>
@@ -101,7 +106,7 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
                   onChange={(e) => setEditName(e.target.value)}
                   aria-label="Group name"
                   autoFocus
-                  className="flex-1 rounded-lg border border-gold-accent/30 px-3 py-2 text-sm text-app-text bg-app-panel-2 focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none min-h-9"
+                  className="flex-1 rounded-lg border border-gold-accent/30 px-3 py-2 text-sm text-app-text bg-app-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9"
                 />
                 <Button
                   onClick={() => void commitRename(group.id)}
@@ -116,7 +121,7 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
                   type="button"
                   onClick={cancelEdit}
                   aria-label="Cancel edit"
-                  className="rounded-lg px-3 py-2 hover:bg-white/[0.03] text-sm text-app-muted min-h-9 focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none cursor-pointer"
+                  className="rounded-lg px-3 py-2 hover:bg-white/[0.03] text-sm text-app-muted min-h-9 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -140,7 +145,7 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
                   type="button"
                   onClick={() => setPendingDelete(null)}
                   aria-label="Cancel delete"
-                  className="rounded-lg px-3 py-2 hover:bg-white/[0.03] text-sm text-app-muted min-h-9 focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none cursor-pointer"
+                  className="rounded-lg px-3 py-2 hover:bg-white/[0.03] text-sm text-app-muted min-h-9 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -152,7 +157,7 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
                   type="button"
                   onClick={() => startEdit(group)}
                   aria-label={`Rename ${group.name}`}
-                  className="px-3 py-1 rounded hover:bg-white/[0.03] text-xs text-gold-accent font-medium focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none min-h-9 cursor-pointer"
+                  className="px-3 py-1 rounded hover:bg-white/[0.03] text-xs text-gold-accent font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
                 >
                   Rename
                 </button>
@@ -163,7 +168,7 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
                     setEditingId(null);
                   }}
                   aria-label={`Delete ${group.name}`}
-                  className="px-3 py-1 rounded hover:bg-white/[0.03] text-xs text-app-red font-medium focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none min-h-9 cursor-pointer"
+                  className="px-3 py-1 rounded hover:bg-white/[0.03] text-xs text-app-red font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
                 >
                   Delete
                 </button>

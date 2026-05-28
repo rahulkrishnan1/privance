@@ -105,7 +105,7 @@ test.describe("holdings", () => {
     await expect(dialog).toBeVisible();
 
     // Type ticker — the combobox may trigger autocomplete
-    const tickerInput = dialog.getByRole("combobox", { name: "Ticker" });
+    const tickerInput = dialog.getByLabel("Ticker");
     await tickerInput.fill("AAPL");
 
     // Dismiss any autocomplete dropdown that may appear
@@ -171,7 +171,7 @@ test.describe("holdings", () => {
     const dialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(dialog).toBeVisible();
 
-    const tickerInput = dialog.getByRole("combobox", { name: "Ticker" });
+    const tickerInput = dialog.getByLabel("Ticker");
     await tickerInput.fill("MSFT");
     const listbox = dialog.locator('[role="listbox"]');
     if (await listbox.isVisible({ timeout: 1_000 }).catch(() => false)) {
@@ -202,7 +202,7 @@ test.describe("holdings", () => {
     const dialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(dialog).toBeVisible();
     const ticker = `TST${RUN.slice(-4).toUpperCase()}`;
-    await dialog.getByRole("combobox", { name: "Ticker" }).fill(ticker);
+    await dialog.getByLabel("Ticker").fill(ticker);
     const listbox = dialog.locator('[role="listbox"]');
     if (await listbox.isVisible({ timeout: 1_000 }).catch(() => false)) {
       await page.keyboard.press("Escape");
@@ -244,7 +244,7 @@ test.describe("holdings", () => {
 
     // Use a fabricated ticker so this test never collides with a real-feed holding.
     const ticker = `PXY${RUN.slice(-4).toUpperCase()}`;
-    await dialog.getByRole("combobox", { name: "Ticker" }).fill(ticker);
+    await dialog.getByLabel("Ticker").fill(ticker);
     const listbox = dialog.locator('[role="listbox"]');
     if (await listbox.isVisible({ timeout: 1_000 }).catch(() => false)) {
       await page.keyboard.press("Escape");
@@ -337,7 +337,7 @@ test.describe("holdings", () => {
     await page.getByRole("button", { name: "Add holding" }).first().click();
     const dialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(dialog).toBeVisible();
-    await dialog.getByRole("combobox", { name: "Ticker" }).fill(opts.ticker);
+    await dialog.getByLabel("Ticker").fill(opts.ticker);
     const listbox = dialog.locator('[role="listbox"]');
     if (await listbox.isVisible({ timeout: 1_000 }).catch(() => false)) {
       await page.keyboard.press("Escape");
@@ -429,7 +429,7 @@ test.describe("holdings", () => {
     const dialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(dialog).toBeVisible();
 
-    const tickerInput = dialog.getByRole("combobox", { name: "Ticker" });
+    const tickerInput = dialog.getByLabel("Ticker");
     await tickerInput.fill("AAPL");
     const listbox = dialog.locator('[role="listbox"]');
     if (await listbox.isVisible({ timeout: 1_000 }).catch(() => false)) {
@@ -459,13 +459,13 @@ test.describe("holdings", () => {
     await page.getByRole("button", { name: "Add holding" }).first().click();
     let dialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(dialog).toBeVisible();
-    await dialog.getByRole("combobox", { name: "Ticker" }).fill("WILLBEDISCARDED");
+    await dialog.getByLabel("Ticker").fill("WILLBEDISCARDED");
     await page.getByRole("button", { name: "Close" }).click();
     await expect(dialog).not.toBeVisible({ timeout: 5_000 });
 
     await page.getByRole("button", { name: "Add holding" }).first().click();
     dialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole("combobox", { name: "Ticker" })).toHaveValue("");
+    await expect(dialog.getByLabel("Ticker")).toHaveValue("");
   });
 });

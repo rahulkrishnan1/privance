@@ -68,6 +68,7 @@ export class PriceService {
         prices: freshCached.map((r) => ({
           ticker: r.ticker,
           price: r.price,
+          previousPrice: r.previousPrice,
           fetchedAt: r.fetchedAt.toISOString(),
         })),
         unknown: [],
@@ -76,7 +77,7 @@ export class PriceService {
 
     rateLimit.gateRefresh(userId, this.#cooldownMs);
 
-    let upstream: Map<string, { price: string; fetchedAt: string }>;
+    let upstream: Map<string, { price: string; previousPrice: string | null; fetchedAt: string }>;
     let upstreamFailed = false;
 
     try {
@@ -101,6 +102,7 @@ export class PriceService {
         source: dataSource,
         ticker,
         price: entry.price,
+        previousPrice: entry.previousPrice,
         fetchedAt: new Date(entry.fetchedAt),
       }));
       await this.#pricesRepo.upsertMany(newRows);
@@ -129,15 +131,30 @@ export class PriceService {
     for (const ticker of tickers) {
       const freshRow = freshMap.get(ticker);
       if (freshRow !== undefined) {
-        prices.push({ ticker, price: freshRow.price, fetchedAt: freshRow.fetchedAt.toISOString() });
+        prices.push({
+          ticker,
+          price: freshRow.price,
+          previousPrice: freshRow.previousPrice,
+          fetchedAt: freshRow.fetchedAt.toISOString(),
+        });
       } else {
         const upstreamEntry = upstream.get(ticker);
         if (upstreamEntry !== undefined) {
-          prices.push({ ticker, price: upstreamEntry.price, fetchedAt: upstreamEntry.fetchedAt });
+          prices.push({
+            ticker,
+            price: upstreamEntry.price,
+            previousPrice: upstreamEntry.previousPrice,
+            fetchedAt: upstreamEntry.fetchedAt,
+          });
         } else {
           const stale = staleByTicker.get(ticker);
           if (stale !== undefined) {
-            prices.push({ ticker, price: stale.price, fetchedAt: stale.fetchedAt.toISOString() });
+            prices.push({
+              ticker,
+              price: stale.price,
+              previousPrice: stale.previousPrice,
+              fetchedAt: stale.fetchedAt.toISOString(),
+            });
           } else {
             unknown.push(ticker);
           }

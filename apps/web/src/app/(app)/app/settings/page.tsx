@@ -1,52 +1,75 @@
 "use client";
 
-import { Screen } from "@/components/index";
+import { Button, Screen } from "@/components/index";
+import { logout as apiLogout } from "@/lib/api/auth";
+import { useAuth } from "@/providers/auth-context";
 
 const APP_VERSION = "0.1.0";
 
-/**
- * Settings page, placeholder with version and about info.
- * Full feature module ships in a future task.
- */
 export default function SettingsPage() {
+  const { lock, logout } = useAuth();
+
+  async function handleSignOut() {
+    await apiLogout().catch(() => undefined);
+    logout();
+    window.location.replace("/auth/login/");
+  }
+
   return (
     <Screen>
       <h1
-        className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text mb-6"
+        className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text mb-10"
         style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
       >
         Settings
       </h1>
 
-      <div className="flex flex-col gap-4">
-        {/* About card */}
-        <div className="rounded-xl border border-app-line bg-app-panel p-4">
-          <h2 className="text-sm font-semibold text-app-text mb-3">About</h2>
-          <div className="flex flex-col gap-2">
-            <div className="flex justify-between items-center py-1 border-b border-app-line-soft">
-              <span className="text-sm text-app-muted">App</span>
-              <span className="text-sm font-medium text-app-text">Privance</span>
+      <div className="flex flex-col gap-10">
+        <section className="flex flex-col gap-4">
+          <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
+            About
+          </span>
+          <div className="rounded-xl border border-app-line bg-app-panel divide-y divide-app-line-soft">
+            <div className="flex justify-between items-center px-5 py-4">
+              <span className="text-[14px] text-app-muted">App</span>
+              <span className="font-mono text-[13px] text-app-text">Privance</span>
             </div>
-            <div className="flex justify-between items-center py-1 border-b border-app-line-soft">
-              <span className="text-sm text-app-muted">Version</span>
-              <span className="text-sm font-medium text-app-text tabular-nums">{APP_VERSION}</span>
+            <div className="flex justify-between items-center px-5 py-4">
+              <span className="text-[14px] text-app-muted">Version</span>
+              <span className="font-mono text-[13px] tabular-nums text-app-text">
+                {APP_VERSION}
+              </span>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Security card */}
-        <div className="rounded-xl border border-app-line bg-app-panel p-4">
-          <h2 className="text-sm font-semibold text-app-text mb-3">Security</h2>
-          <p className="text-sm text-app-muted">
-            Privance uses zero-knowledge encryption. Your master password and data encryption key
-            never leave your device.
-          </p>
-        </div>
+        <section className="flex flex-col gap-4">
+          <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
+            Security
+          </span>
+          <div className="rounded-xl border border-app-line bg-app-panel p-5 flex flex-col gap-5">
+            <p className="text-[14px] text-app-muted">
+              Privance uses zero-knowledge encryption. Your master password and data-encryption key
+              never leave your device.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button variant="secondary" onClick={lock} className="sm:flex-1">
+                Lock
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => void handleSignOut()}
+                className="sm:flex-1"
+              >
+                Sign out
+              </Button>
+            </div>
+          </div>
+        </section>
 
-        {/* Coming soon card */}
-        <div className="rounded-xl border border-dashed border-app-line p-4">
-          <p className="text-sm text-app-muted text-center">More settings coming soon</p>
-        </div>
+        <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim text-center pt-4">
+          More settings coming soon
+        </p>
       </div>
     </Screen>
   );

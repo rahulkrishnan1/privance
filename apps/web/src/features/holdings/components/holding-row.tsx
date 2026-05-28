@@ -160,7 +160,7 @@ export function HoldingRow({
     <tr className="border-b border-app-line-soft hover:bg-white/[0.03]">
       {/* Ticker + name */}
       <td className="px-3 py-3">
-        <p className="text-sm font-semibold text-app-text truncate">{holding.ticker}</p>
+        <p className="font-mono text-[13px] text-app-text truncate">{holding.ticker}</p>
         {holding.name !== undefined && (
           <p className="text-xs text-app-muted truncate">{holding.name}</p>
         )}
@@ -231,7 +231,7 @@ export function HoldingRow({
             type="button"
             onClick={onEdit}
             aria-label={`Edit ${holding.ticker}`}
-            className="px-2 py-1 rounded hover:bg-white/[0.03] text-xs text-gold-accent font-medium focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none min-h-9 cursor-pointer"
+            className="px-2 py-1 rounded hover:bg-white/[0.03] text-xs text-gold-accent font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
           >
             Edit
           </button>
@@ -239,7 +239,7 @@ export function HoldingRow({
             type="button"
             onClick={onDelete}
             aria-label={`Delete ${holding.ticker}`}
-            className="px-2 py-1 rounded hover:bg-white/[0.03] text-xs text-app-red font-medium focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none min-h-9 cursor-pointer"
+            className="px-2 py-1 rounded hover:bg-white/[0.03] text-xs text-app-red font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
           >
             Delete
           </button>

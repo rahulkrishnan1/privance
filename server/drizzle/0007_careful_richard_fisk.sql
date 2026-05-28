@@ -1,0 +1,1 @@
+ALTER TABLE "prices" ADD COLUMN "previous_price" numeric(24, 8);

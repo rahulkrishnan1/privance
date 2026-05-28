@@ -31,9 +31,9 @@ const COLUMN_LABELS: Record<SortColumn, string> = {
   shares: "Shares",
   avgCost: "Avg Cost",
   currentPrice: "Price",
-  marketValue: "Market Value",
-  gainDollar: "Gain $",
-  gainPct: "Gain %",
+  marketValue: "Value",
+  gainDollar: "G/L $",
+  gainPct: "G/L %",
 };
 
 type SortableHeaderProps = {
@@ -55,7 +55,7 @@ function SortableHeader({ column, label, sort, onPress, align = "left" }: Sortab
       aria-label={`Sort by ${label}`}
       aria-pressed={active}
       className={[
-        "flex items-center gap-0.5 focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none rounded cursor-pointer w-full",
+        "flex items-center gap-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] rounded cursor-pointer w-full",
         isRight ? "justify-end" : "justify-start",
       ].join(" ")}
     >
@@ -188,7 +188,7 @@ export function HoldingsTable({
               />
             </th>
             <th scope="col" className="px-3 py-2 text-left">
-              <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
+              <span className="flex items-center font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim whitespace-nowrap">
                 Groups
               </span>
             </th>

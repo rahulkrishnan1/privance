@@ -123,11 +123,10 @@ export default function UnlockPage() {
             className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
             style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
           >
-            Unlock your <span className="font-editorial italic text-gold-accent">vault.</span>
+            Unlock your <span className="font-editorial italic text-gold-accent">account.</span>
           </h1>
           <p className="text-[14px] text-app-muted">
-            Welcome back, <span className="font-mono text-app-text">{username}</span>. Enter your
-            master password to continue.
+            Signed in as <span className="font-mono text-app-text">{username}</span>.
           </p>
         </div>
 
@@ -145,7 +144,6 @@ export default function UnlockPage() {
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
             maxLength={PASSWORD_MAX}
-            placeholder="••••••••"
             autoFocus
             error={credError}
           />

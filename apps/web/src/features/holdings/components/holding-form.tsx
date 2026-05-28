@@ -9,7 +9,6 @@ import { Button, Input } from "@/components/index";
 import type { HoldingFormValues, LocalGroup } from "../types";
 import { groupFormSchema, holdingFormSchema } from "../types";
 import { GroupChip } from "./group-chips";
-import { TickerAutocomplete } from "./ticker-autocomplete";
 
 type HoldingFormProps = {
   initialValues?: Partial<HoldingFormValues>;
@@ -131,13 +130,11 @@ export function HoldingForm({
         control={control}
         name="assetType"
         render={({ field }) => (
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-app-text">Asset type</span>
-            <div
-              role="radiogroup"
-              aria-label="Asset type"
-              className="inline-flex rounded-lg border border-app-line p-0.5 self-start"
-            >
+          <div className="flex flex-col gap-2">
+            <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
+              Asset type
+            </span>
+            <div role="radiogroup" aria-label="Asset type" className="flex gap-2 self-start">
               {(["stock", "crypto"] as const).map((type) => (
                 // biome-ignore lint/a11y/useSemanticElements: styled segmented control needs button, role+aria provide radio semantics
                 <button
@@ -147,10 +144,10 @@ export function HoldingForm({
                   aria-checked={field.value === type}
                   onClick={() => field.onChange(type)}
                   className={[
-                    "px-3 py-1.5 text-sm rounded-md min-h-9 cursor-pointer focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none",
+                    "rounded-full border px-4 sm:px-5 h-9 sm:h-10 text-xs sm:text-[13px] font-medium tracking-tight whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] cursor-pointer",
                     field.value === type
-                      ? "bg-app-text text-app-bg"
-                      : "text-app-text hover:bg-white/[0.03]",
+                      ? "bg-gold-accent/10 border-gold-accent text-gold-accent"
+                      : "bg-transparent border-app-line text-app-muted hover:text-app-text hover:border-app-muted/40",
                   ].join(" ")}
                 >
                   {type === "stock" ? "Stock" : "Crypto"}
@@ -167,9 +164,15 @@ export function HoldingForm({
           control={control}
           name="ticker"
           render={({ field }) => (
-            <TickerAutocomplete
-              value={field.value}
-              onChange={(v) => field.onChange(v.toUpperCase())}
+            <Input
+              label="Ticker"
+              {...field}
+              value={field.value ?? ""}
+              onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+              autoCapitalize="characters"
+              autoCorrect="off"
+              mono
+              placeholder="e.g. AAPL"
               error={errors.ticker?.message}
             />
           )}
@@ -201,8 +204,11 @@ export function HoldingForm({
       )}
 
       {/* Account */}
-      <div className="flex flex-col gap-1">
-        <label htmlFor="holding-account" className="text-sm font-medium text-app-text">
+      <div className="flex flex-col gap-2">
+        <label
+          htmlFor="holding-account"
+          className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim"
+        >
           Account
         </label>
         <Controller
@@ -213,9 +219,14 @@ export function HoldingForm({
               id="holding-account"
               {...field}
               className={[
-                "rounded-lg border px-3 py-2 text-sm bg-app-panel text-app-text min-h-11 focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none cursor-pointer",
-                errors.accountId ? "border-app-red/40" : "border-app-line",
+                "bg-transparent border-b px-1 py-2.5 text-[15px] text-app-text min-h-11 focus:outline-none cursor-pointer appearance-none transition-colors",
+                "bg-[length:14px] bg-[right_center] bg-no-repeat pr-7",
+                errors.accountId ? "border-app-red" : "border-app-line focus:border-gold-accent",
               ].join(" ")}
+              style={{
+                backgroundImage:
+                  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23a8a195'><path d='M5.5 7.5l4.5 4.5 4.5-4.5' stroke='%23a8a195' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
+              }}
               disabled={investmentAccounts.length === 0}
             >
               {investmentAccounts.length === 0 ? (
@@ -236,7 +247,7 @@ export function HoldingForm({
           )}
         />
         {errors.accountId && (
-          <p role="alert" className="text-sm text-app-red">
+          <p role="alert" className="text-[13px] text-app-red">
             {errors.accountId.message}
           </p>
         )}
@@ -274,7 +285,9 @@ export function HoldingForm({
 
       {/* Group picker */}
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-app-text">Group (optional)</span>
+        <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
+          Group (optional)
+        </span>
         <div className="flex flex-wrap gap-2">
           {groups.map((g) => (
             <GroupChip
@@ -288,7 +301,7 @@ export function HoldingForm({
 
         {/* Inline group creation */}
         <div className="flex flex-col gap-1 mt-1">
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-end">
             <input
               value={newGroupName}
               onChange={(e) => {
@@ -298,7 +311,7 @@ export function HoldingForm({
               placeholder="New group name"
               aria-label="New group name"
               maxLength={64}
-              className="flex-1 rounded-lg border border-app-line px-3 py-2 text-sm text-app-text bg-app-panel placeholder:text-app-dim/70 focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none min-h-9"
+              className="flex-1 bg-transparent border-b border-app-line focus:border-gold-accent px-1 py-2 text-[14px] text-app-text placeholder:text-app-dim/70 focus:outline-none transition-colors min-h-9"
             />
             <Button
               onClick={() => void handleCreateGroup()}
@@ -311,7 +324,7 @@ export function HoldingForm({
             </Button>
           </div>
           {groupNameError !== undefined && (
-            <p role="alert" className="text-sm text-app-red">
+            <p role="alert" className="text-[13px] text-app-red">
               {groupNameError}
             </p>
           )}
@@ -330,7 +343,7 @@ export function HoldingForm({
         onClick={() => setAdvancedOpen((o) => !o)}
         aria-label={advancedOpen ? "Collapse advanced options" : "Expand advanced options"}
         aria-expanded={advancedOpen}
-        className="flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-gold-accent/40 focus-visible:outline-none rounded min-h-9 cursor-pointer"
+        className="flex items-center gap-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] rounded min-h-9 cursor-pointer"
       >
         <span className="text-sm font-medium text-gold-accent">Advanced options</span>
         {advancedOpen ? (

@@ -89,12 +89,14 @@ export function HistoryChart({ points }: HistoryChartProps) {
 
   return (
     <div
-      className="rounded-xl border border-app-line bg-app-panel p-4 mb-4"
+      className="rounded-xl border border-app-line bg-app-panel p-4 flex flex-col"
       role="img"
       aria-label="Net worth history chart"
     >
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-semibold text-app-text">Net Worth History</p>
+        <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
+          Net worth history
+        </p>
       </div>
 
       <div className="mb-3">
@@ -102,13 +104,13 @@ export function HistoryChart({ points }: HistoryChartProps) {
       </div>
 
       {chartData.length === 0 ? (
-        <div className="h-48 flex items-center justify-center">
+        <div className="flex-1 min-h-[200px] flex items-center justify-center">
           <p className="text-sm text-app-muted text-center">
             Net worth history will appear after a few days of usage.
           </p>
         </div>
       ) : (
-        <div style={{ height: 200 }}>
+        <div className="flex-1 min-h-[240px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
               <CartesianGrid stroke={colors.grid} strokeDasharray="3 3" vertical={false} />
