@@ -83,7 +83,7 @@ export async function loginAndCapture(
   await page.goto("/auth/login/");
   await page.getByLabel("Username").fill(opts.username);
   await page.getByLabel("Master password").fill(opts.password);
-  await page.getByRole("button", { name: "Log in" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click();
 
   // Capture DEK bytes before the hard navigation wipes globalThis
   const dekArray = await waitForDek();
@@ -240,17 +240,17 @@ export async function login(
 
   await page.getByLabel("Username").fill(opts.username);
   await page.getByLabel("Master password").fill(opts.password);
-  await page.getByRole("button", { name: "Log in" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click();
 
   // Wait for navigation to complete (may go to "/" or back to "/auth/login/")
   await page.waitForURL(/\//, { timeout: 30_000 });
 }
 
 /**
- * Clicks the Log out button in the sidebar.
+ * Clicks the Sign out button in the top bar.
  */
 export async function logout(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Log out" }).click();
+  await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL("/auth/login/", { timeout: 10_000 });
 }
 
@@ -275,7 +275,7 @@ export async function recover(
   await page.getByRole("button", { name: "Recover account" }).click();
 
   // Argon2 × 2 derivations — allow 45 s
-  await expect(page.getByText("Save your new recovery phrase")).toBeVisible({
+  await expect(page.getByText("Save your new phrase")).toBeVisible({
     timeout: 45_000,
   });
 

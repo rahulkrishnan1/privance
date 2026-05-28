@@ -2,37 +2,57 @@
 
 function SkeletonBox({ className }: { className?: string }) {
   return (
-    <div
-      className={["bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse", className]
-        .filter(Boolean)
-        .join(" ")}
-    />
+    <div className={["bg-white/5 rounded animate-pulse", className].filter(Boolean).join(" ")} />
   );
 }
 
-export function NetWorthTileSkeleton() {
+function NetWorthSkeleton() {
   return (
     <div
-      className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 mb-4"
+      className="rounded-xl border border-app-line bg-app-panel p-4"
       role="status"
       aria-label="Loading net worth"
     >
+      <SkeletonBox className="h-3 w-20 mb-4" />
       <SkeletonBox className="h-10 w-48 mb-3" />
-      <SkeletonBox className="h-5 w-36 mb-4" />
-      <SkeletonBox className="h-16 w-full" />
+      <SkeletonBox className="h-4 w-36" />
     </div>
   );
 }
 
-export function AllocationGridSkeleton() {
+function SummaryTileSkeleton() {
+  return (
+    <div className="rounded-xl border border-app-line bg-app-panel p-4" role="status">
+      <SkeletonBox className="h-3 w-16 mb-4" />
+      <SkeletonBox className="h-7 w-32 mb-2" />
+      <SkeletonBox className="h-3 w-24" />
+    </div>
+  );
+}
+
+export function KpiRowSkeleton() {
   return (
     <div
-      className="mb-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 flex flex-col items-center"
+      className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr_1fr] gap-4 mb-4"
+      role="status"
+      aria-label="Loading dashboard summary"
+    >
+      <NetWorthSkeleton />
+      <SummaryTileSkeleton />
+      <SummaryTileSkeleton />
+    </div>
+  );
+}
+
+export function AllocationPieSkeleton() {
+  return (
+    <div
+      className="rounded-xl border border-app-line bg-app-panel p-4 flex flex-col items-center"
       role="status"
       aria-label="Loading allocation"
     >
+      <SkeletonBox className="h-3 w-20 self-start mb-4" />
       <SkeletonBox className="w-40 h-40 rounded-full mb-3" />
-      <SkeletonBox className="h-3 w-20 mb-2" />
       <SkeletonBox className="h-3 w-28" />
     </div>
   );
@@ -41,11 +61,11 @@ export function AllocationGridSkeleton() {
 export function HistoryChartSkeleton() {
   return (
     <div
-      className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 mb-4"
+      className="rounded-xl border border-app-line bg-app-panel p-4"
       role="status"
       aria-label="Loading history chart"
     >
-      <SkeletonBox className="h-5 w-32 mb-3" />
+      <SkeletonBox className="h-3 w-32 mb-3" />
       <SkeletonBox className="h-px w-full mb-3" />
       <SkeletonBox className="h-48 w-full" />
     </div>
@@ -55,7 +75,7 @@ export function HistoryChartSkeleton() {
 export function TopHoldingsSkeleton() {
   return (
     <div
-      className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4"
+      className="rounded-xl border border-app-line bg-app-panel p-4"
       role="status"
       aria-label="Loading holdings"
     >

@@ -6,6 +6,7 @@ export type CachedPriceRow = {
   source: string;
   ticker: string;
   price: string;
+  previousPrice: string | null;
   fetchedAt: Date;
 };
 
@@ -34,6 +35,7 @@ export class PricesRepo {
         target: [prices.source, prices.ticker],
         set: {
           price: sql`excluded.price`,
+          previousPrice: sql`excluded.previous_price`,
           fetchedAt: sql`excluded.fetched_at`,
         },
       });

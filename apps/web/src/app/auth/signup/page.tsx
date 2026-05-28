@@ -118,39 +118,37 @@ export default function SignupPage() {
     router.replace("/app/");
   }
 
-  // Phrase acknowledgement screen
   if (phrase !== null && pendingLogin !== undefined) {
     const numberedWords = phrase.split(" ").map((word, i) => ({ word, num: i + 1 }));
     return (
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-8">
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
-            Write down your recovery phrase
+          <h1
+            className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
+            style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
+          >
+            Write down your{" "}
+            <span className="font-editorial italic text-gold-accent">recovery phrase.</span>
           </h1>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <p className="text-[14px] text-app-muted">
             These 12 words are the only way to recover your account if you forget your master
             password. Store them somewhere safe and offline. Do not share them.
           </p>
         </div>
 
-        {/* 4×3 numbered grid */}
-        <fieldset className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
+        <fieldset className="rounded-xl border border-app-line bg-app-panel p-5">
           <legend className="sr-only">Recovery phrase words</legend>
           <div className="grid grid-cols-4 gap-3">
             {numberedWords.map(({ word, num }) => (
               <div key={num} className="flex flex-col gap-0.5">
-                <span className="font-mono text-[10px] text-neutral-400 dark:text-neutral-600">
-                  {num}
-                </span>
-                <span className="font-mono text-sm font-medium text-neutral-900 dark:text-neutral-50 break-all">
-                  {word}
-                </span>
+                <span className="font-mono text-[10px] text-app-dim">{num}</span>
+                <span className="font-mono text-[13px] text-app-text break-all">{word}</span>
               </div>
             ))}
           </div>
         </fieldset>
 
-        <p className="text-xs text-red-600 dark:text-red-400">
+        <p className="text-[12px] text-app-red">
           This phrase will not be shown again. Write it down before continuing.
         </p>
 
@@ -159,9 +157,9 @@ export default function SignupPage() {
             type="checkbox"
             checked={phraseAcknowledged}
             onChange={(e) => setPhraseAcknowledged(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-neutral-400 accent-gold-600 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none"
+            className="mt-0.5 h-4 w-4 rounded border-app-line accent-gold-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit]"
           />
-          <span className="text-sm text-neutral-700 dark:text-neutral-300">
+          <span className="text-[14px] text-app-text">
             I have written down my recovery phrase in a safe place.
           </span>
         </label>
@@ -179,27 +177,29 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
-          Create your account
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-3">
+        <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-gold-accent">
+          Invite-only beta
+        </span>
+        <h1
+          className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
+          style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
+        >
+          Create your <span className="font-editorial italic text-gold-accent">account.</span>
         </h1>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Your master password is the only key to your data. There is no reset, only your recovery
-          phrase can restore access.
+        <p className="text-[14px] text-app-muted">
+          Your master password is the only key. Save it carefully.
         </p>
       </div>
 
       {errors.banner && (
-        <div
-          role="alert"
-          className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 px-4 py-3"
-        >
-          <p className="text-sm text-red-700 dark:text-red-300">{errors.banner}</p>
+        <div role="alert" className="rounded-lg border border-app-red/40 bg-app-red/10 px-4 py-3">
+          <p className="text-[13px] text-app-red">{errors.banner}</p>
         </div>
       )}
 
-      <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-5" noValidate>
+      <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-6" noValidate>
         <Input
           label="Username"
           type="text"
@@ -210,7 +210,6 @@ export default function SignupPage() {
           autoCorrect="off"
           spellCheck={false}
           maxLength={USERNAME_MAX}
-          placeholder="Username"
           error={errors.username}
         />
 
@@ -221,7 +220,6 @@ export default function SignupPage() {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
           maxLength={PASSWORD_MAX}
-          placeholder="At least 12 characters"
           error={errors.password}
         />
 
@@ -232,7 +230,6 @@ export default function SignupPage() {
           onChange={(e) => setConfirm(e.target.value)}
           autoComplete="new-password"
           maxLength={PASSWORD_MAX}
-          placeholder="Repeat your password"
         />
 
         <Input
@@ -244,22 +241,21 @@ export default function SignupPage() {
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
-          placeholder="Paste your invite code if you have one"
           error={errors.inviteToken}
         />
 
-        <Button type="submit" loading={pending} className="w-full">
+        <Button type="submit" loading={pending} className="w-full mt-2">
           {pending ? "Creating account…" : "Create account"}
         </Button>
       </form>
 
-      <p className="text-center text-sm text-neutral-500">
+      <p className="text-center font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
         Already have an account?{" "}
         <Link
           href="/auth/login"
-          className="text-gold-600 dark:text-gold-400 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 rounded"
+          className="hover:text-app-text transition-colors focus-visible:outline-none focus-visible:text-gold-accent"
         >
-          Log in
+          Sign in
         </Link>
       </p>
     </div>

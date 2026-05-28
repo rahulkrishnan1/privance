@@ -15,10 +15,10 @@ export function FilterChip({ label, selected, onPress }: FilterChipProps) {
       aria-label={label}
       aria-pressed={selected}
       className={[
-        "inline-flex items-center justify-center rounded-full px-3 h-9 border text-sm font-medium whitespace-nowrap focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:outline-none cursor-pointer transition-colors",
+        "inline-flex items-center justify-center rounded-full px-4 sm:px-5 h-9 sm:h-10 border text-xs sm:text-[13px] font-medium tracking-tight whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] cursor-pointer transition-colors",
         selected
-          ? "bg-gold-600 border-gold-600 text-white"
-          : "bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800",
+          ? "bg-gold-accent/10 border-gold-accent text-gold-accent"
+          : "bg-transparent border-app-line text-app-muted hover:text-app-text hover:border-app-muted/40",
       ].join(" ")}
     >
       {label}

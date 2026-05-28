@@ -27,25 +27,20 @@ export function RefreshButton({ cooldownMs, onRefresh, refreshing }: RefreshButt
       }
       aria-disabled={disabled}
       className={[
-        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none cursor-pointer disabled:cursor-not-allowed",
+        "inline-flex items-center justify-center gap-2 min-h-9 px-4 py-2 sm:min-h-10 sm:px-5 rounded-full border text-[13px] sm:text-sm font-medium tracking-tight transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] cursor-pointer disabled:cursor-not-allowed",
         disabled
-          ? "border-neutral-200 dark:border-neutral-800 opacity-50"
-          : "border-gold-300 dark:border-gold-700 hover:bg-gold-50 dark:hover:bg-gold-950",
+          ? "border-app-line opacity-50"
+          : "border-gold-accent/40 text-gold-accent hover:bg-gold-accent/[0.06]",
       ].join(" ")}
     >
       <RefreshCw
         size={14}
         className={[
-          refreshing ? "animate-spin text-gold-600" : "",
-          disabled && !refreshing ? "text-neutral-400" : "text-gold-600",
+          refreshing ? "animate-spin text-gold-accent" : "",
+          disabled && !refreshing ? "text-app-dim" : "text-gold-accent",
         ].join(" ")}
       />
-      <span
-        className={[
-          "text-xs font-medium",
-          disabled ? "text-neutral-400 dark:text-neutral-600" : "text-gold-600 dark:text-gold-400",
-        ].join(" ")}
-      >
+      <span className={disabled ? "text-app-dim" : "text-gold-accent"}>
         {inCooldown ? `${secondsLeft}s` : "Refresh"}
       </span>
     </button>

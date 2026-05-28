@@ -1,15 +1,16 @@
-// Allocation chart palette. Order matters: chart slices are assigned colors
-// in this order from largest to smallest, so the brightest hues anchor the
+// Allocation chart palette. Two color families only: warm gold and cool slate.
+// Alternates between them so neighbouring slices stay distinct. Order is
+// largest-to-smallest by slice value, so the brightest tones anchor the
 // dominant slices.
 export const allocationPalette = [
-  "#34d399", // mint
-  "#3b82f6", // blue
-  "#a78bfa", // lavender
-  "#fb923c", // orange
-  "#f87171", // coral
-  "#22d3ee", // cyan
-  "#facc15", // sun
-  "#ec4899", // pink
-  "#4ade80", // green
-  "#94a3b8", // slate (fallback)
+  "#e6d39a", // gold-accent (brand, primary)
+  "#9ba5b8", // cool slate
+  "#c4b18a", // lighter gold
+  "#6e7a91", // muted slate
+  "#a39378", // dim gold
+  "#525c70", // deep slate
+  "#867963", // dark gold
+  "#7c8597", // pale slate
+  "#5d5648", // graphite gold
+  "#41485a", // ink slate (fallback)
 ] as const;

@@ -24,7 +24,7 @@ export function AllocationLegend({ slices, hoveredIndex }: AllocationLegendProps
             key={slice.label}
             className={[
               "flex items-center justify-between py-1 px-2 rounded-lg",
-              isHovered ? "bg-neutral-100 dark:bg-neutral-800" : "",
+              isHovered ? "hover:bg-white/[0.03]" : "",
             ].join(" ")}
           >
             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -33,15 +33,13 @@ export function AllocationLegend({ slices, hoveredIndex }: AllocationLegendProps
                 style={{ backgroundColor: color }}
                 aria-hidden="true"
               />
-              <span className="text-sm text-neutral-700 dark:text-neutral-300 truncate">
-                {slice.label}
-              </span>
+              <span className="text-sm text-app-text truncate">{slice.label}</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xs text-neutral-500 dark:text-neutral-400 tabular-nums">
+              <span className="text-xs text-app-muted tabular-nums">
                 {formatPercent(slice.share)}
               </span>
-              <span className="text-sm font-medium text-neutral-900 dark:text-neutral-50 tabular-nums">
+              <span className="text-sm font-medium text-app-text tabular-nums">
                 {formatCurrency(slice.value)}
               </span>
             </div>

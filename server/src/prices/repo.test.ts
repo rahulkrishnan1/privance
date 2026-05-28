@@ -75,7 +75,13 @@ describe("PricesRepo round-trip", () => {
   it("upsertMany then getMany returns the inserted row with exact values", async () => {
     const fetchedAt = new Date("2025-01-15T12:00:00.000Z");
     await repo.upsertMany([
-      { source: TEST_SOURCE_A, ticker: TEST_TICKER, price: "182.34500000", fetchedAt },
+      {
+        source: TEST_SOURCE_A,
+        ticker: TEST_TICKER,
+        price: "182.34500000",
+        previousPrice: "180.10000000",
+        fetchedAt,
+      },
     ]);
 
     const rows = await repo.getMany({ source: TEST_SOURCE_A, tickers: [TEST_TICKER] });
@@ -84,6 +90,7 @@ describe("PricesRepo round-trip", () => {
     expect(row?.source).toBe(TEST_SOURCE_A);
     expect(row?.ticker).toBe(TEST_TICKER);
     expect(row?.price).toBe("182.34500000");
+    expect(row?.previousPrice).toBe("180.10000000");
     expect(row?.fetchedAt.toISOString()).toBe(fetchedAt.toISOString());
   });
 
@@ -92,10 +99,22 @@ describe("PricesRepo round-trip", () => {
     const second = new Date("2025-01-15T11:00:00.000Z");
 
     await repo.upsertMany([
-      { source: TEST_SOURCE_A, ticker: TEST_TICKER, price: "100.00000000", fetchedAt: first },
+      {
+        source: TEST_SOURCE_A,
+        ticker: TEST_TICKER,
+        previousPrice: null,
+        price: "100.00000000",
+        fetchedAt: first,
+      },
     ]);
     await repo.upsertMany([
-      { source: TEST_SOURCE_A, ticker: TEST_TICKER, price: "200.00000000", fetchedAt: second },
+      {
+        source: TEST_SOURCE_A,
+        ticker: TEST_TICKER,
+        previousPrice: null,
+        price: "200.00000000",
+        fetchedAt: second,
+      },
     ]);
 
     const rows = await repo.getMany({ source: TEST_SOURCE_A, tickers: [TEST_TICKER] });
@@ -113,8 +132,20 @@ describe("PricesRepo multi-source isolation", () => {
   it("getMany by source only returns rows for that source", async () => {
     const fetchedAt = new Date("2025-01-15T12:00:00.000Z");
     await repo.upsertMany([
-      { source: TEST_SOURCE_A, ticker: TEST_TICKER, price: "400.00000000", fetchedAt },
-      { source: TEST_SOURCE_B, ticker: TEST_TICKER, price: "999.00000000", fetchedAt },
+      {
+        source: TEST_SOURCE_A,
+        ticker: TEST_TICKER,
+        price: "400.00000000",
+        previousPrice: null,
+        fetchedAt,
+      },
+      {
+        source: TEST_SOURCE_B,
+        ticker: TEST_TICKER,
+        price: "999.00000000",
+        previousPrice: null,
+        fetchedAt,
+      },
     ]);
 
     const yahooRows = await repo.getMany({ source: TEST_SOURCE_A, tickers: [TEST_TICKER] });

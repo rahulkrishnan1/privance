@@ -31,9 +31,9 @@ const COLUMN_LABELS: Record<SortColumn, string> = {
   shares: "Shares",
   avgCost: "Avg Cost",
   currentPrice: "Price",
-  marketValue: "Market Value",
-  gainDollar: "Gain $",
-  gainPct: "Gain %",
+  marketValue: "Value",
+  gainDollar: "G/L $",
+  gainPct: "G/L %",
 };
 
 type SortableHeaderProps = {
@@ -55,22 +55,22 @@ function SortableHeader({ column, label, sort, onPress, align = "left" }: Sortab
       aria-label={`Sort by ${label}`}
       aria-pressed={active}
       className={[
-        "flex items-center gap-0.5 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none rounded cursor-pointer w-full",
+        "flex items-center gap-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] rounded cursor-pointer w-full",
         isRight ? "justify-end" : "justify-start",
       ].join(" ")}
     >
       <span
         className={[
-          "text-xs font-semibold uppercase tracking-wide whitespace-nowrap",
-          active ? "text-gold-600 dark:text-gold-400" : "text-neutral-500 dark:text-neutral-400",
+          "font-mono text-[10px] tracking-[0.22em] uppercase whitespace-nowrap",
+          active ? "text-gold-accent" : "text-app-dim",
         ].join(" ")}
       >
         {label}
       </span>
       {active && sort.direction === "asc" ? (
-        <ChevronUp size={10} className="text-gold-600" />
+        <ChevronUp size={10} className="text-gold-accent" />
       ) : active ? (
-        <ChevronDown size={10} className="text-gold-600" />
+        <ChevronDown size={10} className="text-gold-accent" />
       ) : null}
     </button>
   );
@@ -116,7 +116,7 @@ export function HoldingsTable({
     <div className="overflow-x-auto">
       <table aria-label="Holdings" className="w-full min-w-[960px]">
         <thead>
-          <tr className="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
+          <tr className="border-b border-app-line">
             <th scope="col" className="px-3 py-2 text-left">
               <SortableHeader
                 column="ticker"
@@ -188,7 +188,7 @@ export function HoldingsTable({
               />
             </th>
             <th scope="col" className="px-3 py-2 text-left">
-              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+              <span className="flex items-center font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim whitespace-nowrap">
                 Groups
               </span>
             </th>

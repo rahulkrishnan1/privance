@@ -16,6 +16,18 @@ export function formatCurrency(d: Decimal, currency = "USD"): string {
   }).format(Number(d.toString()));
 }
 
+// en-US Intl currency output always uses "." as the decimal mark, so split on
+// the last "." to peel off the cents segment.
+export function formatCurrencyParts(
+  d: Decimal,
+  currency = "USD",
+): { whole: string; cents: string } {
+  const full = formatCurrency(d, currency);
+  const idx = full.lastIndexOf(".");
+  if (idx === -1) return { whole: full, cents: "" };
+  return { whole: full.slice(0, idx), cents: full.slice(idx) };
+}
+
 /**
  * Format a ratio in [0, 1] as a percentage with 2 decimal places.
  * `signed: true` prepends "+" for positive non-zero values.

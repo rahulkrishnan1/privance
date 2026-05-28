@@ -268,3 +268,202 @@ describe("account fixtures", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// deriveAggregateDeltas — the math the dashboard depends on
+// ---------------------------------------------------------------------------
+
+import { deriveAggregateDeltas } from "./_math";
+
+type BreakdownLike = Parameters<typeof deriveAggregateDeltas>[0];
+
+function mockBreakdown(opts: {
+  byHolding: ReadonlyArray<{ id: string; marketValueCents: string }>;
+  netWorthCents: string;
+}): BreakdownLike {
+  return {
+    netWorth: Decimal.fromMinorUnits(BigInt(opts.netWorthCents), SCALE_CENTS),
+    byHolding: opts.byHolding.map((h) =>
+      makeHoldingValuation(h.id, h.marketValueCents, "0"),
+    ) as BreakdownLike["byHolding"],
+    // Fields below aren't read by deriveAggregateDeltas; cast keeps the shape.
+  } as BreakdownLike;
+}
+
+function dayChangeMap(entries: Array<[string, string]>): Map<HoldingId, Decimal> {
+  const m = new Map<HoldingId, Decimal>();
+  for (const [id, cents] of entries) {
+    m.set(asId<HoldingId>(id), Decimal.fromMinorUnits(BigInt(cents), SCALE_CENTS));
+  }
+  return m;
+}
+
+describe("deriveAggregateDeltas", () => {
+  it("returns null deltas when no holdings have prior-price data", () => {
+    const breakdown = mockBreakdown({
+      byHolding: [{ id: "h1", marketValueCents: "1000000" }],
+      netWorthCents: "1500000",
+    });
+    const { investments, netWorth } = deriveAggregateDeltas(breakdown, new Map());
+    expect(investments).toBeNull();
+    expect(netWorth).toBeNull();
+  });
+
+  it("computes %s only over the SUBSET with prior-price data (regression: partial coverage)", () => {
+    // h1: today 100, dayChange +1.50 → yesterday 98.50, +1.5234% on h1
+    // h2: NO prior price — must NOT contribute to either numerator or denominator
+    const breakdown = mockBreakdown({
+      byHolding: [
+        { id: "h1", marketValueCents: "10000" }, // $100.00
+        { id: "h2", marketValueCents: "5000" }, // $50.00, no prev
+      ],
+      netWorthCents: "15000", // = $150.00 total investments, no cash
+    });
+    const dc = dayChangeMap([["h1", "150"]]); // +$1.50 on h1
+    const { investments, netWorth } = deriveAggregateDeltas(breakdown, dc);
+
+    expect(investments).not.toBeNull();
+    expect(investments?.dollar.toString()).toBe("1.50");
+    // Investments % = 1.50 / 98.50 = 0.01522843…
+    expect(investments?.pct).toBeCloseTo(1.5 / 98.5, 10);
+    // The wrong (full-portfolio) denominator would give 1.5 / 148.5 = 0.0101…
+    expect(investments?.pct).not.toBeCloseTo(1.5 / 148.5, 5);
+
+    // NetWorth dollar same as Investments dollar (only investments moved).
+    // NetWorth denominator = prev-of-subset ($98.50) + non-subset MV ($50.00) = $148.50.
+    expect(netWorth?.dollar.toString()).toBe("1.50");
+    expect(netWorth?.pct).toBeCloseTo(1.5 / 148.5, 10);
+  });
+
+  it("handles a red day (negative aggregate)", () => {
+    const breakdown = mockBreakdown({
+      byHolding: [{ id: "h1", marketValueCents: "10000" }],
+      netWorthCents: "10000",
+    });
+    const dc = dayChangeMap([["h1", "-200"]]); // -$2.00 on h1; yesterday was $102
+    const { investments, netWorth } = deriveAggregateDeltas(breakdown, dc);
+
+    expect(investments?.dollar.isNegative()).toBe(true);
+    expect(investments?.pct).toBeLessThan(0);
+    expect(investments?.pct).toBeCloseTo(-2 / 102, 10);
+    expect(netWorth?.pct).toBeCloseTo(-2 / 102, 10);
+  });
+
+  it("net worth %'s denominator includes non-market kinds at today's value", () => {
+    // Investments $100 (with prev $98.50), Cash $1000 (no intraday move).
+    // Net Worth = $1100, NetWorth_yesterday = $98.50 + $1000 = $1098.50.
+    const breakdown = mockBreakdown({
+      byHolding: [{ id: "h1", marketValueCents: "10000" }],
+      netWorthCents: "110000",
+    });
+    const dc = dayChangeMap([["h1", "150"]]);
+    const { netWorth } = deriveAggregateDeltas(breakdown, dc);
+
+    expect(netWorth?.pct).toBeCloseTo(1.5 / 1098.5, 10);
+  });
+
+  it("returns null when prior-investments computes to zero (would div-by-zero)", () => {
+    // Pathological: today's investments = today's change (yesterday was 0).
+    const breakdown = mockBreakdown({
+      byHolding: [{ id: "h1", marketValueCents: "10000" }],
+      netWorthCents: "10000",
+    });
+    const dc = dayChangeMap([["h1", "10000"]]); // mvCovered − dollar = 0
+    const { investments, netWorth } = deriveAggregateDeltas(breakdown, dc);
+    expect(investments).toBeNull();
+    expect(netWorth).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeDayChangeByHoldingId — verifies proxy + scaleFactor + missing prev
+// ---------------------------------------------------------------------------
+
+import type { Holding } from "@privance/core";
+import { asIsoDateTime as _ts } from "@privance/core";
+import { computeDayChangeByHoldingId } from "./_math";
+
+type HoldingMinPayload = {
+  ticker: string;
+  proxyTicker: string | null;
+  sharesMajor: string;
+  sharesScale: number;
+  scaleFactor: string | undefined;
+};
+
+function makeStockHolding(id: string, p: HoldingMinPayload): Holding {
+  const ts = _ts(new Date(0).toISOString());
+  // Cast through unknown: payload shape is broader (cost basis, asset type,
+  // groupId, etc.) but computeDayChangeByHoldingId only reads ticker/proxy/
+  // shares/scaleFactor, so we keep the fixture minimal.
+  return {
+    id: asId<HoldingId>(id),
+    userId: asId<UserId>("user-1"),
+    createdAt: ts,
+    updatedAt: ts,
+    payload: p,
+  } as unknown as Holding;
+}
+
+describe("computeDayChangeByHoldingId", () => {
+  it("non-proxy stock: shares × (cur − prev)", () => {
+    const h = makeStockHolding("h1", {
+      ticker: "AAPL",
+      proxyTicker: null,
+      sharesMajor: "10",
+      sharesScale: 4,
+      scaleFactor: undefined,
+    });
+    const cur = new Map([["AAPL", Decimal.fromString("180.00", 8)]]);
+    const prev = new Map([["AAPL", Decimal.fromString("178.50", 8)]]);
+    const out = computeDayChangeByHoldingId([h], cur, prev);
+    // 10 × (180 − 178.50) = 15.00
+    expect(out.get(asId<HoldingId>("h1"))?.toString()).toBe("15.00");
+  });
+
+  it("proxy holding: scaleFactor applied at SCALE_CRYPTO before shares mul", () => {
+    // COMPANY401K tracks VOO with scale 0.07253775 (= NAV $50 / VOO $689.20)
+    const h = makeStockHolding("h2", {
+      ticker: "COMPANY401K",
+      proxyTicker: "VOO",
+      sharesMajor: "100",
+      sharesScale: 4,
+      scaleFactor: "0.07253775",
+    });
+    const cur = new Map([["VOO", Decimal.fromString("689.20", 8)]]);
+    const prev = new Map([["VOO", Decimal.fromString("689.99", 8)]]);
+    const out = computeDayChangeByHoldingId([h], cur, prev);
+    // 100 × (689.20 − 689.99) × 0.07253775 = 100 × -0.79 × 0.07253775 = -5.7305
+    // Rounded to cents = -5.73
+    expect(out.get(asId<HoldingId>("h2"))?.toString()).toBe("-5.73");
+  });
+
+  it("omits holdings without a prior price (renders em-dash on the row)", () => {
+    const h = makeStockHolding("h3", {
+      ticker: "NEWLY_ADDED",
+      proxyTicker: null,
+      sharesMajor: "5",
+      sharesScale: 4,
+      scaleFactor: undefined,
+    });
+    const cur = new Map([["NEWLY_ADDED", Decimal.fromString("100.00", 8)]]);
+    const prev = new Map<string, Decimal>(); // no prior
+    const out = computeDayChangeByHoldingId([h], cur, prev);
+    expect(out.has(asId<HoldingId>("h3"))).toBe(false);
+  });
+
+  it("crypto holding (uses .ticker, no proxy): full fractional shares", () => {
+    const h = makeStockHolding("h4", {
+      ticker: "bitcoin",
+      proxyTicker: null,
+      sharesMajor: "0.5",
+      sharesScale: 8,
+      scaleFactor: undefined,
+    });
+    const cur = new Map([["bitcoin", Decimal.fromString("72792.00", 8)]]);
+    const prev = new Map([["bitcoin", Decimal.fromString("74972.16", 8)]]);
+    const out = computeDayChangeByHoldingId([h], cur, prev);
+    // 0.5 × (72792 − 74972.16) = 0.5 × -2180.16 = -1090.08
+    expect(out.get(asId<HoldingId>("h4"))?.toString()).toBe("-1090.08");
+  });
+});

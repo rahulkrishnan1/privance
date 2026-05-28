@@ -14,19 +14,19 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-gold-600 text-white hover:bg-gold-700 active:bg-gold-800 disabled:opacity-50 focus-visible:ring-gold-500",
+    "bg-gold-accent text-app-bg hover:bg-gold-accent-hover active:bg-gold-accent disabled:opacity-50 focus-visible:outline-gold-accent",
   secondary:
-    "bg-transparent border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-50 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50 focus-visible:ring-neutral-400",
+    "bg-transparent border border-app-line text-app-text hover:border-app-muted/40 hover:bg-white/[0.03] disabled:opacity-50 focus-visible:outline-gold-accent",
   danger:
-    "bg-red-600 text-white hover:bg-red-700 active:bg-red-800 disabled:opacity-50 focus-visible:ring-red-400",
+    "bg-app-red text-app-bg hover:bg-app-red/90 active:bg-app-red disabled:opacity-50 focus-visible:ring-app-red/40",
   ghost:
-    "bg-transparent text-gold-600 dark:text-gold-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50 focus-visible:ring-neutral-400",
+    "bg-transparent text-app-muted hover:text-app-text disabled:opacity-50 focus-visible:outline-gold-accent",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "min-h-9 px-3 py-2 text-sm",
-  md: "min-h-11 px-4 py-3 text-sm",
-  lg: "min-h-12 px-5 py-3 text-base",
+  sm: "min-h-8 px-3 py-1.5 text-[12px] sm:min-h-9 sm:text-[13px]",
+  md: "min-h-9 px-4 py-2 text-[13px] sm:min-h-10 sm:px-5 sm:text-sm",
+  lg: "min-h-10 px-5 py-2 text-sm sm:min-h-11 sm:px-7 sm:py-2.5",
 };
 
 export function Button({
@@ -45,7 +45,7 @@ export function Button({
       {...rest}
       disabled={isDisabled}
       className={[
-        "inline-flex items-center justify-center rounded-lg font-semibold",
+        "inline-flex items-center justify-center rounded-full font-medium tracking-tight",
         "transition-colors duration-150",
         "focus-visible:ring-2 focus-visible:outline-none",
         "cursor-pointer disabled:cursor-not-allowed",

@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  HoldingGroupPayloadSchema,
-  HoldingPayloadSchema,
-  type SymbolProfile,
-} from "@privance/core";
-import { useQuery } from "@tanstack/react-query";
+import { HoldingGroupPayloadSchema, HoldingPayloadSchema } from "@privance/core";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { lookupProfiles } from "@/lib/api/profiles";
 import { useSync } from "@/providers/sync-context";
 import type { LocalGroup, LocalHolding } from "./types";
 import { KIND_GROUP, KIND_HOLDING } from "./types";
@@ -204,32 +198,4 @@ export function useGroupsQuery(): GroupsQueryResult {
   }, [store, initialising, decrypt, tick]);
 
   return { groups, loading, error, reload };
-}
-
-// ---------------------------------------------------------------------------
-// useTickerLookup
-// ---------------------------------------------------------------------------
-
-export function useTickerLookup(query: string): {
-  results: SymbolProfile[];
-  fetching: boolean;
-} {
-  const trimmed = query.trim().toUpperCase();
-  const enabled = trimmed.length >= 1;
-
-  const { data, isFetching } = useQuery({
-    queryKey: ["ticker-lookup", trimmed],
-    queryFn: async () => {
-      const res = await lookupProfiles([trimmed]);
-      return res.profiles;
-    },
-    enabled,
-    staleTime: 5 * 60 * 1000,
-    placeholderData: (prev) => prev,
-  });
-
-  return {
-    results: data ?? [],
-    fetching: isFetching,
-  };
 }

@@ -195,7 +195,7 @@ test.describe("auth — logout", () => {
     await logout(page);
 
     // After logout the login page is shown
-    await expect(page.getByRole("heading", { name: "Log in" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Sign in/ })).toBeVisible();
     await ctx.close();
 
     // Open a fresh context (no DEK, no valid session) and verify "/" redirects to login.
@@ -248,7 +248,7 @@ test.describe("auth — protected route redirects", () => {
 
     // /unlock/ verifies the server session and shows the unlock form
     await page.goto("/unlock/");
-    await expect(page.getByRole("heading", { name: "Unlock Privance" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /Unlock your/ })).toBeVisible({
       timeout: 10_000,
     });
 

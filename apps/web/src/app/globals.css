@@ -13,6 +13,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-fraunces);
+  --font-editorial: var(--font-spectral);
 
   /* Gold, Privance brand palette. Warm, rich royal gold; primary = 600. */
   --color-gold-50: #fdf9ec;
@@ -27,9 +29,21 @@
   --color-gold-900: #5d4516;
   --color-gold-950: #2a2009;
 
-  /* Brand accent (pale luxury). Used on the landing. */
+  /* Brand accent (pale luxury). */
   --color-gold-accent: #e6d39a;
   --color-gold-accent-hover: #f0e3b0;
+
+  /* In-app surface palette. Obsidian; subtle cool undertone. */
+  --color-app-bg: #08090c;
+  --color-app-panel: #11131a;
+  --color-app-panel-2: #181b24;
+  --color-app-text: #eef0f5;
+  --color-app-muted: #9fa3b0;
+  --color-app-dim: #696c79;
+  --color-app-line: rgba(255, 255, 255, 0.07);
+  --color-app-line-soft: rgba(255, 255, 255, 0.04);
+  --color-app-green: #6cc46a;
+  --color-app-red: #d97766;
 }
 
 .dark {

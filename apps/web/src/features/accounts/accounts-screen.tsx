@@ -1,14 +1,17 @@
 "use client";
 
-import type { Account, AccountKind } from "@privance/core";
-import { useState } from "react";
+import type { Account, AccountKind, Decimal } from "@privance/core";
+import { useMemo, useState } from "react";
 import { Button, ConfirmDialog, Screen } from "@/components/index";
+import { useHoldingsQuery } from "@/features/holdings/queries";
+import { getMarketValue } from "@/lib/market-value";
+import { usePricesQuery } from "@/lib/queries/prices";
 import { AccountForm } from "./components/account-form";
 import { AccountSection } from "./components/account-section";
 import { EmptyState } from "./components/empty-state";
 import { SkeletonRow } from "./components/skeleton-row";
 import { useCreateAccount, useDeleteAccount, useUpdateAccount } from "./mutations";
-import { useAccountsQuery } from "./queries";
+import { centsToDecimal, getBalanceCents, useAccountsQuery } from "./queries";
 import { type AccountFormValues, KIND_META, SECTION_ORDER } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -26,6 +29,7 @@ type DrawerState =
 
 export function AccountsScreen() {
   const query = useAccountsQuery();
+  const { holdings } = useHoldingsQuery();
   const { create, state: createState } = useCreateAccount();
   const { update, state: updateState } = useUpdateAccount();
   const { deleteAccount } = useDeleteAccount();
@@ -33,6 +37,43 @@ export function AccountsScreen() {
   const [pendingDelete, setPendingDelete] = useState<Account | null>(null);
 
   const submitting = createState === "pending" || updateState === "pending";
+
+  // Route tickers so holdings get a current price for investment-account totals.
+  // Stock/proxy tickers go to Yahoo; crypto IDs go to CoinGecko.
+  const { yahooTickers, coingeckoTickers } = useMemo(() => {
+    const yahoo = new Set<string>();
+    const coingecko = new Set<string>();
+    for (const h of holdings) {
+      if (h.proxyTicker !== null) yahoo.add(h.proxyTicker);
+      else if (h.assetType === "crypto") coingecko.add(h.ticker);
+      else yahoo.add(h.ticker);
+    }
+    return { yahooTickers: [...yahoo], coingeckoTickers: [...coingecko] };
+  }, [holdings]);
+  const { prices } = usePricesQuery({ yahooTickers, coingeckoTickers });
+  const pricesMap = useMemo(() => {
+    const m = new Map<string, { ticker: string; price: string }>();
+    for (const [ticker, decimal] of prices) {
+      m.set(ticker, { ticker, price: decimal.toString() });
+    }
+    return m;
+  }, [prices]);
+
+  // Investment-account total = cash sweep + sum of holdings' market value.
+  const valuesByAccount = useMemo(() => {
+    if (query.status !== "success") return new Map<string, Decimal>();
+    const map = new Map<string, Decimal>();
+    for (const account of query.data) {
+      if (account.payload.kind !== "investment") continue;
+      let total = centsToDecimal(getBalanceCents(account));
+      for (const h of holdings) {
+        if (h.accountId !== account.id) continue;
+        total = total.add(getMarketValue(h, pricesMap));
+      }
+      map.set(account.id, total);
+    }
+    return map;
+  }, [query, holdings, pricesMap]);
 
   function openAdd(kind: AccountKind = "cash") {
     setDrawer({ mode: "add", defaultKind: kind });
@@ -79,7 +120,7 @@ export function AccountsScreen() {
         <div className="flex flex-col gap-6">
           {SECTION_ORDER.map((kind) => (
             <div key={kind} className="flex flex-col gap-2">
-              <div className="h-4 w-1/4 rounded bg-neutral-200 dark:bg-neutral-800 animate-pulse" />
+              <div className="h-4 w-1/4 rounded bg-white/5 animate-pulse" />
               <SkeletonRow />
               <SkeletonRow />
             </div>
@@ -95,13 +136,11 @@ export function AccountsScreen() {
   if (query.status === "error") {
     return (
       <Screen width="wide">
-        <div className="flex flex-col gap-4 items-center py-8 px-4 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-neutral-900">
-          <p className="text-base font-semibold text-red-700 dark:text-red-400 text-center">
+        <div className="flex flex-col gap-4 items-center py-8 px-4 rounded-xl border border-app-red/40 bg-app-red/10">
+          <p className="text-base font-semibold text-app-red text-center">
             Could not load accounts
           </p>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 text-center">
-            {query.error.message}
-          </p>
+          <p className="text-sm text-app-muted text-center">{query.error.message}</p>
           <Button
             variant="secondary"
             onClick={() => {
@@ -154,7 +193,12 @@ export function AccountsScreen() {
     <Screen width="wide">
       {/* Page header */}
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-50">Accounts</h1>
+        <h1
+          className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
+          style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
+        >
+          Accounts
+        </h1>
         <Button onClick={() => openAdd()} aria-label="Add a new account">
           Add account
         </Button>
@@ -165,10 +209,9 @@ export function AccountsScreen() {
         {SECTION_ORDER.map((kind) => (
           <AccountSection
             key={kind}
-            kind={kind}
             meta={KIND_META[kind]}
             accounts={byKind[kind]}
-            onAdd={openAdd}
+            valuesByAccount={valuesByAccount}
             onEdit={openEdit}
             onDelete={(account) => setPendingDelete(account)}
           />

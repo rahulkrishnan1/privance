@@ -1,8 +1,11 @@
 import { Decimal, HoldingPayloadSchema, SCALE_CRYPTO } from "@privance/core";
 import type { RefreshPricesResponse } from "@/lib/api/prices";
+import { getMarketValue } from "@/lib/market-value";
 import type { FilterState, LocalHolding, SortState } from "./types";
 
 type PriceEntry = { ticker: string; price: string };
+
+export { getMarketValue };
 
 export function filterHoldings(holdings: LocalHolding[], filter: FilterState): LocalHolding[] {
   switch (filter.kind) {
@@ -12,22 +15,6 @@ export function filterHoldings(holdings: LocalHolding[], filter: FilterState): L
       return holdings.filter((h) => h.accountId === filter.accountId);
     case "group":
       return holdings.filter((h) => h.groupId === filter.groupId);
-  }
-}
-
-function getMarketValue(h: LocalHolding, prices: Map<string, PriceEntry>): Decimal {
-  const priceTicker = h.proxyTicker ?? h.ticker;
-  const entry = prices.get(priceTicker);
-  if (entry === undefined) return Decimal.zero(2);
-  try {
-    const shares = Decimal.fromString(h.sharesMajor, h.sharesScale);
-    const price = Decimal.fromString(entry.price, SCALE_CRYPTO);
-    const scale =
-      h.scaleFactor !== undefined ? Decimal.fromString(h.scaleFactor, SCALE_CRYPTO) : null;
-    const effectivePrice = scale !== null ? price.mul(scale, { resultScale: SCALE_CRYPTO }) : price;
-    return shares.mul(effectivePrice, { resultScale: 2 });
-  } catch {
-    return Decimal.zero(2);
   }
 }
 

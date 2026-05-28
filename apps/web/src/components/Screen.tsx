@@ -19,31 +19,32 @@ const WIDTH_CLASS: Record<NonNullable<ScreenProps["width"]>, string> = {
 };
 
 export function Screen({ children, scrollable = true, width = "sm", className }: ScreenProps) {
-  const base =
-    "min-h-svh bg-neutral-50 dark:bg-neutral-950 [padding-top:env(safe-area-inset-top)] [padding-bottom:env(safe-area-inset-bottom)]";
+  const base = "bg-app-bg text-app-text [padding-bottom:env(safe-area-inset-bottom)]";
   const widthClass = WIDTH_CLASS[width];
 
   if (scrollable) {
     return (
-      <main className={[base, "overflow-y-auto"].filter(Boolean).join(" ")}>
+      <div className={base}>
         <div
-          className={["px-4 py-6 mx-auto w-full", widthClass, className].filter(Boolean).join(" ")}
+          className={["px-5 py-8 md:py-10 mx-auto w-full", widthClass, className]
+            .filter(Boolean)
+            .join(" ")}
         >
           {children}
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className={[base, "flex flex-col h-svh overflow-hidden"].filter(Boolean).join(" ")}>
+    <div className={[base, "flex flex-col h-[calc(100svh-4rem)] overflow-hidden"].join(" ")}>
       <div
-        className={["flex-1 px-4 py-6 overflow-hidden mx-auto w-full", widthClass, className]
+        className={["flex-1 px-5 py-8 overflow-hidden mx-auto w-full", widthClass, className]
           .filter(Boolean)
           .join(" ")}
       >
         {children}
       </div>
-    </main>
+    </div>
   );
 }

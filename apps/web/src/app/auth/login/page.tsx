@@ -73,21 +73,21 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
-        Log in
+    <div className="flex flex-col gap-8">
+      <h1
+        className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
+        style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
+      >
+        Sign in.
       </h1>
 
       {banner && (
-        <div
-          role="alert"
-          className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 px-4 py-3"
-        >
-          <p className="text-sm text-red-700 dark:text-red-300">{banner}</p>
+        <div role="alert" className="rounded-lg border border-app-red/40 bg-app-red/10 px-4 py-3">
+          <p className="text-[13px] text-app-red">{banner}</p>
         </div>
       )}
 
-      <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-5" noValidate>
+      <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-6" noValidate>
         <Input
           label="Username"
           type="text"
@@ -98,10 +98,8 @@ export default function LoginPage() {
           autoCorrect="off"
           spellCheck={false}
           maxLength={USERNAME_MAX}
-          placeholder="Username"
           // credError is attached to username only (not password) to prevent field-level
-          // enumeration, a screen reader will announce it via the role="alert" on the
-          // Input error element; both 401 and 404 map to the same generic message.
+          // enumeration; 401 and 404 map to the same generic message.
           error={credError}
         />
 
@@ -112,25 +110,24 @@ export default function LoginPage() {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
           maxLength={PASSWORD_MAX}
-          placeholder="Master password"
         />
 
-        <Button type="submit" loading={pending} className="w-full">
-          {pending ? "Logging in…" : "Log in"}
+        <Button type="submit" loading={pending} className="w-full mt-2">
+          {pending ? "Signing in…" : "Sign in"}
         </Button>
       </form>
 
-      <p className="text-center text-sm text-neutral-500">
+      <p className="text-center font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
         <Link
           href="/auth/signup"
-          className="text-gold-600 dark:text-gold-400 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 rounded"
+          className="hover:text-app-text transition-colors focus-visible:outline-none focus-visible:text-gold-accent"
         >
-          Create an account
+          Create account
         </Link>
-        {"  ·  "}
+        <span className="px-3">·</span>
         <Link
           href="/auth/recovery"
-          className="text-gold-600 dark:text-gold-400 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 rounded"
+          className="hover:text-app-text transition-colors focus-visible:outline-none focus-visible:text-gold-accent"
         >
           Recover account
         </Link>

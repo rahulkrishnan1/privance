@@ -17,6 +17,8 @@ export type PricesQueryInput = {
 
 export type PricesQueryResult = {
   prices: PricesMap;
+  /** Prior session close per ticker. Absent when upstream didn't provide it. */
+  previousPrices: PricesMap;
   isLoading: boolean;
   /** True when the server returned 429; cached prices may still be present. */
   isCooldownActive: boolean;
@@ -30,11 +32,14 @@ const GC_TIME_MS = 60 * 60 * 1000;
 // Keeps known prices on screen across component unmounts (e.g. navigation
 // between Dashboard and Holdings) and across query-key changes from add/delete.
 const cache = new Map<string, Decimal>();
+const prevCache = new Map<string, Decimal>();
 const listeners = new Set<() => void>();
 let snapshot: PricesMap = cache;
+let prevSnapshot: PricesMap = prevCache;
 
 function notify(): void {
   snapshot = new Map(cache);
+  prevSnapshot = new Map(prevCache);
   for (const l of listeners) l();
 }
 
@@ -47,11 +52,24 @@ function getSnapshot(): PricesMap {
   return snapshot;
 }
 
-function commitFetched(fetched: ReadonlyMap<string, Decimal>): void {
+function getPrevSnapshot(): PricesMap {
+  return prevSnapshot;
+}
+
+function commitFetched(
+  fetched: ReadonlyMap<string, Decimal>,
+  fetchedPrev: ReadonlyMap<string, Decimal>,
+): void {
   let changed = false;
   for (const [ticker, price] of fetched) {
     if (!cache.get(ticker)?.eq(price)) {
       cache.set(ticker, price);
+      changed = true;
+    }
+  }
+  for (const [ticker, prev] of fetchedPrev) {
+    if (!prevCache.get(ticker)?.eq(prev)) {
+      prevCache.set(ticker, prev);
       changed = true;
     }
   }
@@ -71,6 +89,7 @@ export function usePricesQuery(input: PricesQueryInput): PricesQueryResult {
   const enabled = yahooSorted.length > 0 || coingeckoSorted.length > 0;
 
   const prices = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const previousPrices = useSyncExternalStore(subscribe, getPrevSnapshot, getPrevSnapshot);
 
   const { isFetching, isError, error } = useQuery({
     queryKey: ["prices", "y", ...yahooSorted, "c", ...coingeckoSorted],
@@ -85,17 +104,20 @@ export function usePricesQuery(input: PricesQueryInput): PricesQueryResult {
           : Promise.resolve({ prices: [], unknown: [] }),
       ]);
       const fetched = new Map<string, Decimal>();
-      if (yahooRes.status === "fulfilled") {
-        for (const e of yahooRes.value.prices) {
+      const fetchedPrev = new Map<string, Decimal>();
+      const ingest = (
+        entries: { ticker: string; price: string; previousPrice: string | null }[],
+      ) => {
+        for (const e of entries) {
           fetched.set(e.ticker, Decimal.fromString(e.price, SCALE_CRYPTO));
+          if (e.previousPrice !== null) {
+            fetchedPrev.set(e.ticker, Decimal.fromString(e.previousPrice, SCALE_CRYPTO));
+          }
         }
-      }
-      if (coingeckoRes.status === "fulfilled") {
-        for (const e of coingeckoRes.value.prices) {
-          fetched.set(e.ticker, Decimal.fromString(e.price, SCALE_CRYPTO));
-        }
-      }
-      commitFetched(fetched);
+      };
+      if (yahooRes.status === "fulfilled") ingest(yahooRes.value.prices);
+      if (coingeckoRes.status === "fulfilled") ingest(coingeckoRes.value.prices);
+      commitFetched(fetched, fetchedPrev);
       const failure =
         yahooRes.status === "rejected"
           ? yahooRes.reason
@@ -114,6 +136,7 @@ export function usePricesQuery(input: PricesQueryInput): PricesQueryResult {
 
   return {
     prices,
+    previousPrices,
     isLoading: isFetching && prices.size === 0,
     isCooldownActive: isError && error instanceof ApiError && error.status === 429,
     isError,
