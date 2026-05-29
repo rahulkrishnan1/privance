@@ -57,7 +57,10 @@ function ReadyContent({
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr_1fr] gap-4 mb-4">
+      {/* Equal-width KPI tiles. Net Worth + Cash sum to 2 of 3 columns,
+          matching the Chart card's 2-of-3 width below; Investments at 1 of 3
+          matches the Composition card directly underneath it. */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <NetWorthTile breakdown={breakdown} historyPoints={historyPoints} delta={netWorthDelta} />
         <SummaryTile label="Cash" value={cash} />
         <SummaryTile
@@ -67,8 +70,13 @@ function ReadyContent({
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4 mb-4">
-        <HistoryChart points={historyPoints} />
+      {/* Same 3-column grid as the KPI row so the History chart sits under
+          Net Worth + Cash (col-span-2) and the Composition pie sits under
+          Investments. HistoryChart and AllocationPie are direct grid children
+          so each inherits the row height needed by the internal Recharts
+          ResponsiveContainer. */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <HistoryChart points={historyPoints} className="md:col-span-2" />
         <AllocationPie title="Composition" slices={allocationByKind} />
       </div>
 

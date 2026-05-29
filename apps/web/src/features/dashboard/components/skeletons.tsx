@@ -33,7 +33,7 @@ function SummaryTileSkeleton() {
 export function KpiRowSkeleton() {
   return (
     <div
-      className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr_1fr] gap-4 mb-4"
+      className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4"
       role="status"
       aria-label="Loading dashboard summary"
     >

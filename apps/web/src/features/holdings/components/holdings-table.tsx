@@ -2,7 +2,7 @@
 
 import type { InvestmentAccount } from "@privance/core";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { LocalGroup, LocalHolding, SortColumn, SortState } from "../types";
 import { EmptyState } from "./empty-state";
 import { HoldingRow } from "./holding-row";
@@ -33,8 +33,8 @@ const COLUMN_LABELS: Record<SortColumn, string> = {
   avgCost: "Avg Cost",
   currentPrice: "Price",
   marketValue: "Value",
-  gainDollar: "G/L $",
-  gainPct: "G/L %",
+  gainDollar: "Total G/L $",
+  gainPct: "Total G/L %",
 };
 
 type SortableHeaderProps = {
@@ -98,6 +98,11 @@ export function HoldingsTable({
   // already visible there.
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Stable across renders so HoldingRow does not see a fresh closure each tick.
+  const handleToggle = useCallback((id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  }, []);
+
   if (loading) {
     return (
       <table aria-label="Holdings" className="min-w-full">
@@ -150,8 +155,8 @@ export function HoldingsTable({
             </th>
             <th scope="col" className="hidden md:table-cell px-3 py-2 text-right">
               <SortableHeader
-                column="avgCost"
-                label={COLUMN_LABELS.avgCost}
+                column="currentPrice"
+                label={COLUMN_LABELS.currentPrice}
                 sort={sort}
                 onPress={onSortChange}
                 align="right"
@@ -159,8 +164,8 @@ export function HoldingsTable({
             </th>
             <th scope="col" className="hidden md:table-cell px-3 py-2 text-right">
               <SortableHeader
-                column="currentPrice"
-                label={COLUMN_LABELS.currentPrice}
+                column="avgCost"
+                label={COLUMN_LABELS.avgCost}
                 sort={sort}
                 onPress={onSortChange}
                 align="right"
@@ -209,10 +214,10 @@ export function HoldingsTable({
               accountName={accountName(accounts, holding.accountId)}
               groups={groups}
               prices={prices}
-              onEdit={() => onEdit(holding)}
-              onDelete={() => onDelete(holding)}
+              onEdit={onEdit}
+              onDelete={onDelete}
               isExpanded={expandedId === holding.id}
-              onToggle={() => setExpandedId((prev) => (prev === holding.id ? null : holding.id))}
+              onToggle={handleToggle}
             />
           ))}
         </tbody>

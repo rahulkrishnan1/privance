@@ -17,12 +17,14 @@ type HoldingRowProps = {
   accountName: string;
   groups: LocalGroup[];
   prices: Map<string, PriceEntry>;
-  onEdit: () => void;
-  onDelete: () => void;
+  /** Parameterised so the parent can pass a stable useCallback ref instead of
+   *  allocating a fresh () => onEdit(holding) closure per row per render. */
+  onEdit: (holding: LocalHolding) => void;
+  onDelete: (holding: LocalHolding) => void;
   /** True when this row's mobile detail sub-row is open. Ignored on desktop. */
   isExpanded: boolean;
-  /** Toggles the mobile detail sub-row open/closed. */
-  onToggle: () => void;
+  /** Toggles the mobile detail sub-row open/closed for the given holding id. */
+  onToggle: (id: string) => void;
 };
 
 function formatShares(sharesMajor: string, sharesScale: number): string {
@@ -164,21 +166,25 @@ export function HoldingRow({
           : "text-app-green";
 
   const subRowId = `holding-detail-${holding.id}`;
-  const totalCost = parseCostBasisCents(holding.costBasisCents);
 
   // Edit/Delete buttons sit inside the clickable row. stopPropagation keeps
   // them from also toggling row expansion when the user means "edit", not
-  // "expand". onClick handlers preserved unchanged on the buttons.
-  const onActionClick = (handler: () => void) => (e: MouseEvent) => {
+  // "expand".
+  const handleEdit = (e: MouseEvent) => {
     e.stopPropagation();
-    handler();
+    onEdit(holding);
   };
+  const handleDelete = (e: MouseEvent) => {
+    e.stopPropagation();
+    onDelete(holding);
+  };
+  const handleToggle = () => onToggle(holding.id);
 
   // Keyboard activation matches the mouse path for the row-as-button.
   const onRowKeyDown = (e: KeyboardEvent<HTMLTableRowElement>) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      onToggle();
+      onToggle(holding.id);
     }
   };
 
@@ -186,11 +192,12 @@ export function HoldingRow({
     <>
       <tr
         className="border-b border-app-line-soft hover:bg-white/[0.03] cursor-pointer md:cursor-default focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold-accent"
-        onClick={onToggle}
+        onClick={handleToggle}
         onKeyDown={onRowKeyDown}
         tabIndex={0}
         aria-expanded={isExpanded}
         aria-controls={subRowId}
+        aria-label={`${holding.ticker}, ${isExpanded ? "collapse" : "expand"} details`}
       >
         {/* Ticker + name */}
         <td className="px-3 py-3">
@@ -214,17 +221,17 @@ export function HoldingRow({
           </span>
         </td>
 
-        {/* Avg cost */}
-        <td className="hidden md:table-cell px-3 py-3 text-right">
-          <span className="font-mono text-[14px] tabular-nums text-app-text">
-            {avgCost ? formatCurrency(avgCost, "USD") : "-"}
-          </span>
-        </td>
-
         {/* Current price (effective, anchored if proxy) */}
         <td className="hidden md:table-cell px-3 py-3 text-right">
           <span className="font-mono text-[14px] tabular-nums text-app-text">
             {effectivePrice ? formatPrice(effectivePrice) : "-"}
+          </span>
+        </td>
+
+        {/* Avg cost */}
+        <td className="hidden md:table-cell px-3 py-3 text-right">
+          <span className="font-mono text-[14px] tabular-nums text-app-text">
+            {avgCost ? formatCurrency(avgCost, "USD") : "-"}
           </span>
         </td>
 
@@ -263,7 +270,7 @@ export function HoldingRow({
           <div className="flex gap-1">
             <button
               type="button"
-              onClick={onActionClick(onEdit)}
+              onClick={handleEdit}
               aria-label={`Edit ${holding.ticker}`}
               className="px-2 py-1 rounded hover:bg-white/[0.03] text-xs text-gold-accent font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
             >
@@ -271,7 +278,7 @@ export function HoldingRow({
             </button>
             <button
               type="button"
-              onClick={onActionClick(onDelete)}
+              onClick={handleDelete}
               aria-label={`Delete ${holding.ticker}`}
               className="px-2 py-1 rounded hover:bg-white/[0.03] text-xs text-app-red font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
             >
@@ -312,14 +319,7 @@ export function HoldingRow({
               </dd>
 
               <dt className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim self-center">
-                Total Cost
-              </dt>
-              <dd className="font-mono text-[13px] tabular-nums text-app-text text-right">
-                {formatCurrency(totalCost, "USD")}
-              </dd>
-
-              <dt className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim self-center">
-                G/L $
+                Total G/L $
               </dt>
               <dd
                 className={`font-mono text-[13px] tabular-nums font-medium text-right ${gainTone}`}
@@ -339,7 +339,7 @@ export function HoldingRow({
             <div className="mt-4 pt-3 border-t border-app-line-soft flex justify-end gap-2">
               <button
                 type="button"
-                onClick={onActionClick(onEdit)}
+                onClick={handleEdit}
                 aria-label={`Edit ${holding.ticker}`}
                 className="px-3 py-1.5 rounded text-[13px] text-gold-accent font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
               >
@@ -347,7 +347,7 @@ export function HoldingRow({
               </button>
               <button
                 type="button"
-                onClick={onActionClick(onDelete)}
+                onClick={handleDelete}
                 aria-label={`Delete ${holding.ticker}`}
                 className="px-3 py-1.5 rounded text-[13px] text-app-red font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
               >

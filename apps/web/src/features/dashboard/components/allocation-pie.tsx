@@ -101,7 +101,7 @@ export function AllocationPie({ title, slices }: AllocationPieProps) {
         <p className="text-xs text-app-muted text-center mt-2">Add holdings to see allocation</p>
       ) : (
         <>
-          <p className="text-xs text-app-muted text-center mt-1">
+          <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim text-center mt-1">
             Gross assets: {formatCurrency(total)}
           </p>
           <AllocationLegend slices={slices} hoveredIndex={hoveredIndex} />

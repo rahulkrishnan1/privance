@@ -112,7 +112,7 @@ export function TopHoldingsTable({
               Ticker
             </th>
             <th scope="col" className={`${headerClass} text-right`}>
-              Day
+              Day %
             </th>
             <th scope="col" className={`${headerClass} text-right`}>
               Value
