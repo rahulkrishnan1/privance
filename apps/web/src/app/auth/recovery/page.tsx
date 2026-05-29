@@ -159,7 +159,8 @@ export default function RecoveryPage() {
           className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
           style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
         >
-          Save your new <span className="font-editorial italic text-gold-accent">phrase.</span>
+          Save your new{" "}
+          <span className="font-editorial italic text-gold-accent">recovery phrase.</span>
         </h1>
 
         <div
