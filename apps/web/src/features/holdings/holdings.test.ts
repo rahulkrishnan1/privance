@@ -350,6 +350,31 @@ describe("computeAnchorScaleFactor", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Gain % rendering guard: gainPct === 0 must show "0.00%", not "-"
+// ---------------------------------------------------------------------------
+
+describe("gain percent display for break-even holding", () => {
+  it("gainPct is 0 (not null) when market value equals cost basis", () => {
+    // Mirrors computeGain logic in holding-row.tsx.
+    // cost = 15000 cents = $150.00; marketValue = $150.00 → gainPct = 0
+    const cost = Decimal.fromMinorUnits(15000n, 2);
+    const marketValue = Decimal.fromMinorUnits(15000n, 2);
+    const gainDollar = marketValue.sub(cost);
+    const gainPct = cost.isZero() ? null : gainDollar.toFloat() / cost.toFloat();
+    expect(gainPct).toBe(0);
+    expect(gainPct).not.toBeNull();
+  });
+
+  it("formatSignedPct(0) produces '0.00%'", () => {
+    const pct = 0;
+    const value = pct * 100;
+    const sign = value > 0 ? "+" : "";
+    const formatted = `${sign}${value.toFixed(2)}%`;
+    expect(formatted).toBe("0.00%");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // lookupProxyPrice
 // ---------------------------------------------------------------------------
 

@@ -211,7 +211,7 @@ export function HoldingRow({
       {/* Gain % */}
       <td className="px-3 py-3 text-right">
         <span className={`font-mono text-[14px] tabular-nums font-medium ${gainTone}`}>
-          {gain?.gainPct ? formatSignedPct(gain.gainPct) : "-"}
+          {gain && gain.gainPct !== null ? formatSignedPct(gain.gainPct) : "-"}
         </span>
       </td>
 
