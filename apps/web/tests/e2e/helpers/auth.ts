@@ -275,7 +275,7 @@ export async function recover(
   await page.getByRole("button", { name: "Recover account" }).click();
 
   // Argon2 × 2 derivations — allow 45 s
-  await expect(page.getByText("Save your new phrase")).toBeVisible({
+  await expect(page.getByText("Save your new recovery phrase")).toBeVisible({
     timeout: 45_000,
   });
 
