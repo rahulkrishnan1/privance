@@ -2,6 +2,7 @@
 
 import type { InvestmentAccount } from "@privance/core";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useState } from "react";
 import type { LocalGroup, LocalHolding, SortColumn, SortState } from "../types";
 import { EmptyState } from "./empty-state";
 import { HoldingRow } from "./holding-row";
@@ -92,6 +93,11 @@ export function HoldingsTable({
   onDelete,
   onAdd,
 }: HoldingsTableProps) {
+  // Single row expanded at a time on mobile. Desktop ignores this state
+  // (the expanded sub-row is hidden via md:hidden) since every column is
+  // already visible there.
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   if (loading) {
     return (
       <table aria-label="Holdings" className="min-w-full">
@@ -106,15 +112,15 @@ export function HoldingsTable({
     return <EmptyState onAdd={onAdd} />;
   }
 
-  // table-auto sizes columns to content; setting min-w on the table prevents
-  // narrow ticker names from squashing the wider numeric columns. The row uses
-  // tabular-nums on numeric cells so digits align column-to-column.
+  // Mobile shows three columns (Ticker, Value, G/L %); the rest collapse
+  // behind a row tap that reveals the detail sub-row. Desktop sees every
+  // column directly. tabular-nums on numeric cells keeps digits column-aligned.
   //
   // Note: don't use a <colgroup> here. JSX whitespace between <col> tags
   // becomes hydrated text nodes that React rejects inside colgroup.
   return (
     <div className="overflow-x-auto">
-      <table aria-label="Holdings" className="w-full min-w-[960px]">
+      <table aria-label="Holdings" className="w-full">
         <thead>
           <tr className="border-b border-app-line">
             <th scope="col" className="px-3 py-2 text-left">
@@ -125,7 +131,7 @@ export function HoldingsTable({
                 onPress={onSortChange}
               />
             </th>
-            <th scope="col" className="px-3 py-2 text-left">
+            <th scope="col" className="hidden md:table-cell px-3 py-2 text-left">
               <SortableHeader
                 column="account"
                 label={COLUMN_LABELS.account}
@@ -133,7 +139,7 @@ export function HoldingsTable({
                 onPress={onSortChange}
               />
             </th>
-            <th scope="col" className="px-3 py-2 text-right">
+            <th scope="col" className="hidden md:table-cell px-3 py-2 text-right">
               <SortableHeader
                 column="shares"
                 label={COLUMN_LABELS.shares}
@@ -142,7 +148,7 @@ export function HoldingsTable({
                 align="right"
               />
             </th>
-            <th scope="col" className="px-3 py-2 text-right">
+            <th scope="col" className="hidden md:table-cell px-3 py-2 text-right">
               <SortableHeader
                 column="avgCost"
                 label={COLUMN_LABELS.avgCost}
@@ -151,7 +157,7 @@ export function HoldingsTable({
                 align="right"
               />
             </th>
-            <th scope="col" className="px-3 py-2 text-right">
+            <th scope="col" className="hidden md:table-cell px-3 py-2 text-right">
               <SortableHeader
                 column="currentPrice"
                 label={COLUMN_LABELS.currentPrice}
@@ -169,7 +175,7 @@ export function HoldingsTable({
                 align="right"
               />
             </th>
-            <th scope="col" className="px-3 py-2 text-right">
+            <th scope="col" className="hidden md:table-cell px-3 py-2 text-right">
               <SortableHeader
                 column="gainDollar"
                 label={COLUMN_LABELS.gainDollar}
@@ -187,12 +193,12 @@ export function HoldingsTable({
                 align="right"
               />
             </th>
-            <th scope="col" className="px-3 py-2 text-left">
+            <th scope="col" className="hidden md:table-cell px-3 py-2 text-left">
               <span className="flex items-center font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim whitespace-nowrap">
                 Groups
               </span>
             </th>
-            <th scope="col" className="px-3 py-2" />
+            <th scope="col" className="hidden md:table-cell px-3 py-2" />
           </tr>
         </thead>
         <tbody>
@@ -205,6 +211,8 @@ export function HoldingsTable({
               prices={prices}
               onEdit={() => onEdit(holding)}
               onDelete={() => onDelete(holding)}
+              isExpanded={expandedId === holding.id}
+              onToggle={() => setExpandedId((prev) => (prev === holding.id ? null : holding.id))}
             />
           ))}
         </tbody>

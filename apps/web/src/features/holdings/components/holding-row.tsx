@@ -1,6 +1,7 @@
 "use client";
 
 import { Decimal, SCALE_CENTS, SCALE_CRYPTO } from "@privance/core";
+import type { KeyboardEvent, MouseEvent } from "react";
 import { formatCurrency } from "@/lib/format";
 import { parseCostBasisCents } from "../_helpers";
 import type { LocalGroup, LocalHolding } from "../types";
@@ -18,6 +19,10 @@ type HoldingRowProps = {
   prices: Map<string, PriceEntry>;
   onEdit: () => void;
   onDelete: () => void;
+  /** True when this row's mobile detail sub-row is open. Ignored on desktop. */
+  isExpanded: boolean;
+  /** Toggles the mobile detail sub-row open/closed. */
+  onToggle: () => void;
 };
 
 function formatShares(sharesMajor: string, sharesScale: number): string {
@@ -120,6 +125,8 @@ export function HoldingRow({
   prices,
   onEdit,
   onDelete,
+  isExpanded,
+  onToggle,
 }: HoldingRowProps) {
   const priceTicker = holding.proxyTicker ?? holding.ticker;
   const priceEntry = prices.get(priceTicker);
@@ -156,95 +163,188 @@ export function HoldingRow({
           ? "text-app-red"
           : "text-app-green";
 
+  const subRowId = `holding-detail-${holding.id}`;
+  const totalCost = parseCostBasisCents(holding.costBasisCents);
+
+  // Edit/Delete buttons sit inside the clickable row. stopPropagation keeps
+  // them from also toggling row expansion when the user means "edit", not
+  // "expand". onClick handlers preserved unchanged on the buttons.
+  const onActionClick = (handler: () => void) => (e: MouseEvent) => {
+    e.stopPropagation();
+    handler();
+  };
+
+  // Keyboard activation matches the mouse path for the row-as-button.
+  const onRowKeyDown = (e: KeyboardEvent<HTMLTableRowElement>) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onToggle();
+    }
+  };
+
   return (
-    <tr className="border-b border-app-line-soft hover:bg-white/[0.03]">
-      {/* Ticker + name */}
-      <td className="px-3 py-3">
-        <p className="font-mono text-[13px] text-app-text truncate">{holding.ticker}</p>
-        {holding.name !== undefined && (
-          <p className="text-xs text-app-muted truncate">{holding.name}</p>
-        )}
-      </td>
+    <>
+      <tr
+        className="border-b border-app-line-soft hover:bg-white/[0.03] cursor-pointer md:cursor-default focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold-accent"
+        onClick={onToggle}
+        onKeyDown={onRowKeyDown}
+        tabIndex={0}
+        aria-expanded={isExpanded}
+        aria-controls={subRowId}
+      >
+        {/* Ticker + name */}
+        <td className="px-3 py-3">
+          <p className="font-mono text-[13px] text-app-text truncate">{holding.ticker}</p>
+          {holding.name !== undefined && (
+            <p className="text-xs text-app-muted truncate">{holding.name}</p>
+          )}
+        </td>
 
-      {/* Account chip */}
-      <td className="px-3 py-3">
-        <span className="inline-block rounded-full bg-white/5 px-2 py-0.5 text-xs text-app-muted truncate max-w-full">
-          {accountName}
-        </span>
-      </td>
+        {/* Account chip */}
+        <td className="hidden md:table-cell px-3 py-3">
+          <span className="inline-block rounded-full bg-white/5 px-2 py-0.5 text-xs text-app-muted truncate max-w-full">
+            {accountName}
+          </span>
+        </td>
 
-      {/* Shares */}
-      <td className="px-3 py-3 text-right">
-        <span className="font-mono text-[14px] tabular-nums text-app-text">
-          {formatShares(holding.sharesMajor, holding.sharesScale)}
-        </span>
-      </td>
+        {/* Shares */}
+        <td className="hidden md:table-cell px-3 py-3 text-right">
+          <span className="font-mono text-[14px] tabular-nums text-app-text">
+            {formatShares(holding.sharesMajor, holding.sharesScale)}
+          </span>
+        </td>
 
-      {/* Avg cost */}
-      <td className="px-3 py-3 text-right">
-        <span className="font-mono text-[14px] tabular-nums text-app-text">
-          {avgCost ? formatCurrency(avgCost, "USD") : "-"}
-        </span>
-      </td>
+        {/* Avg cost */}
+        <td className="hidden md:table-cell px-3 py-3 text-right">
+          <span className="font-mono text-[14px] tabular-nums text-app-text">
+            {avgCost ? formatCurrency(avgCost, "USD") : "-"}
+          </span>
+        </td>
 
-      {/* Current price (effective, anchored if proxy) */}
-      <td className="px-3 py-3 text-right">
-        <span className="font-mono text-[14px] tabular-nums text-app-text">
-          {effectivePrice ? formatPrice(effectivePrice) : "-"}
-        </span>
-      </td>
+        {/* Current price (effective, anchored if proxy) */}
+        <td className="hidden md:table-cell px-3 py-3 text-right">
+          <span className="font-mono text-[14px] tabular-nums text-app-text">
+            {effectivePrice ? formatPrice(effectivePrice) : "-"}
+          </span>
+        </td>
 
-      {/* Market value */}
-      <td className="px-3 py-3 text-right">
-        <span className="font-mono text-[14px] tabular-nums text-app-text font-semibold">
-          {marketValue ? formatCurrency(marketValue, "USD") : "-"}
-        </span>
-      </td>
+        {/* Market value */}
+        <td className="px-3 py-3 text-right">
+          <span className="font-mono text-[14px] tabular-nums text-app-text font-semibold">
+            {marketValue ? formatCurrency(marketValue, "USD") : "-"}
+          </span>
+        </td>
 
-      {/* Gain $ */}
-      <td className="px-3 py-3 text-right">
-        <span className={`font-mono text-[14px] tabular-nums font-medium ${gainTone}`}>
-          {gain ? formatSignedCurrency(gain.gainDollar) : "-"}
-        </span>
-      </td>
+        {/* Gain $ */}
+        <td className="hidden md:table-cell px-3 py-3 text-right">
+          <span className={`font-mono text-[14px] tabular-nums font-medium ${gainTone}`}>
+            {gain ? formatSignedCurrency(gain.gainDollar) : "-"}
+          </span>
+        </td>
 
-      {/* Gain % */}
-      <td className="px-3 py-3 text-right">
-        <span className={`font-mono text-[14px] tabular-nums font-medium ${gainTone}`}>
-          {gain && gain.gainPct !== null ? formatSignedPct(gain.gainPct) : "-"}
-        </span>
-      </td>
+        {/* Gain % */}
+        <td className="px-3 py-3 text-right">
+          <span className={`font-mono text-[14px] tabular-nums font-medium ${gainTone}`}>
+            {gain && gain.gainPct !== null ? formatSignedPct(gain.gainPct) : "-"}
+          </span>
+        </td>
 
-      {/* Group chips */}
-      <td className="px-3 py-3">
-        <div className="flex flex-wrap gap-1">
-          {holdingGroups.map((g) => (
-            <GroupChip key={g.id} group={g} />
-          ))}
-        </div>
-      </td>
+        {/* Group chips */}
+        <td className="hidden md:table-cell px-3 py-3">
+          <div className="flex flex-wrap gap-1">
+            {holdingGroups.map((g) => (
+              <GroupChip key={g.id} group={g} />
+            ))}
+          </div>
+        </td>
 
-      {/* Actions */}
-      <td className="px-3 py-3">
-        <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={onEdit}
-            aria-label={`Edit ${holding.ticker}`}
-            className="px-2 py-1 rounded hover:bg-white/[0.03] text-xs text-gold-accent font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            aria-label={`Delete ${holding.ticker}`}
-            className="px-2 py-1 rounded hover:bg-white/[0.03] text-xs text-app-red font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
-          >
-            Delete
-          </button>
-        </div>
-      </td>
-    </tr>
+        {/* Actions */}
+        <td className="hidden md:table-cell px-3 py-3">
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={onActionClick(onEdit)}
+              aria-label={`Edit ${holding.ticker}`}
+              className="px-2 py-1 rounded hover:bg-white/[0.03] text-xs text-gold-accent font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={onActionClick(onDelete)}
+              aria-label={`Delete ${holding.ticker}`}
+              className="px-2 py-1 rounded hover:bg-white/[0.03] text-xs text-app-red font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
+            >
+              Delete
+            </button>
+          </div>
+        </td>
+      </tr>
+
+      {isExpanded && (
+        <tr id={subRowId} className="md:hidden border-b border-app-line-soft bg-white/[0.02]">
+          <td colSpan={3} className="px-3 py-4">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+              <dt className="text-xs text-app-muted">Account</dt>
+              <dd className="text-[13px] text-app-text text-right truncate">{accountName}</dd>
+
+              <dt className="text-xs text-app-muted">Shares</dt>
+              <dd className="font-mono text-[13px] tabular-nums text-app-text text-right">
+                {formatShares(holding.sharesMajor, holding.sharesScale)}
+              </dd>
+
+              <dt className="text-xs text-app-muted">Avg cost</dt>
+              <dd className="font-mono text-[13px] tabular-nums text-app-text text-right">
+                {avgCost ? formatCurrency(avgCost, "USD") : "-"}
+              </dd>
+
+              <dt className="text-xs text-app-muted">Total cost</dt>
+              <dd className="font-mono text-[13px] tabular-nums text-app-text text-right">
+                {formatCurrency(totalCost, "USD")}
+              </dd>
+
+              <dt className="text-xs text-app-muted">Current price</dt>
+              <dd className="font-mono text-[13px] tabular-nums text-app-text text-right">
+                {effectivePrice ? formatPrice(effectivePrice) : "-"}
+              </dd>
+
+              <dt className="text-xs text-app-muted">G/L $</dt>
+              <dd
+                className={`font-mono text-[13px] tabular-nums font-medium text-right ${gainTone}`}
+              >
+                {gain ? formatSignedCurrency(gain.gainDollar) : "-"}
+              </dd>
+            </dl>
+
+            {holdingGroups.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1">
+                {holdingGroups.map((g) => (
+                  <GroupChip key={g.id} group={g} />
+                ))}
+              </div>
+            )}
+
+            <div className="mt-4 pt-3 border-t border-app-line-soft flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={onActionClick(onEdit)}
+                aria-label={`Edit ${holding.ticker}`}
+                className="px-3 py-1.5 rounded text-[13px] text-gold-accent font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={onActionClick(onDelete)}
+                aria-label={`Delete ${holding.ticker}`}
+                className="px-3 py-1.5 rounded text-[13px] text-app-red font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
+              >
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
