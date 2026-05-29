@@ -285,30 +285,42 @@ export function HoldingRow({
         <tr id={subRowId} className="md:hidden border-b border-app-line-soft bg-white/[0.02]">
           <td colSpan={3} className="px-3 py-4">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
-              <dt className="text-xs text-app-muted">Account</dt>
+              <dt className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim self-center">
+                Account
+              </dt>
               <dd className="text-[13px] text-app-text text-right truncate">{accountName}</dd>
 
-              <dt className="text-xs text-app-muted">Shares</dt>
+              <dt className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim self-center">
+                Shares
+              </dt>
               <dd className="font-mono text-[13px] tabular-nums text-app-text text-right">
                 {formatShares(holding.sharesMajor, holding.sharesScale)}
               </dd>
 
-              <dt className="text-xs text-app-muted">Avg cost</dt>
-              <dd className="font-mono text-[13px] tabular-nums text-app-text text-right">
-                {avgCost ? formatCurrency(avgCost, "USD") : "-"}
-              </dd>
-
-              <dt className="text-xs text-app-muted">Total cost</dt>
-              <dd className="font-mono text-[13px] tabular-nums text-app-text text-right">
-                {formatCurrency(totalCost, "USD")}
-              </dd>
-
-              <dt className="text-xs text-app-muted">Current price</dt>
+              <dt className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim self-center">
+                Price
+              </dt>
               <dd className="font-mono text-[13px] tabular-nums text-app-text text-right">
                 {effectivePrice ? formatPrice(effectivePrice) : "-"}
               </dd>
 
-              <dt className="text-xs text-app-muted">G/L $</dt>
+              <dt className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim self-center">
+                Avg Cost
+              </dt>
+              <dd className="font-mono text-[13px] tabular-nums text-app-text text-right">
+                {avgCost ? formatCurrency(avgCost, "USD") : "-"}
+              </dd>
+
+              <dt className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim self-center">
+                Total Cost
+              </dt>
+              <dd className="font-mono text-[13px] tabular-nums text-app-text text-right">
+                {formatCurrency(totalCost, "USD")}
+              </dd>
+
+              <dt className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim self-center">
+                G/L $
+              </dt>
               <dd
                 className={`font-mono text-[13px] tabular-nums font-medium text-right ${gainTone}`}
               >
