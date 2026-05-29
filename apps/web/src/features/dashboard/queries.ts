@@ -27,6 +27,7 @@ import { usePricesQuery } from "@/lib/queries/prices";
 import { readItemsKey } from "@/providers/auth-context";
 import { useSync } from "@/providers/sync-context";
 import { computeDayChangeByHoldingId, splitCashAndInvestments } from "./_math";
+import { buildSnapshotPayload, shouldWriteSnapshot, utcDateString } from "./_snapshot";
 import type { HistoryPoint } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -197,8 +198,9 @@ export function useDashboardData(): DashboardData {
         }
         if (cancelled) return;
 
-        // Route tickers by asset type: stocks/ETFs (and any proxy ticker — always
-        // a public ETF) → Yahoo; crypto holdings without a proxy → CoinGecko.
+        // Route tickers by asset type: stocks/ETFs (and any proxy ticker,
+        // which is always a public ETF) go to Yahoo; crypto holdings without
+        // a proxy go to CoinGecko.
         const yahooSet = new Set<string>();
         const coingeckoSet = new Set<string>();
         for (const h of holdings) {
@@ -303,9 +305,8 @@ export function useDashboardData(): DashboardData {
     if (decryptedData === null || store === null) return;
     if (snapshotWritingRef.current) return;
 
-    const today = new Date().toISOString().slice(0, 10);
-    const alreadyHasToday = decryptedData.snapshots.some((s) => s.payload.snapshotAt === today);
-    if (alreadyHasToday) return;
+    const today = utcDateString();
+    if (!shouldWriteSnapshot(decryptedData.snapshots, today)) return;
 
     snapshotWritingRef.current = true;
     void (async () => {
@@ -313,15 +314,12 @@ export function useDashboardData(): DashboardData {
         const key = readItemsKey();
         if (key === null) return;
 
-        const { cash, investments } = splitCashAndInvestments(data.breakdown);
         const id = crypto.randomUUID();
-        const payload = {
-          snapshotAt: today,
-          netWorthCents: data.breakdown.netWorth.toMinorUnits().toString(),
-          cashCents: cash.toMinorUnits().toString(),
-          investmentCents: investments.toMinorUnits().toString(),
+        const payload = buildSnapshotPayload({
+          date: today,
+          breakdown: data.breakdown,
           accountCount: decryptedData.accounts.length,
-        };
+        });
         const plaintext = new TextEncoder().encode(JSON.stringify(payload));
         const blob = encryptAead({
           plaintext,
@@ -363,6 +361,9 @@ export function useDashboardData(): DashboardData {
         snapshotWritingRef.current = false;
       }
     })();
+    // data is in the deps so a fresh breakdown (after price refresh) is used
+    // for the snapshot. Re-runs cheaply: the alreadyHasToday short-circuit
+    // returns immediately once today's row exists in decryptedData.snapshots.
   }, [data, decryptedData, store, client, tick]);
 
   return data;

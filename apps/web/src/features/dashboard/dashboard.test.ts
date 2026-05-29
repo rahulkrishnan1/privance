@@ -15,6 +15,7 @@ import type {
 import { asId, asIsoDate, asIsoDateTime, Decimal, SCALE_CENTS } from "@privance/core";
 import { describe, expect, it } from "vitest";
 import { formatCurrency, formatDate, formatPercent, formatTime } from "@/lib/format";
+import { buildSnapshotPayload, shouldWriteSnapshot, utcDateString } from "./_snapshot";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -184,6 +185,118 @@ describe("snapshot fixture", () => {
       "2024-05-15",
       "2024-05-16",
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Snapshot creation helpers (used by the dashboard's daily-write effect)
+// ---------------------------------------------------------------------------
+
+describe("utcDateString", () => {
+  it("returns the UTC YYYY-MM-DD slice of the given Date", () => {
+    expect(utcDateString(new Date("2026-05-29T15:30:00.000Z"))).toBe("2026-05-29");
+  });
+
+  it("uses UTC, not local time, on the day boundary", () => {
+    // 2026-05-29 23:30 in UTC-8 = 2026-05-30 07:30 UTC, snapshot date is May 30.
+    expect(utcDateString(new Date("2026-05-30T07:30:00.000Z"))).toBe("2026-05-30");
+  });
+});
+
+describe("shouldWriteSnapshot", () => {
+  it("returns true when no snapshot exists for the date", () => {
+    expect(shouldWriteSnapshot([], "2026-05-29")).toBe(true);
+  });
+
+  it("returns true when an older snapshot exists but not today's", () => {
+    const snaps = [makeSnapshot(asIsoDate("2026-05-28"), "100")];
+    expect(shouldWriteSnapshot(snaps, "2026-05-29")).toBe(true);
+  });
+
+  it("returns false when a snapshot for the date already exists", () => {
+    const snaps = [makeSnapshot(asIsoDate("2026-05-29"), "200")];
+    expect(shouldWriteSnapshot(snaps, "2026-05-29")).toBe(false);
+  });
+
+  it("returns false even when the matching snapshot is one of many", () => {
+    const snaps = [
+      makeSnapshot(asIsoDate("2026-05-27"), "100"),
+      makeSnapshot(asIsoDate("2026-05-29"), "200"),
+      makeSnapshot(asIsoDate("2026-05-28"), "150"),
+    ];
+    expect(shouldWriteSnapshot(snaps, "2026-05-29")).toBe(false);
+  });
+});
+
+describe("buildSnapshotPayload", () => {
+  // Minimal breakdown for the helper. splitCashAndInvestments derives the
+  // investments total from byHolding.marketValue and treats the residual
+  // inside byAccountKind.investment as a cash sweep; the holding value must
+  // equal investmentCents so the split returns the input cents directly.
+  function makeBreakdown(opts: {
+    netWorthCents: bigint;
+    cashCents: bigint;
+    investmentCents: bigint;
+  }) {
+    const holding =
+      opts.investmentCents > 0n
+        ? [
+            {
+              holdingId: asId<HoldingId>("h-1"),
+              marketValue: Decimal.fromMinorUnits(opts.investmentCents, SCALE_CENTS),
+            } as unknown as HoldingValuation,
+          ]
+        : [];
+    return {
+      totalAssets: Decimal.zero(SCALE_CENTS),
+      totalLiabilities: Decimal.zero(SCALE_CENTS),
+      netWorth: Decimal.fromMinorUnits(opts.netWorthCents, SCALE_CENTS),
+      byAccountKind: {
+        cash: Decimal.fromMinorUnits(opts.cashCents, SCALE_CENTS),
+        investment: Decimal.fromMinorUnits(opts.investmentCents, SCALE_CENTS),
+        liability: Decimal.zero(SCALE_CENTS),
+        manualAsset: Decimal.zero(SCALE_CENTS),
+      },
+      byAccount: [],
+      byHolding: holding,
+      unknownTickers: [],
+      asOf: 0,
+    } as unknown as Parameters<typeof buildSnapshotPayload>[0]["breakdown"];
+  }
+
+  it("serialises decimals as bigint-cents strings (no floating point)", () => {
+    const payload = buildSnapshotPayload({
+      date: "2026-05-29",
+      breakdown: makeBreakdown({
+        netWorthCents: 3_297_285n,
+        cashCents: 1_250_000n,
+        investmentCents: 2_047_285n,
+      }),
+      accountCount: 3,
+    });
+
+    expect(payload.snapshotAt).toBe("2026-05-29");
+    expect(payload.netWorthCents).toBe("3297285");
+    expect(payload.cashCents).toBe("1250000");
+    expect(payload.investmentCents).toBe("2047285");
+    expect(payload.accountCount).toBe(3);
+  });
+
+  it("returns a payload that JSON-serialises cleanly", () => {
+    const payload = buildSnapshotPayload({
+      date: "2026-05-29",
+      breakdown: makeBreakdown({
+        netWorthCents: 0n,
+        cashCents: 0n,
+        investmentCents: 0n,
+      }),
+      accountCount: 0,
+    });
+
+    const json = JSON.stringify(payload);
+    expect(json).toBe(
+      '{"snapshotAt":"2026-05-29","netWorthCents":"0","cashCents":"0","investmentCents":"0","accountCount":0}',
+    );
   });
 });
 
