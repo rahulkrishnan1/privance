@@ -15,7 +15,12 @@ import type {
 import { asId, asIsoDate, asIsoDateTime, Decimal, SCALE_CENTS } from "@privance/core";
 import { describe, expect, it } from "vitest";
 import { formatCurrency, formatDate, formatPercent, formatTime } from "@/lib/format";
-import { buildSnapshotPayload, shouldWriteSnapshot, utcDateString } from "./_snapshot";
+import {
+  buildSnapshotPayload,
+  isBreakdownPriced,
+  nextSnapshotAction,
+  utcDateString,
+} from "./_snapshot";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -203,28 +208,86 @@ describe("utcDateString", () => {
   });
 });
 
-describe("shouldWriteSnapshot", () => {
-  it("returns true when no snapshot exists for the date", () => {
-    expect(shouldWriteSnapshot([], "2026-05-29")).toBe(true);
+describe("isBreakdownPriced", () => {
+  function makeBreakdown(unknownTickers: string[]) {
+    return { unknownTickers } as unknown as Parameters<typeof isBreakdownPriced>[0];
+  }
+
+  it("is true when no tickers are missing", () => {
+    expect(isBreakdownPriced(makeBreakdown([]))).toBe(true);
   });
 
-  it("returns true when an older snapshot exists but not today's", () => {
-    const snaps = [makeSnapshot(asIsoDate("2026-05-28"), "100")];
-    expect(shouldWriteSnapshot(snaps, "2026-05-29")).toBe(true);
+  it("is true when only currency_mismatch warnings are present", () => {
+    expect(isBreakdownPriced(makeBreakdown(["currency_mismatch:acct-1"]))).toBe(true);
   });
 
-  it("returns false when a snapshot for the date already exists", () => {
-    const snaps = [makeSnapshot(asIsoDate("2026-05-29"), "200")];
-    expect(shouldWriteSnapshot(snaps, "2026-05-29")).toBe(false);
+  it("is false when a real ticker is missing a price", () => {
+    expect(isBreakdownPriced(makeBreakdown(["AAPL"]))).toBe(false);
   });
 
-  it("returns false even when the matching snapshot is one of many", () => {
-    const snaps = [
-      makeSnapshot(asIsoDate("2026-05-27"), "100"),
-      makeSnapshot(asIsoDate("2026-05-29"), "200"),
-      makeSnapshot(asIsoDate("2026-05-28"), "150"),
-    ];
-    expect(shouldWriteSnapshot(snaps, "2026-05-29")).toBe(false);
+  it("is false when both a missing ticker and a currency warning are present", () => {
+    expect(isBreakdownPriced(makeBreakdown(["currency_mismatch:a", "BTC"]))).toBe(false);
+  });
+});
+
+describe("nextSnapshotAction", () => {
+  it("creates when no snapshot exists for today", () => {
+    expect(
+      nextSnapshotAction({
+        snapshots: [],
+        today: "2026-05-29",
+        currentNetWorthCents: "100000",
+        alreadyRewroteThisSession: false,
+      }),
+    ).toEqual({ type: "create" });
+  });
+
+  it("creates when only older snapshots exist", () => {
+    expect(
+      nextSnapshotAction({
+        snapshots: [makeSnapshot(asIsoDate("2026-05-28"), "90000")],
+        today: "2026-05-29",
+        currentNetWorthCents: "100000",
+        alreadyRewroteThisSession: false,
+      }),
+    ).toEqual({ type: "create" });
+  });
+
+  it("skips when today's snapshot matches the current net worth", () => {
+    expect(
+      nextSnapshotAction({
+        snapshots: [makeSnapshot(asIsoDate("2026-05-29"), "100000")],
+        today: "2026-05-29",
+        currentNetWorthCents: "100000",
+        alreadyRewroteThisSession: false,
+      }),
+    ).toEqual({ type: "skip" });
+  });
+
+  it("updates today's snapshot when its sealed value diverges", () => {
+    // Day-1 race: snapshot was written before prices loaded, so investmentCents
+    // contributed $0 to netWorth. Now prices have arrived and the breakdown
+    // shows the true value; rewrite today's row.
+    const action = nextSnapshotAction({
+      snapshots: [makeSnapshot(asIsoDate("2026-05-29"), "50000")],
+      today: "2026-05-29",
+      currentNetWorthCents: "150000",
+      alreadyRewroteThisSession: false,
+    });
+    expect(action).toEqual({ type: "update", existingId: "snap-2026-05-29" });
+  });
+
+  it("skips the rewrite once the session has already healed today's row", () => {
+    // Intraday price drift keeps changing currentNetWorthCents, but we limit
+    // self-heal to once per session to avoid churning the snapshot.
+    expect(
+      nextSnapshotAction({
+        snapshots: [makeSnapshot(asIsoDate("2026-05-29"), "50000")],
+        today: "2026-05-29",
+        currentNetWorthCents: "150000",
+        alreadyRewroteThisSession: true,
+      }),
+    ).toEqual({ type: "skip" });
   });
 });
 
