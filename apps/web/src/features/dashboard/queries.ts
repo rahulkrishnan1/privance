@@ -9,20 +9,25 @@ import {
   asIsoDateTime,
   computeNetWorth,
   Decimal,
+  encryptAead,
   type Holding,
   type HoldingId,
   HoldingPayloadSchema,
   type IsoDateTime,
+  KDF_PARAM_VERSION,
+  LABEL_VERSION,
   type NetWorthSnapshot,
   type NetWorthSnapshotId,
   NetWorthSnapshotPayloadSchema,
   SCALE_CENTS,
   type UserId,
 } from "@privance/core";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePricesQuery } from "@/lib/queries/prices";
+import { readItemsKey } from "@/providers/auth-context";
 import { useSync } from "@/providers/sync-context";
 import { computeDayChangeByHoldingId, splitCashAndInvestments } from "./_math";
+import { buildSnapshotPayload, shouldWriteSnapshot, utcDateString } from "./_snapshot";
 import type { HistoryPoint } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -109,9 +114,14 @@ type DecryptedData = {
 };
 
 export function useDashboardData(): DashboardData {
-  const { store, initialising, decrypt, storeClock } = useSync();
+  const { store, client, initialising, decrypt, storeClock, tick } = useSync();
   const [data, setData] = useState<DashboardData>({ status: "loading" });
   const [decryptedData, setDecryptedData] = useState<DecryptedData | null>(null);
+  // Guard against duplicate snapshot writes within a single session. The
+  // alreadyHasToday check below handles the persistent case (snapshot in
+  // store); this ref handles the brief async window between store.put and
+  // the next decrypt cycle.
+  const snapshotWritingRef = useRef(false);
   const [yahooTickers, setYahooTickers] = useState<string[]>([]);
   const [coingeckoTickers, setCoingeckoTickers] = useState<string[]>([]);
 
@@ -188,8 +198,9 @@ export function useDashboardData(): DashboardData {
         }
         if (cancelled) return;
 
-        // Route tickers by asset type: stocks/ETFs (and any proxy ticker — always
-        // a public ETF) → Yahoo; crypto holdings without a proxy → CoinGecko.
+        // Route tickers by asset type: stocks/ETFs (and any proxy ticker,
+        // which is always a public ETF) go to Yahoo; crypto holdings without
+        // a proxy go to CoinGecko.
         const yahooSet = new Set<string>();
         const coingeckoSet = new Set<string>();
         for (const h of holdings) {
@@ -281,6 +292,79 @@ export function useDashboardData(): DashboardData {
       });
     }
   }, [decryptedData, prices, previousPrices]);
+
+  // ---------------------------------------------------------------------------
+  // Snapshot effect: writes one net_worth_snapshot per UTC day so the history
+  // chart has data to plot. Idempotent: if today's snapshot is already in the
+  // store, this is a no-op. After a successful write, tick() refreshes the
+  // decrypt effect which picks up the new snapshot and stops the effect from
+  // re-firing.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (data.status !== "ready") return;
+    if (decryptedData === null || store === null) return;
+    if (snapshotWritingRef.current) return;
+
+    const today = utcDateString();
+    if (!shouldWriteSnapshot(decryptedData.snapshots, today)) return;
+
+    snapshotWritingRef.current = true;
+    void (async () => {
+      try {
+        const key = readItemsKey();
+        if (key === null) return;
+
+        const id = crypto.randomUUID();
+        const payload = buildSnapshotPayload({
+          date: today,
+          breakdown: data.breakdown,
+          accountCount: decryptedData.accounts.length,
+        });
+        const plaintext = new TextEncoder().encode(JSON.stringify(payload));
+        const blob = encryptAead({
+          plaintext,
+          key,
+          aad: {
+            recordUuid: id,
+            kind: KIND_SNAPSHOT,
+            labelVersion: LABEL_VERSION,
+            kdfParamVersion: KDF_PARAM_VERSION,
+          },
+        });
+        const now = Date.now();
+        await store.put({
+          kind: KIND_SNAPSHOT,
+          objectId: id,
+          ciphertext: blob.ciphertext,
+          nonce: blob.nonce as Uint8Array,
+          version: 1n,
+          updatedAt: now,
+        });
+        await store.enqueue({
+          kind: KIND_SNAPSHOT,
+          objectId: id,
+          ciphertext: blob.ciphertext,
+          nonce: blob.nonce as Uint8Array,
+          version: 1n,
+          prevVersion: undefined,
+          tombstone: false,
+          enqueuedAt: now,
+        } as Parameters<typeof store.enqueue>[0]);
+        tick();
+        void client?.pushPending();
+      } catch (err) {
+        // Non-blocking: snapshot failure does not break the dashboard. The
+        // next dashboard mount will retry.
+        // biome-ignore lint/suspicious/noConsole: surface snapshot write failure
+        console.warn("[dashboard] snapshot write failed", err);
+      } finally {
+        snapshotWritingRef.current = false;
+      }
+    })();
+    // data is in the deps so a fresh breakdown (after price refresh) is used
+    // for the snapshot. Re-runs cheaply: the alreadyHasToday short-circuit
+    // returns immediately once today's row exists in decryptedData.snapshots.
+  }, [data, decryptedData, store, client, tick]);
 
   return data;
 }

@@ -4,7 +4,7 @@ import { type AllocationSlice, Decimal, SCALE_CENTS } from "@privance/core";
 import { useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { formatCurrency } from "@/lib/format";
-import { allocationPalette } from "../palette";
+import { allocationPalette, EMPTY_PIE_FILL, PALETTE_FALLBACK_GRAY } from "../palette";
 import { AllocationLegend } from "./allocation-legend";
 
 type AllocationPieProps = {
@@ -57,7 +57,7 @@ export function AllocationPie({ title, slices }: AllocationPieProps) {
                 outerRadius="90%"
                 isAnimationActive={false}
               >
-                <Cell fill="#e5e7eb" />
+                <Cell fill={EMPTY_PIE_FILL} />
               </Pie>
             </PieChart>
           </ResponsiveContainer>
@@ -84,7 +84,10 @@ export function AllocationPie({ title, slices }: AllocationPieProps) {
                 {data.map((entry) => (
                   <Cell
                     key={entry.name}
-                    fill={allocationPalette[entry.index % allocationPalette.length] ?? "#6b7280"}
+                    fill={
+                      allocationPalette[entry.index % allocationPalette.length] ??
+                      PALETTE_FALLBACK_GRAY
+                    }
                     opacity={hoveredIndex === null || hoveredIndex === entry.index ? 1 : 0.5}
                   />
                 ))}
@@ -98,7 +101,7 @@ export function AllocationPie({ title, slices }: AllocationPieProps) {
         <p className="text-xs text-app-muted text-center mt-2">Add holdings to see allocation</p>
       ) : (
         <>
-          <p className="text-xs text-app-muted text-center mt-1">
+          <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim text-center mt-1">
             Gross assets: {formatCurrency(total)}
           </p>
           <AllocationLegend slices={slices} hoveredIndex={hoveredIndex} />

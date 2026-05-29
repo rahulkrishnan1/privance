@@ -18,6 +18,8 @@ import { RangeSelector } from "./range-selector";
 
 type HistoryChartProps = {
   points: HistoryPoint[];
+  /** Extra classes for the chart card, e.g. grid column span on the dashboard. */
+  className?: string;
 };
 
 function filterByRange(
@@ -71,7 +73,7 @@ type ChartDataPoint = {
 /**
  * Net worth history line chart with range selector.
  */
-export function HistoryChart({ points }: HistoryChartProps) {
+export function HistoryChart({ points, className }: HistoryChartProps) {
   const [range, setRange] = useState<ChartRange>("3M");
   const colors = useChartColors();
 
@@ -89,7 +91,9 @@ export function HistoryChart({ points }: HistoryChartProps) {
 
   return (
     <div
-      className="rounded-xl border border-app-line bg-app-panel p-4 flex flex-col"
+      className={["rounded-xl border border-app-line bg-app-panel p-4 flex flex-col", className]
+        .filter(Boolean)
+        .join(" ")}
       role="img"
       aria-label="Net worth history chart"
     >

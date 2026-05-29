@@ -16,20 +16,11 @@
   --font-serif: var(--font-fraunces);
   --font-editorial: var(--font-spectral);
 
-  /* Gold, Privance brand palette. Warm, rich royal gold; primary = 600. */
-  --color-gold-50: #fdf9ec;
-  --color-gold-100: #faf0c6;
-  --color-gold-200: #f4e08c;
-  --color-gold-300: #eac94f;
-  --color-gold-400: #d4af37;
-  --color-gold-500: #c5a028;
+  /* Privance brand. App shell uses the pale champagne accent. Landing
+     surface uses two warmer gold tones: gold-600 for text selection,
+     gold-950 for atmospheric gradients. */
   --color-gold-600: #b18a1c;
-  --color-gold-700: #946f15;
-  --color-gold-800: #735715;
-  --color-gold-900: #5d4516;
   --color-gold-950: #2a2009;
-
-  /* Brand accent (pale luxury). */
   --color-gold-accent: #e6d39a;
   --color-gold-accent-hover: #f0e3b0;
 

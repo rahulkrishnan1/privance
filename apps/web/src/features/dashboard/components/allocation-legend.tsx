@@ -2,7 +2,7 @@
 
 import type { AllocationSlice } from "@privance/core";
 import { formatCurrency, formatPercent } from "@/lib/format";
-import { allocationPalette } from "../palette";
+import { allocationPalette, PALETTE_FALLBACK_GRAY } from "../palette";
 
 type AllocationLegendProps = {
   slices: AllocationSlice[];
@@ -17,7 +17,7 @@ export function AllocationLegend({ slices, hoveredIndex }: AllocationLegendProps
   return (
     <ul className="mt-3 flex flex-col gap-1.5 list-none p-0 m-0" aria-label="Allocation legend">
       {slices.map((slice, i) => {
-        const color = allocationPalette[i % allocationPalette.length] ?? "#6b7280";
+        const color = allocationPalette[i % allocationPalette.length] ?? PALETTE_FALLBACK_GRAY;
         const isHovered = hoveredIndex === i;
         return (
           <li

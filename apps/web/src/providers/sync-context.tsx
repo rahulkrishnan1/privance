@@ -44,7 +44,7 @@ function makeLockedDecrypt(): StoreState["decrypt"] {
 }
 
 export function SyncProvider({ children }: { children: ReactNode }) {
-  const { state, lock } = useAuth();
+  const { state, lock, user } = useAuth();
 
   const [storeClock, setStoreClock] = useState(0);
   const tick = useCallback(() => setStoreClock((c) => c + 1), []);
@@ -95,7 +95,20 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         import("@privance/core/sync"),
       ]);
 
-      const store = createLocalStore({ workerUrl: "/sqlite/privance-worker.mjs" });
+      // Scope the OPFS database to the active user so a previous user's
+      // ciphertext cannot leak into the next user's session on a shared
+      // browser. The fallback to /privance.sqlite3 covers the path where the
+      // user refreshes a tab after login but before lock: the DEK is still in
+      // memory (state = "unlocked"), but the auth-context state-initialiser
+      // only re-populates `user.userId` when LOCKED_MARKER is set, so this
+      // closure sees user = null. Closing the gap requires a real session
+      // rehydration that re-fetches userId on every mount; tracked separately.
+      const dbFilename =
+        user?.userId !== undefined ? `/privance-${user.userId}.sqlite3` : "/privance.sqlite3";
+      const store = createLocalStore({
+        workerUrl: "/sqlite/privance-worker.mjs",
+        dbFilename,
+      });
 
       const encryptEnvelope = async (input: {
         plaintext: Uint8Array;
@@ -249,7 +262,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [state]);
+    // user.userId is in the dep array so signing out and back in as a
+    // different user tears down the store and re-initialises under the new
+    // namespace. State alone does not change on hot user switches.
+  }, [state, user?.userId]);
 
   const syncValue: SyncContextValue = {
     ...storeState,

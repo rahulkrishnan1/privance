@@ -85,7 +85,10 @@ export default function SignupPage() {
         if (e.code === "username_taken" || e.status === 409) {
           setErrors({ username: "Username is already taken." });
         } else if (e.code === "weak_password" || e.status === 422) {
-          setErrors({ password: "Password is too weak or appears in known breach lists." });
+          setErrors({
+            password:
+              "This password has appeared in a public data breach. Please choose a different one.",
+          });
         } else if (e.code === "hibp_unavailable" || e.status === 503) {
           setErrors({ banner: "Password breach check unavailable. Try again." });
         } else if (e.code === "invalid_invite") {

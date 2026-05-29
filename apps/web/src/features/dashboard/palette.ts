@@ -14,3 +14,10 @@ export const allocationPalette = [
   "#5d5648", // graphite gold
   "#41485a", // ink slate (fallback)
 ] as const;
+
+// Defensive fallbacks. The palette is non-empty so these almost never render;
+// they exist to satisfy the type checker on indexed access.
+export const PALETTE_FALLBACK_GRAY = "#6b7280";
+// Empty-state fill: deliberately lighter than app tokens so a single empty
+// pie reads as "no data" on the dark surface.
+export const EMPTY_PIE_FILL = "#e5e7eb";

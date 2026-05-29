@@ -88,8 +88,8 @@ export async function loginAndCapture(
   // Capture DEK bytes before the hard navigation wipes globalThis
   const dekArray = await waitForDek();
 
-  // Wait for navigation to complete (may redirect to /auth/login/ since DEK is
-  // gone from globalThis on the new page — that's expected and fine here)
+  // Wait for navigation to complete (may redirect to /auth/login/ since DEK
+  // is gone from globalThis on the new page; that's expected and fine here)
   await page.waitForURL(/\//, { timeout: 15_000 });
 
   const cookies = await ctx.cookies();
@@ -119,7 +119,7 @@ export async function restoreSession(page: Page, snapshot: SessionSnapshot): Pro
  * acknowledges it, and lands on the dashboard.
  *
  * Returns the 12-word phrase so tests can use it for recovery flows.
- * Argon2 KDF derivation takes 3–8 s; caller must use a 60 s test timeout.
+ * Argon2 KDF derivation takes 3 to 8 s; caller must use a 60 s test timeout.
  *
  * Note: after signup the hard nav to "/" clears the DEK and the app redirects
  * back to login. For tests that need to verify the dashboard after signup,
@@ -137,7 +137,7 @@ export async function signup(
   await page.getByLabel("Confirm master password").fill(opts.password);
   await page.getByRole("button", { name: "Create account" }).click();
 
-  // Wait for the phrase screen — argon2 derivation can take several seconds
+  // Wait for the phrase screen; argon2 derivation can take several seconds
   await expect(page.getByText("Write down your recovery phrase")).toBeVisible({
     timeout: 30_000,
   });
@@ -225,7 +225,7 @@ export async function acknowledgePhrase(page: Page): Promise<void> {
 
 /**
  * Logs in with an existing account and waits for the URL to change.
- * Argon2 derivation takes 3–8 s; caller must use a 60 s test timeout.
+ * Argon2 derivation takes 3 to 8 s; caller must use a 60 s test timeout.
  *
  * Note: after the DEK is set and router.replace("/app/") fires, Next.js does
  * a hard navigation that clears globalThis. The resulting page at "/app/"
@@ -259,7 +259,7 @@ export async function logout(page: Page): Promise<void> {
  * + phrase, complete the new-phrase acknowledgement.
  *
  * Returns the new phrase issued after recovery.
- * Note: same hard-nav caveat as login — the caller must use loginAndCapture
+ * Note: same hard-nav caveat as login; the caller must use loginAndCapture
  * + restoreSession if the dashboard needs to be reachable after recovery.
  */
 export async function recover(
@@ -274,8 +274,8 @@ export async function recover(
   await page.getByLabel("Confirm new master password").fill(opts.newPassword);
   await page.getByRole("button", { name: "Recover account" }).click();
 
-  // Argon2 × 2 derivations — allow 45 s
-  await expect(page.getByText("Save your new phrase")).toBeVisible({
+  // Argon2 × 2 derivations; allow 45 s
+  await expect(page.getByText("Save your new recovery phrase")).toBeVisible({
     timeout: 45_000,
   });
 
