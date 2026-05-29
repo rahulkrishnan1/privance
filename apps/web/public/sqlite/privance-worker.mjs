@@ -33,10 +33,7 @@ async function installVfsWithRetry({ attempts = 8, baseDelayMs = 150 } = {}) {
   let lastErr = null;
   for (let i = 0; i < attempts; i++) {
     try {
-      // Per-user OPFS scoping means each signup needs its own slot (plus a
-      // journal); the default of 6 only fits ~3 users on a shared browser
-      // before new signups fail with "SAH pool is full".
-      return await sqlite3.installOpfsSAHPoolVfs({ initialCapacity: 16 });
+      return await sqlite3.installOpfsSAHPoolVfs({});
     } catch (e) {
       lastErr = e;
       if (!/access handle/i.test(e?.message ?? String(e))) throw e;
