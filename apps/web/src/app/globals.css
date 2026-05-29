@@ -16,7 +16,11 @@
   --font-serif: var(--font-fraunces);
   --font-editorial: var(--font-spectral);
 
-  /* Privance brand. Pale champagne gold. */
+  /* Privance brand. App shell uses the pale champagne accent. Landing
+     surface uses two warmer gold tones: gold-600 for text selection,
+     gold-950 for atmospheric gradients. */
+  --color-gold-600: #b18a1c;
+  --color-gold-950: #2a2009;
   --color-gold-accent: #e6d39a;
   --color-gold-accent-hover: #f0e3b0;
 
