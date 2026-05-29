@@ -97,8 +97,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
       // Scope the OPFS database to the active user so a previous user's
       // ciphertext cannot leak into the next user's session on a shared
-      // browser. Falls back to the legacy filename only during the locked
-      // rehydration path, where userId is not in memory.
+      // browser. The fallback to /privance.sqlite3 covers the path where the
+      // user refreshes a tab after login but before lock: the DEK is still in
+      // memory (state = "unlocked"), but the auth-context state-initialiser
+      // only re-populates `user.userId` when LOCKED_MARKER is set, so this
+      // closure sees user = null. Closing the gap requires a real session
+      // rehydration that re-fetches userId on every mount; tracked separately.
       const dbFilename =
         user?.userId !== undefined ? `/privance-${user.userId}.sqlite3` : "/privance.sqlite3";
       const store = createLocalStore({
