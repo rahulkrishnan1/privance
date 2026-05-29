@@ -27,12 +27,7 @@ import { usePricesQuery } from "@/lib/queries/prices";
 import { readItemsKey } from "@/providers/auth-context";
 import { useSync } from "@/providers/sync-context";
 import { computeDayChangeByHoldingId, splitCashAndInvestments } from "./_math";
-import {
-  buildSnapshotPayload,
-  isBreakdownPriced,
-  nextSnapshotAction,
-  utcDateString,
-} from "./_snapshot";
+import { buildSnapshotPayload, shouldWriteSnapshot, utcDateString } from "./_snapshot";
 import type { HistoryPoint } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -123,13 +118,10 @@ export function useDashboardData(): DashboardData {
   const [data, setData] = useState<DashboardData>({ status: "loading" });
   const [decryptedData, setDecryptedData] = useState<DecryptedData | null>(null);
   // Guard against duplicate snapshot writes within a single session. The
-  // nextSnapshotAction("skip") check below handles the persistent case; this
-  // ref handles the brief async window between store.put and the next decrypt
-  // cycle.
+  // alreadyHasToday check below handles the persistent case (snapshot in
+  // store); this ref handles the brief async window between store.put and
+  // the next decrypt cycle.
   const snapshotWritingRef = useRef(false);
-  // Self-heal limit: rewrite today's row at most once per session so intraday
-  // price drift does not churn the snapshot on every effect re-run.
-  const snapshotRewroteRef = useRef(false);
   const [yahooTickers, setYahooTickers] = useState<string[]>([]);
   const [coingeckoTickers, setCoingeckoTickers] = useState<string[]>([]);
 
@@ -145,9 +137,6 @@ export function useDashboardData(): DashboardData {
   useEffect(() => {
     if (initialising || store === null) {
       setData({ status: "loading" });
-      // Reset self-heal guard so a fresh sign-in (or user switch) gets one
-      // self-heal attempt instead of inheriting the previous session's flag.
-      snapshotRewroteRef.current = false;
       return;
     }
 
@@ -306,29 +295,18 @@ export function useDashboardData(): DashboardData {
 
   // ---------------------------------------------------------------------------
   // Snapshot effect: writes one net_worth_snapshot per UTC day so the history
-  // chart has data to plot. Heals a row that was sealed before prices loaded
-  // by overwriting it once per session. After a successful write, tick()
-  // refreshes the decrypt effect which picks up the new snapshot.
+  // chart has data to plot. Idempotent: if today's snapshot is already in the
+  // store, this is a no-op. After a successful write, tick() refreshes the
+  // decrypt effect which picks up the new snapshot and stops the effect from
+  // re-firing.
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (data.status !== "ready") return;
     if (decryptedData === null || store === null) return;
     if (snapshotWritingRef.current) return;
-    // Wait for prices to load. Without this, the first render writes the
-    // snapshot with priced holdings valued at $0; the self-heal below then
-    // corrects it on the next render once prices arrive.
-    if (!isBreakdownPriced(data.breakdown)) return;
 
     const today = utcDateString();
-    const currentNetWorthCents = data.breakdown.netWorth.toMinorUnits().toString();
-    const action = nextSnapshotAction({
-      snapshots: decryptedData.snapshots,
-      today,
-      currentNetWorthCents,
-      alreadyRewroteThisSession: snapshotRewroteRef.current,
-    });
-    if (action.type === "skip") return;
-    if (action.type === "update") snapshotRewroteRef.current = true;
+    if (!shouldWriteSnapshot(decryptedData.snapshots, today)) return;
 
     snapshotWritingRef.current = true;
     void (async () => {
@@ -336,7 +314,7 @@ export function useDashboardData(): DashboardData {
         const key = readItemsKey();
         if (key === null) return;
 
-        const objectId = action.type === "update" ? action.existingId : crypto.randomUUID();
+        const id = crypto.randomUUID();
         const payload = buildSnapshotPayload({
           date: today,
           breakdown: data.breakdown,
@@ -347,44 +325,28 @@ export function useDashboardData(): DashboardData {
           plaintext,
           key,
           aad: {
-            recordUuid: objectId,
+            recordUuid: id,
             kind: KIND_SNAPSHOT,
             labelVersion: LABEL_VERSION,
             kdfParamVersion: KDF_PARAM_VERSION,
           },
         });
-
-        let version = 1n;
-        let prevVersion: bigint | undefined;
-        let serverSeq: bigint | null = null;
-        if (action.type === "update") {
-          const stored = await store.get({ kind: KIND_SNAPSHOT, objectId });
-          // The row vanished between decrypt and effect (rare cross-device
-          // delete). Skip rather than push a v1 "create" against an objectId
-          // the server already holds.
-          if (stored === null) return;
-          version = stored.version + 1n;
-          prevVersion = stored.version;
-          serverSeq = stored.serverSeq;
-        }
-
         const now = Date.now();
         await store.put({
           kind: KIND_SNAPSHOT,
-          objectId,
+          objectId: id,
           ciphertext: blob.ciphertext,
           nonce: blob.nonce as Uint8Array,
-          version,
-          serverSeq,
+          version: 1n,
           updatedAt: now,
         });
         await store.enqueue({
           kind: KIND_SNAPSHOT,
-          objectId,
+          objectId: id,
           ciphertext: blob.ciphertext,
           nonce: blob.nonce as Uint8Array,
-          version,
-          prevVersion,
+          version: 1n,
+          prevVersion: undefined,
           tombstone: false,
           enqueuedAt: now,
         } as Parameters<typeof store.enqueue>[0]);
@@ -399,6 +361,9 @@ export function useDashboardData(): DashboardData {
         snapshotWritingRef.current = false;
       }
     })();
+    // data is in the deps so a fresh breakdown (after price refresh) is used
+    // for the snapshot. Re-runs cheaply: the alreadyHasToday short-circuit
+    // returns immediately once today's row exists in decryptedData.snapshots.
   }, [data, decryptedData, store, client, tick]);
 
   return data;
