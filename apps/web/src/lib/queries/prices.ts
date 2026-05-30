@@ -83,6 +83,16 @@ export function warmPrice(ticker: string, price: Decimal): void {
   notify();
 }
 
+/** Drop all cached prices and prior-session prices. Called on auth transitions
+ *  (logout, login) so a new user does not see the previous user's stale prev
+ *  values during the first compute cycle. */
+export function resetPricesCache(): void {
+  if (cache.size === 0 && prevCache.size === 0) return;
+  cache.clear();
+  prevCache.clear();
+  notify();
+}
+
 export function usePricesQuery(input: PricesQueryInput): PricesQueryResult {
   const yahooSorted = [...new Set(input.yahooTickers)].sort();
   const coingeckoSorted = [...new Set(input.coingeckoTickers)].sort();

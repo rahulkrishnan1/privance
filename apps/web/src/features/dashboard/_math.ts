@@ -43,7 +43,8 @@ export function computeDayChangeByHoldingId(
 // dollar change as its denominator; mixing in holdings without prior data
 // would inflate the denominator and understate the percentage. Net Worth's
 // dollar change equals Investments' dollar change (cash, manual assets, and
-// liabilities don't move intraday).
+// liabilities don't move intraday). Negative-MV holdings are skipped to
+// match the top-holdings table filter, so KPI and table agree.
 export function deriveAggregateDeltas(
   breakdown: Breakdown,
   dayChangeByHoldingId: ReadonlyMap<HoldingId, Decimal>,
@@ -52,21 +53,25 @@ export function deriveAggregateDeltas(
   let dollar = Decimal.zero(SCALE_CENTS);
   let mvCovered = Decimal.zero(SCALE_CENTS);
   for (const h of breakdown.byHolding) {
+    if (h.marketValue.isNegative()) continue;
     const change = dayChangeByHoldingId.get(h.holdingId);
     if (change === undefined) continue;
     dollar = dollar.add(change);
     mvCovered = mvCovered.add(h.marketValue);
   }
   const prev = mvCovered.sub(dollar);
-  if (prev.isZero()) return { investments: null, netWorth: null };
+  // Negative or zero prior means percent is meaningless (sign-flip or div-by-
+  // zero). Dollar change still surfaces via the investments slot for net worth.
+  if (prev.isZero() || prev.isNegative()) return { investments: null, netWorth: null };
 
   const investments: Delta = { dollar, pct: dollar.toFloat() / prev.toFloat() };
 
   const otherKinds = breakdown.netWorth.sub(mvCovered);
   const prevNetWorth = prev.add(otherKinds);
-  const netWorth: Delta | null = prevNetWorth.isZero()
-    ? null
-    : { dollar, pct: dollar.toFloat() / prevNetWorth.toFloat() };
+  const netWorth: Delta | null =
+    prevNetWorth.isZero() || prevNetWorth.isNegative()
+      ? null
+      : { dollar, pct: dollar.toFloat() / prevNetWorth.toFloat() };
 
   return { investments, netWorth };
 }

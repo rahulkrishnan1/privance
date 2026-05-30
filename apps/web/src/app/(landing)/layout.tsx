@@ -18,27 +18,7 @@ const GRAIN_SVG =
 
 export default function LandingLayout({ children }: { children: ReactNode }) {
   return (
-    <div
-      className="relative min-h-svh bg-stone-950 text-stone-100 antialiased selection:bg-gold-600/30 selection:text-stone-50"
-      style={{ scrollBehavior: "smooth" }}
-    >
-      <style>{`
-        html { scroll-behavior: smooth; }
-        @keyframes reveal-up {
-          from { opacity: 0; transform: translateY(14px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes reveal-fade {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        .reveal-up { animation: reveal-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) both; }
-        .reveal-fade { animation: reveal-fade 1.2s ease-out both; }
-        .fraunces { font-family: var(--font-fraunces), Georgia, serif; font-variation-settings: "opsz" 96, "SOFT" 50; }
-        .fraunces-display { font-family: var(--font-fraunces), Georgia, serif; font-variation-settings: "opsz" 144, "SOFT" 50; }
-        .fraunces-italic { font-family: var(--font-fraunces), Georgia, serif; font-style: italic; font-variation-settings: "opsz" 96, "SOFT" 100; }
-      `}</style>
-
+    <div className="relative min-h-svh bg-stone-950 text-stone-100 antialiased selection:bg-gold-600/30 selection:text-stone-50">
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 z-0 opacity-[0.04] mix-blend-overlay"

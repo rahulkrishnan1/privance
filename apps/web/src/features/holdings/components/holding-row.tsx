@@ -1,7 +1,6 @@
 "use client";
 
 import { Decimal, SCALE_CENTS, SCALE_CRYPTO } from "@privance/core";
-import type { KeyboardEvent, MouseEvent } from "react";
 import { formatCurrency } from "@/lib/format";
 import { parseCostBasisCents } from "../_helpers";
 import type { LocalGroup, LocalHolding } from "../types";
@@ -167,44 +166,30 @@ export function HoldingRow({
 
   const subRowId = `holding-detail-${holding.id}`;
 
-  // Edit/Delete buttons sit inside the clickable row. stopPropagation keeps
-  // them from also toggling row expansion when the user means "edit", not
-  // "expand".
-  const handleEdit = (e: MouseEvent) => {
-    e.stopPropagation();
-    onEdit(holding);
-  };
-  const handleDelete = (e: MouseEvent) => {
-    e.stopPropagation();
-    onDelete(holding);
-  };
+  const handleEdit = () => onEdit(holding);
+  const handleDelete = () => onDelete(holding);
   const handleToggle = () => onToggle(holding.id);
-
-  // Keyboard activation matches the mouse path for the row-as-button.
-  const onRowKeyDown = (e: KeyboardEvent<HTMLTableRowElement>) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      onToggle(holding.id);
-    }
-  };
 
   return (
     <>
-      <tr
-        className="border-b border-app-line-soft hover:bg-white/[0.03] cursor-pointer md:cursor-default focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold-accent"
-        onClick={handleToggle}
-        onKeyDown={onRowKeyDown}
-        tabIndex={0}
-        aria-expanded={isExpanded}
-        aria-controls={subRowId}
-        aria-label={`${holding.ticker}, ${isExpanded ? "collapse" : "expand"} details`}
-      >
-        {/* Ticker + name */}
+      <tr className="border-b border-app-line-soft hover:bg-white/[0.03]">
+        {/* Disclosure on a <button>, not the <tr>: screen readers announce
+            "button, expanded/collapsed" rather than mapping aria-expanded
+            onto a row. block w-full keeps the full ticker area tappable. */}
         <td className="px-3 py-3">
-          <p className="font-mono text-[13px] text-app-text truncate">{holding.ticker}</p>
-          {holding.name !== undefined && (
-            <p className="text-xs text-app-muted truncate">{holding.name}</p>
-          )}
+          <button
+            type="button"
+            onClick={handleToggle}
+            aria-expanded={isExpanded}
+            aria-controls={subRowId}
+            aria-label={`${holding.ticker}, ${isExpanded ? "collapse" : "expand"} details`}
+            className="block w-full text-left cursor-pointer md:cursor-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] rounded"
+          >
+            <p className="font-mono text-[13px] text-app-text truncate">{holding.ticker}</p>
+            {holding.name !== undefined && (
+              <p className="text-xs text-app-muted truncate">{holding.name}</p>
+            )}
+          </button>
         </td>
 
         {/* Account chip */}
@@ -290,7 +275,9 @@ export function HoldingRow({
 
       {isExpanded && (
         <tr id={subRowId} className="md:hidden border-b border-app-line-soft bg-white/[0.02]">
-          <td colSpan={3} className="px-3 py-4">
+          {/* 9999 clamps to the actual column count; the sub-row stays
+              full-width without coupling to holdings-table.tsx's count. */}
+          <td colSpan={9999} className="px-3 py-4">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
               <dt className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim self-center">
                 Account

@@ -5,6 +5,7 @@
 import type {
   AccountId,
   CashAccount,
+  Holding,
   HoldingId,
   HoldingValuation,
   IsoDate,
@@ -15,10 +16,13 @@ import type {
 import { asId, asIsoDate, asIsoDateTime, Decimal, SCALE_CENTS } from "@privance/core";
 import { describe, expect, it } from "vitest";
 import { formatCurrency, formatDate, formatPercent, formatTime } from "@/lib/format";
+import { computeDayChangeByHoldingId, deriveAggregateDeltas } from "./_math";
 import {
   buildSnapshotPayload,
+  existingSnapshotLooksUnpriced,
   isBreakdownPriced,
   nextSnapshotAction,
+  snapshotObjectId,
   utcDateString,
 } from "./_snapshot";
 
@@ -57,7 +61,11 @@ function makeHoldingValuation(
   };
 }
 
-function makeSnapshot(date: IsoDate, netWorthCents: string): NetWorthSnapshot {
+function makeSnapshot(
+  date: IsoDate,
+  netWorthCents: string,
+  opts: { cashCents?: string; investmentCents?: string } = {},
+): NetWorthSnapshot {
   return {
     id: asId<NetWorthSnapshotId>(`snap-${date}`),
     userId: asId<UserId>("user-1"),
@@ -66,9 +74,8 @@ function makeSnapshot(date: IsoDate, netWorthCents: string): NetWorthSnapshot {
     payload: {
       snapshotAt: date,
       netWorthCents,
-      cashCents: "0",
-      investmentCents: "0",
-      accountCount: 1,
+      cashCents: opts.cashCents ?? "0",
+      investmentCents: opts.investmentCents ?? "0",
     },
   } as NetWorthSnapshot;
 }
@@ -209,8 +216,22 @@ describe("utcDateString", () => {
 });
 
 describe("isBreakdownPriced", () => {
-  function makeBreakdown(unknownTickers: string[]) {
-    return { unknownTickers } as unknown as Parameters<typeof isBreakdownPriced>[0];
+  function makeBreakdown(unknownTickers: string[]): Parameters<typeof isBreakdownPriced>[0] {
+    return {
+      totalAssets: Decimal.zero(SCALE_CENTS),
+      totalLiabilities: Decimal.zero(SCALE_CENTS),
+      netWorth: Decimal.zero(SCALE_CENTS),
+      byAccountKind: {
+        cash: Decimal.zero(SCALE_CENTS),
+        investment: Decimal.zero(SCALE_CENTS),
+        liability: Decimal.zero(SCALE_CENTS),
+        manualAsset: Decimal.zero(SCALE_CENTS),
+      },
+      byAccount: [],
+      byHolding: [],
+      unknownTickers,
+      asOf: 0,
+    };
   }
 
   it("is true when no tickers are missing", () => {
@@ -230,6 +251,59 @@ describe("isBreakdownPriced", () => {
   });
 });
 
+describe("existingSnapshotLooksUnpriced", () => {
+  function makeBreakdown(byHoldingCount: number): Parameters<typeof isBreakdownPriced>[0] {
+    const byHolding = Array.from({ length: byHoldingCount }, (_, i) => ({
+      holdingId: asId<HoldingId>(`h-${i}`),
+      marketValue: Decimal.zero(SCALE_CENTS),
+    })) as unknown as Parameters<typeof isBreakdownPriced>[0]["byHolding"];
+    return {
+      totalAssets: Decimal.zero(SCALE_CENTS),
+      totalLiabilities: Decimal.zero(SCALE_CENTS),
+      netWorth: Decimal.zero(SCALE_CENTS),
+      byAccountKind: {
+        cash: Decimal.zero(SCALE_CENTS),
+        investment: Decimal.zero(SCALE_CENTS),
+        liability: Decimal.zero(SCALE_CENTS),
+        manualAsset: Decimal.zero(SCALE_CENTS),
+      },
+      byAccount: [],
+      byHolding,
+      unknownTickers: [],
+      asOf: 0,
+    };
+  }
+
+  it("flags a zero-investment row when holdings are present (heal allowed)", () => {
+    const existing = makeSnapshot(asIsoDate("2026-05-29"), "50000", { investmentCents: "0" });
+    expect(existingSnapshotLooksUnpriced(existing, makeBreakdown(2))).toBe(true);
+  });
+
+  it("does not flag a zero-investment row when no holdings exist (account closure)", () => {
+    const existing = makeSnapshot(asIsoDate("2026-05-29"), "50000", { investmentCents: "0" });
+    expect(existingSnapshotLooksUnpriced(existing, makeBreakdown(0))).toBe(false);
+  });
+
+  it("does not flag a non-zero-investment row even with holdings present", () => {
+    const existing = makeSnapshot(asIsoDate("2026-05-29"), "150000", { investmentCents: "100000" });
+    expect(existingSnapshotLooksUnpriced(existing, makeBreakdown(2))).toBe(false);
+  });
+});
+
+describe("snapshotObjectId", () => {
+  it("returns the same id for the same UTC date", () => {
+    expect(snapshotObjectId("2026-05-29")).toBe(snapshotObjectId("2026-05-29"));
+  });
+
+  it("returns distinct ids for different UTC dates", () => {
+    expect(snapshotObjectId("2026-05-29")).not.toBe(snapshotObjectId("2026-05-30"));
+  });
+
+  it("encodes the date in the id so collisions are date-keyed", () => {
+    expect(snapshotObjectId("2026-05-29")).toBe("snap-2026-05-29");
+  });
+});
+
 describe("nextSnapshotAction", () => {
   it("creates when no snapshot exists for today", () => {
     expect(
@@ -237,6 +311,7 @@ describe("nextSnapshotAction", () => {
         snapshots: [],
         today: "2026-05-29",
         currentNetWorthCents: "100000",
+        existingLooksUnpriced: false,
         alreadyRewroteThisSession: false,
       }),
     ).toEqual({ type: "create" });
@@ -248,6 +323,7 @@ describe("nextSnapshotAction", () => {
         snapshots: [makeSnapshot(asIsoDate("2026-05-28"), "90000")],
         today: "2026-05-29",
         currentNetWorthCents: "100000",
+        existingLooksUnpriced: false,
         alreadyRewroteThisSession: false,
       }),
     ).toEqual({ type: "create" });
@@ -259,12 +335,13 @@ describe("nextSnapshotAction", () => {
         snapshots: [makeSnapshot(asIsoDate("2026-05-29"), "100000")],
         today: "2026-05-29",
         currentNetWorthCents: "100000",
+        existingLooksUnpriced: false,
         alreadyRewroteThisSession: false,
       }),
     ).toEqual({ type: "skip" });
   });
 
-  it("updates today's snapshot when its sealed value diverges", () => {
+  it("updates today's snapshot when it was sealed unpriced and now diverges", () => {
     // Day-1 race: snapshot was written before prices loaded, so investmentCents
     // contributed $0 to netWorth. Now prices have arrived and the breakdown
     // shows the true value; rewrite today's row.
@@ -272,9 +349,24 @@ describe("nextSnapshotAction", () => {
       snapshots: [makeSnapshot(asIsoDate("2026-05-29"), "50000")],
       today: "2026-05-29",
       currentNetWorthCents: "150000",
+      existingLooksUnpriced: true,
       alreadyRewroteThisSession: false,
     });
     expect(action).toEqual({ type: "update", existingId: "snap-2026-05-29" });
+  });
+
+  it("skips when an already-priced row diverges (intraday price drift)", () => {
+    // Existing row has real prices baked in; net worth ticks by a few cents
+    // from market movement. Not a heal target, the rewrite token stays unused.
+    expect(
+      nextSnapshotAction({
+        snapshots: [makeSnapshot(asIsoDate("2026-05-29"), "150000")],
+        today: "2026-05-29",
+        currentNetWorthCents: "150001",
+        existingLooksUnpriced: false,
+        alreadyRewroteThisSession: false,
+      }),
+    ).toEqual({ type: "skip" });
   });
 
   it("skips the rewrite once the session has already healed today's row", () => {
@@ -285,6 +377,7 @@ describe("nextSnapshotAction", () => {
         snapshots: [makeSnapshot(asIsoDate("2026-05-29"), "50000")],
         today: "2026-05-29",
         currentNetWorthCents: "150000",
+        existingLooksUnpriced: true,
         alreadyRewroteThisSession: true,
       }),
     ).toEqual({ type: "skip" });
@@ -335,14 +428,12 @@ describe("buildSnapshotPayload", () => {
         cashCents: 1_250_000n,
         investmentCents: 2_047_285n,
       }),
-      accountCount: 3,
     });
 
     expect(payload.snapshotAt).toBe("2026-05-29");
     expect(payload.netWorthCents).toBe("3297285");
     expect(payload.cashCents).toBe("1250000");
     expect(payload.investmentCents).toBe("2047285");
-    expect(payload.accountCount).toBe(3);
   });
 
   it("returns a payload that JSON-serialises cleanly", () => {
@@ -353,12 +444,11 @@ describe("buildSnapshotPayload", () => {
         cashCents: 0n,
         investmentCents: 0n,
       }),
-      accountCount: 0,
     });
 
     const json = JSON.stringify(payload);
     expect(json).toBe(
-      '{"snapshotAt":"2026-05-29","netWorthCents":"0","cashCents":"0","investmentCents":"0","accountCount":0}',
+      '{"snapshotAt":"2026-05-29","netWorthCents":"0","cashCents":"0","investmentCents":"0"}',
     );
   });
 });
@@ -446,10 +536,8 @@ describe("account fixtures", () => {
 });
 
 // ---------------------------------------------------------------------------
-// deriveAggregateDeltas — the math the dashboard depends on
+// deriveAggregateDeltas: math the dashboard depends on
 // ---------------------------------------------------------------------------
-
-import { deriveAggregateDeltas } from "./_math";
 
 type BreakdownLike = Parameters<typeof deriveAggregateDeltas>[0];
 
@@ -487,7 +575,7 @@ describe("deriveAggregateDeltas", () => {
 
   it("computes %s only over the SUBSET with prior-price data (regression: partial coverage)", () => {
     // h1: today 100, dayChange +1.50 → yesterday 98.50, +1.5234% on h1
-    // h2: NO prior price — must NOT contribute to either numerator or denominator
+    // h2 has no prior price, so it must NOT contribute to either numerator or denominator.
     const breakdown = mockBreakdown({
       byHolding: [
         { id: "h1", marketValueCents: "10000" }, // $100.00
@@ -549,15 +637,60 @@ describe("deriveAggregateDeltas", () => {
     expect(investments).toBeNull();
     expect(netWorth).toBeNull();
   });
+
+  it("returns null investments when prior-investments would be negative", () => {
+    // Today MV $100; today's change +$150 means yesterday MV = -$50.
+    // Sign-flipped denominator must not produce a negative pct.
+    const breakdown = mockBreakdown({
+      byHolding: [{ id: "h1", marketValueCents: "10000" }],
+      netWorthCents: "10000",
+    });
+    const dc = dayChangeMap([["h1", "15000"]]);
+    const { investments, netWorth } = deriveAggregateDeltas(breakdown, dc);
+    expect(investments).toBeNull();
+    expect(netWorth).toBeNull();
+  });
+
+  it("returns null netWorth but valid investments when prevNetWorth is negative", () => {
+    // Investments: today $100, yesterday $99 (positive prev). Cash/liabilities
+    // bring netWorth to -$50 today; prevNetWorth = $99 + (-$150) = -$51.
+    // Investments % is meaningful, netWorth % is not.
+    const breakdown = mockBreakdown({
+      byHolding: [{ id: "h1", marketValueCents: "10000" }],
+      netWorthCents: "-5000",
+    });
+    const dc = dayChangeMap([["h1", "100"]]);
+    const { investments, netWorth } = deriveAggregateDeltas(breakdown, dc);
+    expect(investments).not.toBeNull();
+    expect(investments?.pct).toBeGreaterThan(0);
+    expect(netWorth).toBeNull();
+  });
+
+  it("KPI aggregate and top-holdings table see the same set (skips negative-MV)", () => {
+    // h1: positive MV with day change; h-neg: negative MV with day change.
+    // The aggregate must skip h-neg so the KPI does not include a day delta
+    // the top-holdings table excludes (filter parity).
+    const breakdown = mockBreakdown({
+      byHolding: [
+        { id: "h1", marketValueCents: "10000" },
+        { id: "h-neg", marketValueCents: "-2000" },
+      ],
+      netWorthCents: "8000",
+    });
+    const dc = dayChangeMap([
+      ["h1", "150"],
+      ["h-neg", "50"],
+    ]);
+    const { investments } = deriveAggregateDeltas(breakdown, dc);
+    // Only h1 contributes: $1.50 over prev $98.50.
+    expect(investments?.dollar.toString()).toBe("1.50");
+    expect(investments?.pct).toBeCloseTo(1.5 / 98.5, 10);
+  });
 });
 
 // ---------------------------------------------------------------------------
-// computeDayChangeByHoldingId — verifies proxy + scaleFactor + missing prev
+// computeDayChangeByHoldingId: verifies proxy + scaleFactor + missing prev
 // ---------------------------------------------------------------------------
-
-import type { Holding } from "@privance/core";
-import { asIsoDateTime as _ts } from "@privance/core";
-import { computeDayChangeByHoldingId } from "./_math";
 
 type HoldingMinPayload = {
   ticker: string;
@@ -568,7 +701,7 @@ type HoldingMinPayload = {
 };
 
 function makeStockHolding(id: string, p: HoldingMinPayload): Holding {
-  const ts = _ts(new Date(0).toISOString());
+  const ts = asIsoDateTime(new Date(0).toISOString());
   // Cast through unknown: payload shape is broader (cost basis, asset type,
   // groupId, etc.) but computeDayChangeByHoldingId only reads ticker/proxy/
   // shares/scaleFactor, so we keep the fixture minimal.

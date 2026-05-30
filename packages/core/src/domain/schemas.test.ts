@@ -182,7 +182,6 @@ describe("NetWorthSnapshotPayloadSchema", () => {
     netWorthCents: "1000000",
     cashCents: "200000",
     investmentCents: "800000",
-    accountCount: 3,
   };
 
   it("accepts a valid snapshot payload", () => {

@@ -46,8 +46,7 @@ export function Logo({ size = 32, className }: LogoProps) {
         <path d="M 105 90 L 105 115" />
         <path d="M 55 108 L 105 108" />
       </g>
-      <circle cx="70" cy="78" r="8" fill="currentColor" />
-      <circle cx="70" cy="78" r="4.5" fill="#0a0a0a" />
+      <circle cx="70" cy="78" r="6.25" fill="none" stroke="currentColor" strokeWidth="3.5" />
       <circle cx="70" cy="78" r="1.8" fill="currentColor" />
     </svg>
   );

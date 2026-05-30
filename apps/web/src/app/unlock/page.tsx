@@ -9,8 +9,9 @@ import { Loading } from "@/components/Loading";
 import * as authApi from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { deriveLoginCrypto, unwrapDek } from "@/lib/auth-crypto";
+import { destroyUserStore } from "@/lib/storage/per-user-store";
 import { PASSWORD_MAX } from "@/lib/validation";
-import { useAuth } from "@/providers/auth-context";
+import { USER_ID_KEY, useAuth } from "@/providers/auth-context";
 
 export default function UnlockPage() {
   const router = useRouter();
@@ -90,6 +91,10 @@ export default function UnlockPage() {
 
   async function handleSignOut() {
     await authApi.logout().catch(() => undefined);
+    // The lock-reload wiped the in-memory store and its destroy cleanup, so
+    // erase the per-user ciphertext file directly before clearing the session.
+    const userId = sessionStorage.getItem(USER_ID_KEY);
+    if (userId !== null) await destroyUserStore(userId);
     logout();
     window.location.replace("/auth/login/");
   }

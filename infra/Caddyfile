@@ -43,8 +43,18 @@
 		reverse_proxy server:3000
 	}
 
-	# try_files resolves /accounts/ to /srv/web/accounts/index.html for the
-	# Next.js App Router static export.
+	# Legacy deep-link compatibility: the four (app) segments moved from
+	# /, /accounts, /holdings, /settings to /app/* in the route restructure.
+	# Without these, existing bookmarks and pre-rename PWA start_urls 404.
+	redir /accounts /app/accounts/ permanent
+	redir /accounts/ /app/accounts/ permanent
+	redir /holdings /app/holdings/ permanent
+	redir /holdings/ /app/holdings/ permanent
+	redir /settings /app/settings/ permanent
+	redir /settings/ /app/settings/ permanent
+
+	# try_files resolves /app/accounts/ to /srv/web/app/accounts/index.html
+	# for the Next.js App Router static export.
 	handle {
 		root * /srv/web
 		try_files {path} {path}/index.html =404

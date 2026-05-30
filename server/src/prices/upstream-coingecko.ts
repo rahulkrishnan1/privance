@@ -2,8 +2,9 @@ import type { FetchLike, UpstreamPrice } from "./types.js";
 import { UpstreamUnavailableError } from "./types.js";
 
 const COINGECKO_BASE = "https://api.coingecko.com";
-// CoinGecko simple/price — IDs comma-separated. include_24hr_change adds a
-// `usd_24h_change` percent field used to derive the prior session price.
+// CoinGecko simple/price endpoint. IDs are comma-separated, and the
+// include_24hr_change flag adds `usd_24h_change`, the percent field used
+// to derive the prior session price.
 const COINGECKO_PRICE_URL = (ids: string) =>
   `${COINGECKO_BASE}/api/v3/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=usd&include_24hr_change=true`;
 
