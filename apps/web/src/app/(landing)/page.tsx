@@ -1,9 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { Logo } from "@/components/index";
 import { useAuth } from "@/providers/auth-context";
+
+// useLayoutEffect on the server logs a warning; fall back to useEffect there.
+// The ternary is evaluated at module load, so the resolved reference is
+// stable across renders and rules-of-hooks is satisfied.
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+// Evaluated at module load (static-export build time); avoids per-render
+// Date construction and the SSR/client divergence a render-time call would
+// introduce when crossing midnight on Dec 31.
+const YEAR = new Date().getFullYear();
 
 const NAV_LINKS = [
   { label: "Features", href: "#features" },
@@ -196,7 +206,7 @@ function NavBar({ scrolled }: { scrolled: boolean }) {
         <Link href="/" className="flex items-center gap-2.5 group">
           <Logo size={26} className="text-gold-accent" />
           <span
-            className="fraunces text-lg tracking-tight text-stone-100 group-hover:text-white transition-colors"
+            className="font-serif text-lg tracking-tight text-stone-100 group-hover:text-white transition-colors"
             style={{ fontVariationSettings: '"opsz" 24, "SOFT" 80' }}
           >
             Privance
@@ -247,15 +257,23 @@ function Hero() {
   return (
     <section className="relative px-6 md:px-10 pt-24 pb-16 md:pt-20 md:pb-20 max-w-7xl mx-auto">
       <div className="reveal-fade">
-        <SectionLabel n="001" label="Privance · personal finance, encrypted" />
+        <SectionLabel n="01" label="Privance · personal finance, encrypted" />
       </div>
 
-      <h1 className="mt-10 fraunces-display text-[clamp(2.75rem,9vw,8rem)] leading-[0.95] tracking-[-0.025em] text-stone-50 font-light">
+      <h1
+        className="mt-10 font-serif text-[clamp(2.75rem,9vw,8rem)] leading-[0.95] tracking-[-0.025em] text-stone-50 font-light"
+        style={{ fontVariationSettings: '"opsz" 144, "SOFT" 50' }}
+      >
         <span className="block reveal-up" style={{ animationDelay: "0.05s" }}>
           Track your wealth.
         </span>
         <span className="block reveal-up" style={{ animationDelay: "0.18s" }}>
-          <span className="fraunces-italic text-gold-accent">Privately.</span>
+          <span
+            className="font-serif italic text-gold-accent"
+            style={{ fontVariationSettings: '"opsz" 96, "SOFT" 100' }}
+          >
+            Privately.
+          </span>
         </span>
       </h1>
 
@@ -316,10 +334,19 @@ function Features() {
       className="relative px-6 md:px-10 py-20 md:py-28 border-t border-stone-900/70"
     >
       <div className="max-w-7xl mx-auto">
-        <SectionLabel n="002" label="Features" />
+        <SectionLabel n="02" label="Features" />
 
-        <h2 className="mt-10 fraunces text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl">
-          Available now. <span className="fraunces-italic text-stone-300">More on the way.</span>
+        <h2
+          className="mt-10 font-serif text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl"
+          style={{ fontVariationSettings: '"opsz" 96, "SOFT" 50' }}
+        >
+          Available now.{" "}
+          <span
+            className="font-serif italic text-stone-300"
+            style={{ fontVariationSettings: '"opsz" 96, "SOFT" 100' }}
+          >
+            More on the way.
+          </span>
         </h2>
 
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-px bg-stone-900/80 border border-stone-900/80">
@@ -339,7 +366,7 @@ function Features() {
               </div>
 
               <h3
-                className="mt-8 fraunces text-2xl md:text-3xl tracking-[-0.015em] text-stone-50 font-light"
+                className="mt-8 font-serif text-2xl md:text-3xl tracking-[-0.015em] text-stone-50 font-light"
                 style={{ fontVariationSettings: '"opsz" 32, "SOFT" 50' }}
               >
                 {f.title}
@@ -360,12 +387,21 @@ function Protocol() {
       className="relative px-6 md:px-10 py-20 md:py-28 border-t border-stone-900/70"
     >
       <div className="max-w-7xl mx-auto">
-        <SectionLabel n="003" label="Protocol" />
+        <SectionLabel n="03" label="Protocol" />
 
         <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-20 items-end">
-          <h2 className="fraunces text-[clamp(2rem,5.5vw,4.5rem)] leading-[1.03] tracking-[-0.025em] text-stone-50 font-light">
-            What <span className="fraunces-italic text-gold-accent">zero-knowledge</span> actually
-            means.
+          <h2
+            className="font-serif text-[clamp(2rem,5.5vw,4.5rem)] leading-[1.03] tracking-[-0.025em] text-stone-50 font-light"
+            style={{ fontVariationSettings: '"opsz" 96, "SOFT" 50' }}
+          >
+            What{" "}
+            <span
+              className="font-serif italic text-gold-accent"
+              style={{ fontVariationSettings: '"opsz" 96, "SOFT" 100' }}
+            >
+              zero-knowledge
+            </span>{" "}
+            actually means.
           </h2>
           <p className="text-stone-400 leading-relaxed text-base md:text-lg max-w-md">
             The server learns nothing about the contents of your finances, because it cannot. Three
@@ -373,9 +409,7 @@ function Protocol() {
           </p>
         </div>
 
-        {/* Architectural diagram */}
         <div className="mt-20 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-0 items-stretch">
-          {/* Device side */}
           <div className="relative border border-stone-800 bg-stone-900/30 backdrop-blur-sm p-8 md:p-10 md:border-r-0">
             <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-gold-accent">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-gold-accent" />
@@ -405,7 +439,6 @@ function Protocol() {
             </div>
           </div>
 
-          {/* Bridge */}
           <div className="relative flex md:flex-col items-center justify-center px-6 py-6 md:py-0 md:px-10 border-t border-b md:border-y-0 md:border-l md:border-r border-stone-800 bg-stone-950/60">
             <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500 whitespace-nowrap">
               over TLS
@@ -419,7 +452,6 @@ function Protocol() {
             </div>
           </div>
 
-          {/* Server side */}
           <div className="relative border border-stone-800 bg-stone-900/30 backdrop-blur-sm p-8 md:p-10 md:border-l-0">
             <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-stone-400">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-stone-500" />
@@ -452,7 +484,6 @@ function Protocol() {
           </div>
         </div>
 
-        {/* Three steps, inlined below the diagram */}
         <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-x-10 gap-y-12">
           {STEPS.map((s) => (
             <div key={s.n} className="space-y-4">
@@ -460,7 +491,7 @@ function Protocol() {
                 step / {s.n}
               </div>
               <h3
-                className="fraunces text-xl md:text-2xl tracking-[-0.015em] text-stone-50 font-light leading-tight"
+                className="font-serif text-xl md:text-2xl tracking-[-0.015em] text-stone-50 font-light leading-tight"
                 style={{ fontVariationSettings: '"opsz" 32, "SOFT" 50' }}
               >
                 {s.title}
@@ -484,10 +515,19 @@ function Tenets() {
       className="relative px-6 md:px-10 py-20 md:py-28 border-t border-stone-900/70"
     >
       <div className="max-w-7xl mx-auto">
-        <SectionLabel n="004" label="Tenets" />
+        <SectionLabel n="04" label="Tenets" />
 
-        <h2 className="mt-10 fraunces text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl">
-          Four <span className="fraunces-italic text-stone-300">non-negotiables.</span>
+        <h2
+          className="mt-10 font-serif text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl"
+          style={{ fontVariationSettings: '"opsz" 96, "SOFT" 50' }}
+        >
+          Four{" "}
+          <span
+            className="font-serif italic text-stone-300"
+            style={{ fontVariationSettings: '"opsz" 96, "SOFT" 100' }}
+          >
+            non-negotiables.
+          </span>
         </h2>
 
         <div className="mt-20 grid grid-cols-1 md:grid-cols-2 gap-px bg-stone-900/80 border border-stone-900/80">
@@ -506,7 +546,7 @@ function Tenets() {
               </div>
 
               <h3
-                className="mt-10 fraunces text-3xl md:text-4xl tracking-[-0.015em] text-stone-50 font-light"
+                className="mt-10 font-serif text-3xl md:text-4xl tracking-[-0.015em] text-stone-50 font-light"
                 style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
               >
                 {t.title}
@@ -533,11 +573,20 @@ function ThreatModel() {
       className="relative px-6 md:px-10 py-20 md:py-28 border-t border-stone-900/70 bg-gradient-to-b from-transparent via-gold-950/10 to-transparent"
     >
       <div className="max-w-7xl mx-auto">
-        <SectionLabel n="005" label="Threat model" />
+        <SectionLabel n="05" label="Threat model" />
 
-        <h2 className="mt-10 fraunces text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl">
-          What we protect <span className="fraunces-italic text-stone-300">against</span>, and what
-          we don&rsquo;t.
+        <h2
+          className="mt-10 font-serif text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl"
+          style={{ fontVariationSettings: '"opsz" 96, "SOFT" 50' }}
+        >
+          What we protect{" "}
+          <span
+            className="font-serif italic text-stone-300"
+            style={{ fontVariationSettings: '"opsz" 96, "SOFT" 100' }}
+          >
+            against
+          </span>
+          , and what we don&rsquo;t.
         </h2>
 
         <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
@@ -593,17 +642,27 @@ function FAQ() {
       className="relative px-6 md:px-10 py-20 md:py-28 border-t border-stone-900/70"
     >
       <div className="max-w-7xl mx-auto">
-        <SectionLabel n="006" label="FAQ" />
+        <SectionLabel n="06" label="FAQ" />
 
-        <h2 className="mt-10 fraunces text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl">
-          The <span className="fraunces-italic text-stone-300">honest</span> answers.
+        <h2
+          className="mt-10 font-serif text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl"
+          style={{ fontVariationSettings: '"opsz" 96, "SOFT" 50' }}
+        >
+          The{" "}
+          <span
+            className="font-serif italic text-stone-300"
+            style={{ fontVariationSettings: '"opsz" 96, "SOFT" 100' }}
+          >
+            honest
+          </span>{" "}
+          answers.
         </h2>
 
         <dl className="mt-20 grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-14">
           {FAQS.map((f) => (
             <div key={f.q} className="group">
               <dt
-                className="fraunces text-xl md:text-2xl text-stone-100 leading-snug"
+                className="font-serif text-xl md:text-2xl text-stone-100 leading-snug"
                 style={{ fontVariationSettings: '"opsz" 32, "SOFT" 50' }}
               >
                 {f.q}
@@ -623,10 +682,18 @@ function Footer() {
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-16 md:gap-24 items-end">
           <div>
-            <h2 className="fraunces-display text-[clamp(2.5rem,8vw,7rem)] leading-[0.95] tracking-[-0.025em] text-stone-50 font-light">
+            <h2
+              className="font-serif text-[clamp(2.5rem,8vw,7rem)] leading-[0.95] tracking-[-0.025em] text-stone-50 font-light"
+              style={{ fontVariationSettings: '"opsz" 144, "SOFT" 50' }}
+            >
               Personal finance,
               <br />
-              <span className="fraunces-italic text-gold-accent">kept personal.</span>
+              <span
+                className="font-serif italic text-gold-accent"
+                style={{ fontVariationSettings: '"opsz" 96, "SOFT" 100' }}
+              >
+                kept personal.
+              </span>
             </h2>
             <p className="mt-8 max-w-md text-stone-400 text-lg leading-relaxed">
               Open source. Run it on your terms.
@@ -648,7 +715,7 @@ function Footer() {
             <div className="flex md:justify-end items-center gap-2.5">
               <Logo size={22} className="text-gold-accent" />
               <span
-                className="fraunces text-base tracking-tight text-stone-100"
+                className="font-serif text-base tracking-tight text-stone-100"
                 style={{ fontVariationSettings: '"opsz" 24, "SOFT" 80' }}
               >
                 Privance
@@ -682,7 +749,7 @@ function Footer() {
         </div>
 
         <div className="mt-24 pt-8 border-t border-stone-900 flex flex-wrap items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-[0.22em] text-stone-600">
-          <span>AGPL-3.0 · 2026 · Privance</span>
+          <span>AGPL-3.0 · {YEAR} · Privance</span>
           <span>privance.app</span>
         </div>
       </div>
@@ -692,12 +759,20 @@ function Footer() {
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { state } = useAuth();
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Fire the redirect before paint so signed-in users do not see the
+  // one-frame blank between `return null` and the navigation committing.
+  useIsoLayoutEffect(() => {
+    if (!mounted) return;
     if (state === "unlocked") window.location.replace("/app/");
     else if (state === "locked") window.location.replace("/unlock/");
-  }, [state]);
+  }, [mounted, state]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -706,8 +781,10 @@ export default function LandingPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Avoid flashing the landing for signed-in users mid-redirect.
-  if (state !== "unauthenticated") return null;
+  // SSR and the first client render both render the landing (mounted=false),
+  // so hydration agrees. Once mounted, blank out for signed-in users while
+  // the redirect commits.
+  if (mounted && state !== "unauthenticated") return null;
 
   return (
     <>

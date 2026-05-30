@@ -135,5 +135,4 @@ export const NetWorthSnapshotPayloadSchema = z.object({
   netWorthCents: decimalString,
   cashCents: decimalString,
   investmentCents: decimalString,
-  accountCount: z.number().int().nonnegative(),
 });

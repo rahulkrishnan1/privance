@@ -21,8 +21,6 @@ export interface NetWorthSnapshotPayload {
   readonly cashCents: string;
   /** Total investment value (holdings at market price), in cents. */
   readonly investmentCents: string;
-  /** Count of accounts included in this snapshot. */
-  readonly accountCount: number;
 }
 
 /** Fully-decrypted net-worth snapshot. */

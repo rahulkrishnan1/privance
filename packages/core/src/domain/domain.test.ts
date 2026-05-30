@@ -266,10 +266,9 @@ describe("NetWorthSnapshot shape", () => {
         netWorthCents: "1000000",
         cashCents: "250000",
         investmentCents: "750000",
-        accountCount: 3,
       },
     };
     expect(snapshot.payload.snapshotAt).toBe("2026-05-16");
-    expect(snapshot.payload.accountCount).toBe(3);
+    expect(snapshot.payload.investmentCents).toBe("750000");
   });
 });

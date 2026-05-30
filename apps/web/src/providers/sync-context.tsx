@@ -12,6 +12,7 @@ import type { SyncClient } from "@privance/core/sync";
 import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { serverUrl } from "@/lib/api/client";
+import { perUserDbFilename } from "@/lib/storage/per-user-store";
 import { readItemsKey, useAuth } from "./auth-context";
 
 type StoreState = {
@@ -44,7 +45,7 @@ function makeLockedDecrypt(): StoreState["decrypt"] {
 }
 
 export function SyncProvider({ children }: { children: ReactNode }) {
-  const { state, lock, user } = useAuth();
+  const { state, lock, user, registerLogoutCleanup } = useAuth();
 
   const [storeClock, setStoreClock] = useState(0);
   const tick = useCallback(() => setStoreClock((c) => c + 1), []);
@@ -59,6 +60,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   const storeRef = useRef<LocalStore | null>(null);
   const clientRef = useRef<SyncClient | null>(null);
+  const unregisterLogoutCleanupRef = useRef<(() => void) | null>(null);
 
   // lock is referenced inside setup() below but is stable via useCallback in
   // AuthProvider, so we deliberately omit it from the dep list to avoid
@@ -68,6 +70,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     if (state !== "unlocked") {
       clientRef.current?.stop();
       void storeRef.current?.close();
+      unregisterLogoutCleanupRef.current?.();
+      unregisterLogoutCleanupRef.current = null;
       clientRef.current = null;
       storeRef.current = null;
       setStoreState({
@@ -95,16 +99,21 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         import("@privance/core/sync"),
       ]);
 
-      // Scope the OPFS database to the active user so a previous user's
-      // ciphertext cannot leak into the next user's session on a shared
-      // browser. The fallback to /privance.sqlite3 covers the path where the
-      // user refreshes a tab after login but before lock: the DEK is still in
-      // memory (state = "unlocked"), but the auth-context state-initialiser
-      // only re-populates `user.userId` when LOCKED_MARKER is set, so this
-      // closure sees user = null. Closing the gap requires a real session
-      // rehydration that re-fetches userId on every mount; tracked separately.
+      // Per-user OPFS file. Production throws when userId is unknown so a
+      // refactor that produces unlocked-without-userId state surfaces loudly
+      // (caught below into setupError) rather than silently funnelling into a
+      // shared file or hanging on the init spinner. The E2E session restorer
+      // injects DEK directly into globalThis without going through login(), so
+      // user.userId is undefined; tolerate that under non-prod builds where
+      // each test browser context has its own OPFS partition.
+      if (user?.userId === undefined && process.env.NODE_ENV === "production") {
+        throw new Error("sync-context: store open requested without a userId");
+      }
+      // Non-prod fallback only. Note this is the same path the worker unlinks
+      // once at init (legacy cleanup), so the dev DB is wiped-then-recreated on
+      // each boot; harmless because every test context has its own OPFS.
       const dbFilename =
-        user?.userId !== undefined ? `/privance-${user.userId}.sqlite3` : "/privance.sqlite3";
+        user?.userId !== undefined ? perUserDbFilename(user.userId) : "/privance.sqlite3";
       const store = createLocalStore({
         workerUrl: "/sqlite/privance-worker.mjs",
         dbFilename,
@@ -214,6 +223,23 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
       storeRef.current = store;
       clientRef.current = client;
+
+      // If a logout fired during setup, the auth-side cleanup loop has
+      // already run; registering now would leak a closure that nothing
+      // invokes. Bail before touching the registry.
+      if (cancelled) return;
+
+      // Register a logout cleanup that unlinks this per-user OPFS file. Lock
+      // intentionally uses close() (preserves ciphertext for re-unlock); only
+      // logout destroys, so a shared-browser user does not leave their
+      // encrypted state on disk.
+      unregisterLogoutCleanupRef.current = registerLogoutCleanup(async () => {
+        try {
+          await store.destroy();
+        } catch {
+          // best-effort; the next session re-pulls from the server
+        }
+      });
 
       // Push pending mutations from the previous session BEFORE pulling. If a
       // delete sat in the outbound queue when the user closed the PWA, this

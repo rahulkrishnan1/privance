@@ -75,6 +75,7 @@ This document covers the assets Privance protects, the actors that might threate
 | Record-swap attack | Attacker substitutes ciphertext from another record or another kind | AAD includes `{recordUuid, kind, labelVersion, kdfParamVersion}`; AES-GCM authentication tag will fail on mismatch | None: authentication is built into AES-GCM |
 | Downgrade attack (weaker KDF params) | Attacker modifies KDF params stored in DB and forces a login | AAD's `kdfParamVersion` field binds the wrapped DEK to the param version; a tampered param version causes decryption failure | None: AAD binding prevents silent downgrade |
 | Metadata leakage | Server observes object kind and count | Server sees how many records of each kind exist, but not their contents | Unavoidable: server needs kind to route sync |
+| Ciphertext lingering on shared browser | User logs out on a shared device, leaving the per-user OPFS database on disk | Logout unlinks `/privance-<userId>.sqlite3` via `store.destroy()` on both paths: while unlocked the open store's worker runs the destroy; from the locked screen the sign-out derives the filename from the persisted (non-secret) userId and destroys via a short-lived worker. Lock keeps the file so re-unlock can resume from local cache | A crash or kill between logout intent and the destroy completing leaves the file until the next session's logout re-runs the cleanup |
 
 ### 3.5 Session cookie
 

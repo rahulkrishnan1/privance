@@ -20,6 +20,7 @@ import {
   type NetWorthSnapshotId,
   NetWorthSnapshotPayloadSchema,
   SCALE_CENTS,
+  StorageError,
   type UserId,
 } from "@privance/core";
 import { useEffect, useRef, useState } from "react";
@@ -29,8 +30,10 @@ import { useSync } from "@/providers/sync-context";
 import { computeDayChangeByHoldingId, splitCashAndInvestments } from "./_math";
 import {
   buildSnapshotPayload,
+  existingSnapshotLooksUnpriced,
   isBreakdownPriced,
   nextSnapshotAction,
+  snapshotObjectId,
   utcDateString,
 } from "./_snapshot";
 import type { HistoryPoint } from "./types";
@@ -122,13 +125,7 @@ export function useDashboardData(): DashboardData {
   const { store, client, initialising, decrypt, storeClock, tick } = useSync();
   const [data, setData] = useState<DashboardData>({ status: "loading" });
   const [decryptedData, setDecryptedData] = useState<DecryptedData | null>(null);
-  // Guard against duplicate snapshot writes within a single session. The
-  // nextSnapshotAction("skip") check below handles the persistent case; this
-  // ref handles the brief async window between store.put and the next decrypt
-  // cycle.
   const snapshotWritingRef = useRef(false);
-  // Self-heal limit: rewrite today's row at most once per session so intraday
-  // price drift does not churn the snapshot on every effect re-run.
   const snapshotRewroteRef = useRef(false);
   const [yahooTickers, setYahooTickers] = useState<string[]>([]);
   const [coingeckoTickers, setCoingeckoTickers] = useState<string[]>([]);
@@ -145,8 +142,7 @@ export function useDashboardData(): DashboardData {
   useEffect(() => {
     if (initialising || store === null) {
       setData({ status: "loading" });
-      // Reset self-heal guard so a fresh sign-in (or user switch) gets one
-      // self-heal attempt instead of inheriting the previous session's flag.
+      // Reset self-heal guard on store-null transitions (sign-out, fresh sign-in).
       snapshotRewroteRef.current = false;
       return;
     }
@@ -267,6 +263,18 @@ export function useDashboardData(): DashboardData {
     if (decryptedData === null) return;
     const { accounts, holdings, snapshots } = decryptedData;
 
+    // Hold `loading` while any priced holding is still without a price.
+    // Computing aggregates with a missing entry renders holdings as $0 and
+    // skews KPI deltas; the race covers both cold start and a refetch
+    // triggered by adding a holding.
+    const someHoldingsMissingPrices =
+      holdings.length > 0 &&
+      holdings.some((h) => prices.get(h.payload.proxyTicker ?? h.payload.ticker) === undefined);
+    if (someHoldingsMissingPrices) {
+      setData({ status: "loading" });
+      return;
+    }
+
     try {
       const breakdown = computeNetWorth({ accounts, holdings, prices });
       const byKind: AllocationSlice[] = buildKindSlices(breakdown);
@@ -304,31 +312,52 @@ export function useDashboardData(): DashboardData {
     }
   }, [decryptedData, prices, previousPrices]);
 
+  // Primitive signals for the snapshot effect: a fresh `data` object on every
+  // price tick must not re-run the effect when net worth in cents and the
+  // snapshots list shape are unchanged. Deriving the strings here and using
+  // them (not `data`) as the effect deps gives React's identity check the
+  // chance to short-circuit the no-op case.
+  const netWorthCentsTrigger =
+    data.status === "ready" ? data.breakdown.netWorth.toMinorUnits().toString() : null;
+  const snapshotsKeyTrigger =
+    data.status === "ready"
+      ? data.snapshots
+          .map((s) => `${s.id}:${s.payload.snapshotAt}:${s.payload.netWorthCents}`)
+          .join("|")
+      : null;
+
   // ---------------------------------------------------------------------------
   // Snapshot effect: writes one net_worth_snapshot per UTC day so the history
   // chart has data to plot. Heals a row that was sealed before prices loaded
   // by overwriting it once per session. After a successful write, tick()
   // refreshes the decrypt effect which picks up the new snapshot.
+  //
+  // snapshotWritingRef guards the brief async window between store.put and
+  // the next decrypt cycle (in-memory dedup, since nextSnapshotAction("skip")
+  // only catches the persistent case once decryptedData reflects the new
+  // row). snapshotRewroteRef caps self-heal to once per session so intraday
+  // price drift does not churn the snapshot on every effect re-run.
   // ---------------------------------------------------------------------------
+  // biome-ignore lint/correctness/useExhaustiveDependencies: data + decryptedData read but stability comes from the primitive *Trigger deps; including the objects would re-fire on every price tick
   useEffect(() => {
-    if (data.status !== "ready") return;
-    if (decryptedData === null || store === null) return;
+    if (data.status !== "ready" || decryptedData === null || store === null) return;
     if (snapshotWritingRef.current) return;
-    // Wait for prices to load. Without this, the first render writes the
-    // snapshot with priced holdings valued at $0; the self-heal below then
-    // corrects it on the next render once prices arrive.
     if (!isBreakdownPriced(data.breakdown)) return;
 
     const today = utcDateString();
-    const currentNetWorthCents = data.breakdown.netWorth.toMinorUnits().toString();
+
+    const todaysExisting = data.snapshots.find((s) => s.payload.snapshotAt === today);
+    const existingLooksUnpriced =
+      todaysExisting !== undefined && existingSnapshotLooksUnpriced(todaysExisting, data.breakdown);
+
     const action = nextSnapshotAction({
-      snapshots: decryptedData.snapshots,
+      snapshots: data.snapshots,
       today,
-      currentNetWorthCents,
+      currentNetWorthCents: netWorthCentsTrigger ?? "",
+      existingLooksUnpriced,
       alreadyRewroteThisSession: snapshotRewroteRef.current,
     });
     if (action.type === "skip") return;
-    if (action.type === "update") snapshotRewroteRef.current = true;
 
     snapshotWritingRef.current = true;
     void (async () => {
@@ -336,11 +365,17 @@ export function useDashboardData(): DashboardData {
         const key = readItemsKey();
         if (key === null) return;
 
-        const objectId = action.type === "update" ? action.existingId : crypto.randomUUID();
+        // Deterministic objectId means the row is uniquely keyed by UTC date.
+        // The in-memory nextSnapshotAction above is a cheap early-skip; the
+        // store.get below is the source of truth for create-vs-update because
+        // an in-memory "create" decision can be stale (cross-device write
+        // arrived after the last decrypt cycle).
+        const objectId = snapshotObjectId(today);
+        const stored = await store.get({ kind: KIND_SNAPSHOT, objectId });
+
         const payload = buildSnapshotPayload({
           date: today,
           breakdown: data.breakdown,
-          accountCount: decryptedData.accounts.length,
         });
         const plaintext = new TextEncoder().encode(JSON.stringify(payload));
         const blob = encryptAead({
@@ -354,15 +389,14 @@ export function useDashboardData(): DashboardData {
           },
         });
 
-        let version = 1n;
+        let version: bigint;
         let prevVersion: bigint | undefined;
-        let serverSeq: bigint | null = null;
-        if (action.type === "update") {
-          const stored = await store.get({ kind: KIND_SNAPSHOT, objectId });
-          // The row vanished between decrypt and effect (rare cross-device
-          // delete). Skip rather than push a v1 "create" against an objectId
-          // the server already holds.
-          if (stored === null) return;
+        let serverSeq: bigint | null | undefined;
+        if (stored === null) {
+          version = 1n;
+          prevVersion = undefined;
+          serverSeq = undefined;
+        } else {
           version = stored.version + 1n;
           prevVersion = stored.version;
           serverSeq = stored.serverSeq;
@@ -386,20 +420,31 @@ export function useDashboardData(): DashboardData {
           version,
           prevVersion,
           tombstone: false,
-          enqueuedAt: now,
-        } as Parameters<typeof store.enqueue>[0]);
+        });
+        if (action.type === "update" && stored !== null) snapshotRewroteRef.current = true;
         tick();
         void client?.pushPending();
       } catch (err) {
         // Non-blocking: snapshot failure does not break the dashboard. The
-        // next dashboard mount will retry.
-        // biome-ignore lint/suspicious/noConsole: surface snapshot write failure
-        console.warn("[dashboard] snapshot write failed", err);
+        // next dashboard mount will retry. Log a name + message marker only
+        // for known StorageError shapes; never log the raw err object, which
+        // could expose ciphertext, nonce, or (after future refactor) the
+        // plaintext snapshot payload via the call stack.
+        if (err instanceof StorageError) {
+          // biome-ignore lint/suspicious/noConsole: surface snapshot write failure
+          console.warn(`[dashboard] snapshot write failed: ${err.name}: ${err.message}`);
+        } else if (err instanceof Error) {
+          // biome-ignore lint/suspicious/noConsole: surface snapshot write failure
+          console.warn(`[dashboard] snapshot write failed: ${err.name}`);
+        } else {
+          // biome-ignore lint/suspicious/noConsole: surface snapshot write failure
+          console.warn("[dashboard] snapshot write failed");
+        }
       } finally {
         snapshotWritingRef.current = false;
       }
     })();
-  }, [data, decryptedData, store, client, tick]);
+  }, [netWorthCentsTrigger, snapshotsKeyTrigger, store, client, tick]);
 
   return data;
 }

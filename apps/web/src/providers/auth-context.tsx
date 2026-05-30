@@ -3,6 +3,7 @@
 import type { ItemsKey } from "@privance/core";
 import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { resetPricesCache } from "@/lib/queries/prices";
 
 // ---------------------------------------------------------------------------
 // DEK store, lives outside React state, never logged
@@ -58,6 +59,10 @@ export type AuthContextValue = {
   unlock: (payload: AuthPayload) => void;
   lock: () => void;
   logout: () => void;
+  /** Register a cleanup callback to run on logout, before the auth state
+   *  transitions to "unauthenticated". Returns an unregister function. Used by
+   *  SyncProvider to unlink the per-user OPFS file on logout (but not lock). */
+  registerLogoutCleanup: (cb: () => void | Promise<void>) => () => void;
 };
 
 // ---------------------------------------------------------------------------
@@ -74,6 +79,11 @@ const LOCKED_MARKER = "privance.lockedMarker";
  *  skip an unnecessary field. The server already knows it; sessionStorage clears
  *  on tab close, same lifetime as the session cookie. */
 const USERNAME_KEY = "privance.username";
+
+/** Non-secret account id, persisted so the locked-screen sign-out can derive the
+ *  per-user OPFS filename and erase local ciphertext after a lock-reload wipes
+ *  it from memory. The server already knows it; never key material. */
+export const USER_ID_KEY = "privance.userId";
 
 // ---------------------------------------------------------------------------
 // Context
@@ -111,6 +121,14 @@ export function AuthProvider({
   const [persistence, setPersistence] = useState<PersistenceLevel>("memory");
   const autoLockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastActivityMs = useRef<number>(Date.now());
+  const logoutCleanupsRef = useRef<Set<() => void | Promise<void>>>(new Set());
+
+  const registerLogoutCleanup = useCallback((cb: () => void | Promise<void>) => {
+    logoutCleanupsRef.current.add(cb);
+    return () => {
+      logoutCleanupsRef.current.delete(cb);
+    };
+  }, []);
 
   const triggerLockReload = useCallback(() => {
     clearDekStore();
@@ -178,8 +196,12 @@ export function AuthProvider({
     setDekStore({ itemsKey: payload.itemsKey });
     sessionStorage.removeItem(LOCKED_MARKER);
     sessionStorage.setItem(USERNAME_KEY, payload.user.username);
+    if (payload.user.userId !== undefined) {
+      sessionStorage.setItem(USER_ID_KEY, payload.user.userId);
+    }
     setUser(payload.user);
     setPersistence(payload.persistence);
+    resetPricesCache();
     setState("unlocked");
   }, []);
 
@@ -187,6 +209,9 @@ export function AuthProvider({
     setDekStore({ itemsKey: payload.itemsKey });
     sessionStorage.removeItem(LOCKED_MARKER);
     sessionStorage.setItem(USERNAME_KEY, payload.user.username);
+    if (payload.user.userId !== undefined) {
+      sessionStorage.setItem(USER_ID_KEY, payload.user.userId);
+    }
     setUser(payload.user);
     setPersistence(payload.persistence);
     setState("unlocked");
@@ -202,17 +227,50 @@ export function AuthProvider({
     }
   }, [clearIdleTimer]);
 
-  const logout = useCallback(() => {
+  // allSettled (not a sequential await) so the worker's openDbWithRetry
+  // contention loop sees the destroys as one cluster on a fast
+  // logout-then-relogin. Throwing callbacks are coerced to resolved so one
+  // bad cleanup never blocks the rest.
+  const runLogoutCleanups = useCallback((): Promise<unknown> => {
+    const pending = [...logoutCleanupsRef.current].map((cb) => {
+      try {
+        return cb();
+      } catch {
+        return Promise.resolve();
+      }
+    });
+    return Promise.allSettled(pending);
+  }, []);
+
+  const finishLogout = useCallback(() => {
     clearDekStore();
     clearIdleTimer();
+    resetPricesCache();
     sessionStorage.removeItem(LOCKED_MARKER);
     sessionStorage.removeItem(USERNAME_KEY);
+    sessionStorage.removeItem(USER_ID_KEY);
     setUser(null);
     setState("unauthenticated");
   }, [clearIdleTimer]);
 
+  const logout = useCallback(() => {
+    void runLogoutCleanups();
+    finishLogout();
+  }, [runLogoutCleanups, finishLogout]);
+
   return (
-    <AuthContext.Provider value={{ state, user, persistence, login, unlock, lock, logout }}>
+    <AuthContext.Provider
+      value={{
+        state,
+        user,
+        persistence,
+        login,
+        unlock,
+        lock,
+        logout,
+        registerLogoutCleanup,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

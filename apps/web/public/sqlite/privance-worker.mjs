@@ -22,6 +22,7 @@ let sqlite3 = null;
 let pool = null;
 let db = null;
 let dbFilename = "/privance.sqlite3";
+let legacyUnlinkAttempted = false;
 
 // ---------------------------------------------------------------------------
 // Startup: install the SAHPool VFS, then signal readiness.
@@ -128,6 +129,15 @@ async function openDbWithRetry({ attempts = 8, baseDelayMs = 150 } = {}) {
 async function methodInit({ dbFilename: filename, ddl }) {
   if (db !== null) return null;
   if (filename) dbFilename = filename;
+  // Legacy /privance.sqlite3 from before per-user scoping; unlinked once.
+  if (pool !== null && !legacyUnlinkAttempted) {
+    legacyUnlinkAttempted = true;
+    try {
+      pool.unlink("/privance.sqlite3");
+    } catch {
+      // best-effort; the file may not exist or unlink may be unsupported
+    }
+  }
   db = pool !== null ? await openDbWithRetry() : new sqlite3.oo1.DB(":memory:");
   db.exec(ddl);
   return null;

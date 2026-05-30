@@ -125,7 +125,7 @@ export function HoldingsTable({
   // becomes hydrated text nodes that React rejects inside colgroup.
   return (
     <div className="overflow-x-auto">
-      <table aria-label="Holdings" className="w-full">
+      <table aria-label="Holdings" className="w-full md:min-w-[960px]">
         <thead>
           <tr className="border-b border-app-line">
             <th scope="col" className="px-3 py-2 text-left">

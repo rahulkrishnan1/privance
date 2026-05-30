@@ -130,8 +130,17 @@ export function TopHoldingsTable({
             // sign-flipped %; both are reachable after aggregation if a
             // collapsed-to-zero underlying joins a still-positive one.
             const prior = h.dayChange !== null ? h.marketValue.sub(h.dayChange) : null;
+            // Relative-tolerance guard: require prior > marketValue / 10000
+            // (one basis point of MV) before dividing. Sub-cent rounding on
+            // tiny aggregated MVs can land prior at $0.00 (false dash) or
+            // ~$0.01 (hyperscale %); requiring a non-trivial denominator
+            // relative to the current row size rejects both.
+            const priorAboveTol =
+              prior !== null &&
+              !prior.isNegative() &&
+              prior.toMinorUnits() * 10000n > h.marketValue.toMinorUnits();
             const dayPct =
-              h.dayChange !== null && prior !== null && !prior.isZero() && !prior.isNegative()
+              h.dayChange !== null && prior !== null && priorAboveTol
                 ? h.dayChange.toFloat() / prior.toFloat()
                 : null;
             const dayPositive =
@@ -154,7 +163,7 @@ export function TopHoldingsTable({
                 </td>
                 <td className={`${numericCellClass} ${dayColor}`}>
                   {h.dayChange === null || dayPct === null
-                    ? "—"
+                    ? "-"
                     : formatPercent(dayPct, { signed: true })}
                 </td>
                 <td className={`${numericCellClass} text-app-text`}>

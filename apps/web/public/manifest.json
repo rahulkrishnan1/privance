@@ -5,7 +5,7 @@
   "theme_color": "#e6d39a",
   "background_color": "#0a0a0a",
   "display": "standalone",
-  "start_url": "/",
+  "start_url": "/app/",
   "scope": "/",
   "orientation": "portrait-primary",
   "categories": ["finance", "productivity"],
