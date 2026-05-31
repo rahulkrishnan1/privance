@@ -58,7 +58,7 @@ export type AuthContextValue = {
   login: (payload: AuthPayload) => void;
   unlock: (payload: AuthPayload) => void;
   lock: () => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   /** Register a cleanup callback to run on logout, before the auth state
    *  transitions to "unauthenticated". Returns an unregister function. Used by
    *  SyncProvider to unlink the per-user OPFS file on logout (but not lock). */
@@ -253,8 +253,11 @@ export function AuthProvider({
     setState("unauthenticated");
   }, [clearIdleTimer]);
 
-  const logout = useCallback(() => {
-    void runLogoutCleanups();
+  // Awaitable so callers that hard-navigate (settings / navbar sign-out) can let
+  // the registered store.destroy() finish first, otherwise the page unloads
+  // mid-destroy and the per-user OPFS ciphertext is orphaned.
+  const logout = useCallback(async () => {
+    await runLogoutCleanups();
     finishLogout();
   }, [runLogoutCleanups, finishLogout]);
 

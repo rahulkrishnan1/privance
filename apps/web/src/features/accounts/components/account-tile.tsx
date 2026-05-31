@@ -2,7 +2,7 @@
 
 import type { Account, AccountKind, Decimal } from "@privance/core";
 import { CreditCard, Home, TrendingUp, Wallet } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { formatCurrency } from "@/lib/format";
 import { centsToDecimal, getBalanceCents } from "../queries";
 
@@ -26,9 +26,17 @@ function formatBalance(
   override: Decimal | undefined,
 ): { text: string; isNegative: boolean } {
   const d = override ?? centsToDecimal(getBalanceCents(account));
+  const currency = account.payload.currency;
   const isLiability = account.payload.kind === "liability";
-  const displayStr = isLiability ? `-${formatCurrency(d.abs())}` : formatCurrency(d);
-  return { text: displayStr, isNegative: isLiability };
+  // Normal liability (positive stored value) = debt, display as -$X.
+  // Credit balance (negative stored value) = overpayment, display as $X (no sign).
+  const isNegativeDisplay = isLiability && !d.isNegative();
+  const displayStr = isLiability
+    ? isNegativeDisplay
+      ? `-${formatCurrency(d.abs(), currency)}`
+      : formatCurrency(d.abs(), currency)
+    : formatCurrency(d, currency);
+  return { text: displayStr, isNegative: isNegativeDisplay };
 }
 
 // ---------------------------------------------------------------------------
@@ -43,16 +51,30 @@ type AccountTileProps = {
   onDelete: (account: Account) => void;
 };
 
+// Estimated menu height in px (2 items * min-h-11 + divider).
+const MENU_ESTIMATED_HEIGHT = 92;
+
 export function AccountTile({ account, displayValue, onEdit, onDelete }: AccountTileProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuFlipUp, setMenuFlipUp] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const Icon = KIND_ICONS[account.payload.kind];
   const { text: balanceText, isNegative } = formatBalance(account, displayValue);
+
+  function openMenu() {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setMenuFlipUp(rect.bottom + MENU_ESTIMATED_HEIGHT > window.innerHeight);
+    }
+    setMenuOpen(true);
+  }
 
   return (
     <div className="relative">
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setMenuOpen((v) => !v)}
+        onClick={() => (menuOpen ? setMenuOpen(false) : openMenu())}
         aria-label={`${account.payload.name}, click for options`}
         aria-haspopup="menu"
         aria-expanded={menuOpen}
@@ -91,7 +113,9 @@ export function AccountTile({ account, displayValue, onEdit, onDelete }: Account
             onClick={() => setMenuOpen(false)}
             aria-hidden="true"
           />
-          <div className="absolute right-2 top-14 z-20 bg-app-panel border border-app-line rounded-lg shadow-md min-w-32 overflow-hidden">
+          <div
+            className={`absolute right-2 z-20 bg-app-panel border border-app-line rounded-lg shadow-md min-w-32 overflow-hidden ${menuFlipUp ? "bottom-14" : "top-14"}`}
+          >
             <button
               type="button"
               role="menuitem"

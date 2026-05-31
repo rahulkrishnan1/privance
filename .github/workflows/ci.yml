@@ -127,7 +127,7 @@ jobs:
   test-unit-web:
     name: Unit tests — web
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -151,7 +151,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run web unit tests
+      # The web suite has two Vitest projects: "unit" (happy-dom, pure logic)
+      # and "browser" (real Chromium via Vitest Browser Mode for component
+      # rendering). The browser project needs a Chromium binary.
+      - name: Install Playwright Chromium
+        run: pnpm -F @privance/web exec playwright install --with-deps chromium
+
+      - name: Run web unit + browser-mode tests
         run: pnpm -F @privance/web test
 
   # ---------------------------------------------------------------------------
@@ -234,7 +240,7 @@ jobs:
   # runs only the stable specs explicitly via --grep or project filter.
   # ---------------------------------------------------------------------------
   test-e2e:
-    name: E2E (chromium + firefox + webkit)
+    name: E2E (chromium + firefox + webkit + mobile)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: [lint, typecheck, test-unit-core, test-unit-web, test-unit-server]
@@ -310,8 +316,11 @@ jobs:
       - name: Run E2E tests (firefox)
         run: pnpm -F @privance/web e2e --project=firefox
 
-      - name: Run E2E tests (webkit, storage specs)
+      - name: Run E2E tests (webkit)
         run: pnpm -F @privance/web e2e --project=webkit
+
+      - name: Run E2E tests (mobile)
+        run: pnpm -F @privance/web e2e --project=mobile
 
       - name: Upload Playwright report
         if: failure()

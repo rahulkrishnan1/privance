@@ -13,7 +13,7 @@ Operating manual for code work in this repo. Architecture lives in `ARCHITECTURE
 - Shared: TypeScript `packages/core`, crypto (@noble/* + hash-wasm + @scure/bip39), decimal math, domain types, sync client, storage adapter
 - Client (`apps/web`): Next.js 16 (App Router, static export) + React 19 + Tailwind 4 + TanStack Query 5 + Zod 4 + Recharts. The same static export is wrapped by Capacitor 8 for iOS / Android (`apps/web/ios`, `apps/web/android`).
 - Storage on the client: `@sqlite.org/sqlite-wasm` in a Web Worker. Uses the SAH Pool VFS (OPFS-backed) where available, falls back to an in-memory DB on OPFS-disabled hosts (Safari Private Browsing, restricted WKWebView). The Capacitor WebView uses the same adapter.
-- Tests: Vitest + fast-check (core/web), `bun test` (server), Playwright (E2E on chromium + firefox; webkit runs the storage specs)
+- Tests: Vitest + fast-check (core/web logic), Vitest Browser Mode + `vitest-browser-react` (web component rendering in real Chromium), `bun test` (server), Playwright (E2E on chromium + firefox + mobile; webkit runs the storage specs)
 - Lint/format: Biome 2.4 (replaces ESLint + Prettier)
 
 Exact-pinned versions in the lockfile, never `^` or `~` (Shai-Hulud lesson).
@@ -125,7 +125,9 @@ Backward-incompatible changes follow **expand → backfill → contract** (three
 - E2E auth flows go through `apps/web/tests/e2e/helpers/auth.ts` (`signup`, `login`, `logout`, `capturePhrase`, `acknowledgePhrase`). Never copy-paste auth helpers across specs.
 - Distinct username per E2E test (alice, bob, dave, ...) for cleanState isolation.
 - A test that calls `.skip()` on the condition it's testing, or whose name claims behavior its body doesn't verify, is broken, delete or fix it.
-- Coverage gates: `packages/core` ≥ 90%, `server` ≥ 85%, `apps/web` ≥ 80% (E2E covers screens).
+- Assert user-observable outcomes, never Tailwind class strings or mere element existence. A class/`toBeVisible`-only assertion passes while the UI is visibly broken (it once let a flat-lined chart ship under green tests). Every test must fail if its behavior regresses; if you can't make it fail without the fix, it isn't a real test.
+- Pick the layer by what's under test: pure logic → Vitest `unit` project (happy-dom); component rendering/interaction → Vitest `browser` project (`*.browser.test.tsx`, real Chromium via `vitest-browser-react`, because happy-dom/jsdom lay out at 0×0 and never render Recharts/SVG); full user flows + device viewports → Playwright E2E.
+- Coverage gates: `packages/core` ≥ 90%, `server` ≥ 85%, `apps/web` ≥ 80% (E2E covers screens). Coverage is a floor, not the goal, a high number of fluff tests is worse than fewer real ones.
 
 ## Commits
 

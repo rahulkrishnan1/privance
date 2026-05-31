@@ -93,6 +93,18 @@ export function HoldingForm({
   const submit = handleSubmit(async (values) => {
     const proxyTicker = values.proxyTicker?.trim().toUpperCase();
     const navFilled = (values.nav?.trim() ?? "").length > 0;
+    const initialProxy = (initialValues?.proxyTicker ?? "").trim().toUpperCase();
+    const proxyChanged = (proxyTicker ?? "") !== initialProxy;
+
+    // A new or changed proxy must be re-anchored from the current price per
+    // share; an unchanged proxy reuses its stored anchor, so nav can stay blank.
+    if (proxyTicker && proxyChanged && !navFilled) {
+      setError("nav", {
+        type: "manual",
+        message: "Enter the current price per share for the proxy ticker.",
+      });
+      return;
+    }
 
     if (proxyTicker && navFilled && onLookupProxyPrice !== undefined) {
       setLookingUp(true);
@@ -225,7 +237,7 @@ export function HoldingForm({
               ].join(" ")}
               style={{
                 backgroundImage:
-                  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23a8a195'><path d='M5.5 7.5l4.5 4.5 4.5-4.5' stroke='%23a8a195' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
+                  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23696c79'><path d='M5.5 7.5l4.5 4.5 4.5-4.5' stroke='%23696c79' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
               }}
               disabled={investmentAccounts.length === 0}
             >
@@ -314,6 +326,7 @@ export function HoldingForm({
               className="flex-1 bg-transparent border-b border-app-line focus:border-gold-accent px-1 py-2 text-[14px] text-app-text placeholder:text-app-dim/70 focus:outline-none transition-colors min-h-9"
             />
             <Button
+              type="button"
               onClick={() => void handleCreateGroup()}
               disabled={creatingGroup || newGroupName.trim().length === 0}
               loading={creatingGroup}

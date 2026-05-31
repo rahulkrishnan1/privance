@@ -227,13 +227,13 @@ function NavBar({ scrolled }: { scrolled: boolean }) {
         <div className="flex items-center gap-3 md:gap-5">
           <Link
             href="/auth/login"
-            className="font-mono text-[11px] uppercase tracking-[0.18em] text-stone-400 hover:text-stone-100 transition-colors"
+            className="inline-block py-3 px-2 -my-3 -mx-2 font-mono text-[11px] uppercase tracking-[0.18em] text-stone-400 hover:text-stone-100 transition-colors"
           >
             Sign in
           </Link>
           <Link
             href="/auth/signup"
-            className="inline-flex items-center gap-2 bg-stone-100 text-stone-950 hover:bg-white px-4 py-2 text-[13px] font-medium rounded-full transition-colors"
+            className="inline-flex items-center gap-2 bg-stone-100 text-stone-950 hover:bg-white px-4 py-3 text-[13px] font-medium rounded-full transition-colors"
           >
             Sign up
           </Link>

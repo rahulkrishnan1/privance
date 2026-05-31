@@ -104,16 +104,28 @@ test.describe("dashboard — with data", () => {
     await expect(page).toHaveURL("/app/", { timeout: 15_000 });
   });
 
-  test("shows the net worth tile after accounts are added", async ({ page }) => {
-    // With a cash account present, the dashboard shows the Net Worth label and Refresh control.
-    await expect(page.getByText("Net worth", { exact: true })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole("button", { name: /Refresh prices/i })).toBeVisible();
+  test("net worth tile renders a real computed value, not $0 or NaN", async ({ page }) => {
+    // The shared user has accounts, so net worth must render as a well-formed,
+    // non-zero currency value. (Asserting only that the tile is "visible" passed
+    // even when the value was wrong, which is the fluff this replaces.)
+    const value = page.getByTestId("net-worth-value");
+    await expect(value).toBeVisible({ timeout: 15_000 });
+    await expect(value).toHaveText(/\$[\d,]+\.\d{2}/, { timeout: 15_000 });
+    const text = (await value.textContent()) ?? "";
+    expect(text).not.toContain("NaN");
+    expect(text).not.toBe("$0.00");
   });
 
-  test("net worth history chart is present", async ({ page }) => {
-    await expect(page.getByRole("img", { name: "Net worth history chart" })).toBeVisible({
-      timeout: 15_000,
-    });
+  test("net worth history chart shows the empty-state copy with only one day of data", async ({
+    page,
+  }) => {
+    // The setup account is one day old, so the chart cannot draw a line yet and
+    // must show the friendly empty-state, not a blank/broken plot. (The
+    // multi-day rendered line + zoomed axis is covered by the Vitest Browser
+    // Mode test history-chart.browser.test.tsx.)
+    const card = page.getByRole("img", { name: "Net worth history chart" });
+    await expect(card).toBeVisible({ timeout: 15_000 });
+    await expect(card.getByText(/Net worth history will appear after a few days/i)).toBeVisible();
   });
 
   test("range selector switches between ranges", async ({ page }) => {

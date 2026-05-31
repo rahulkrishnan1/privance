@@ -105,78 +105,82 @@ export function TopHoldingsTable({
           the standard for data tables: predictable spacing between content,
           no fixed widths that crush long currency values. Ticker hugs left,
           numeric cells push to the right and align to each other. */}
-      <table aria-label="Top holdings" className="w-full">
-        <thead>
-          <tr>
-            <th scope="col" className={`${headerClass} text-left`}>
-              Ticker
-            </th>
-            <th scope="col" className={`${headerClass} text-right`}>
-              Day %
-            </th>
-            <th scope="col" className={`${headerClass} text-right`}>
-              Value
-            </th>
-            <th scope="col" className={`${headerClass} text-right`}>
-              Alloc
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((h) => {
-            const allocShare = totalInvestments.isZero() ? 0 : h.marketValue.toFloat() / totalFloat;
-            // % vs prior value: change / (marketValue − change). Guard against
-            // zero or negative prior so we never render NaN/Infinity or a
-            // sign-flipped %; both are reachable after aggregation if a
-            // collapsed-to-zero underlying joins a still-positive one.
-            const prior = h.dayChange !== null ? h.marketValue.sub(h.dayChange) : null;
-            // Relative-tolerance guard: require prior > marketValue / 10000
-            // (one basis point of MV) before dividing. Sub-cent rounding on
-            // tiny aggregated MVs can land prior at $0.00 (false dash) or
-            // ~$0.01 (hyperscale %); requiring a non-trivial denominator
-            // relative to the current row size rejects both.
-            const priorAboveTol =
-              prior !== null &&
-              !prior.isNegative() &&
-              prior.toMinorUnits() * 10000n > h.marketValue.toMinorUnits();
-            const dayPct =
-              h.dayChange !== null && prior !== null && priorAboveTol
-                ? h.dayChange.toFloat() / prior.toFloat()
-                : null;
-            const dayPositive =
-              h.dayChange !== null && !h.dayChange.isNegative() && !h.dayChange.isZero();
-            const dayZero = h.dayChange === null || h.dayChange.isZero();
-            const dayColor =
-              h.dayChange === null
-                ? "text-app-dim"
-                : dayZero
-                  ? "text-app-muted"
-                  : dayPositive
-                    ? "text-app-green"
-                    : "text-app-red";
-            return (
-              <tr key={h.key}>
-                <td
-                  className={`text-[13px] sm:text-sm font-medium text-app-text truncate py-2 border-t border-app-line-soft ${cellPadding}`}
-                >
-                  {h.ticker}
-                </td>
-                <td className={`${numericCellClass} ${dayColor}`}>
-                  {h.dayChange === null || dayPct === null
-                    ? "-"
-                    : formatPercent(dayPct, { signed: true })}
-                </td>
-                <td className={`${numericCellClass} text-app-text`}>
-                  {formatCurrency(h.marketValue)}
-                </td>
-                <td className={`${numericCellClass} text-app-muted`}>
-                  {formatPercent(allocShare)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div className="overflow-x-auto">
+        <table aria-label="Top holdings" className="w-full">
+          <thead>
+            <tr>
+              <th scope="col" className={`${headerClass} text-left`}>
+                Ticker
+              </th>
+              <th scope="col" className={`${headerClass} text-right`}>
+                Day %
+              </th>
+              <th scope="col" className={`${headerClass} text-right`}>
+                Value
+              </th>
+              <th scope="col" className={`${headerClass} text-right`}>
+                Alloc
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((h) => {
+              const allocShare = totalInvestments.isZero()
+                ? 0
+                : h.marketValue.toFloat() / totalFloat;
+              // % vs prior value: change / (marketValue − change). Guard against
+              // zero or negative prior so we never render NaN/Infinity or a
+              // sign-flipped %; both are reachable after aggregation if a
+              // collapsed-to-zero underlying joins a still-positive one.
+              const prior = h.dayChange !== null ? h.marketValue.sub(h.dayChange) : null;
+              // Relative-tolerance guard: require prior > marketValue / 10000
+              // (one basis point of MV) before dividing. Sub-cent rounding on
+              // tiny aggregated MVs can land prior at $0.00 (false dash) or
+              // ~$0.01 (hyperscale %); requiring a non-trivial denominator
+              // relative to the current row size rejects both.
+              const priorAboveTol =
+                prior !== null &&
+                !prior.isNegative() &&
+                prior.toMinorUnits() * 10000n > h.marketValue.toMinorUnits();
+              const dayPct =
+                h.dayChange !== null && prior !== null && priorAboveTol
+                  ? h.dayChange.toFloat() / prior.toFloat()
+                  : null;
+              const dayPositive =
+                h.dayChange !== null && !h.dayChange.isNegative() && !h.dayChange.isZero();
+              const dayZero = h.dayChange === null || h.dayChange.isZero();
+              const dayColor =
+                h.dayChange === null
+                  ? "text-app-dim"
+                  : dayZero
+                    ? "text-app-muted"
+                    : dayPositive
+                      ? "text-app-green"
+                      : "text-app-red";
+              return (
+                <tr key={h.key}>
+                  <td
+                    className={`text-[13px] sm:text-sm font-medium text-app-text truncate py-2 border-t border-app-line-soft ${cellPadding}`}
+                  >
+                    {h.ticker}
+                  </td>
+                  <td className={`${numericCellClass} ${dayColor}`}>
+                    {h.dayChange === null || dayPct === null
+                      ? "-"
+                      : formatPercent(dayPct, { signed: true })}
+                  </td>
+                  <td className={`${numericCellClass} text-app-text`}>
+                    {formatCurrency(h.marketValue)}
+                  </td>
+                  <td className={`${numericCellClass} text-app-muted`}>
+                    {formatPercent(allocShare)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       <Link
         href="/app/holdings"

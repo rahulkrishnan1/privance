@@ -254,4 +254,40 @@ test.describe("auth — protected route redirects", () => {
 
     await ctx.close();
   });
+
+  test("session-expired locked state redirects to login without looping back to unlock (regression)", async ({
+    page,
+  }) => {
+    // Inject sessionStorage BEFORE any navigation so AuthProvider's useState
+    // initialiser reads the locked marker and boots in state="locked".
+    await page.addInitScript(
+      ({ lockedKey, usernameKey }: { lockedKey: string; usernameKey: string }) => {
+        sessionStorage.setItem(lockedKey, "1");
+        sessionStorage.setItem(usernameKey, "ghost-user");
+      },
+      {
+        lockedKey: "privance.lockedMarker",
+        usernameKey: "privance.username",
+      },
+    );
+
+    // No session cookie is present, so authApi.session() returns 401.
+    // Clear any stale cookies from prior test runs to guarantee a clean state.
+    await page.context().clearCookies();
+
+    // Navigate to /unlock/. AuthProvider boots as "locked" (LOCKED_MARKER is
+    // set), so the layout guard allows rendering instead of immediately bouncing
+    // to login. The page's useEffect then calls authApi.session(), gets 401,
+    // calls logout() (clears LOCKED_MARKER) + window.location.replace('/auth/login/').
+    await page.goto("/unlock/");
+
+    await expect(page).toHaveURL(/\/auth\/login\//, { timeout: 15_000 });
+
+    // Confirm we stay on /auth/login/, not bounced back to /unlock/. Without the
+    // fix the layout guard re-read LOCKED_MARKER and redirected within
+    // milliseconds, so a 1 s settle is ample to catch the loop.
+    await page.waitForTimeout(1_000);
+    await expect(page).toHaveURL(/\/auth\/login\//);
+    await expect(page).not.toHaveURL(/\/unlock/);
+  });
 });

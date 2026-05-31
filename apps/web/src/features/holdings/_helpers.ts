@@ -58,6 +58,21 @@ export function computeAnchorScaleFactor(navStr: string, proxyPriceStr: string):
   return nav.div(proxyPrice).toString();
 }
 
+/**
+ * Anchor metadata is only valid with a proxy ticker. `updateHolding` merges a
+ * partial patch, which can't express "delete a field", so dropping the proxy
+ * would leave a stale `scaleFactor` that multiplies the real ticker price.
+ */
+export function clearStaleProxyAnchor<
+  T extends { proxyTicker: string | null; scaleFactor?: string; proxyAnchoredAt?: string },
+>(payload: T): T {
+  if (payload.proxyTicker !== null) return payload;
+  const cleaned = { ...payload };
+  delete cleaned.scaleFactor;
+  delete cleaned.proxyAnchoredAt;
+  return cleaned;
+}
+
 export async function lookupProxyPrice(
   ticker: string,
   cachedPrice: string | undefined,
@@ -121,6 +136,7 @@ export function sortHoldings(
   holdings: LocalHolding[],
   sort: SortState,
   prices: Map<string, PriceEntry>,
+  accountNames: Map<string, string> = new Map(),
 ): LocalHolding[] {
   const dir = sort.direction === "asc" ? 1 : -1;
 
@@ -128,8 +144,11 @@ export function sortHoldings(
     switch (sort.column) {
       case "ticker":
         return dir * a.ticker.localeCompare(b.ticker);
-      case "account":
-        return dir * a.accountId.localeCompare(b.accountId);
+      case "account": {
+        const nameA = accountNames.get(a.accountId) ?? a.accountId;
+        const nameB = accountNames.get(b.accountId) ?? b.accountId;
+        return dir * nameA.localeCompare(nameB);
+      }
       case "shares":
         return dir * getShares(a).cmp(getShares(b));
       case "avgCost":

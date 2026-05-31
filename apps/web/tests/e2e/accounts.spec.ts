@@ -13,6 +13,13 @@ function loadFixtures(): Fixtures {
 // Unique suffix so account names don't clash if tests are re-run while DB is live
 const RUN = Date.now().toString(36);
 
+// Each test reloads the page, so its first encrypted write hits a cold OPFS
+// store. In dev mode that round-trip can run well past 10s (the suite's very
+// first write, before the SAH pool is warm, has been seen near 26s). Give every
+// post-save assertion a generous ceiling so the cold-write latency does not read
+// as a failure; warm writes still resolve in ~1.5s.
+const SAVE_TIMEOUT = 30_000;
+
 // ---------------------------------------------------------------------------
 // Session state shared across all tests in this file.
 // Login once in beforeAll (capturing DEK via exposeFunction before hard nav),
@@ -74,8 +81,8 @@ test.describe("accounts", () => {
     await dialog.getByLabel("Balance").fill("1234.56");
     await dialog.getByRole("button", { name: "Save" }).click();
 
-    await expect(dialog).not.toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(`Cash-${RUN}`)).toBeVisible({ timeout: 10_000 });
+    await expect(dialog).not.toBeVisible({ timeout: SAVE_TIMEOUT });
+    await expect(page.getByText(`Cash-${RUN}`)).toBeVisible({ timeout: SAVE_TIMEOUT });
   });
 
   test("creates an investment account and sees it in the list", async ({ page }) => {
@@ -94,12 +101,12 @@ test.describe("accounts", () => {
     await dialog.getByLabel("Balance").fill("5000.00");
     await dialog.getByRole("button", { name: "Save" }).click();
 
-    await expect(dialog).not.toBeVisible({ timeout: 10_000 });
+    await expect(dialog).not.toBeVisible({ timeout: SAVE_TIMEOUT });
     // Verify the account appears in the list — the Investment section header is
     // not checked directly because "Investment" also appears as a button label
     // inside the (now-closed but still-in-DOM) dialog, which would cause a
     // strict-mode locator violation. Verifying the account name is sufficient.
-    await expect(page.getByText(`Brokerage-${RUN}`)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(`Brokerage-${RUN}`)).toBeVisible({ timeout: SAVE_TIMEOUT });
   });
 
   test("edits an existing account name", async ({ page }) => {
@@ -124,8 +131,8 @@ test.describe("accounts", () => {
       await d.getByRole("button", { name: "Cash" }).click();
       await d.getByLabel("Balance").fill("100.00");
       await d.getByRole("button", { name: "Save" }).click();
-      await expect(d).not.toBeVisible({ timeout: 10_000 });
-      await expect(page.getByText(existingName).first()).toBeVisible({ timeout: 10_000 });
+      await expect(d).not.toBeVisible({ timeout: SAVE_TIMEOUT });
+      await expect(page.getByText(existingName).first()).toBeVisible({ timeout: SAVE_TIMEOUT });
     }
 
     // Open tile menu
@@ -143,8 +150,8 @@ test.describe("accounts", () => {
     await nameInput.fill(updatedName);
     await dialog.getByRole("button", { name: "Save" }).click();
 
-    await expect(dialog).not.toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(updatedName)).toBeVisible({ timeout: 10_000 });
+    await expect(dialog).not.toBeVisible({ timeout: SAVE_TIMEOUT });
+    await expect(page.getByText(updatedName)).toBeVisible({ timeout: SAVE_TIMEOUT });
   });
 
   test("Add account form clears between opens", async ({ page }) => {
@@ -169,6 +176,61 @@ test.describe("accounts", () => {
     await expect(dialog.getByLabel("Account name")).toHaveValue("");
   });
 
+  test("displays a non-USD account balance with its own currency symbol (regression)", async ({
+    page,
+  }) => {
+    await goToAccounts(page);
+
+    await page
+      .getByRole("button", { name: /Add.*account/i })
+      .first()
+      .click();
+    const dialog = page.getByRole("dialog", { name: /Add account/i });
+    await expect(dialog).toBeVisible();
+
+    const name = `Euro-${RUN}`;
+    await dialog.getByLabel("Account name").fill(name);
+    const currency = dialog.getByLabel("Currency (ISO 4217)");
+    await currency.clear();
+    await currency.fill("EUR");
+    await dialog.getByLabel("Balance").fill("1500.00");
+    await dialog.getByRole("button", { name: "Save" }).click();
+    await expect(dialog).not.toBeVisible({ timeout: SAVE_TIMEOUT });
+
+    // Regression: formatBalance ignored account.payload.currency and always
+    // rendered a "$", so a EUR account showed $1,500.00 instead of €1,500.00.
+    const tile = page.getByRole("button", { name: new RegExp(name) });
+    await expect(tile).toContainText("€1,500.00", { timeout: SAVE_TIMEOUT });
+    await expect(tile).not.toContainText("$1,500.00");
+  });
+
+  test("liability with a credit (negative) balance renders without a double negative (regression)", async ({
+    page,
+  }) => {
+    await goToAccounts(page);
+
+    await page
+      .getByRole("button", { name: /Add.*account/i })
+      .first()
+      .click();
+    const dialog = page.getByRole("dialog", { name: /Add account/i });
+    await expect(dialog).toBeVisible();
+
+    const name = `Credit-${RUN}`;
+    await dialog.getByLabel("Account name").fill(name);
+    await dialog.getByRole("button", { name: "Liability" }).click();
+    // A negative stored balance is a credit balance (e.g. a card overpayment).
+    await dialog.getByLabel("Balance").fill("-5.00");
+    await dialog.getByRole("button", { name: "Save" }).click();
+    await expect(dialog).not.toBeVisible({ timeout: SAVE_TIMEOUT });
+
+    // Regression: liabilities unconditionally prepended "-" after abs(), so a
+    // credit balance rendered as "-$5.00" (a debt). It must read "$5.00".
+    const tile = page.getByRole("button", { name: new RegExp(name) });
+    await expect(tile).toContainText("$5.00", { timeout: SAVE_TIMEOUT });
+    await expect(tile).not.toContainText("-$5.00");
+  });
+
   test("deletes an account and it disappears from the list", async ({ page }) => {
     await goToAccounts(page);
 
@@ -182,8 +244,8 @@ test.describe("accounts", () => {
     await d.getByLabel("Account name").fill(deleteName);
     await d.getByLabel("Balance").fill("0.00");
     await d.getByRole("button", { name: "Save" }).click();
-    await expect(d).not.toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(deleteName)).toBeVisible({ timeout: 10_000 });
+    await expect(d).not.toBeVisible({ timeout: SAVE_TIMEOUT });
+    await expect(page.getByText(deleteName)).toBeVisible({ timeout: SAVE_TIMEOUT });
 
     await page
       .getByRole("button", { name: new RegExp(deleteName) })
@@ -195,8 +257,8 @@ test.describe("accounts", () => {
     // Wait for the confirm dialog to close before asserting the tile is gone;
     // the dialog body still contains the name until then, which would cause a
     // strict-mode violation on getByText.
-    await expect(confirmDialog).not.toBeVisible({ timeout: 10_000 });
+    await expect(confirmDialog).not.toBeVisible({ timeout: SAVE_TIMEOUT });
 
-    await expect(page.getByText(deleteName)).not.toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(deleteName)).not.toBeVisible({ timeout: SAVE_TIMEOUT });
   });
 });

@@ -9,7 +9,9 @@ export type ChartColors = {
 };
 
 export function useChartColors(): ChartColors {
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(
+    () => typeof document !== "undefined" && document.documentElement.classList.contains("dark"),
+  );
 
   useEffect(() => {
     const update = () => setIsDark(document.documentElement.classList.contains("dark"));
@@ -22,6 +24,6 @@ export function useChartColors(): ChartColors {
   return {
     grid: isDark ? "#262626" : "#e5e7eb",
     text: isDark ? "#a3a3a3" : "#6b7280",
-    line: isDark ? "#10b981" : "#b18a1c",
+    line: isDark ? "#e6d39a" : "#b18a1c",
   };
 }

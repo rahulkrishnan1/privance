@@ -75,17 +75,24 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
-      testIgnore: /(webkit-storage|fallback-storage)\.spec\.ts$/,
+      testIgnore: /(webkit-storage|fallback-storage|.*\.mobile)\.spec\.ts$/,
     },
     {
       name: "firefox",
       use: { ...devices["Desktop Firefox"] },
-      testIgnore: /(webkit-storage|fallback-storage)\.spec\.ts$/,
+      testIgnore: /(webkit-storage|fallback-storage|.*\.mobile)\.spec\.ts$/,
     },
     {
       name: "webkit",
       use: { ...devices["Desktop Safari"] },
       testMatch: /(webkit-storage|fallback-storage)\.spec\.ts$/,
+    },
+    {
+      // Mobile viewport: exercises tap targets the md: breakpoint hides on
+      // desktop. Scoped to *.mobile.spec.ts files.
+      name: "mobile",
+      use: { ...devices["Pixel 5"] },
+      testMatch: /\.mobile\.spec\.ts$/,
     },
   ],
 

@@ -24,7 +24,7 @@ export function AllocationLegend({ slices, hoveredIndex }: AllocationLegendProps
             key={slice.label}
             className={[
               "flex items-center justify-between py-1 px-2 rounded-lg",
-              isHovered ? "hover:bg-white/[0.03]" : "",
+              isHovered ? "bg-white/[0.03]" : "",
             ].join(" ")}
           >
             <div className="flex items-center gap-2 flex-1 min-w-0">

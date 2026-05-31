@@ -1,13 +1,18 @@
 // Privance service worker — offline shell + static asset caching.
 // Hand-written; no Workbox or next-pwa dependency.
 // Version bump here triggers activate → cache cleanup.
-const SW_VERSION = "v2";
+const SW_VERSION = "v3";
 const CACHE_NAME = `privance-${SW_VERSION}`;
 
 // Files that must be cached on install for the offline shell to work.
 // Next.js hashes JS chunks, so we only pre-cache stable public assets.
 const PRECACHE_URLS = [
   "/",
+  "/app/",
+  "/unlock/",
+  "/auth/login/",
+  "/auth/signup/",
+  "/auth/recovery/",
   "/manifest.json",
   "/icon-192.png",
   "/icon-512.png",
@@ -18,6 +23,12 @@ const PRECACHE_URLS = [
   "/sqlite/sqlite3-opfs-async-proxy.js",
   "/sqlite/privance-worker.mjs",
 ];
+
+// ─── Message ─────────────────────────────────────────────────────────────────
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+});
 
 // ─── Install ─────────────────────────────────────────────────────────────────
 
@@ -126,8 +137,8 @@ async function networkFirstWithOfflineFallback(request) {
     }
     return response;
   } catch {
-    // Try the exact route first, then fall back to the cached "/" shell.
-    const cached = (await caches.match(request)) ?? (await caches.match("/"));
+    const fallbackShell = new URL(request.url).pathname.startsWith("/app") ? "/app/" : "/";
+    const cached = (await caches.match(request)) ?? (await caches.match(fallbackShell));
     return cached ?? new Response("Offline", { status: 503 });
   }
 }

@@ -120,14 +120,14 @@ export default function LoginPage() {
       <p className="text-center font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
         <Link
           href="/auth/signup"
-          className="hover:text-app-text transition-colors focus-visible:outline-none focus-visible:text-gold-accent"
+          className="inline-block py-3 px-2 -my-3 -mx-2 hover:text-app-text transition-colors focus-visible:outline-none focus-visible:text-gold-accent"
         >
           Create account
         </Link>
         <span className="px-3">·</span>
         <Link
           href="/auth/recovery"
-          className="hover:text-app-text transition-colors focus-visible:outline-none focus-visible:text-gold-accent"
+          className="inline-block py-3 px-2 -my-3 -mx-2 hover:text-app-text transition-colors focus-visible:outline-none focus-visible:text-gold-accent"
         >
           Recover account
         </Link>

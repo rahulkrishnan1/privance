@@ -39,9 +39,12 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "6.0.2",
+    "@vitest/browser-playwright": "4.1.7",
     "happy-dom": "^20.9.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "4.1.6"
+    "vitest": "4.1.7",
+    "vitest-browser-react": "2.2.0"
   }
 }

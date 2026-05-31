@@ -82,13 +82,15 @@ pnpm --filter @privance/server test
 
 Uses `bun test`. A real Postgres connection is required (`DATABASE_URL`).
 
-### Unit tests, `apps/web`
+### Unit + component tests, `apps/web`
 
 ```sh
-pnpm --filter @privance/web test
+pnpm --filter @privance/web test                    # both projects
+pnpm --filter @privance/web exec vitest --project unit     # logic only (happy-dom)
+pnpm --filter @privance/web exec vitest --project browser  # components (real Chromium)
 ```
 
-Uses Vitest with `happy-dom`.
+Two Vitest projects: `unit` runs pure logic in `happy-dom`; `browser` runs `*.browser.test.tsx` in real Chromium via Vitest Browser Mode (`vitest-browser-react`), needed because happy-dom/jsdom can't lay out or render Recharts/SVG. The browser project needs a Chromium binary (`pnpm --filter @privance/web exec playwright install chromium`). Component CSS and full flows are covered in E2E; see [ADR-0003](docs/decisions/0003-component-testing.md).
 
 ### Run all tests
 

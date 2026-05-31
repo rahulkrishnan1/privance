@@ -10,6 +10,7 @@ import {
 } from "@privance/core";
 import { useCallback, useState } from "react";
 import { readItemsKey, useSync } from "@/providers/index";
+import { clearStaleProxyAnchor } from "./_helpers";
 import { KIND_GROUP, KIND_HOLDING } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -128,7 +129,7 @@ export function useHoldingMutations(onSuccess?: () => void): HoldingMutationResu
           kind: KIND_HOLDING,
         });
         const current = HoldingPayloadSchema.parse(JSON.parse(new TextDecoder().decode(plaintext)));
-        const updated = { ...current, ...patch };
+        const updated = clearStaleProxyAnchor({ ...current, ...patch });
 
         const newVersion = existing.version + 1n;
         const { ciphertext, nonce } = encryptPayload(updated, id, KIND_HOLDING);
