@@ -155,7 +155,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   async function handleLogout() {
     await apiLogout().catch(() => undefined);
-    logout();
+    // Await logout so the registered store.destroy() finishes before we unload.
+    await logout();
     window.location.replace("/auth/login/");
   }
 

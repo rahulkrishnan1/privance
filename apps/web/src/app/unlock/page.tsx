@@ -31,13 +31,20 @@ export default function UnlockPage() {
         await authApi.session();
         if (!cancelled) setSessionLoading(false);
       } catch {
-        if (!cancelled) window.location.replace("/auth/login/");
+        if (!cancelled) {
+          // Session is gone server-side. Await logout so the locked marker is
+          // cleared before the hard redirect, or AuthProvider re-boots into
+          // "locked" and auth/layout bounces straight back to /unlock in an
+          // infinite loop.
+          await logout();
+          window.location.replace("/auth/login/");
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [logout]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -95,7 +102,7 @@ export default function UnlockPage() {
     // erase the per-user ciphertext file directly before clearing the session.
     const userId = sessionStorage.getItem(USER_ID_KEY);
     if (userId !== null) await destroyUserStore(userId);
-    logout();
+    await logout();
     window.location.replace("/auth/login/");
   }
 
@@ -162,7 +169,7 @@ export default function UnlockPage() {
           <button
             type="button"
             onClick={() => void handleSignOut()}
-            className="hover:text-app-text transition-colors cursor-pointer focus-visible:outline-none focus-visible:text-gold-accent"
+            className="inline-block py-3 px-2 -my-3 -mx-2 hover:text-app-text transition-colors cursor-pointer focus-visible:outline-none focus-visible:text-gold-accent"
           >
             Sign out
           </button>

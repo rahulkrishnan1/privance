@@ -1,12 +1,14 @@
 import { Decimal, SCALE_CRYPTO } from "@privance/core";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  clearStaleProxyAnchor,
   computeAnchorScaleFactor,
   filterHoldings,
   lookupProxyPrice,
   parseStoredHolding,
   sortHoldings,
 } from "./_helpers";
+import { getSavedSort, saveSort } from "./_sort-prefs";
 import type { LocalHolding } from "./types";
 import { holdingFormSchema } from "./types";
 
@@ -269,6 +271,51 @@ describe("sortHoldings", () => {
     sortHoldings(original, { column: "ticker", direction: "asc" }, EMPTY_PRICES);
     expect(original[0]?.ticker).toBe("VXUS");
   });
+
+  it("sorts by account name ascending, not by UUID", () => {
+    const h1 = makeHolding({ ticker: "AAPL", accountId: "uuid-z" });
+    const h2 = makeHolding({ ticker: "MSFT", accountId: "uuid-a" });
+    const names = new Map([
+      ["uuid-z", "Zephyr Brokerage"],
+      ["uuid-a", "Alpha Investments"],
+    ]);
+    const result = sortHoldings(
+      [h1, h2],
+      { column: "account", direction: "asc" },
+      EMPTY_PRICES,
+      names,
+    );
+    // "Alpha Investments" < "Zephyr Brokerage" so h2 (MSFT) should come first.
+    expect(result[0]?.ticker).toBe("MSFT");
+    expect(result[1]?.ticker).toBe("AAPL");
+  });
+
+  it("sorts by account name descending", () => {
+    const h1 = makeHolding({ ticker: "AAPL", accountId: "uuid-z" });
+    const h2 = makeHolding({ ticker: "MSFT", accountId: "uuid-a" });
+    const names = new Map([
+      ["uuid-z", "Zephyr Brokerage"],
+      ["uuid-a", "Alpha Investments"],
+    ]);
+    const result = sortHoldings(
+      [h1, h2],
+      { column: "account", direction: "desc" },
+      EMPTY_PRICES,
+      names,
+    );
+    expect(result[0]?.ticker).toBe("AAPL");
+    expect(result[1]?.ticker).toBe("MSFT");
+  });
+
+  it("falls back to accountId when name is missing from the map", () => {
+    const h1 = makeHolding({ ticker: "AAPL", accountId: "uuid-z" });
+    const h2 = makeHolding({ ticker: "MSFT", accountId: "uuid-a" });
+    // No names provided; sort falls back to the UUID strings.
+    const result = sortHoldings([h1, h2], { column: "account", direction: "asc" }, EMPTY_PRICES);
+    // "uuid-a" < "uuid-z" so h2 (MSFT) should come first.
+    expect(result[0]?.ticker).toBe("MSFT");
+    expect(result[1]?.ticker).toBe("AAPL");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -349,6 +396,33 @@ describe("computeAnchorScaleFactor", () => {
   });
 });
 
+describe("clearStaleProxyAnchor", () => {
+  it("drops scaleFactor and proxyAnchoredAt when the proxy ticker is removed", () => {
+    // Reproduces the edit-removes-proxy corruption: without clearing, the real
+    // ticker price would be multiplied by the dead scale factor.
+    const cleaned = clearStaleProxyAnchor({
+      proxyTicker: null,
+      scaleFactor: "0.456",
+      proxyAnchoredAt: "2026-05-01",
+      ticker: "VTSAX",
+    });
+    expect(cleaned).not.toHaveProperty("scaleFactor");
+    expect(cleaned).not.toHaveProperty("proxyAnchoredAt");
+    expect(cleaned.ticker).toBe("VTSAX");
+  });
+
+  it("keeps anchor metadata while a proxy ticker is still set", () => {
+    const cleaned = clearStaleProxyAnchor({
+      proxyTicker: "VTI",
+      scaleFactor: "0.456",
+      proxyAnchoredAt: "2026-05-01",
+      ticker: "VTSAX",
+    });
+    expect(cleaned.scaleFactor).toBe("0.456");
+    expect(cleaned.proxyAnchoredAt).toBe("2026-05-01");
+  });
+});
+
 // ---------------------------------------------------------------------------
 // lookupProxyPrice
 // ---------------------------------------------------------------------------
@@ -405,5 +479,53 @@ describe("lookupProxyPrice", () => {
     const result = await lookupProxyPrice("VOO", undefined, refresh, warm);
     expect(result).toBeNull();
     expect(warm).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getSavedSort / saveSort -- per-user localStorage key scoping
+// ---------------------------------------------------------------------------
+
+describe("getSavedSort / saveSort key scoping", () => {
+  const mockStorage: Record<string, string> = {};
+
+  afterEach(() => {
+    for (const key of Object.keys(mockStorage)) {
+      delete mockStorage[key];
+    }
+  });
+
+  beforeEach(() => {
+    vi.stubGlobal("localStorage", {
+      getItem: (k: string) => mockStorage[k] ?? null,
+      setItem: (k: string, v: string) => {
+        mockStorage[k] = v;
+      },
+    });
+  });
+
+  it("saves under a user-scoped key", () => {
+    saveSort("user-1", { column: "ticker", direction: "asc" });
+    expect(Object.keys(mockStorage)).toContain("holdings.sort.user-1");
+    expect(Object.keys(mockStorage)).not.toContain("holdings.sort");
+  });
+
+  it("two users do not read each other's sort", () => {
+    saveSort("user-a", { column: "ticker", direction: "asc" });
+    saveSort("user-b", { column: "shares", direction: "desc" });
+    const a = getSavedSort("user-a");
+    const b = getSavedSort("user-b");
+    expect(a.column).toBe("ticker");
+    expect(b.column).toBe("shares");
+  });
+
+  it("returns the module-level default when userId is undefined", () => {
+    const result = getSavedSort(undefined);
+    expect(result).toBeDefined();
+  });
+
+  it("does not write to localStorage when userId is undefined", () => {
+    saveSort(undefined, { column: "ticker", direction: "asc" });
+    expect(Object.keys(mockStorage)).toHaveLength(0);
   });
 });

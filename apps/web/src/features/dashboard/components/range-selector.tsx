@@ -25,7 +25,7 @@ export function RangeSelector({ selected, onChange }: RangeSelectorProps) {
             aria-pressed={isSelected}
             aria-label={`${range} range`}
             className={[
-              "px-3 py-1.5 rounded-full text-xs font-medium tracking-tight border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] cursor-pointer transition-colors",
+              "px-3 py-1.5 min-h-[44px] sm:min-h-0 items-center rounded-full text-xs font-medium tracking-tight border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] cursor-pointer transition-colors",
               isSelected
                 ? "bg-gold-accent/10 border-gold-accent text-gold-accent"
                 : "border-app-line text-app-muted hover:text-app-text hover:border-app-muted/40",

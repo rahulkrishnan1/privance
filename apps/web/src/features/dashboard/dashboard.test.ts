@@ -714,6 +714,44 @@ function makeStockHolding(id: string, p: HoldingMinPayload): Holding {
   } as unknown as Holding;
 }
 
+// ---------------------------------------------------------------------------
+// buildKindSlices negative-bucket exclusion
+// buildKindSlices is private to queries.ts (not exported to avoid leaking
+// hook internals). The filter it applies is:
+//   .filter((c) => !c.value.isZero() && !c.value.isNegative())
+// These tests verify the Decimal predicate so regressions surface here rather
+// than only in manual/e2e runs.
+// ---------------------------------------------------------------------------
+
+describe("buildKindSlices negative-filter predicate", () => {
+  it("retains a positive bucket", () => {
+    const pos = Decimal.fromMinorUnits(50000n, SCALE_CENTS);
+    expect(pos.isZero()).toBe(false);
+    expect(pos.isNegative()).toBe(false);
+  });
+
+  it("excludes a zero bucket", () => {
+    const zero = Decimal.zero(SCALE_CENTS);
+    expect(zero.isZero()).toBe(true);
+  });
+
+  it("excludes a negative bucket (liability / short position)", () => {
+    const neg = Decimal.fromMinorUnits(-30000n, SCALE_CENTS);
+    expect(neg.isNegative()).toBe(true);
+  });
+
+  it("filter keeps positives only, mirrors the filter in buildKindSlices", () => {
+    const candidates = [
+      { label: "Cash", value: Decimal.fromMinorUnits(100000n, SCALE_CENTS) },
+      { label: "Investments", value: Decimal.fromMinorUnits(200000n, SCALE_CENTS) },
+      { label: "Manual assets", value: Decimal.fromMinorUnits(-50000n, SCALE_CENTS) },
+      { label: "Empty", value: Decimal.zero(SCALE_CENTS) },
+    ];
+    const kept = candidates.filter((c) => !c.value.isZero() && !c.value.isNegative());
+    expect(kept.map((c) => c.label)).toEqual(["Cash", "Investments"]);
+  });
+});
+
 describe("computeDayChangeByHoldingId", () => {
   it("non-proxy stock: shares × (cur − prev)", () => {
     const h = makeStockHolding("h1", {

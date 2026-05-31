@@ -48,6 +48,9 @@ export function ConfirmDialog({
     <dialog
       ref={dialogRef}
       onClose={onCancel}
+      onCancel={(e) => {
+        if (busy) e.preventDefault();
+      }}
       className="m-auto rounded-2xl p-6 shadow-xl w-full max-w-sm bg-app-panel border border-app-line backdrop:bg-black/50 focus-visible:outline-none"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"

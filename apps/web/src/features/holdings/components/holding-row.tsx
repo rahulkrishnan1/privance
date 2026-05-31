@@ -1,6 +1,8 @@
 "use client";
 
 import { Decimal, SCALE_CENTS, SCALE_CRYPTO } from "@privance/core";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import type { KeyboardEvent, MouseEvent } from "react";
 import { formatCurrency } from "@/lib/format";
 import { parseCostBasisCents } from "../_helpers";
 import type { LocalGroup, LocalHolding } from "../types";
@@ -166,30 +168,48 @@ export function HoldingRow({
 
   const subRowId = `holding-detail-${holding.id}`;
 
-  const handleEdit = () => onEdit(holding);
-  const handleDelete = () => onDelete(holding);
+  // stopPropagation keeps Edit/Delete from also toggling the row when the whole
+  // row is the disclosure target.
+  const handleEdit = (e: MouseEvent) => {
+    e.stopPropagation();
+    onEdit(holding);
+  };
+  const handleDelete = (e: MouseEvent) => {
+    e.stopPropagation();
+    onDelete(holding);
+  };
   const handleToggle = () => onToggle(holding.id);
+  const onRowKeyDown = (e: KeyboardEvent<HTMLTableRowElement>) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onToggle(holding.id);
+    }
+  };
 
   return (
     <>
-      <tr className="border-b border-app-line-soft hover:bg-white/[0.03]">
-        {/* Disclosure on a <button>, not the <tr>: screen readers announce
-            "button, expanded/collapsed" rather than mapping aria-expanded
-            onto a row. block w-full keeps the full ticker area tappable. */}
+      {/* Whole row is the tap target on mobile; a button wrapping only the
+          ticker cell left Value and G/L% dead to touch. */}
+      <tr
+        className="border-b border-app-line-soft hover:bg-white/[0.03] cursor-pointer md:cursor-default focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold-accent"
+        onClick={handleToggle}
+        onKeyDown={onRowKeyDown}
+        tabIndex={0}
+        aria-expanded={isExpanded}
+        aria-controls={subRowId}
+        aria-label={`${holding.ticker}, ${isExpanded ? "collapse" : "expand"} details`}
+      >
+        {/* Ticker + name */}
         <td className="px-3 py-3">
-          <button
-            type="button"
-            onClick={handleToggle}
-            aria-expanded={isExpanded}
-            aria-controls={subRowId}
-            aria-label={`${holding.ticker}, ${isExpanded ? "collapse" : "expand"} details`}
-            className="block w-full text-left cursor-pointer md:cursor-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] rounded"
-          >
+          <div className="flex items-center justify-between">
             <p className="font-mono text-[13px] text-app-text truncate">{holding.ticker}</p>
-            {holding.name !== undefined && (
-              <p className="text-xs text-app-muted truncate">{holding.name}</p>
-            )}
-          </button>
+            <span aria-hidden className="md:hidden flex-shrink-0 ml-1 text-app-dim">
+              {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </span>
+          </div>
+          {holding.name !== undefined && (
+            <p className="text-xs text-app-muted truncate">{holding.name}</p>
+          )}
         </td>
 
         {/* Account chip */}

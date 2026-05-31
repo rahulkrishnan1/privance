@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Account, AccountKind } from "@privance/core";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Button, Input } from "@/components/index";
 import { type AccountFormValues, accountFormSchema, accountKindValues, KIND_META } from "../types";
@@ -100,6 +100,7 @@ export function AccountForm({
 }: AccountFormProps) {
   const isEditMode = account !== undefined;
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const {
     control,
@@ -133,6 +134,7 @@ export function AccountForm({
       currency: account?.payload.currency ?? "USD",
       balance: deriveBalanceString(account),
     });
+    setSaveError(null);
   }, [defaultKind, reset, account, open]);
 
   useEffect(() => {
@@ -146,7 +148,12 @@ export function AccountForm({
   }, [open]);
 
   const submit = handleSubmit(async (values) => {
-    await onSubmit(values);
+    try {
+      setSaveError(null);
+      await onSubmit(values);
+    } catch {
+      setSaveError("Could not save. Please try again.");
+    }
   });
 
   return (
@@ -232,6 +239,16 @@ export function AccountForm({
               />
             )}
           />
+
+          {/* Save error */}
+          {saveError !== null && (
+            <div
+              role="alert"
+              className="rounded-lg border border-app-red/40 bg-app-red/10 px-4 py-3"
+            >
+              <p className="text-[13px] text-app-red">{saveError}</p>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 pt-2">

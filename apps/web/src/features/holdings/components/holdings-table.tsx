@@ -56,7 +56,7 @@ function SortableHeader({ column, label, sort, onPress, align = "left" }: Sortab
       aria-label={`Sort by ${label}`}
       aria-pressed={active}
       className={[
-        "flex items-center gap-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] rounded cursor-pointer w-full",
+        "flex items-center gap-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] rounded cursor-pointer w-full min-h-[44px] md:min-h-0",
         isRight ? "justify-end" : "justify-start",
       ].join(" ")}
     >
@@ -105,11 +105,13 @@ export function HoldingsTable({
 
   if (loading) {
     return (
-      <table aria-label="Holdings" className="min-w-full">
-        <tbody>
-          <SkeletonRows count={5} />
-        </tbody>
-      </table>
+      <div className="overflow-x-auto">
+        <table aria-label="Holdings" className="w-full md:min-w-[960px]">
+          <tbody>
+            <SkeletonRows count={5} />
+          </tbody>
+        </table>
+      </div>
     );
   }
 

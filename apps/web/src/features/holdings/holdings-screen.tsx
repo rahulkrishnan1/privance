@@ -9,6 +9,7 @@ import { useAccountsQuery } from "@/features/accounts/queries";
 import { refreshPrices } from "@/lib/api/prices";
 import { usePricesQuery, warmPrice } from "@/lib/queries/prices";
 import { useCooldown } from "@/lib/use-cooldown";
+import { useAuth } from "@/providers/auth-context";
 import { useSync } from "@/providers/sync-context";
 import {
   computeAnchorScaleFactor,
@@ -16,6 +17,7 @@ import {
   lookupProxyPrice,
   sortHoldings,
 } from "./_helpers";
+import { getSavedSort, saveSort } from "./_sort-prefs";
 import { EmptyState } from "./components/empty-state";
 import { FilterChip } from "./components/filter-chip";
 import { GroupsManager } from "./components/groups-manager";
@@ -23,58 +25,16 @@ import { type DrawerMode, HoldingDrawer } from "./components/holding-drawer";
 import { HoldingsTable } from "./components/holdings-table";
 import { useGroupMutations, useHoldingMutations } from "./mutations";
 import { useGroupsQuery, useHoldingsQuery } from "./queries";
-import type {
-  FilterState,
-  HoldingFormValues,
-  LocalHolding,
-  SortColumn,
-  SortDirection,
-  SortState,
-} from "./types";
-import { DEFAULT_SORT, SORT_COLUMNS, SORT_DIRECTIONS } from "./types";
-
-// ---------------------------------------------------------------------------
-// Persist sort preference
-// ---------------------------------------------------------------------------
-
-let _persistedSort: SortState = DEFAULT_SORT;
-
-function getSavedSort(): SortState {
-  try {
-    const raw = typeof localStorage !== "undefined" ? localStorage.getItem("holdings.sort") : null;
-    if (!raw) return _persistedSort;
-    const parsed: unknown = JSON.parse(raw);
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      SORT_COLUMNS.includes((parsed as { column?: unknown }).column as SortColumn) &&
-      SORT_DIRECTIONS.includes((parsed as { direction?: unknown }).direction as SortDirection)
-    ) {
-      return parsed as SortState;
-    }
-    return _persistedSort;
-  } catch {
-    return _persistedSort;
-  }
-}
-
-function saveSort(sort: SortState) {
-  _persistedSort = sort;
-  try {
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem("holdings.sort", JSON.stringify(sort));
-    }
-  } catch {
-    // localStorage unavailable
-  }
-}
+import type { FilterState, HoldingFormValues, LocalHolding, SortColumn, SortState } from "./types";
 
 // ---------------------------------------------------------------------------
 // Main screen
 // ---------------------------------------------------------------------------
 
 export function HoldingsScreen() {
-  const [sort, setSort] = useState<SortState>(getSavedSort);
+  const { user } = useAuth();
+  const userId = user?.userId;
+  const [sort, setSort] = useState<SortState>(() => getSavedSort(userId));
   const [filter, setFilter] = useState<FilterState>({ kind: "all" });
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>({ kind: "add" });
@@ -127,16 +87,19 @@ export function HoldingsScreen() {
     );
   }, [accountsState]);
 
-  const handleSortChange = useCallback((column: SortColumn) => {
-    setSort((prev) => {
-      const next: SortState =
-        prev.column === column
-          ? { column, direction: prev.direction === "asc" ? "desc" : "asc" }
-          : { column, direction: "desc" };
-      saveSort(next);
-      return next;
-    });
-  }, []);
+  const handleSortChange = useCallback(
+    (column: SortColumn) => {
+      setSort((prev) => {
+        const next: SortState =
+          prev.column === column
+            ? { column, direction: prev.direction === "asc" ? "desc" : "asc" }
+            : { column, direction: "desc" };
+        saveSort(userId, next);
+        return next;
+      });
+    },
+    [userId],
+  );
 
   const { yahooTickers, coingeckoTickers } = useMemo(() => {
     // Route by asset type. Proxy tickers are always public ETFs (Yahoo).
@@ -162,9 +125,17 @@ export function HoldingsScreen() {
     return m;
   }, [rawPrices]);
 
+  const accountNamesMap = useMemo<Map<string, string>>(() => {
+    const m = new Map<string, string>();
+    for (const a of investmentAccounts) {
+      m.set(a.id, a.payload.name);
+    }
+    return m;
+  }, [investmentAccounts]);
+
   const visibleHoldings = useMemo(
-    () => sortHoldings(filterHoldings(holdings, filter), sort, pricesMap),
-    [holdings, filter, sort, pricesMap],
+    () => sortHoldings(filterHoldings(holdings, filter), sort, pricesMap, accountNamesMap),
+    [holdings, filter, sort, pricesMap, accountNamesMap],
   );
 
   const handleLookupProxyPrice = useCallback(
@@ -278,7 +249,10 @@ export function HoldingsScreen() {
 
   const loading = holdingsLoading || groupsLoading || store === null;
   const anyError = holdingsError ?? groupsError;
-  const showEmptyState = !loading && anyError === null && holdings.length === 0;
+  // Exclude groupsLoading so a mid-flight group creation does not flip the
+  // branch and unmount the HoldingDrawer (which would reset the form).
+  const showEmptyState =
+    !holdingsLoading && store !== null && anyError === null && holdings.length === 0;
 
   if (showEmptyState) {
     return (

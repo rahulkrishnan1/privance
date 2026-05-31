@@ -24,8 +24,14 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
     const dialog = dialogRef.current;
     if (!dialog) return;
     if (open && !dialog.open) {
+      setEditingId(null);
+      setEditName("");
+      setPendingDelete(null);
       dialog.showModal();
     } else if (!open && dialog.open) {
+      setEditingId(null);
+      setEditName("");
+      setPendingDelete(null);
       dialog.close();
     }
   }, [open]);

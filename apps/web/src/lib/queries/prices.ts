@@ -93,6 +93,30 @@ export function resetPricesCache(): void {
   notify();
 }
 
+/**
+ * Returns the error to re-throw (so TanStack Query marks isError=true), or
+ * null if everything settled cleanly.
+ *
+ * A source rejection is re-thrown when it left at least one of its tickers
+ * absent from `fetched`. Successful prices are already in the module cache at
+ * this point, so re-throwing does not lose them.
+ */
+export function pickFailure(
+  yahooRes: PromiseSettledResult<{ prices: { ticker: string }[] }>,
+  coingeckoRes: PromiseSettledResult<{ prices: { ticker: string }[] }>,
+  yahooTickers: readonly string[],
+  coingeckoTickers: readonly string[],
+  fetched: ReadonlyMap<string, unknown>,
+): unknown {
+  if (yahooRes.status === "rejected" && yahooTickers.some((t) => !fetched.has(t))) {
+    return yahooRes.reason;
+  }
+  if (coingeckoRes.status === "rejected" && coingeckoTickers.some((t) => !fetched.has(t))) {
+    return coingeckoRes.reason;
+  }
+  return null;
+}
+
 export function usePricesQuery(input: PricesQueryInput): PricesQueryResult {
   const yahooSorted = [...new Set(input.yahooTickers)].sort();
   const coingeckoSorted = [...new Set(input.coingeckoTickers)].sort();
@@ -127,14 +151,10 @@ export function usePricesQuery(input: PricesQueryInput): PricesQueryResult {
       };
       if (yahooRes.status === "fulfilled") ingest(yahooRes.value.prices);
       if (coingeckoRes.status === "fulfilled") ingest(coingeckoRes.value.prices);
+      // Commit before any possible throw so successful prices survive in cache.
       commitFetched(fetched, fetchedPrev);
-      const failure =
-        yahooRes.status === "rejected"
-          ? yahooRes.reason
-          : coingeckoRes.status === "rejected"
-            ? coingeckoRes.reason
-            : null;
-      if (failure !== null && fetched.size === 0) throw failure;
+      const err = pickFailure(yahooRes, coingeckoRes, yahooSorted, coingeckoSorted, fetched);
+      if (err !== null) throw err;
       return fetched;
     },
     enabled,

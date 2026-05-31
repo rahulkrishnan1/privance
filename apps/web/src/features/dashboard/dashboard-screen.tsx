@@ -61,7 +61,7 @@ function ReadyContent({
           matching the Chart card's 2-of-3 width below; Investments at 1 of 3
           matches the Composition card directly underneath it. */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <NetWorthTile breakdown={breakdown} historyPoints={historyPoints} delta={netWorthDelta} />
+        <NetWorthTile breakdown={breakdown} delta={netWorthDelta} />
         <SummaryTile label="Cash" value={cash} />
         <SummaryTile
           label="Investments"

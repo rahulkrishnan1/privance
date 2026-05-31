@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Geist, Geist_Mono, Spectral } from "next/font/google";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
+import { SwUpdateBanner } from "@/components/SwUpdateBanner";
 import { ThemeScript } from "@/components/ThemeScript";
 import { AuthProvider } from "@/providers/auth-context";
 import { QueryProvider } from "@/providers/query-client";
@@ -80,6 +81,7 @@ export default function RootLayout({
           </QueryProvider>
         </ErrorBoundary>
         <ServiceWorkerRegistration />
+        <SwUpdateBanner />
       </body>
     </html>
   );

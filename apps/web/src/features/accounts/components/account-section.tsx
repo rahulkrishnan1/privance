@@ -29,7 +29,9 @@ export function AccountSection({
     return a.payload.kind === "liability" ? acc.sub(amount) : acc.add(amount);
   }, centsToDecimal("0"));
 
-  const subtotalStr = formatCurrency(subtotal);
+  const currencies = [...new Set(accounts.map((a) => a.payload.currency))];
+  const uniformCurrency = currencies.length === 1 ? currencies[0] : null;
+  const subtotalStr = uniformCurrency !== null ? formatCurrency(subtotal, uniformCurrency) : null;
   const isNegativeSubtotal = subtotal.isNegative();
 
   return (
@@ -38,14 +40,16 @@ export function AccountSection({
         <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
           {meta.label}
         </span>
-        <span
-          className={[
-            "font-editorial text-[16px] tracking-[-0.005em]",
-            isNegativeSubtotal ? "text-app-red" : "text-app-muted",
-          ].join(" ")}
-        >
-          {subtotalStr}
-        </span>
+        {subtotalStr !== null && (
+          <span
+            className={[
+              "font-editorial text-[16px] tracking-[-0.005em]",
+              isNegativeSubtotal ? "text-app-red" : "text-app-muted",
+            ].join(" ")}
+          >
+            {subtotalStr}
+          </span>
+        )}
       </div>
       <div className="flex flex-col gap-2">
         {accounts.map((account) => (

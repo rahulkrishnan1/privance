@@ -2,42 +2,46 @@
 
 export function SkeletonRow() {
   return (
-    <tr className="border-b border-neutral-100 dark:border-neutral-800">
-      {/* Ticker + name column */}
-      <td className="px-4 py-3">
+    <tr className="border-b border-app-line-soft">
+      {/* Ticker + name */}
+      <td className="px-3 py-3">
         <div className="flex flex-col gap-1">
-          <div className="h-4 w-14 rounded bg-neutral-200 dark:bg-neutral-700 animate-pulse" />
-          <div className="h-3 w-24 rounded bg-neutral-100 dark:bg-neutral-800 animate-pulse" />
+          <div className="h-4 w-14 rounded bg-white/[0.07] animate-pulse" />
+          <div className="h-3 w-24 rounded bg-white/[0.04] animate-pulse" />
         </div>
       </td>
       {/* Account chip */}
-      <td className="px-2 py-3">
-        <div className="h-5 w-20 rounded-full bg-neutral-100 dark:bg-neutral-800 animate-pulse" />
+      <td className="hidden md:table-cell px-3 py-3">
+        <div className="h-5 w-20 rounded-full bg-white/[0.04] animate-pulse" />
       </td>
       {/* Shares */}
-      <td className="px-2 py-3 text-right">
-        <div className="h-4 w-16 rounded bg-neutral-200 dark:bg-neutral-700 animate-pulse ml-auto" />
+      <td className="hidden md:table-cell px-3 py-3 text-right">
+        <div className="h-4 w-16 rounded bg-white/[0.07] animate-pulse ml-auto" />
+      </td>
+      {/* Current price */}
+      <td className="hidden md:table-cell px-3 py-3 text-right">
+        <div className="h-4 w-14 rounded bg-white/[0.07] animate-pulse ml-auto" />
       </td>
       {/* Avg cost */}
-      <td className="px-2 py-3 text-right">
-        <div className="h-4 w-16 rounded bg-neutral-200 dark:bg-neutral-700 animate-pulse ml-auto" />
-      </td>
-      {/* Price */}
-      <td className="px-2 py-3 text-right">
-        <div className="h-4 w-14 rounded bg-neutral-200 dark:bg-neutral-700 animate-pulse ml-auto" />
+      <td className="hidden md:table-cell px-3 py-3 text-right">
+        <div className="h-4 w-16 rounded bg-white/[0.07] animate-pulse ml-auto" />
       </td>
       {/* Market value */}
-      <td className="px-2 py-3 text-right">
-        <div className="h-4 w-20 rounded bg-neutral-200 dark:bg-neutral-700 animate-pulse ml-auto" />
+      <td className="px-3 py-3 text-right">
+        <div className="h-4 w-20 rounded bg-white/[0.07] animate-pulse ml-auto" />
       </td>
-      {/* Day delta */}
-      <td className="px-2 py-3 text-right">
-        <div className="h-4 w-12 rounded bg-neutral-100 dark:bg-neutral-800 animate-pulse ml-auto" />
+      {/* Gain $ */}
+      <td className="hidden md:table-cell px-3 py-3 text-right">
+        <div className="h-4 w-16 rounded bg-white/[0.04] animate-pulse ml-auto" />
+      </td>
+      {/* Gain % */}
+      <td className="px-3 py-3 text-right">
+        <div className="h-4 w-12 rounded bg-white/[0.04] animate-pulse ml-auto" />
       </td>
       {/* Groups */}
-      <td className="px-2 py-3" />
+      <td className="hidden md:table-cell px-3 py-3" />
       {/* Actions */}
-      <td className="px-2 py-3" />
+      <td className="hidden md:table-cell px-3 py-3" />
     </tr>
   );
 }

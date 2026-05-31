@@ -14,6 +14,10 @@ const FAKE_PRICES: Record<string, [string, string | null]> = {
   GOOG: ["150.00", "149.20"],
   NVDA: ["120.00", "118.75"],
   VOO: ["500.00", "499.10"],
+  // Formerly-restricted holding with no public quote, used to exercise the
+  // proxy un-anchor path: anchored to VOO while illiquid, priced directly here
+  // as if it had since listed.
+  PRVT: ["300.00", "298.50"],
   FXAIX: ["180.00", "179.60"],
   bitcoin: ["65000.00", "64200.00"],
   ethereum: ["3000.00", "3060.00"],

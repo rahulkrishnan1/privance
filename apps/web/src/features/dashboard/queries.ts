@@ -472,7 +472,7 @@ function buildKindSlices(breakdown: ReturnType<typeof computeNetWorth>): Allocat
   ];
 
   return candidates
-    .filter((c) => !c.value.isZero())
+    .filter((c) => !c.value.isZero() && !c.value.isNegative())
     .map((c) => ({
       label: c.label,
       value: c.value,

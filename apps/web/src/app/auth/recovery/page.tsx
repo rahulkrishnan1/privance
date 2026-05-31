@@ -310,7 +310,7 @@ export default function RecoveryPage() {
       <p className="text-center font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
         <Link
           href="/auth/login"
-          className="hover:text-app-text transition-colors focus-visible:outline-none focus-visible:text-gold-accent"
+          className="inline-block py-3 px-2 -my-3 -mx-2 hover:text-app-text transition-colors focus-visible:outline-none focus-visible:text-gold-accent"
         >
           Back to sign in
         </Link>

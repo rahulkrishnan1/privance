@@ -59,3 +59,7 @@ android/build/
 android/local.properties
 android/captures/
 android/app/release/
+
+# Vitest browser-mode transient output
+.vitest-attachments/
+**/__screenshots__/

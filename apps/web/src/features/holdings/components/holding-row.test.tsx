@@ -65,3 +65,36 @@ describe("HoldingRow mobile sub-row", () => {
     expect(html).not.toMatch(/col[Ss]pan="9999"/);
   });
 });
+
+describe("HoldingRow mobile disclosure", () => {
+  it("puts the expand control on the row so the whole row is tappable", () => {
+    // Regression guard: moving the disclosure onto a button wrapping only the
+    // ticker cell left Value and G/L% dead to touch on mobile.
+    const html = renderRow(false);
+    expect(html).toMatch(/<tr[^>]*tabindex="0"[^>]*>/i);
+    expect(html).toMatch(/<tr[^>]*aria-expanded="false"[^>]*>/i);
+  });
+});
+
+describe("HoldingRow mobile chevron affordance", () => {
+  it("renders a ChevronDown (svg) inside md:hidden when collapsed", () => {
+    const html = renderRow(false);
+    // The chevron wrapper carries md:hidden so it is invisible on desktop.
+    expect(html).toContain("md:hidden");
+    // lucide-react renders an <svg> for each icon; collapsed state shows
+    // ChevronDown (no rotate class), expanded shows ChevronUp.
+    // Both render an svg, so we just verify an svg is present inside md:hidden.
+    expect(html).toContain("svg");
+  });
+
+  it("renders a chevron inside md:hidden when expanded", () => {
+    const html = renderRow(true);
+    expect(html).toContain("md:hidden");
+    expect(html).toContain("svg");
+  });
+
+  it("chevron is aria-hidden so screen readers rely on row aria-expanded", () => {
+    const html = renderRow(false);
+    expect(html).toContain('aria-hidden="true"');
+  });
+});

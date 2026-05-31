@@ -11,7 +11,8 @@ export default function SettingsPage() {
 
   async function handleSignOut() {
     await apiLogout().catch(() => undefined);
-    logout();
+    // Await logout so the registered store.destroy() finishes before we unload.
+    await logout();
     window.location.replace("/auth/login/");
   }
 
