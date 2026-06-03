@@ -73,6 +73,9 @@ async function ensureDataSetup(browser: import("@playwright/test").Browser): Pro
       .getByRole("heading", { name: "Accounts" })
       .or(page.getByRole("heading", { name: "Add your first account" })),
   ).toBeVisible({ timeout: 15_000 });
+  // Settle the initial sync + prices before filling, so a late re-render can't
+  // revert the controlled input mid-fill.
+  await page.waitForLoadState("networkidle");
 
   await page
     .getByRole("button", { name: /Add.*account/i })
@@ -102,6 +105,9 @@ test.describe("dashboard — with data", () => {
     // Navigate to the dashboard
     await page.goto("/app/");
     await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+    // Settle the initial sync drain + prices/snapshot so the dashboard reads a
+    // fully-computed state, not a mid-load frame.
+    await page.waitForLoadState("networkidle");
   });
 
   test("net worth tile renders a real computed value, not $0 or NaN", async ({ page }) => {

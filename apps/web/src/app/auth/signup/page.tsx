@@ -8,6 +8,7 @@ import { Input } from "@/components/Input";
 import * as authApi from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { deriveSignupCrypto } from "@/lib/auth-crypto";
+import { useHydrated } from "@/lib/use-hydrated";
 import { PASSWORD_MAX, USERNAME_MAX, validatePassword, validateUsername } from "@/lib/validation";
 import { useAuth } from "@/providers/auth-context";
 
@@ -28,6 +29,7 @@ export default function SignupPage() {
   const [inviteToken, setInviteToken] = useState("");
   const [pending, setPending] = useState(false);
   const [errors, setErrors] = useState<FieldError>({});
+  const hydrated = useHydrated();
 
   const [phrase, setPhrase] = useState<string | null>(null);
   const [phraseAcknowledged, setPhraseAcknowledged] = useState(false);
@@ -111,9 +113,9 @@ export default function SignupPage() {
     }
   }
 
-  function onContinue() {
+  async function onContinue() {
     if (!pendingLogin || !phraseAcknowledged) return;
-    login({
+    await login({
       user: { userId: pendingLogin.userId, username: username.trim().toLowerCase() },
       itemsKey: pendingLogin.itemsKey,
       persistence: "memory",
@@ -247,7 +249,7 @@ export default function SignupPage() {
           error={errors.inviteToken}
         />
 
-        <Button type="submit" loading={pending} className="w-full mt-2">
+        <Button type="submit" loading={pending} disabled={!hydrated} className="w-full mt-2">
           {pending ? "Creating account…" : "Create account"}
         </Button>
       </form>

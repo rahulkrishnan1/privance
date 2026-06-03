@@ -71,8 +71,14 @@ class ProgressiveBackoff {
   }
 }
 
-const loginPerUsername = new SlidingWindow(60_000, 5);
-const loginPerIp = new SlidingWindow(60_000, 20);
+// Login caps are overridable so the E2E suite, which reuses a few fixture users
+// across many specs and projects from a single IP, is not throttled by the
+// production defaults. Unset in production, where the defaults below apply.
+const loginPerUsernameMax = Number(process.env.RATE_LIMIT_LOGIN_PER_USERNAME) || 5;
+const loginPerIpMax = Number(process.env.RATE_LIMIT_LOGIN_PER_IP) || 20;
+
+const loginPerUsername = new SlidingWindow(60_000, loginPerUsernameMax);
+const loginPerIp = new SlidingWindow(60_000, loginPerIpMax);
 const signupPerIp = new SlidingWindow(60_000, 3);
 const recoveryPerUsername = new SlidingWindow(3_600_000, 5);
 const recoveryPerIp = new SlidingWindow(3_600_000, 10);

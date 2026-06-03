@@ -11,6 +11,11 @@ const serverEnv: Record<string, string> = {
     "8iAent0DybGgc5dgpHF4IFfLWC0pViapd+5sO9i3OeDGfRTNwwkhfc6xxlITfpoL",
   SIGNUP_ALLOWLIST: "",
   ALLOWED_ORIGINS: "http://localhost:8081",
+  // Reusing a few fixture users across many specs and five projects from one IP
+  // would trip the production login caps; lift them for the E2E backend only.
+  // Signup stays capped (the suite budgets signups via global-setup's cooldown).
+  RATE_LIMIT_LOGIN_PER_USERNAME: "1000",
+  RATE_LIMIT_LOGIN_PER_IP: "1000",
   // Use deterministic fake price + profile upstreams so E2E doesn't depend on
   // live Yahoo / CoinGecko quotas. Real upstreams run in dev (no env override).
   PRICE_PROVIDER: "fake",
@@ -35,10 +40,19 @@ const MONOREPO_ROOT = path.resolve(__dirname, "../..");
  *
  * Each test uses a distinct username so no cross-test DB state leaks.
  *
- * Chromium and Firefox run the full suite. WebKit runs only the storage specs
- * (webkit-storage, fallback-storage) because argon2-wasm on macOS WebKit is
- * flaky on timing; the core crypto path is covered by vitest unit tests in
- * packages/core on all platforms.
+ * Coverage matches the surfaces we ship (web + installed PWA), per engine and
+ * viewport: chromium, firefox, and webkit each run the full desktop functional
+ * suite (webkit additionally runs the OPFS storage specs, which only apply to
+ * it). The two mobile projects run the comprehensive *.mobile specs against the
+ * mobile UI: iPhone (WebKit, the iOS PWA engine) and Pixel 5 (Chromium, the
+ * Android PWA engine). workers:1 serialises the main-thread argon2id KDF so
+ * parallel WebKit contexts do not sum to an out-of-memory kill.
+ *
+ * These projects run in full locally (macOS). On CI, the shared Linux runner
+ * cannot carry the 64 MB Argon2id auth flows on WebKit in time, so the CI
+ * workflow scopes the WebKit projects to the storage specs and runs the mobile
+ * suite on Pixel 5 only. Restoring full WebKit + iPhone coverage to CI via a
+ * reduced test-env KDF cost is a tracked follow-up.
  */
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -83,14 +97,21 @@ export default defineConfig({
       testIgnore: /(webkit-storage|fallback-storage|.*\.mobile)\.spec\.ts$/,
     },
     {
+      // Full desktop suite plus the OPFS storage specs (which testMatch on
+      // browserName === "webkit" internally). Only the mobile specs are ignored.
       name: "webkit",
       use: { ...devices["Desktop Safari"] },
-      testMatch: /(webkit-storage|fallback-storage)\.spec\.ts$/,
+      testIgnore: /\.mobile\.spec\.ts$/,
     },
     {
-      // Mobile viewport: exercises tap targets the md: breakpoint hides on
-      // desktop. Scoped to *.mobile.spec.ts files.
-      name: "mobile",
+      // iOS PWA surface: WebKit at a phone viewport. Runs the mobile UI specs.
+      name: "mobile-safari",
+      use: { ...devices["iPhone 14"] },
+      testMatch: /\.mobile\.spec\.ts$/,
+    },
+    {
+      // Android PWA surface: Chromium at a phone viewport. Runs the mobile UI specs.
+      name: "mobile-chrome",
       use: { ...devices["Pixel 5"] },
       testMatch: /\.mobile\.spec\.ts$/,
     },

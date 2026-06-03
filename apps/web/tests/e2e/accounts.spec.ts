@@ -41,6 +41,10 @@ async function goToAccounts(page: import("@playwright/test").Page): Promise<void
       .getByRole("heading", { name: "Accounts" })
       .or(page.getByRole("heading", { name: "Add your first account" })),
   ).toBeVisible({ timeout: 15_000 });
+  // Let the initial sync drain and the async prices query settle before any
+  // form interaction. Otherwise a late re-render (prices resolving) can land
+  // mid-fill and revert the controlled input, surfacing as a lost field value.
+  await page.waitForLoadState("networkidle");
 }
 
 // ---------------------------------------------------------------------------

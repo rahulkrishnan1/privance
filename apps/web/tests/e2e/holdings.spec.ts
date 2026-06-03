@@ -38,6 +38,9 @@ async function goToHoldings(page: import("@playwright/test").Page): Promise<void
   await expect(page.getByRole("heading", { name: "Holdings", exact: true })).toBeVisible({
     timeout: 10_000,
   });
+  // Let the initial sync drain and async prices settle before interacting, so a
+  // late re-render can't land mid-fill and revert a controlled input.
+  await page.waitForLoadState("networkidle");
 }
 
 // ---------------------------------------------------------------------------
@@ -66,6 +69,7 @@ test.describe("holdings", () => {
           .getByRole("heading", { name: "Accounts" })
           .or(page.getByRole("heading", { name: "Add your first account" })),
       ).toBeVisible({ timeout: 15_000 });
+      await page.waitForLoadState("networkidle");
 
       await page
         .getByRole("button", { name: /Add.*account/i })
@@ -641,6 +645,7 @@ test.describe("holdings", () => {
         .getByRole("heading", { name: "Accounts" })
         .or(page.getByRole("heading", { name: "Add your first account" })),
     ).toBeVisible({ timeout: 15_000 });
+    await page.waitForLoadState("networkidle");
     await page
       .getByRole("button", { name: /Add.*account/i })
       .first()

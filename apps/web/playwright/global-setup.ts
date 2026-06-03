@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { chromium } from "@playwright/test";
+import postgres from "postgres";
 
 /**
  * Global setup: pre-creates fixture users that most tests reuse.
@@ -16,11 +17,49 @@ import { chromium } from "@playwright/test";
  * On subsequent local runs the fixture file is reused so we don't burn through
  * the rate-limit budget on every `pnpm e2e` invocation. Set FORCE_SETUP=1 or
  * delete the fixture file to force recreation (e.g. after a DB wipe).
+ *
+ * Because the local Postgres persists across runs while the fixture users are
+ * reused, their sync data (accounts, holdings, daily net-worth snapshots) would
+ * otherwise pile up run-over-run and day-over-day, eventually breaking
+ * data-shape assertions (e.g. "only one day of history") and slowing the initial
+ * sync into a timeout. So every reused run first wipes those users' sync rows,
+ * giving each local run the same clean-data slate CI gets from its ephemeral DB.
+ * The users themselves are kept so no new signups are needed.
  */
 
 const FIXTURES_PATH = path.join(__dirname, "../.playwright-fixtures.json");
 const BASE_URL = "http://localhost:8081";
 const PASSWORD = "Privance-e2e-passphrase-2026!";
+const DATABASE_URL =
+  process.env.DATABASE_URL ?? "postgres://privance:privance@localhost:5432/privance";
+
+/** Wipes the per-user sync rows (accounts, holdings, snapshots) for the given
+ *  users and the global price / symbol-profile caches so a reused run starts from
+ *  clean data. Clearing the caches keeps prices deterministic: a prior session
+ *  that ran against real upstreams (e.g. a stray `pnpm dev`) would otherwise
+ *  leave real prices cached that the fake provider serves until they expire,
+ *  breaking value assertions. Keeps the user rows so login still works without a
+ *  fresh signup. Guarded to a local DB so a misconfigured DATABASE_URL can never
+ *  delete rows in a shared or staging Postgres. */
+async function resetFixtureData(usernames: string[]): Promise<void> {
+  if (!/@(localhost|127\.0\.0\.1)[:/]/.test(DATABASE_URL)) {
+    // biome-ignore lint/suspicious/noConsole: progress output during Playwright global setup
+    console.warn("[global-setup] DATABASE_URL is not local; skipping fixture-data reset");
+    return;
+  }
+  const sql = postgres(DATABASE_URL, { max: 1 });
+  try {
+    // sync_objects.user_id is text; users.user_id is uuid, so cast to match.
+    await sql`
+      delete from sync_objects
+      where user_id in (select user_id::text from users where username in ${sql(usernames)})
+    `;
+    await sql`delete from prices`;
+    await sql`delete from symbol_profiles`;
+  } finally {
+    await sql.end({ timeout: 5 });
+  }
+}
 
 export type Fixtures = {
   sharedUser: { username: string; password: string };
@@ -71,8 +110,14 @@ export default async function globalSetup(): Promise<void> {
   // Reuse existing fixtures on local re-runs to avoid burning through the
   // 3-per-minute signup rate limit. CI never has the file (it's gitignored).
   if (process.env.FORCE_SETUP !== "1" && fs.existsSync(FIXTURES_PATH)) {
+    const fixtures = JSON.parse(fs.readFileSync(FIXTURES_PATH, "utf8")) as Fixtures;
     // biome-ignore lint/suspicious/noConsole: progress output during Playwright global setup
-    console.log("[global-setup] Reusing existing fixtures from", FIXTURES_PATH);
+    console.log("[global-setup] Reusing fixtures; wiping their sync data for a clean run");
+    await resetFixtureData([
+      fixtures.sharedUser.username,
+      fixtures.duplicateUser.username,
+      fixtures.recoveryUser.username,
+    ]);
     return;
   }
 

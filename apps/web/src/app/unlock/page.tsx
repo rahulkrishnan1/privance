@@ -10,6 +10,7 @@ import * as authApi from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { deriveLoginCrypto, unwrapDek } from "@/lib/auth-crypto";
 import { destroyUserStore } from "@/lib/storage/per-user-store";
+import { useHydrated } from "@/lib/use-hydrated";
 import { PASSWORD_MAX } from "@/lib/validation";
 import { USER_ID_KEY, useAuth } from "@/providers/auth-context";
 
@@ -23,6 +24,7 @@ export default function UnlockPage() {
   const [pending, setPending] = useState(false);
   const [credError, setCredError] = useState<string | undefined>(undefined);
   const [banner, setBanner] = useState<string | undefined>(undefined);
+  const hydrated = useHydrated();
 
   useEffect(() => {
     let cancelled = false;
@@ -71,7 +73,7 @@ export default function UnlockPage() {
         kdfParamVersion,
       });
 
-      unlock({
+      await unlock({
         user: { userId: loginRes.user_id, username },
         itemsKey,
         persistence: "memory",
@@ -100,7 +102,7 @@ export default function UnlockPage() {
     await authApi.logout().catch(() => undefined);
     // The lock-reload wiped the in-memory store and its destroy cleanup, so
     // erase the per-user ciphertext file directly before clearing the session.
-    const userId = sessionStorage.getItem(USER_ID_KEY);
+    const userId = localStorage.getItem(USER_ID_KEY);
     if (userId !== null) await destroyUserStore(userId);
     await logout();
     window.location.replace("/auth/login/");
@@ -160,7 +162,7 @@ export default function UnlockPage() {
             error={credError}
           />
 
-          <Button type="submit" loading={pending} className="w-full mt-2">
+          <Button type="submit" loading={pending} disabled={!hydrated} className="w-full mt-2">
             {pending ? "Unlocking…" : "Unlock"}
           </Button>
         </form>

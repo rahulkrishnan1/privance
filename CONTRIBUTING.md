@@ -90,7 +90,7 @@ pnpm --filter @privance/web exec vitest --project unit     # logic only (happy-d
 pnpm --filter @privance/web exec vitest --project browser  # components (real Chromium)
 ```
 
-Two Vitest projects: `unit` runs pure logic in `happy-dom`; `browser` runs `*.browser.test.tsx` in real Chromium via Vitest Browser Mode (`vitest-browser-react`), needed because happy-dom/jsdom can't lay out or render Recharts/SVG. The browser project needs a Chromium binary (`pnpm --filter @privance/web exec playwright install chromium`). Component CSS and full flows are covered in E2E; see [ADR-0003](docs/decisions/0003-component-testing.md).
+Two Vitest projects: `unit` runs pure logic in `happy-dom`; `browser` runs `*.browser.test.{ts,tsx}` in real Chromium via Vitest Browser Mode (`vitest-browser-react`), needed because happy-dom/jsdom can't lay out or render Recharts/SVG, or faithfully back browser APIs like IndexedDB and WebCrypto. The browser project needs a Chromium binary (`pnpm --filter @privance/web exec playwright install chromium`). Component CSS and full flows are covered in E2E; see [ADR-0003](docs/adr/0003-component-testing.md).
 
 ### Run all tests
 
@@ -112,6 +112,8 @@ pnpm --filter @privance/web e2e:headed
 ```
 
 E2E specs live in `apps/web/tests/e2e/`. Auth flows go through the helpers in `apps/web/tests/e2e/helpers/auth.ts`, do not copy-paste auth steps into specs. Use a distinct username per test (alice, bob, dave, ...) for `cleanState` isolation. Prefer `getByRole` / `getByLabel` selectors; `getByTestId` only when role/label are not unique. Never use Tailwind class names as selectors.
+
+Playwright runs five projects: `chromium`, `firefox`, and `webkit` run the full functional suite (webkit also runs the OPFS storage specs that only apply to it), and `mobile-safari` (iPhone, WebKit) and `mobile-chrome` (Pixel 5) run `*.mobile.spec.ts` against the mobile UI. Target one with `pnpm --filter @privance/web e2e --project=<name>`. All five run locally (macOS); on CI the shared Linux runner cannot carry WebKit's 64 MB Argon2id auth flows in time, so CI scopes the WebKit projects to their storage specs and runs the mobile suite on Pixel 5 (restoring full WebKit/iPhone CI coverage via a reduced test-env KDF is a tracked follow-up).
 
 ---
 
@@ -209,8 +211,8 @@ Before opening a PR:
 
 1. `pnpm lint` passes with no new errors
 2. `pnpm typecheck` passes in all workspaces
-3. `pnpm test` passes with no regressions
-4. E2E tests pass on chromium, firefox, and webkit (storage specs)
+3. `pnpm test` passes with no regressions, and new or changed behavior ships with a test that fails without the change, at the right layer (unit / `browser` / E2E)
+4. E2E tests pass on chromium, firefox, webkit, and mobile
 5. If you changed the server API: document the change
 6. If you changed auth or crypto: manually verify a signup → recovery → login
    cycle in a real browser
@@ -220,4 +222,4 @@ Before opening a PR:
    `gh pr merge --squash --delete-branch` (no-op squash since the branch is
    already one commit).
 
-For non-obvious design decisions, write an ADR under `docs/decisions/`.
+For non-obvious design decisions, write an ADR under `docs/adr/`.

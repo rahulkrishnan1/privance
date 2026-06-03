@@ -8,6 +8,7 @@ import { Input } from "@/components/Input";
 import * as authApi from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { deriveLoginCrypto, unwrapDek } from "@/lib/auth-crypto";
+import { useHydrated } from "@/lib/use-hydrated";
 import { PASSWORD_MAX, USERNAME_MAX } from "@/lib/validation";
 import { useAuth } from "@/providers/auth-context";
 
@@ -20,6 +21,7 @@ export default function LoginPage() {
   const [pending, setPending] = useState(false);
   const [credError, setCredError] = useState<string | undefined>(undefined);
   const [banner, setBanner] = useState<string | undefined>(undefined);
+  const hydrated = useHydrated();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -47,7 +49,7 @@ export default function LoginPage() {
         kdfParamVersion,
       });
 
-      login({
+      await login({
         user: { userId: loginRes.user_id, username: trimmedUsername },
         itemsKey,
         persistence: "memory",
@@ -112,7 +114,7 @@ export default function LoginPage() {
           maxLength={PASSWORD_MAX}
         />
 
-        <Button type="submit" loading={pending} className="w-full mt-2">
+        <Button type="submit" loading={pending} disabled={!hydrated} className="w-full mt-2">
           {pending ? "Signing in…" : "Sign in"}
         </Button>
       </form>

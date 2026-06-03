@@ -74,3 +74,22 @@ test("shows the empty-state copy instead of a broken chart for a single data poi
     .toBeVisible();
   expect(screen.container.querySelector(".recharts-line-curve")).toBeNull();
 });
+
+test("a range with too few points reports the range is short, not that history is missing", async () => {
+  // History exists (a week of snapshots) but none fall inside the 1D window.
+  // The copy must not claim there is no history yet (the misleading 1D
+  // behavior); it should say the range is too short.
+  const points = [pt(8, 1_061_000), pt(7, 1_061_500), pt(6, 1_062_000)];
+
+  const screen = await render(
+    <div style={{ width: 760, height: 340 }}>
+      <HistoryChart points={points} className="h-full" />
+    </div>,
+  );
+
+  await screen.getByRole("button", { name: "1D range" }).click();
+
+  // The either/or copy lives in one node, so the range-short message being
+  // visible proves the cold-start message is not shown.
+  await expect.element(screen.getByText(/Not enough data for this range yet/i)).toBeVisible();
+});

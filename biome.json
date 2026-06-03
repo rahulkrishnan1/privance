@@ -20,6 +20,7 @@
       "!**/globals.css",
       "!**/test-results",
       "!**/public/sqlite",
+      "!**/public/kdf",
       "!**/ios",
       "!**/android",
       "!**/.playwright-fixtures.json",

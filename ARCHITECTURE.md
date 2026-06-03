@@ -9,7 +9,7 @@ User's device  (browser or Capacitor WKWebView / Android WebView)
 │   ├─ React 19 + Tailwind 4 + TanStack Query 5 + Zod
 │   ├─ /          landing page  (auth-aware: redirects signed-in users to /app/)
 │   ├─ /auth/*    unauthenticated flows  (signup, login, recovery)
-│   ├─ /unlock    session exists but DEK lost on reload
+│   ├─ /unlock    locked: session exists but DEK not in memory
 │   └─ /app/*     auth-gated  (dashboard, accounts, holdings, settings)
 │
 ├─ providers/  ── React-context wiring
@@ -186,9 +186,12 @@ User enters password
   → deriveKek(stretchedKey)                     ← HKDF finance/kek-v1, 32 bytes
   → AES-GCM decrypt(wrapped_dek, kek, wrapped_dek_iv)  ← produces items key (DEK)
   → store DEK in globalThis[Symbol.for("privance.dekStore.v1")]
+  → wrap DEK under a fresh non-extractable AES-GCM key, persist {wrapped, key, lastActiveAt} in IndexedDB
   → AuthContext state → "unlocked"
   → SyncProvider boots LocalStore + SyncClient
 ```
+
+**Session persistence and auto-lock** (`lib/storage/session-vault.ts`): the DEK is also held wrapped in IndexedDB under a non-extractable key, bounded by a single 15-minute window covering both idle-while-open and time-since-last-seen. On boot, AuthProvider holds in a transient `loading` state while it reads the vault: a same-tab reload within the window unwraps locally and resumes `unlocked` with no password or server round-trip; an expired or absent vault resolves to `locked` and routes to `/unlock`. The window slides forward on activity (throttled) and on tab-hide. Explicit lock, window expiry, and logout purge the vault. The non-secret username and userId live in `localStorage` so a reopen after a real close can still reach `/unlock` prefilled; in private browsing the browser wipes all of this on close, so closing locks instantly. See `THREAT_MODEL.md` for the posture tradeoff.
 
 ---
 
@@ -319,7 +322,7 @@ app/
 
 **Landing page:** `(landing)/page.tsx` serves the landing page at `/`. It reads `useAuth()` and redirects signed-in users (`unlocked` → `/app/`, `locked` → `/unlock/`) so they never see the landing.
 
-**Auth gate:** `(app)/layout.tsx` uses `useAuth()` and redirects via `window.location.replace()` to `/auth/login/` (unauthenticated) or `/unlock/` (session cookie present but DEK lost due to page reload).
+**Auth gate:** `(app)/layout.tsx` uses `useAuth()` and redirects via `window.location.replace()` to `/auth/login/` (unauthenticated) or `/unlock/` (locked: session cookie present but the DEK is not in memory and cannot be rehydrated from the vault, because the window expired or a lock purged it). It does not redirect while auth state is `loading`, so the brief vault read on boot cannot bounce a soon-to-be-unlocked reload to `/unlock`.
 
 ---
 

@@ -51,6 +51,7 @@ test.describe("holdings mobile", () => {
         .getByRole("heading", { name: "Accounts" })
         .or(page.getByRole("heading", { name: "Add your first account" })),
     ).toBeVisible({ timeout: 15_000 });
+    await page.waitForLoadState("networkidle");
 
     await page
       .getByRole("button", { name: /Add.*account/i })
@@ -83,6 +84,7 @@ test.describe("holdings mobile", () => {
     await expect(page.getByRole("heading", { name: "Holdings", exact: true })).toBeVisible({
       timeout: 10_000,
     });
+    await page.waitForLoadState("networkidle");
 
     const ticker = `MOB${RUN.slice(-4).toUpperCase()}`;
     await page.getByRole("button", { name: "Add holding" }).first().click();

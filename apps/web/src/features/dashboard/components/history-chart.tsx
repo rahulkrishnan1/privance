@@ -141,7 +141,9 @@ export function HistoryChart({ points, className }: HistoryChartProps) {
       {chartData.length < 2 ? (
         <div className="flex-1 min-h-[200px] flex items-center justify-center">
           <p className="text-sm text-app-muted text-center">
-            Net worth history will appear after a few days of usage.
+            {points.length < 2
+              ? "Net worth history will appear after a few days of usage."
+              : "Not enough data for this range yet."}
           </p>
         </div>
       ) : (

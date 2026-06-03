@@ -258,34 +258,28 @@ test.describe("auth — protected route redirects", () => {
   test("session-expired locked state redirects to login without looping back to unlock (regression)", async ({
     page,
   }) => {
-    // Inject sessionStorage BEFORE any navigation so AuthProvider's useState
-    // initialiser reads the locked marker and boots in state="locked".
-    await page.addInitScript(
-      ({ lockedKey, usernameKey }: { lockedKey: string; usernameKey: string }) => {
-        sessionStorage.setItem(lockedKey, "1");
-        sessionStorage.setItem(usernameKey, "ghost-user");
-      },
-      {
-        lockedKey: "privance.lockedMarker",
-        usernameKey: "privance.username",
-      },
-    );
-
-    // No session cookie is present, so authApi.session() returns 401.
-    // Clear any stale cookies from prior test runs to guarantee a clean state.
+    // Seed a persisted username (the "this device has an account" marker) with no
+    // session vault and no cookie: the locked-then-expired boot. Set it via a
+    // one-time evaluate rather than addInitScript so it is not re-injected on the
+    // post-logout navigation, which is what lets us prove the loop is gone.
+    await page.goto("/auth/login/");
+    await page.evaluate(() => localStorage.setItem("privance.username", "ghost-user"));
     await page.context().clearCookies();
 
-    // Navigate to /unlock/. AuthProvider boots as "locked" (LOCKED_MARKER is
-    // set), so the layout guard allows rendering instead of immediately bouncing
-    // to login. The page's useEffect then calls authApi.session(), gets 401,
-    // calls logout() (clears LOCKED_MARKER) + window.location.replace('/auth/login/').
-    await page.goto("/unlock/");
+    // /unlock/ boots "locked" (username present, no vault), then its useEffect
+    // calls authApi.session(), gets 401, and logout() clears the persisted
+    // username before window.location.replace('/auth/login/'). That redirect can
+    // fire mid-load and interrupt this navigation on faster engines (WebKit); the
+    // interrupt is the behavior under test, so tolerate it and let the assertions
+    // below verify where we landed.
+    await page.goto("/unlock/").catch(() => {});
 
     await expect(page).toHaveURL(/\/auth\/login\//, { timeout: 15_000 });
 
-    // Confirm we stay on /auth/login/, not bounced back to /unlock/. Without the
-    // fix the layout guard re-read LOCKED_MARKER and redirected within
-    // milliseconds, so a 1 s settle is ample to catch the loop.
+    // Stay on /auth/login/, not bounced back to /unlock/. If logout failed to
+    // clear the persisted username, the login boot would resolve "locked" and the
+    // auth layout would redirect to /unlock within milliseconds; a 1 s settle
+    // catches that loop.
     await page.waitForTimeout(1_000);
     await expect(page).toHaveURL(/\/auth\/login\//);
     await expect(page).not.toHaveURL(/\/unlock/);
