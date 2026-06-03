@@ -4,6 +4,13 @@ import type { ItemsKey } from "@privance/core";
 import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { resetPricesCache } from "@/lib/queries/prices";
+import {
+  clearSession,
+  loadSession,
+  persistSession,
+  SESSION_TTL_MS,
+  touchSession,
+} from "@/lib/storage/session-vault";
 
 // ---------------------------------------------------------------------------
 // DEK store, lives outside React state, never logged
@@ -33,14 +40,17 @@ function clearDekStore(): void {
 // State machine types
 // ---------------------------------------------------------------------------
 
-export type AuthState = "unauthenticated" | "locked" | "unlocked";
+/** `loading` is the transient boot state while the session vault is read
+ *  asynchronously; the app shell holds (no redirect) until it resolves to
+ *  `unlocked` or `locked`. */
+export type AuthState = "loading" | "unauthenticated" | "locked" | "unlocked";
 
 export type PersistenceLevel = "memory" | "session" | "biometric";
 
 export type AuthUser = {
-  /** Absent when the auth state was rehydrated from sessionStorage in `locked`
-   *  state — only username is persisted across the lock-induced reload. login()
-   *  populates this on a successful unlock. */
+  /** Absent when the auth state was rehydrated in `locked` state — only the
+   *  username is needed to render the unlock screen. login()/unlock() and a
+   *  fresh-vault rehydrate populate this. */
   userId?: string;
   username: string;
 };
@@ -55,9 +65,9 @@ export type AuthContextValue = {
   state: AuthState;
   user: AuthUser | null;
   persistence: PersistenceLevel;
-  login: (payload: AuthPayload) => void;
-  unlock: (payload: AuthPayload) => void;
-  lock: () => void;
+  login: (payload: AuthPayload) => Promise<void>;
+  unlock: (payload: AuthPayload) => Promise<void>;
+  lock: () => Promise<void>;
   logout: () => Promise<void>;
   /** Register a cleanup callback to run on logout, before the auth state
    *  transitions to "unauthenticated". Returns an unregister function. Used by
@@ -69,21 +79,50 @@ export type AuthContextValue = {
 // Auto-lock idle timer
 // ---------------------------------------------------------------------------
 
-const DEFAULT_AUTO_LOCK_MS = 30 * 60 * 1000;
+/** Idle auto-lock shares the session window: the same elapsed-time budget
+ *  governs going idle while open and reopening after a close. */
+const DEFAULT_AUTO_LOCK_MS = SESSION_TTL_MS;
 
-/** Set in sessionStorage so a reload-on-lock can resume in the "locked" state
- *  instead of falling all the way back to "unauthenticated". */
-const LOCKED_MARKER = "privance.lockedMarker";
+/** Throttle for sliding the persisted window forward on activity. Far below the
+ *  15-minute budget, so a worst-case-stale lastActiveAt is negligible. */
+const VAULT_TOUCH_THROTTLE_MS = 60 * 1000;
 
-/** Persisted alongside the lock marker so /unlock can pre-fill the username and
- *  skip an unnecessary field. The server already knows it; sessionStorage clears
- *  on tab close, same lifetime as the session cookie. */
+/** Non-secret username in localStorage. Doubles as the "this device has an
+ *  account" marker that decides locked vs unauthenticated on boot, and pre-fills
+ *  the unlock screen. localStorage (not sessionStorage) so it survives a real
+ *  close, which is what lets lock-on-close land on /unlock rather than login. */
 const USERNAME_KEY = "privance.username";
 
-/** Non-secret account id, persisted so the locked-screen sign-out can derive the
- *  per-user OPFS filename and erase local ciphertext after a lock-reload wipes
- *  it from memory. The server already knows it; never key material. */
+/** Non-secret account id in localStorage, so the locked-screen sign-out can
+ *  derive the per-user OPFS filename and erase local ciphertext after a close
+ *  wipes it from memory. The server already knows it; never key material. */
 export const USER_ID_KEY = "privance.userId";
+
+/** Written on an explicit lock to broadcast it to other same-origin tabs (a
+ *  `storage` event fires only in the tabs that did not make the change). Carries
+ *  a changing timestamp, never key material. */
+const LOCK_BROADCAST_KEY = "privance.lockBroadcast";
+
+// ---------------------------------------------------------------------------
+// Cold-launch detection (lock-on-close)
+// ---------------------------------------------------------------------------
+
+/** True when the current document load was a reload (F5 / pull-to-refresh)
+ *  rather than a fresh navigation or cold app launch. Survive-refresh restores
+ *  the session only on a reload; a missing timing entry degrades to `true` so an
+ *  engine without Navigation Timing still survives a refresh. */
+function isReloadNavigation(): boolean {
+  const [entry] = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
+  return entry === undefined || entry.type === "reload";
+}
+
+/** True when running as an installed standalone PWA, where a cold launch is a
+ *  real close-then-reopen. iOS exposes the non-standard `navigator.standalone`;
+ *  other engines report it through the display-mode media query. */
+function isStandalonePwa(): boolean {
+  const iosStandalone = (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  return iosStandalone || window.matchMedia("(display-mode: standalone)").matches;
+}
 
 // ---------------------------------------------------------------------------
 // Context
@@ -99,28 +138,26 @@ export function AuthProvider({
   autoLockMs?: number;
 }) {
   const [state, setState] = useState<AuthState>(() => {
-    // Guard against SSR: globalThis DEK store access must not run in Node
-    // during the static export build, window is undefined in that context.
+    // Guard against SSR: globalThis DEK store and Web Storage are unavailable in
+    // Node during the static export build, window is undefined in that context.
     if (typeof window === "undefined") return "unauthenticated";
     if (getDekStore() !== undefined) return "unlocked";
-    // Auto-lock and manual lock issue location.reload() to scrub V8 internals.
-    // Without a marker the new boot has no way to know the user was locked vs
-    // never authenticated, so /unlock is unreachable. sessionStorage survives
-    // reload but not tab close, which is exactly the lock-vs-logout boundary.
-    if (sessionStorage.getItem(LOCKED_MARKER) === "1") return "locked";
+    // A persisted username means this device has an account; whether it is
+    // locked or still unlocked is decided asynchronously from the session vault
+    // (see the rehydrate effect), so hold in "loading" until then. No username
+    // means never authenticated here, so stay public with no async work.
+    if (localStorage.getItem(USERNAME_KEY) !== null) return "loading";
     return "unauthenticated";
   });
   const [user, setUser] = useState<AuthUser | null>(() => {
     if (typeof window === "undefined") return null;
-    const username = sessionStorage.getItem(USERNAME_KEY);
-    if (sessionStorage.getItem(LOCKED_MARKER) === "1" && username !== null) {
-      return { username };
-    }
-    return null;
+    const username = localStorage.getItem(USERNAME_KEY);
+    return username !== null ? { username } : null;
   });
   const [persistence, setPersistence] = useState<PersistenceLevel>("memory");
   const autoLockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastActivityMs = useRef<number>(Date.now());
+  const lastVaultTouchMs = useRef<number>(0);
   const logoutCleanupsRef = useRef<Set<() => void | Promise<void>>>(new Set());
 
   const registerLogoutCleanup = useCallback((cb: () => void | Promise<void>) => {
@@ -130,9 +167,11 @@ export function AuthProvider({
     };
   }, []);
 
-  const triggerLockReload = useCallback(() => {
+  const triggerLockReload = useCallback(async () => {
     clearDekStore();
-    sessionStorage.setItem(LOCKED_MARKER, "1");
+    // Purge before reload: a not-yet-committed delete would leave a fresh vault
+    // and the reboot would auto-unlock instead of locking.
+    await clearSession();
     setState("locked");
     if (typeof window !== "undefined") {
       window.location.reload();
@@ -152,6 +191,71 @@ export function AuthProvider({
     }
   }, []);
 
+  // Rehydrate from the session vault on boot. A same-tab reload within the
+  // window unwraps the DEK locally and resumes "unlocked" with no password,
+  // username, or server round-trip; an expired or absent vault resolves to
+  // "locked" (the username is already known) so /unlock can take over.
+  useEffect(() => {
+    if (state !== "loading") return;
+    let cancelled = false;
+    void (async () => {
+      // Lock-on-close: in an installed PWA a non-reload boot is a cold launch
+      // (the app was closed and reopened), so purge the vault and require the
+      // master password rather than auto-unlocking within the window. A same-tab
+      // reload (type "reload") still restores below. Browser tabs keep the
+      // timer-bounded behavior; private browsing wipes storage on close anyway.
+      if (isStandalonePwa() && !isReloadNavigation()) {
+        await clearSession();
+        if (cancelled) return;
+        setState("locked");
+        return;
+      }
+      const itemsKey = await loadSession(Date.now());
+      if (cancelled) return;
+      if (itemsKey === null) {
+        setState("locked");
+        return;
+      }
+      // The per-user local store keys off userId, so a vault without its
+      // companion username/userId in localStorage is unusable. Fail closed to
+      // "locked" (re-auth) rather than resuming a half-initialised session.
+      const username = localStorage.getItem(USERNAME_KEY);
+      const userId = localStorage.getItem(USER_ID_KEY);
+      if (username === null || userId === null) {
+        setState("locked");
+        return;
+      }
+      setDekStore({ itemsKey });
+      setUser({ username, userId });
+      setPersistence("session");
+      setState("unlocked");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [state]);
+
+  // Cross-tab lock/logout. A `storage` event fires only in the OTHER tabs, so
+  // when one tab locks (broadcast key) or logs out (username removed), scrub the
+  // in-memory DEK here too and reload to clear V8 internals, matching the active
+  // tab's lock path. Without this, "Lock"/"Sign out" would only affect the tab
+  // the user clicked while siblings kept a live, decrypting DEK. Idle auto-lock
+  // is deliberately per-tab and does not broadcast.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onStorage = (e: StorageEvent) => {
+      const loggedOut = e.key === USERNAME_KEY && e.newValue === null;
+      const locked = e.key === LOCK_BROADCAST_KEY && e.newValue !== null;
+      if (!loggedOut && !locked) return;
+      clearDekStore();
+      clearIdleTimer();
+      setState(loggedOut ? "unauthenticated" : "locked");
+      window.location.reload();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [clearIdleTimer]);
+
   useEffect(() => {
     if (state !== "unlocked") {
       clearIdleTimer();
@@ -159,18 +263,34 @@ export function AuthProvider({
     }
 
     resetIdleTimer();
+    // Seed the touch throttle so the first activity after unlock does not write
+    // a redundant lastActiveAt (persistSession just wrote it).
+    lastVaultTouchMs.current = Date.now();
 
     const events = ["mousemove", "keydown", "pointerdown", "scroll", "touchstart"] as const;
-    const handleActivity = () => resetIdleTimer();
+    const handleActivity = () => {
+      resetIdleTimer();
+      // Slide the persisted window forward, throttled, so reopening after a
+      // close is judged from real last activity rather than login time.
+      const now = Date.now();
+      if (now - lastVaultTouchMs.current >= VAULT_TOUCH_THROTTLE_MS) {
+        lastVaultTouchMs.current = now;
+        void touchSession(now);
+      }
+    };
 
-    // setTimeout pauses or runs late in backgrounded tabs, so the 30-minute
+    // setTimeout pauses or runs late in backgrounded tabs, so the elapsed-time
     // guarantee can silently slip on mobile. On every return to the foreground
     // (or back-forward cache restore) check elapsed wall-clock time and lock
-    // immediately if past the threshold.
+    // immediately if past the threshold. On hide, record the exact leave time
+    // so a later reopen measures from when the user actually left.
     const handleVisibility = () => {
-      if (document.visibilityState !== "visible") return;
+      if (document.visibilityState !== "visible") {
+        void touchSession(Date.now());
+        return;
+      }
       if (Date.now() - lastActivityMs.current >= autoLockMs) {
-        triggerLockReload();
+        void triggerLockReload();
       } else {
         resetIdleTimer();
       }
@@ -192,35 +312,40 @@ export function AuthProvider({
     };
   }, [state, autoLockMs, resetIdleTimer, clearIdleTimer, triggerLockReload]);
 
-  const login = useCallback((payload: AuthPayload) => {
+  // Persist the wrapped DEK so a later same-tab reload (F5 / pull-to-refresh)
+  // reboots straight back into "unlocked" with no re-auth. The auth -> app
+  // redirect itself is a soft client-side navigation that preserves the
+  // in-memory DEK, so login does not rely on the vault for its own transition.
+  const login = useCallback(async (payload: AuthPayload) => {
     setDekStore({ itemsKey: payload.itemsKey });
-    sessionStorage.removeItem(LOCKED_MARKER);
-    sessionStorage.setItem(USERNAME_KEY, payload.user.username);
+    localStorage.setItem(USERNAME_KEY, payload.user.username);
     if (payload.user.userId !== undefined) {
-      sessionStorage.setItem(USER_ID_KEY, payload.user.userId);
+      localStorage.setItem(USER_ID_KEY, payload.user.userId);
     }
+    await persistSession(payload.itemsKey, Date.now());
     setUser(payload.user);
     setPersistence(payload.persistence);
     resetPricesCache();
     setState("unlocked");
   }, []);
 
-  const unlock = useCallback((payload: AuthPayload) => {
+  const unlock = useCallback(async (payload: AuthPayload) => {
     setDekStore({ itemsKey: payload.itemsKey });
-    sessionStorage.removeItem(LOCKED_MARKER);
-    sessionStorage.setItem(USERNAME_KEY, payload.user.username);
+    localStorage.setItem(USERNAME_KEY, payload.user.username);
     if (payload.user.userId !== undefined) {
-      sessionStorage.setItem(USER_ID_KEY, payload.user.userId);
+      localStorage.setItem(USER_ID_KEY, payload.user.userId);
     }
+    await persistSession(payload.itemsKey, Date.now());
     setUser(payload.user);
     setPersistence(payload.persistence);
     setState("unlocked");
   }, []);
 
-  const lock = useCallback(() => {
+  const lock = useCallback(async () => {
     clearDekStore();
     clearIdleTimer();
-    sessionStorage.setItem(LOCKED_MARKER, "1");
+    await clearSession();
+    localStorage.setItem(LOCK_BROADCAST_KEY, String(Date.now()));
     setState("locked");
     if (typeof window !== "undefined") {
       window.location.reload();
@@ -246,9 +371,8 @@ export function AuthProvider({
     clearDekStore();
     clearIdleTimer();
     resetPricesCache();
-    sessionStorage.removeItem(LOCKED_MARKER);
-    sessionStorage.removeItem(USERNAME_KEY);
-    sessionStorage.removeItem(USER_ID_KEY);
+    localStorage.removeItem(USERNAME_KEY);
+    localStorage.removeItem(USER_ID_KEY);
     setUser(null);
     setState("unauthenticated");
   }, [clearIdleTimer]);
@@ -258,6 +382,7 @@ export function AuthProvider({
   // mid-destroy and the per-user OPFS ciphertext is orphaned.
   const logout = useCallback(async () => {
     await runLogoutCleanups();
+    await clearSession();
     finishLogout();
   }, [runLogoutCleanups, finishLogout]);
 

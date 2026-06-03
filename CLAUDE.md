@@ -1,6 +1,6 @@
 # CLAUDE.md, Privance conventions
 
-Operating manual for code work in this repo. Architecture lives in `ARCHITECTURE.md`, threat analysis in `THREAT_MODEL.md`, stack rationale under `docs/decisions/`. This file is just the rules that shape day-to-day decisions.
+Operating manual for code work in this repo. Architecture lives in `ARCHITECTURE.md`, threat analysis in `THREAT_MODEL.md`, stack rationale under `docs/adr/`. This file is just the rules that shape day-to-day decisions.
 
 ## Identity
 
@@ -13,7 +13,7 @@ Operating manual for code work in this repo. Architecture lives in `ARCHITECTURE
 - Shared: TypeScript `packages/core`, crypto (@noble/* + hash-wasm + @scure/bip39), decimal math, domain types, sync client, storage adapter
 - Client (`apps/web`): Next.js 16 (App Router, static export) + React 19 + Tailwind 4 + TanStack Query 5 + Zod 4 + Recharts. The same static export is wrapped by Capacitor 8 for iOS / Android (`apps/web/ios`, `apps/web/android`).
 - Storage on the client: `@sqlite.org/sqlite-wasm` in a Web Worker. Uses the SAH Pool VFS (OPFS-backed) where available, falls back to an in-memory DB on OPFS-disabled hosts (Safari Private Browsing, restricted WKWebView). The Capacitor WebView uses the same adapter.
-- Tests: Vitest + fast-check (core/web logic), Vitest Browser Mode + `vitest-browser-react` (web component rendering in real Chromium), `bun test` (server), Playwright (E2E on chromium + firefox + mobile; webkit runs the storage specs)
+- Tests: Vitest + fast-check (core/web logic), Vitest Browser Mode + `vitest-browser-react` (web component rendering in real Chromium), `bun test` (server), Playwright (E2E: chromium, firefox, and webkit run the full functional suite plus iPhone and Pixel 5 mobile projects locally; CI scopes WebKit to its storage specs and runs the mobile suite on Pixel 5, since the Linux runner can't carry WebKit's Argon2id auth flows in time)
 - Lint/format: Biome 2.4 (replaces ESLint + Prettier)
 
 Exact-pinned versions in the lockfile, never `^` or `~` (Shai-Hulud lesson).
@@ -147,7 +147,7 @@ Backward-incompatible changes follow **expand → backfill → contract** (three
 2. `packages/core`: `vitest run --coverage` ≥ 90%
 3. `server`: `bun test` ≥ 85% + `bun audit` clean
 4. `apps/web`: `vitest run` + `next build` + `pnpm audit` clean
-5. E2E: Playwright on chromium + firefox + webkit (storage specs) against real backend + real Postgres
+5. E2E: Playwright on chromium + firefox + webkit + mobile against real backend + real Postgres
 6. Manual: signup → recovery → login cycle in a real browser for any auth-touching change
 
 Skipping any of these: state it explicitly. Don't claim "verified" without backing.

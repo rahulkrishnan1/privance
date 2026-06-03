@@ -249,163 +249,152 @@ export function HoldingsScreen() {
 
   const loading = holdingsLoading || groupsLoading || store === null;
   const anyError = holdingsError ?? groupsError;
-  // Exclude groupsLoading so a mid-flight group creation does not flip the
-  // branch and unmount the HoldingDrawer (which would reset the form).
+  // Don't flash the empty state while groups load; gate on holdings + store
+  // readiness only. The drawer and confirm dialogs are mounted once below, so
+  // the empty -> list flip never remounts them (which would wipe a half-typed
+  // form mid-entry).
   const showEmptyState =
     !holdingsLoading && store !== null && anyError === null && holdings.length === 0;
 
-  if (showEmptyState) {
-    return (
-      <Screen width="wide">
+  return (
+    <Screen width="wide">
+      {showEmptyState ? (
         <EmptyState
           onAdd={() => {
             setDrawerMode({ kind: "add" });
             setDrawerOpen(true);
           }}
         />
-        <HoldingDrawer
-          open={drawerOpen}
-          mode={drawerMode}
-          investmentAccounts={investmentAccounts}
-          groups={groups}
-          onClose={() => setDrawerOpen(false)}
-          onSubmit={handleSubmit}
-          onLookupProxyPrice={handleLookupProxyPrice}
-          onCreateGroup={handleCreateGroup}
-          submitting={holdingMutations.creating || holdingMutations.updating}
-        />
-      </Screen>
-    );
-  }
-
-  return (
-    <Screen width="wide">
-      {/* Page header */}
-      <div className="flex items-center justify-between mb-4">
-        <h1
-          className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
-          style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
-        >
-          Holdings
-        </h1>
-
-        <div className="flex items-center gap-2">
-          <RefreshButton
-            cooldownMs={cooldownMs}
-            onRefresh={() => void handleRefresh()}
-            refreshing={refreshing}
-          />
-
-          {holdings.length > 0 && (
-            <Button
-              onClick={() => {
-                setDrawerMode({ kind: "add" });
-                setDrawerOpen(true);
-              }}
-              aria-label="Add holding"
+      ) : (
+        <>
+          {/* Page header */}
+          <div className="flex items-center justify-between mb-4">
+            <h1
+              className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
+              style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
             >
-              Add holding
-            </Button>
+              Holdings
+            </h1>
+
+            <div className="flex items-center gap-2">
+              <RefreshButton
+                cooldownMs={cooldownMs}
+                onRefresh={() => void handleRefresh()}
+                refreshing={refreshing}
+              />
+
+              {holdings.length > 0 && (
+                <Button
+                  onClick={() => {
+                    setDrawerMode({ kind: "add" });
+                    setDrawerOpen(true);
+                  }}
+                  aria-label="Add holding"
+                >
+                  Add holding
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Error banner */}
+          {(anyError !== null || error !== null) && (
+            <div
+              role="alert"
+              className="rounded-lg bg-app-red/10 border border-app-red/40 px-4 py-3 mb-3 flex items-center justify-between"
+            >
+              <p className="text-sm text-app-red flex-1">
+                {anyError?.message ?? error ?? "An error occurred"}
+              </p>
+              <button
+                type="button"
+                onClick={reloadAll}
+                aria-label="Retry"
+                className="ml-2 text-sm font-medium text-app-red hover:underline cursor-pointer"
+              >
+                Retry
+              </button>
+            </div>
           )}
-        </div>
-      </div>
 
-      {/* Error banner */}
-      {(anyError !== null || error !== null) && (
-        <div
-          role="alert"
-          className="rounded-lg bg-app-red/10 border border-app-red/40 px-4 py-3 mb-3 flex items-center justify-between"
-        >
-          <p className="text-sm text-app-red flex-1">
-            {anyError?.message ?? error ?? "An error occurred"}
-          </p>
-          <button
-            type="button"
-            onClick={reloadAll}
-            aria-label="Retry"
-            className="ml-2 text-sm font-medium text-app-red hover:underline cursor-pointer"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
-      {/* Account filter row, only shown when there are multiple accounts to pick between. */}
-      {investmentAccounts.length > 1 && (
-        <div
-          role="toolbar"
-          aria-label="Filter by account"
-          className="flex flex-wrap gap-2 mb-3 overflow-x-auto pb-1"
-        >
-          <FilterChip
-            label="All accounts"
-            selected={filter.kind === "all"}
-            onPress={() => setFilter({ kind: "all" })}
-          />
-          {investmentAccounts.map((account) => (
-            <FilterChip
-              key={account.id}
-              label={account.payload.name}
-              selected={filter.kind === "account" && filter.accountId === account.id}
-              onPress={() => setFilter({ kind: "account", accountId: account.id })}
-            />
-          ))}
-        </div>
-      )}
-
-      <div role="toolbar" aria-label="Filter by group" className="flex flex-col gap-2 mb-4">
-        <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
-          Groups
-        </span>
-        <button
-          type="button"
-          onClick={() => setGroupsManagerOpen(true)}
-          className="self-start text-xs text-gold-accent mb-1 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] rounded cursor-pointer"
-        >
-          Manage groups
-        </button>
-        {groups.length > 0 && (
-          <div className="flex flex-wrap gap-2 overflow-x-auto pb-1">
-            {investmentAccounts.length <= 1 && (
+          {/* Account filter row, only shown when there are multiple accounts to pick between. */}
+          {investmentAccounts.length > 1 && (
+            <div
+              role="toolbar"
+              aria-label="Filter by account"
+              className="flex flex-wrap gap-2 mb-3 overflow-x-auto pb-1"
+            >
               <FilterChip
-                label="All"
+                label="All accounts"
                 selected={filter.kind === "all"}
                 onPress={() => setFilter({ kind: "all" })}
               />
+              {investmentAccounts.map((account) => (
+                <FilterChip
+                  key={account.id}
+                  label={account.payload.name}
+                  selected={filter.kind === "account" && filter.accountId === account.id}
+                  onPress={() => setFilter({ kind: "account", accountId: account.id })}
+                />
+              ))}
+            </div>
+          )}
+
+          <div role="toolbar" aria-label="Filter by group" className="flex flex-col gap-2 mb-4">
+            <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
+              Groups
+            </span>
+            <button
+              type="button"
+              onClick={() => setGroupsManagerOpen(true)}
+              className="self-start text-xs text-gold-accent mb-1 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] rounded cursor-pointer"
+            >
+              Manage groups
+            </button>
+            {groups.length > 0 && (
+              <div className="flex flex-wrap gap-2 overflow-x-auto pb-1">
+                {investmentAccounts.length <= 1 && (
+                  <FilterChip
+                    label="All"
+                    selected={filter.kind === "all"}
+                    onPress={() => setFilter({ kind: "all" })}
+                  />
+                )}
+                {groups.map((g) => (
+                  <FilterChip
+                    key={g.id}
+                    label={g.name}
+                    selected={filter.kind === "group" && filter.groupId === g.id}
+                    onPress={() => setFilter({ kind: "group", groupId: g.id })}
+                  />
+                ))}
+              </div>
             )}
-            {groups.map((g) => (
-              <FilterChip
-                key={g.id}
-                label={g.name}
-                selected={filter.kind === "group" && filter.groupId === g.id}
-                onPress={() => setFilter({ kind: "group", groupId: g.id })}
-              />
-            ))}
           </div>
-        )}
-      </div>
 
-      {/* Holdings table */}
-      <HoldingsTable
-        holdings={visibleHoldings}
-        groups={groups}
-        accounts={investmentAccounts}
-        prices={pricesMap}
-        sort={sort}
-        loading={loading}
-        onSortChange={handleSortChange}
-        onEdit={(holding) => {
-          setDrawerMode({ kind: "edit", holding });
-          setDrawerOpen(true);
-        }}
-        onDelete={(holding) => setDeleteTarget(holding)}
-        onAdd={() => {
-          setDrawerMode({ kind: "add" });
-          setDrawerOpen(true);
-        }}
-      />
+          {/* Holdings table */}
+          <HoldingsTable
+            holdings={visibleHoldings}
+            groups={groups}
+            accounts={investmentAccounts}
+            prices={pricesMap}
+            sort={sort}
+            loading={loading}
+            onSortChange={handleSortChange}
+            onEdit={(holding) => {
+              setDrawerMode({ kind: "edit", holding });
+              setDrawerOpen(true);
+            }}
+            onDelete={(holding) => setDeleteTarget(holding)}
+            onAdd={() => {
+              setDrawerMode({ kind: "add" });
+              setDrawerOpen(true);
+            }}
+          />
+        </>
+      )}
 
-      {/* Add/edit drawer */}
+      {/* Add/edit drawer, mounted once so it survives the empty -> list flip */}
       <HoldingDrawer
         open={drawerOpen}
         mode={drawerMode}

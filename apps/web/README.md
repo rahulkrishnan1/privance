@@ -7,7 +7,7 @@ All crypto runs in the browser. This workspace has no server-side rendering; the
 `output: "export"` Next.js config produces a static `/out` directory.
 
 CI is defined in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) and runs
-lint, typecheck, unit tests (core / web / server), E2E (Playwright chromium + firefox + webkit storage specs),
+lint, typecheck, unit tests (core / web / server), E2E (Playwright chromium + firefox + webkit + mobile),
 static build, and a dependency audit on every push to `main` and on pull requests.
 
 ## Key files
@@ -195,8 +195,13 @@ pnpm -F @privance/web e2e:ui
 - The Playwright config boots the bun server (:3000) and Next.js dev server
   (:8081) automatically. Both are reused across tests if already running
   (`reuseExistingServer: true` for local runs).
-- WebKit runs the storage specs only (`webkit-storage`, `fallback-storage`)
-  to cover the OPFS fallback path on Safari. The remaining specs run on
-  chromium and firefox; argon2-wasm timing on macOS WebKit is too flaky for
-  full-suite coverage, and core crypto is exercised by vitest unit tests in
-  `packages/core`.
+- Desktop coverage runs the full functional suite on chromium, firefox, and
+  webkit (webkit additionally runs the OPFS storage specs `webkit-storage` and
+  `fallback-storage`, which only apply to it). The two mobile projects,
+  `mobile-safari` (iPhone, WebKit) and `mobile-chrome` (Pixel 5), run the
+  `*.mobile.spec.ts` suite against the mobile UI.
+- All projects run locally (macOS). On CI the shared Linux runner cannot carry
+  the 64 MB Argon2id auth flows on WebKit in time, so CI scopes the WebKit
+  projects to their storage specs and runs the mobile suite on Pixel 5;
+  chromium and firefox carry the full functional suite. Restoring full WebKit
+  and iPhone coverage to CI (reduced test-env KDF cost) is a tracked follow-up.

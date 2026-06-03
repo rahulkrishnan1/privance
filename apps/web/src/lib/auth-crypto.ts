@@ -12,10 +12,10 @@ import {
   randomBytes,
   SALT_BYTES,
   seedToPhrase,
-  stretchMasterPassword,
   unwrapItemsKey,
   wrapItemsKey,
 } from "@privance/core";
+import { stretchMasterPasswordInWorker as stretchMasterPassword } from "@/lib/crypto/kdf";
 
 export type { ItemsKey };
 

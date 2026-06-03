@@ -1,7 +1,7 @@
 "use client";
 
 import type { Account, AccountKind, Decimal } from "@privance/core";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { Button, ConfirmDialog, Screen } from "@/components/index";
 import { useHoldingsQuery } from "@/features/holdings/queries";
 import { getMarketValue } from "@/lib/market-value";
@@ -111,114 +111,90 @@ export function AccountsScreen() {
     await deleteAccount(account);
   }
 
-  // ---------------------------------------------------------------------------
-  // Loading state
-  // ---------------------------------------------------------------------------
+  // The modal and confirm dialog are rendered once, below the body switch, so
+  // they keep a single stable instance across the initialising -> empty -> list
+  // transitions. Rendering the form inside a branch remounts it the moment the
+  // account list first arrives (e.g. the opening sync flips empty -> list),
+  // which destroys the form's internal state and silently wipes a half-typed
+  // entry. A background sync tick must never clear a form the user is filling.
+  let body: ReactNode;
   if (query.status === "initialising") {
-    return (
-      <Screen width="wide">
-        <div className="flex flex-col gap-6">
-          {SECTION_ORDER.map((kind) => (
-            <div key={kind} className="flex flex-col gap-2">
-              <div className="h-4 w-1/4 rounded bg-white/5 animate-pulse" />
-              <SkeletonRow />
-              <SkeletonRow />
-            </div>
-          ))}
-        </div>
-      </Screen>
+    body = (
+      <div className="flex flex-col gap-6">
+        {SECTION_ORDER.map((kind) => (
+          <div key={kind} className="flex flex-col gap-2">
+            <div className="h-4 w-1/4 rounded bg-white/5 animate-pulse" />
+            <SkeletonRow />
+            <SkeletonRow />
+          </div>
+        ))}
+      </div>
     );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Error state
-  // ---------------------------------------------------------------------------
-  if (query.status === "error") {
-    return (
-      <Screen width="wide">
-        <div className="flex flex-col gap-4 items-center py-8 px-4 rounded-xl border border-app-red/40 bg-app-red/10">
-          <p className="text-base font-semibold text-app-red text-center">
-            Could not load accounts
-          </p>
-          <p className="text-sm text-app-muted text-center">{query.error.message}</p>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              if (typeof window !== "undefined") window.location.reload();
-            }}
-            aria-label="Retry loading accounts"
+  } else if (query.status === "error") {
+    body = (
+      <div className="flex flex-col gap-4 items-center py-8 px-4 rounded-xl border border-app-red/40 bg-app-red/10">
+        <p className="text-base font-semibold text-app-red text-center">Could not load accounts</p>
+        <p className="text-sm text-app-muted text-center">{query.error.message}</p>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            if (typeof window !== "undefined") window.location.reload();
+          }}
+          aria-label="Retry loading accounts"
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  } else if (query.data.length === 0) {
+    body = <EmptyState onAdd={() => openAdd()} />;
+  } else {
+    const byKind: Record<AccountKind, Account[]> = {
+      cash: [],
+      investment: [],
+      manual_asset: [],
+      liability: [],
+    };
+    for (const account of query.data) {
+      byKind[account.payload.kind].push(account);
+    }
+    body = (
+      <>
+        {/* Page header */}
+        <div className="flex justify-between items-center mb-4">
+          <h1
+            className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
+            style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
           >
-            Retry
+            Accounts
+          </h1>
+          <Button onClick={() => openAdd()} aria-label="Add a new account">
+            Add account
           </Button>
         </div>
-      </Screen>
+
+        {/* Sections */}
+        <div className="flex flex-col gap-6">
+          {SECTION_ORDER.map((kind) => (
+            <AccountSection
+              key={kind}
+              meta={KIND_META[kind]}
+              accounts={byKind[kind]}
+              valuesByAccount={valuesByAccount}
+              onEdit={openEdit}
+              onDelete={(account) => setPendingDelete(account)}
+            />
+          ))}
+        </div>
+      </>
     );
-  }
-
-  const accounts = query.data;
-
-  // ---------------------------------------------------------------------------
-  // Empty state
-  // ---------------------------------------------------------------------------
-  if (accounts.length === 0) {
-    return (
-      <Screen width="wide">
-        <EmptyState onAdd={() => openAdd()} />
-        <AccountForm
-          open={drawer.mode !== "closed"}
-          defaultKind={drawer.mode === "add" ? drawer.defaultKind : "cash"}
-          {...(drawer.mode === "edit" ? { account: drawer.account } : {})}
-          onClose={closeDrawer}
-          onSubmit={handleSubmit}
-          submitting={submitting}
-        />
-      </Screen>
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Main list, grouped by kind in SECTION_ORDER
-  // ---------------------------------------------------------------------------
-  const byKind: Record<AccountKind, Account[]> = {
-    cash: [],
-    investment: [],
-    manual_asset: [],
-    liability: [],
-  };
-  for (const account of accounts) {
-    byKind[account.payload.kind].push(account);
   }
 
   return (
     <Screen width="wide">
-      {/* Page header */}
-      <div className="flex justify-between items-center mb-4">
-        <h1
-          className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
-          style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
-        >
-          Accounts
-        </h1>
-        <Button onClick={() => openAdd()} aria-label="Add a new account">
-          Add account
-        </Button>
-      </div>
+      {body}
 
-      {/* Sections */}
-      <div className="flex flex-col gap-6">
-        {SECTION_ORDER.map((kind) => (
-          <AccountSection
-            key={kind}
-            meta={KIND_META[kind]}
-            accounts={byKind[kind]}
-            valuesByAccount={valuesByAccount}
-            onEdit={openEdit}
-            onDelete={(account) => setPendingDelete(account)}
-          />
-        ))}
-      </div>
-
-      {/* Add / Edit dialog */}
+      {/* Add / Edit dialog, mounted once so it survives list re-renders */}
       <AccountForm
         open={drawer.mode !== "closed"}
         defaultKind={drawer.mode === "add" ? drawer.defaultKind : "cash"}

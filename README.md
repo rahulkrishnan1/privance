@@ -94,7 +94,7 @@ Privance implements a zero-knowledge architecture. See [SECURITY.md](SECURITY.md
 
 ## Self-host
 
-Privance is designed to be self-hosted. The reference deployment at `https://privance.app` runs on a single small VPS with a Docker Compose stack (server + Postgres + Caddy + encrypted nightly backups to Backblaze B2). The architecture rationale is in [`docs/decisions/0002-deployment.md`](docs/decisions/0002-deployment.md); the step-by-step bring-up procedure is in [`infra/README.md`](infra/README.md).
+Privance is designed to be self-hosted. The reference deployment at `https://privance.app` runs on a single small VPS with a Docker Compose stack (server + Postgres + Caddy + encrypted nightly backups to Backblaze B2). The architecture rationale is in [`docs/adr/0002-deployment.md`](docs/adr/0002-deployment.md); the step-by-step bring-up procedure is in [`infra/README.md`](infra/README.md).
 
 What you need:
 

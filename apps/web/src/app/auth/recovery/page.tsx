@@ -14,6 +14,7 @@ import {
   deriveRecoveryProof,
   deriveRecoveryUnwrap,
 } from "@/lib/auth-crypto";
+import { useHydrated } from "@/lib/use-hydrated";
 import { PASSWORD_MAX, USERNAME_MAX, validatePassword, validateUsername } from "@/lib/validation";
 import { useAuth } from "@/providers/auth-context";
 
@@ -32,6 +33,7 @@ export default function RecoveryPage() {
   const [passwordError, setPasswordError] = useState<string | undefined>(undefined);
   const [usernameError, setUsernameError] = useState<string | undefined>(undefined);
   const [banner, setBanner] = useState<string | undefined>(undefined);
+  const hydrated = useHydrated();
 
   const [step, setStep] = useState<Step>("form");
   const [newPhrase, setNewPhrase] = useState<string | null>(null);
@@ -141,9 +143,9 @@ export default function RecoveryPage() {
     }
   }
 
-  function onContinue() {
+  async function onContinue() {
     if (!pendingLogin || !newPhraseAcknowledged) return;
-    login({
+    await login({
       user: { userId: pendingLogin.userId, username: pendingLogin.usernameValue },
       itemsKey: pendingLogin.itemsKey,
       persistence: "memory",
@@ -302,7 +304,7 @@ export default function RecoveryPage() {
           maxLength={PASSWORD_MAX}
         />
 
-        <Button type="submit" loading={pending} className="w-full mt-2">
+        <Button type="submit" loading={pending} disabled={!hydrated} className="w-full mt-2">
           {pending ? "Recovering account…" : "Recover account"}
         </Button>
       </form>

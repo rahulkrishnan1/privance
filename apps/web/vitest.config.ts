@@ -22,7 +22,7 @@ export default defineConfig({
           name: "unit",
           environment: "happy-dom",
           include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
-          exclude: ["src/**/*.browser.test.tsx"],
+          exclude: ["src/**/*.browser.test.ts", "src/**/*.browser.test.tsx"],
         },
       },
       {
@@ -32,7 +32,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: "browser",
-          include: ["src/**/*.browser.test.tsx"],
+          include: ["src/**/*.browser.test.ts", "src/**/*.browser.test.tsx"],
           browser: {
             enabled: true,
             provider: playwright(),

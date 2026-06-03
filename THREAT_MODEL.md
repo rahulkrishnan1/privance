@@ -26,7 +26,7 @@ This document covers the assets Privance protects, the actors that might threate
 | **Master password** | The user's primary secret; never leaves the browser | User's memory + browser input only |
 | **Stretched master key** | Argon2id output; intermediate key material | Browser JS memory (ephemeral, never persisted) |
 | **KEK (Key Encryption Key)** | Derived from stretched master key via HKDF `finance/kek-v1` | Browser JS memory (ephemeral) |
-| **DEK (Data Encryption Key / items key)** | AES-256 key for all user data; wrapped by KEK at rest | Browser JS memory via `globalThis[Symbol.for("privance.dekStore.v1")]`; lost on tab close |
+| **DEK (Data Encryption Key / items key)** | AES-256 key for all user data; wrapped by KEK at rest | Browser JS memory via `globalThis[Symbol.for("privance.dekStore.v1")]`; also held wrapped under a non-extractable key in IndexedDB for up to 15 minutes so reloads survive |
 | **Recovery phrase** | 12-word BIP39 mnemonic; backup path to the DEK | User's physical possession only; never stored by the server |
 | **Recovery DEK wrap** | DEK wrapped under a key derived from the recovery phrase | Postgres (ciphertext only) |
 | **Ciphertext at rest** | All financial records (accounts, holdings, transactions) | Postgres `sync_objects`, opaque blobs |
@@ -55,8 +55,8 @@ This document covers the assets Privance protects, the actors that might threate
 |---|---|---|---|
 | Extraction from server | Server breach | Server never holds the DEK; it only stores the KEK-wrapped form | None: the server cannot unwrap without the KEK |
 | Extraction from browser memory | Malicious extension, XSS | DEK stored in a Symbol-keyed slot; no script can enumerate Symbols from another origin; CSP restricts inline scripts | A malicious extension with full page access can read `globalThis` |
-| DEK persistence to disk | Browser storage APIs | DEK is never written to localStorage, sessionStorage, IndexedDB, or any persistent storage | Browser crash recovery retains nothing |
-| Loss of DEK on page reload | Tab close | By design: reload = re-auth. This is the zero-knowledge tradeoff | User friction; mitigated by 30-min auto-lock idle timer with activity reset |
+| DEK persistence to disk | Browser storage APIs | The raw DEK is never written to disk; only a copy wrapped under a non-extractable AES-GCM key (its bytes unexportable by script or devtools) is held in IndexedDB, and it is purged on window expiry, lock, and logout | A wrapped copy is at rest for at most 15 minutes, usable only as an unwrap oracle on the live origin; not encryption-at-rest against OS-level disk access during that window |
+| Loss of DEK on page reload | Tab close | A reload (`navigation.type === "reload"`) within the window unwraps the persisted copy locally and resumes with no master password, username, or server round-trip. An installed PWA treats any cold launch (not a reload) as a close and requires the master password immediately; a browser tab locks instantly in private browsing and within 15 minutes in normal browsing | In a browser tab, a reopen within 15 minutes of last activity unlocks without the master password (bounded by the single 15-minute window); the installed PWA re-locks on any cold launch |
 
 ### 3.3 Recovery phrase
 
