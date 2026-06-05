@@ -5,6 +5,10 @@ packages:
 
 nodeLinker: hoisted
 
+overrides:
+  postcss@<8.5.10: "8.5.15"
+  esbuild@<0.24.3: "0.25.12"
+
 allowBuilds:
   esbuild: true
   lefthook: true

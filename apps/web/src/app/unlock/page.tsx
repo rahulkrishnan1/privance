@@ -150,7 +150,8 @@ export default function UnlockPage() {
             Unlock your <span className="font-editorial italic text-gold-accent">account.</span>
           </h1>
           <p className="text-[14px] text-app-muted">
-            Signed in as <span className="font-mono text-app-text">{username}</span>.
+            Signed in as <span className="font-mono text-app-text">{hydrated ? username : ""}</span>
+            .
           </p>
         </div>
 

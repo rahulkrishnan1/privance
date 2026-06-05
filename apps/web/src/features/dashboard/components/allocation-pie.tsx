@@ -46,7 +46,11 @@ export function AllocationPie({ title, slices }: AllocationPieProps) {
 
       <div style={{ height: 240 }}>
         {isEmpty ? (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+            initialDimension={{ width: 0, height: 240 }}
+          >
             <PieChart>
               <Pie
                 data={[{ name: "empty", value: 1 }]}
@@ -62,7 +66,11 @@ export function AllocationPie({ title, slices }: AllocationPieProps) {
             </PieChart>
           </ResponsiveContainer>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+            initialDimension={{ width: 0, height: 240 }}
+          >
             <PieChart>
               <Pie
                 data={data}
