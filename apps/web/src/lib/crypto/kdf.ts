@@ -140,3 +140,11 @@ export async function stretchMasterPasswordInWorker(opts: {
   }
   return stretchMasterPassword(opts);
 }
+
+/** Fire-and-forget worker spawn so script fetch + wasm compile overlap typing
+ *  instead of following submit. Does not touch workerUnavailable; the normal
+ *  fallback semantics in stretchMasterPasswordInWorker remain unchanged. */
+export function warmKdfWorker(): void {
+  if (workerUnavailable) return;
+  void initWorker().catch(() => {});
+}

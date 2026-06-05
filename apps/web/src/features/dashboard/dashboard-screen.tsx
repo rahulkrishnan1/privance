@@ -2,14 +2,13 @@
 
 import type { HoldingId } from "@privance/core";
 import { useQueryClient } from "@tanstack/react-query";
+import dynamic from "next/dynamic";
 import { useCallback, useMemo, useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { RefreshButton, Screen } from "@/components/index";
 import { useCooldown } from "@/lib/use-cooldown";
-import { AllocationPie } from "./components/allocation-pie";
 import { DeltaLine } from "./components/delta-line";
 import { EmptyState } from "./components/empty-state";
-import { HistoryChart } from "./components/history-chart";
 import { NetWorthTile } from "./components/net-worth-tile";
 import {
   AllocationPieSkeleton,
@@ -21,6 +20,21 @@ import { SummaryTile } from "./components/summary-tile";
 import { TopHoldingsTable } from "./components/top-holdings-table";
 import type { DashboardData } from "./queries";
 import { deriveAggregateDeltas, splitCashAndInvestments, useDashboardData } from "./queries";
+
+// ---------------------------------------------------------------------------
+// Deferred chart components: Recharts is large (~114KB gz); load it async
+// so it does not block first dashboard paint.
+// ---------------------------------------------------------------------------
+
+const HistoryChart = dynamic(
+  () => import("./components/history-chart").then((m) => ({ default: m.HistoryChart })),
+  { ssr: false, loading: () => <HistoryChartSkeleton /> },
+);
+
+const AllocationPie = dynamic(
+  () => import("./components/allocation-pie").then((m) => ({ default: m.AllocationPie })),
+  { ssr: false, loading: () => <AllocationPieSkeleton /> },
+);
 
 // ---------------------------------------------------------------------------
 // Inner content

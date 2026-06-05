@@ -2,11 +2,12 @@
 
 import { BarChart3, Settings, TrendingUp, Wallet } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { Logo } from "@/components/index";
 import { logout as apiLogout } from "@/lib/api/auth";
+import { useHydrated } from "@/lib/use-hydrated";
 import { useAuth } from "@/providers/auth-context";
 
 type NavItem = {
@@ -144,20 +145,32 @@ function BottomTabBar() {
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { state, lock, logout } = useAuth();
+  const router = useRouter();
+  const hydrated = useHydrated();
 
   useEffect(() => {
+    // Soft nav: no DEK exists in memory on a cold boot into locked/unauthenticated,
+    // so router.replace is safe here. The lock/logout actions do their own hard
+    // reload in auth-context for DEK scrub; this path is boot-only.
     if (state === "unauthenticated") {
-      window.location.replace("/auth/login/");
+      router.replace("/auth/login/");
     } else if (state === "locked") {
-      window.location.replace("/unlock/");
+      router.replace("/unlock/");
     }
-  }, [state]);
+  }, [state, router]);
 
   async function handleLogout() {
     await apiLogout().catch(() => undefined);
     // Await logout so the registered store.destroy() finishes before we unload.
     await logout();
     window.location.replace("/auth/login/");
+  }
+
+  // Hold a blank splash until hydrated and unlocked: gating on state alone
+  // would diverge from the prerendered HTML (hydration mismatch), and painting
+  // the shell before auth resolves flashes the dashboard on a cold launch.
+  if (!hydrated || state !== "unlocked") {
+    return <div className="dark min-h-svh bg-app-bg" />;
   }
 
   return (

@@ -28,23 +28,43 @@ let legacyUnlinkAttempted = false;
 // Startup: install the SAHPool VFS, then signal readiness.
 // ---------------------------------------------------------------------------
 
-// Retry on OPFS access-handle contention only. Reload/HMR can leave a prior
-// worker holding the handles for a brief window.
-async function installVfsWithRetry({ attempts = 8, baseDelayMs = 150 } = {}) {
+// Retry while a prior worker still holds the pool's access handles (release on
+// terminate is async). forceReinitIfPreviouslyFailed is required: install
+// caches its rejected promise, so without it retries re-throw the first failure
+// instead of re-attempting. Jittered so two contexts don't retry in lockstep.
+async function installVfsWithRetry({ attempts = 14, baseDelayMs = 50, maxDelayMs = 1000 } = {}) {
   let lastErr = null;
   for (let i = 0; i < attempts; i++) {
     try {
       // Per-user OPFS scoping means each signup needs its own slot (plus a
       // journal); the default of 6 only fits ~3 users on a shared browser
       // before new signups fail with "SAH pool is full".
-      return await sqlite3.installOpfsSAHPoolVfs({ initialCapacity: 16 });
+      return await sqlite3.installOpfsSAHPoolVfs({
+        initialCapacity: 16,
+        forceReinitIfPreviouslyFailed: true,
+      });
     } catch (e) {
       lastErr = e;
       if (!/access handle/i.test(e?.message ?? String(e))) throw e;
-      await new Promise((r) => setTimeout(r, baseDelayMs * 2 ** i));
+      const delay = Math.min(maxDelayMs, baseDelayMs * 2 ** i) + Math.random() * baseDelayMs;
+      await new Promise((r) => setTimeout(r, delay));
     }
   }
   throw lastErr ?? new Error("installOpfsSAHPoolVfs exhausted retries");
+}
+
+// Serialize installs across the origin's workers: install grabs a handle on
+// every pool file at once, so two concurrent installs (StrictMode double-mount,
+// overlapping reload) both fail and thrash. The lock is released as soon as
+// install resolves, so a second tab is never blocked. No Web Locks: install
+// directly and rely on the retry above.
+function installVfsSerialized() {
+  if (typeof navigator !== "undefined" && navigator.locks?.request !== undefined) {
+    return navigator.locks.request("privance-opfs-install", { mode: "exclusive" }, () =>
+      installVfsWithRetry(),
+    );
+  }
+  return installVfsWithRetry();
 }
 
 // OPFS is unavailable on Safari Private Browsing and some restricted WKWebView
@@ -53,7 +73,7 @@ async function installVfsWithRetry({ attempts = 8, baseDelayMs = 150 } = {}) {
 try {
   sqlite3 = await sqlite3InitModule();
   try {
-    pool = await installVfsWithRetry();
+    pool = await installVfsSerialized();
   } catch {
     pool = null;
   }
@@ -112,7 +132,7 @@ function assertOpen() {
 // Method implementations
 // ---------------------------------------------------------------------------
 
-async function openDbWithRetry({ attempts = 8, baseDelayMs = 150 } = {}) {
+async function openDbWithRetry({ attempts = 14, baseDelayMs = 50, maxDelayMs = 1000 } = {}) {
   let lastErr = null;
   for (let i = 0; i < attempts; i++) {
     try {
@@ -120,7 +140,8 @@ async function openDbWithRetry({ attempts = 8, baseDelayMs = 150 } = {}) {
     } catch (e) {
       lastErr = e;
       if (!/access handle/i.test(e?.message ?? String(e))) throw e;
-      await new Promise((r) => setTimeout(r, baseDelayMs * 2 ** i));
+      const delay = Math.min(maxDelayMs, baseDelayMs * 2 ** i) + Math.random() * baseDelayMs;
+      await new Promise((r) => setTimeout(r, delay));
     }
   }
   throw lastErr ?? new Error("OpfsSAHPoolDb exhausted retries");
@@ -271,11 +292,22 @@ function methodAckQueueItem({ id }) {
   return null;
 }
 
+// Release the pool's access handles now instead of waiting on async release at
+// worker terminate, so the next worker can acquire them without a race. Runs
+// only after the DB is closed: pauseVfs() throws if a handle is still open.
+function releasePool() {
+  if (pool === null) return;
+  try {
+    pool.pauseVfs();
+  } catch {
+    // A handle was still open; fall back to async release on worker terminate.
+  }
+}
+
 function methodClose() {
-  // SAHPool case: null the handle, the pool stays open. In-memory case: close
-  // the DB explicitly because there is no pool holding the file.
-  if (pool === null && db !== null) db.close();
+  if (db !== null) db.close();
   db = null;
+  releasePool();
   return null;
 }
 
@@ -286,8 +318,10 @@ function methodDestroy() {
     d.exec("DELETE FROM sync_cursor");
     d.exec("DELETE FROM outbound_queue");
   });
+  d.close();
   db = null;
   if (pool !== null) pool.unlink(dbFilename);
+  releasePool();
   return null;
 }
 
