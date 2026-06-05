@@ -199,36 +199,40 @@ export function AuthProvider({
     if (state !== "loading") return;
     let cancelled = false;
     void (async () => {
-      // Lock-on-close: in an installed PWA a non-reload boot is a cold launch
-      // (the app was closed and reopened), so purge the vault and require the
-      // master password rather than auto-unlocking within the window. A same-tab
-      // reload (type "reload") still restores below. Browser tabs keep the
-      // timer-bounded behavior; private browsing wipes storage on close anyway.
-      if (isStandalonePwa() && !isReloadNavigation()) {
-        await clearSession();
+      try {
+        // Lock-on-close: in an installed PWA a non-reload boot is a cold launch
+        // (the app was closed and reopened), so purge the vault and require the
+        // master password rather than auto-unlocking within the window. A same-tab
+        // reload (type "reload") still restores below. Browser tabs keep the
+        // timer-bounded behavior; private browsing wipes storage on close anyway.
+        if (isStandalonePwa() && !isReloadNavigation()) {
+          await clearSession();
+          if (cancelled) return;
+          setState("locked");
+          return;
+        }
+        const itemsKey = await loadSession(Date.now());
         if (cancelled) return;
-        setState("locked");
-        return;
+        if (itemsKey === null) {
+          setState("locked");
+          return;
+        }
+        // The per-user local store keys off userId, so a vault without its
+        // companion username/userId in localStorage is unusable. Fail closed to
+        // "locked" (re-auth) rather than resuming a half-initialised session.
+        const username = localStorage.getItem(USERNAME_KEY);
+        const userId = localStorage.getItem(USER_ID_KEY);
+        if (username === null || userId === null) {
+          setState("locked");
+          return;
+        }
+        setDekStore({ itemsKey });
+        setUser({ username, userId });
+        setPersistence("session");
+        setState("unlocked");
+      } finally {
+        if (!cancelled) performance.mark("privance:auth-resolved");
       }
-      const itemsKey = await loadSession(Date.now());
-      if (cancelled) return;
-      if (itemsKey === null) {
-        setState("locked");
-        return;
-      }
-      // The per-user local store keys off userId, so a vault without its
-      // companion username/userId in localStorage is unusable. Fail closed to
-      // "locked" (re-auth) rather than resuming a half-initialised session.
-      const username = localStorage.getItem(USERNAME_KEY);
-      const userId = localStorage.getItem(USER_ID_KEY);
-      if (username === null || userId === null) {
-        setState("locked");
-        return;
-      }
-      setDekStore({ itemsKey });
-      setUser({ username, userId });
-      setPersistence("session");
-      setState("unlocked");
     })();
     return () => {
       cancelled = true;

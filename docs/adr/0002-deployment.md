@@ -30,7 +30,7 @@ Constraints that shaped the deployment:
 | Migrations | `server-migrate` one-shot Compose service runs `bun run db:migrate` before the API container accepts traffic. Failed migrations halt boot. |
 | Signup gating | Invite-only via the `InviteService` module. `INVITE_REQUIRED=true` enforced server-side; operator mints tokens via `docker compose -f infra/compose.prod.yaml exec server bun dist/mint-invite.js` on the VPS over SSH. Tokens are hashed at rest with SHA-256 and single-use via atomic UPDATE. |
 | Backups | Nightly `pg_dump --format=custom` piped to `restic backup --stdin-from-command`, encrypted and stored in Backblaze B2 (EU Central). Retention: 7 daily / 4 weekly / 6 monthly. Weekly structural `restic check`. In-place restore drill required during bring-up. |
-| PWA | Hand-rolled `apps/web/public/sw.js` (no Workbox dependency), manifest + icons in `public/`, registration via `ServiceWorkerRegistration.tsx` skipped in Capacitor builds. Cache strategy: cache-first for static assets, network-first-with-offline-fallback for navigation, pass-through for `/api/*` and cross-origin. |
+| PWA | Hand-rolled `apps/web/public/sw.js` (no Workbox dependency), manifest + icons in `public/`, registration via `ServiceWorkerRegistration.tsx` skipped in Capacitor builds. Cache strategy: cache-first for static assets, stale-while-revalidate-with-offline-fallback for navigation, pass-through for `/api/*` and cross-origin. |
 | Deploys | Manual: operator runs `rsync` from the local checkout to the VPS, then `docker compose -f infra/compose.prod.yaml up -d --build`. No CI runner has VPS credentials. |
 
 ## Consequences

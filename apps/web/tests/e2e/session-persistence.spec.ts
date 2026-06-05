@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { Page } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import type { Fixtures } from "../../playwright/global-setup";
 
@@ -47,6 +47,27 @@ async function backdateVault(page: Page, ageMs: number): Promise<void> {
   );
 }
 
+/** Emulates an installed standalone PWA by forcing the display-mode media query
+ *  isStandalonePwa() reads, so a fresh navigation counts as a cold launch. */
+async function emulateStandalonePwa(ctx: BrowserContext): Promise<void> {
+  await ctx.addInitScript(() => {
+    const original = window.matchMedia.bind(window);
+    window.matchMedia = (query: string) =>
+      query.includes("display-mode: standalone")
+        ? ({
+            matches: true,
+            media: query,
+            onchange: null,
+            addEventListener() {},
+            removeEventListener() {},
+            addListener() {},
+            removeListener() {},
+            dispatchEvent: () => false,
+          } as MediaQueryList)
+        : original(query);
+  });
+}
+
 test.describe("session persistence + auto-lock", () => {
   test("survives refresh, locks on expiry, unlocks, and locks on demand", async ({ page }) => {
     // Real login lands straight on the unlocked dashboard: the auth -> app
@@ -79,7 +100,11 @@ test.describe("session persistence + auto-lock", () => {
     // Username is pre-filled from localStorage so the screen names the account.
     await expect(page.getByText(duplicateUser.username)).toBeVisible();
 
-    // 3) Unlock with the master password -> back to the dashboard.
+    // 3) A wrong password is rejected, then the real one unlocks. The retry
+    // also exercises the kdfParams refetch after the consumed mount prefetch.
+    await page.getByLabel("Master password").fill("not-the-password");
+    await page.getByRole("button", { name: "Unlock" }).click();
+    await expect(page.getByText("Wrong password.")).toBeVisible({ timeout: 30_000 });
     await page.getByLabel("Master password").fill(duplicateUser.password);
     await page.getByRole("button", { name: "Unlock" }).click();
     await expect(page).toHaveURL(/\/app\/?$/, { timeout: 30_000 });
@@ -88,6 +113,16 @@ test.describe("session persistence + auto-lock", () => {
     // 4) Explicit lock -> /unlock immediately.
     await page.getByRole("button", { name: "Lock" }).click();
     await expect(page).toHaveURL(/\/unlock\/?$/, { timeout: 15_000 });
+
+    // 4b) A network failure on the background session check must not wipe the
+    // locked state (offline PWA boot); only a confirmed 401 logs out.
+    await page.route("**/api/auth/session", (route) => route.abort());
+    await page.reload();
+    await expect(page.getByRole("heading", { name: /Unlock your/ })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page).toHaveURL(/\/unlock\/?$/);
+    await page.unroute("**/api/auth/session");
 
     // 5) Sign out from the locked screen -> login. handleSignOut awaits a
     // best-effort destroy of the per-user OPFS store (so ciphertext is not
@@ -101,25 +136,9 @@ test.describe("session persistence + auto-lock", () => {
   test("an installed PWA locks when relaunched, but survives a refresh", async ({ browser }) => {
     const { duplicateUser } = loadFixtures();
     const ctx = await browser.newContext({ baseURL: "http://localhost:8081" });
-    // Emulate an installed standalone PWA: force the display-mode media query
-    // isStandalonePwa() reads. In a real PWA storage persists across a close, so
-    // a cold launch must re-lock rather than auto-unlock within the window.
-    await ctx.addInitScript(() => {
-      const original = window.matchMedia.bind(window);
-      window.matchMedia = (query: string) =>
-        query.includes("display-mode: standalone")
-          ? ({
-              matches: true,
-              media: query,
-              onchange: null,
-              addEventListener() {},
-              removeEventListener() {},
-              addListener() {},
-              removeListener() {},
-              dispatchEvent: () => false,
-            } as MediaQueryList)
-          : original(query);
-    });
+    // In a real PWA storage persists across a close, so a cold launch must
+    // re-lock rather than auto-unlock within the window.
+    await emulateStandalonePwa(ctx);
     const page = await ctx.newPage();
 
     await page.goto("/auth/login/");
@@ -143,6 +162,57 @@ test.describe("session persistence + auto-lock", () => {
     await expect(page.getByRole("heading", { name: /Unlock your/ })).toBeVisible({
       timeout: 10_000,
     });
+
+    await ctx.close();
+  });
+
+  test("cold PWA boot does not flash the dashboard before redirecting to /unlock", async ({
+    browser,
+  }) => {
+    const { duplicateUser } = loadFixtures();
+    const ctx = await browser.newContext({ baseURL: "http://localhost:8081" });
+
+    // A cold launch makes auth-context clear the vault and resolve to "locked".
+    await emulateStandalonePwa(ctx);
+    const page = await ctx.newPage();
+
+    // Log in to create a stored session.
+    await page.goto("/auth/login/");
+    await page.getByLabel("Username").fill(duplicateUser.username);
+    await page.getByLabel("Master password").fill(duplicateUser.password);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL(/\/app\/?$/, { timeout: 30_000 });
+
+    // Install an observer that records whether any protected app chrome (the
+    // main navigation rendered by the app layout) ever attaches. The dashboard
+    // page content is gated behind the sync store, so the visible flash is the
+    // nav shell, not the page heading. Evidence goes to sessionStorage because
+    // it must survive the redirect to /unlock (init scripts re-run per document,
+    // so a window flag would be reset by a hard navigation).
+    await page.addInitScript(() => {
+      const check = () => {
+        if (document.querySelector('[aria-label="Main navigation"]') !== null) {
+          sessionStorage.setItem("e2e.sawAppShell", "1");
+        }
+      };
+
+      document.addEventListener("DOMContentLoaded", check);
+
+      const observer = new MutationObserver(() => check());
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+    });
+    await page.evaluate(() => sessionStorage.removeItem("e2e.sawAppShell"));
+
+    // Cold launch into /app/: auth resolves to "locked" so the render gate must
+    // suppress the app shell and redirect to /unlock before any chrome paints.
+    await page.goto("/app/").catch(() => {});
+    await expect(page).toHaveURL(/\/unlock\/?$/, { timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: /Unlock your/ })).toBeVisible({
+      timeout: 10_000,
+    });
+
+    const sawAppShell = await page.evaluate(() => sessionStorage.getItem("e2e.sawAppShell"));
+    expect(sawAppShell).toBeNull();
 
     await ctx.close();
   });

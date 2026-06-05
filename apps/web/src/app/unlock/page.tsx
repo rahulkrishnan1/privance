@@ -1,43 +1,47 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Logo } from "@/components/index";
-import { Loading } from "@/components/Loading";
 import * as authApi from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { deriveLoginCrypto, unwrapDek } from "@/lib/auth-crypto";
+import { warmKdfWorker } from "@/lib/crypto/kdf";
 import { destroyUserStore } from "@/lib/storage/per-user-store";
 import { useHydrated } from "@/lib/use-hydrated";
 import { PASSWORD_MAX } from "@/lib/validation";
 import { USER_ID_KEY, useAuth } from "@/providers/auth-context";
+
+type KdfParamsResponse = Awaited<ReturnType<typeof authApi.kdfParams>>;
 
 export default function UnlockPage() {
   const router = useRouter();
   const { unlock, logout, user } = useAuth();
   const username = user?.username ?? "";
 
-  const [sessionLoading, setSessionLoading] = useState(true);
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
   const [credError, setCredError] = useState<string | undefined>(undefined);
   const [banner, setBanner] = useState<string | undefined>(undefined);
   const hydrated = useHydrated();
+  // Holds a prefetch of kdfParams so derivation can start sooner on submit.
+  const kdfPrefetch = useRef<Promise<KdfParamsResponse | null> | null>(null);
 
+  // Session check runs in the background while the user types their password.
+  // On a confirmed rejection it clears the locked marker before redirecting so
+  // AuthProvider does not re-boot into "locked" and loop back to /unlock. A
+  // network failure (offline PWA boot, transient blip) must not wipe the locked
+  // state; unlock itself will surface connectivity errors on submit.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         await authApi.session();
-        if (!cancelled) setSessionLoading(false);
-      } catch {
-        if (!cancelled) {
-          // Session is gone server-side. Await logout so the locked marker is
-          // cleared before the hard redirect, or AuthProvider re-boots into
-          // "locked" and auth/layout bounces straight back to /unlock in an
-          // infinite loop.
+      } catch (e) {
+        const sessionGone = e instanceof ApiError && e.status === 401;
+        if (sessionGone && !cancelled) {
           await logout();
           window.location.replace("/auth/login/");
         }
@@ -48,8 +52,17 @@ export default function UnlockPage() {
     };
   }, [logout]);
 
+  // Prefetch KDF params and warm the worker so spawn + wasm compile overlap
+  // the user typing instead of following submit.
+  useEffect(() => {
+    if (!username) return;
+    kdfPrefetch.current = authApi.kdfParams(username).catch(() => null);
+    warmKdfWorker();
+  }, [username]);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    performance.mark("privance:unlock-submit");
     setCredError(undefined);
     setBanner(undefined);
 
@@ -57,7 +70,11 @@ export default function UnlockPage() {
 
     setPending(true);
     try {
-      const kdfRes = await authApi.kdfParams(username);
+      // Consume the prefetch once so a failed attempt refetches fresh params
+      // (the salt changes if the password was changed on another device).
+      const prefetched = kdfPrefetch.current;
+      kdfPrefetch.current = null;
+      const kdfRes = (await prefetched) ?? (await authApi.kdfParams(username));
       const { authHash, kek, kdfParamVersion } = await deriveLoginCrypto({
         password,
         kdfSalt: kdfRes.kdf_salt,
@@ -78,6 +95,7 @@ export default function UnlockPage() {
         itemsKey,
         persistence: "memory",
       });
+      performance.mark("privance:unlock-done");
       router.replace("/app/");
     } catch (e) {
       if (e instanceof ApiError) {
@@ -106,14 +124,6 @@ export default function UnlockPage() {
     if (userId !== null) await destroyUserStore(userId);
     await logout();
     window.location.replace("/auth/login/");
-  }
-
-  if (sessionLoading) {
-    return (
-      <main className="dark flex min-h-svh items-center justify-center bg-app-bg text-app-text">
-        <Loading />
-      </main>
-    );
   }
 
   return (
