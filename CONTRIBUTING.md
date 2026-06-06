@@ -21,7 +21,7 @@ pnpm install        # installs all workspaces; also runs lefthook install via pr
 
 ```sh
 # Server
-cp .env.example server/.env
+cp server/.env.example server/.env
 # Edit server/.env:
 #   DATABASE_URL      , postgres connection string
 #   ENUMERATION_SECRET, base64-encoded random secret >= 32 bytes

@@ -1,0 +1,80 @@
+name: Docker smoke
+
+# Catches broken Dockerfiles and compose config before release time: release.yml
+# only runs on version tags, so without this the first CI build of an image
+# would happen during a release.
+on:
+  pull_request:
+    paths:
+      - "server/Dockerfile"
+      - "apps/web/Dockerfile"
+      - "infra/restic-runner/**"
+      - "infra/compose.prod.yaml"
+      - ".dockerignore"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/docker-smoke.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Build all three images for the runner's native arch. No push; this only
+  #    proves the Dockerfiles and build contexts are intact.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: privance-server
+            context: .
+            dockerfile: server/Dockerfile
+          - name: privance-web
+            context: .
+            dockerfile: apps/web/Dockerfile
+          - name: privance-restic-runner
+            context: infra/restic-runner
+            dockerfile: infra/restic-runner/Dockerfile
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Build (no push)
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: false
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+  # ---------------------------------------------------------------------------
+  # 2. Validate compose.prod.yaml resolves with both default and registry-style
+  #    variables. Stub env files satisfy the env_file directives.
+  # ---------------------------------------------------------------------------
+  compose-config:
+    name: Validate compose config
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Validate compose.prod.yaml
+        run: |
+          STUB=$(mktemp -d)
+          touch "$STUB"/server.env "$STUB"/postgres.env "$STUB"/caddy.env "$STUB"/restic.env "$STUB"/postgres_password "$STUB"/restic_password
+          PRIVANCE_ENV_DIR="$STUB" docker compose -f infra/compose.prod.yaml config --quiet
+          # COMPOSE_PROFILES=backups so the profiled restic-runner service is validated too.
+          PRIVANCE_ENV_DIR="$STUB" COMPOSE_PROFILES=backups PRIVANCE_IMAGE_PREFIX=ghcr.io/example/privance PRIVANCE_VERSION=v0.0.0 \
+            docker compose -f infra/compose.prod.yaml config --quiet

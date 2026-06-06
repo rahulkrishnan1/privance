@@ -1,4 +1,17 @@
-# Run from the infra/ directory: docker compose -f compose.prod.yaml up -d
+# Production/self-host: copy this file to the deploy directory (e.g. ~/privance)
+# and run `docker compose -f compose.prod.yaml up -d` from there. Local builds
+# run from infra/ so the build contexts (..) resolve to the repo root.
+#
+# Image names use two optional env vars so the same file serves both local builds
+# and pulled releases. Defaults produce local image names (suitable for
+# `docker compose build`). For production / self-hosting, set PRIVANCE_IMAGE_PREFIX
+# (e.g. ghcr.io/<owner>/privance) and PRIVANCE_VERSION in an untracked .env file
+# placed beside this compose file.
+
+# Pin the project name so volumes and container names do not depend on the
+# directory the stack is launched from. COMPOSE_PROJECT_NAME in .env overrides
+# this (used by stacks whose volumes predate the pin).
+name: privance
 
 services:
 
@@ -6,7 +19,7 @@ services:
     build:
       context: ..
       dockerfile: server/Dockerfile
-    image: privance-server:latest
+    image: ${PRIVANCE_IMAGE_PREFIX:-privance}-server:${PRIVANCE_VERSION:-latest}
     env_file:
       - ${PRIVANCE_ENV_DIR:-/etc/privance/env.d}/server.env
     environment:
@@ -29,7 +42,7 @@ services:
       start_period: 15s
 
   server-migrate:
-    image: privance-server:latest
+    image: ${PRIVANCE_IMAGE_PREFIX:-privance}-server:${PRIVANCE_VERSION:-latest}
     command: ["bun", "run", "db:migrate"]
     restart: "no"
     env_file:
@@ -62,12 +75,13 @@ services:
       start_period: 10s
 
   caddy:
-    image: caddy:2-alpine@sha256:86deaf5e3d3408a6ccec08fbb79989783dd26e206ae10bcf78a801dc8c9ab794
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    image: ${PRIVANCE_IMAGE_PREFIX:-privance}-web:${PRIVANCE_VERSION:-latest}
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-      - "./../apps/web/out:/srv/web:ro"
     env_file:
       - ${PRIVANCE_ENV_DIR:-/etc/privance/env.d}/caddy.env
     ports:
@@ -81,10 +95,14 @@ services:
       - server
 
   restic-runner:
+    # Backups are opt-in: without COMPOSE_PROFILES=backups in .env this service
+    # (and its required restic.env + restic_password files) does not exist, so a
+    # stack without B2 still boots.
+    profiles: ["backups"]
     build:
       context: ./restic-runner
       dockerfile: Dockerfile
-    image: privance-restic-runner:0.18.1
+    image: ${PRIVANCE_IMAGE_PREFIX:-privance}-restic-runner:${PRIVANCE_VERSION:-latest}
     env_file:
       - ${PRIVANCE_ENV_DIR:-/etc/privance/env.d}/restic.env
     environment:

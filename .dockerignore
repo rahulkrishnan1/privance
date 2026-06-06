@@ -8,9 +8,6 @@
 .claude/
 scratch/
 
-# Web app (not needed for server build)
-apps/
-
 # Build outputs
 node_modules
 */node_modules
@@ -19,9 +16,14 @@ dist/
 **/dist/
 build/
 .next/
-out/
+apps/web/.next/
+apps/web/out/
 .turbo/
 *.tsbuildinfo
+
+# Mobile shells (large; not needed for any Docker build)
+apps/web/ios/
+apps/web/android/
 
 # Test and coverage
 coverage/
@@ -42,7 +44,6 @@ server/.env
 server/.env.local
 secrets/
 
-# Docs and infra configs (not needed for build)
+# Docs (not needed for build)
 *.md
 docs/
-infra/
