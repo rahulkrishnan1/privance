@@ -19,7 +19,7 @@ The threat model in one sentence: a fully compromised server reveals nothing abo
 - **Bun** ≥ 1.3.14 (server runtime)
 - **Node.js** ≥ 22.0.0 (Next.js build)
 - **pnpm** ≥ 11.0.0
-- **PostgreSQL** 17, run locally or via Docker:
+- **PostgreSQL** 17, run locally or via Docker (dev-only credentials; production generates a random secret, see `infra/README.md`):
   ```sh
   docker run -d --name privance-pg \
     -e POSTGRES_USER=privance \
@@ -37,8 +37,10 @@ cd privance
 pnpm install
 
 # Copy env files
-cp .env.example server/.env
-# Edit server/.env, set DATABASE_URL and ENUMERATION_SECRET (min 32 bytes base64)
+cp server/.env.example server/.env
+# Edit server/.env: DATABASE_URL works as-is with the Docker command above;
+# ENUMERATION_SECRET is required (the server refuses to start without it):
+#   openssl rand -base64 48   # paste the output after ENUMERATION_SECRET=
 
 # Point the web app at the local server in dev (production builds default to
 # same-origin and need no env var; Caddy proxies /api/* on the same host).
@@ -78,6 +80,8 @@ privance/
 ├── packages/
 │   └── core/         # Pure TypeScript: crypto, decimal math, sync, storage
 ├── server/           # Bun + Hono + Drizzle + Postgres
+├── infra/            # Docker Compose stack, deploy script, env templates
+├── docs/             # Architecture decision records (docs/adr/)
 ├── ARCHITECTURE.md
 ├── SECURITY.md
 ├── THREAT_MODEL.md
@@ -98,11 +102,13 @@ Privance is designed to be self-hosted. The reference deployment at `https://pri
 
 What you need:
 
-- A small VPS (Hetzner CPX21 or similar; 2 vCPU / 4 GB minimum).
-- A domain you control, with DNS managed somewhere that supports A + AAAA records (Cloudflare DNS-only mode is what the reference deployment uses).
-- A Backblaze B2 account for encrypted offsite backups (the reference deployment uses EU Central; any region works).
+- A Linux host with Docker Engine and the Compose plugin (any provider; 2 vCPU / 4 GB minimum). A Hetzner-specific provisioning and hardening guide (SSH, UFW, Docker install, deploy user, sizing) is in [`infra/hetzner-vps.md`](infra/hetzner-vps.md). Note that Docker bypasses host firewall rules for published ports; the provided compose file publishes only 80/443 and keeps Postgres loopback-bound.
+- A domain you control, with DNS that supports A + AAAA records (Cloudflare DNS-only mode works; proxy/orange-cloud mode does not, as it breaks Let's Encrypt HTTP-01).
+- A Backblaze B2 account for encrypted offsite backups (optional but strongly recommended; any region works).
 
-For the full bring-up procedure (provisioning, hardening, TLS, backups, invite-only signup, deploys), see [`infra/README.md`](infra/README.md).
+Images are pulled from GHCR (`ghcr.io/<owner>/privance-{server,web,restic-runner}`). While the repository is private, self-hosting requires a GitHub personal access token with `read:packages` scope to authenticate with GHCR before bringing the stack up.
+
+For the full bring-up procedure (GHCR login, env files, TLS, backups, invite-only signup, deploys), see [`infra/README.md`](infra/README.md).
 
 ---
 

@@ -1,231 +1,62 @@
 # Self-hosting Privance
 
-Bring-up runbook for a self-hosted Privance instance on a Hetzner Cloud VPS: from a fresh Ubuntu image to a hardened host running the full stack (TLS, backups, invite gating).
+Privance runs as a Docker Compose stack (server, Postgres, Caddy, and a restic backup scheduler) on any Linux host with Docker Engine installed. Caddy handles TLS automatically via Let's Encrypt. All configuration lives in `/etc/privance/env.d/` on the host; there is no source checkout or build toolchain required on the server.
 
-## Prerequisites
+For a from-scratch hardened Hetzner VPS (SSH hardening, UFW, unattended-upgrades, Docker install, deploy user), see [hetzner-vps.md](hetzner-vps.md). That guide ends with the host ready for the quickstart below.
 
-- Hetzner Cloud account with billing configured. IPv4 is billed extra; see Hetzner's pricing.
-- Ed25519 SSH key: `ssh-keygen -t ed25519 -C "privance-deploy" -f ~/.ssh/id_ed25519_privance`.
-- A domain (or subdomain) for the instance.
-- Linux, macOS, or WSL2 workstation.
+## Self-hosting quickstart
 
-## Choosing a region and SKU
+### Prerequisites
 
-| SKU | Arch | Regions | vCPU/RAM/Disk/Traffic |
-|-----|------|---------|----------------------|
-| CX23 | x86 | EU (fsn1, nbg1, hel1) | 2 / 4 GB / 40 GB / 20 TB |
-| CAX11 | ARM64 | EU (fsn1, nbg1, hel1) | 2 / 4 GB / 40 GB / 20 TB |
-| CPX22 | x86 | Global (ash, sin) | 2 / 4 GB / 40 GB / 1 TB |
+- A Linux host with Docker Engine and the Compose plugin installed (see Step 9 in hetzner-vps.md for the install procedure). Minimum: 2 vCPU / 4 GB RAM / 40 GB disk.
+- Your deploy user in the `docker` group: `sudo usermod -aG docker $USER`, then log out and back in. Verify with `docker info` (must succeed without sudo; every command below assumes it).
+- A domain with A and AAAA records pointing at the host (DNS-only, no proxy). Caddy uses HTTP-01; orange-cloud proxy mode breaks certificate issuance.
+- Backblaze B2 credentials for encrypted offsite backups (optional but strongly recommended).
 
-Default CX23. CPX22 if non-EU. Region cannot be changed after creation; server can be resized within a family only. Consult Hetzner's pricing page for current rates.
+WARNING: Docker bypasses UFW for published container ports (the `DOCKER` iptables chain precedes UFW). Bind non-public services to `127.0.0.1` in compose (e.g. `127.0.0.1:5432:5432`); only the reverse proxy binds `0.0.0.0:80`/`0.0.0.0:443`. The `compose.prod.yaml` in this repo already follows this convention.
 
-## Step 1: Register your SSH key with Hetzner
+### Step 1: Authenticate with GHCR
 
-In the Hetzner Console, Security > SSH Keys > Add SSH Key. Paste `~/.ssh/id_ed25519_privance.pub`, name it with a year-month tag (e.g. `privance-deploy-YYYY-MM`), save. Do NOT enable "set as default key". Verify fingerprint matches `ssh-keygen -lf ~/.ssh/id_ed25519_privance.pub`.
+Images are currently private. You need a GitHub **classic** personal access token (Settings > Developer settings > Personal access tokens > Tokens (classic)) with `read:packages` scope; fine-grained PATs do not work for GHCR authentication.
 
-## Step 2: Create the Cloud Firewall
-
-In the Hetzner Console, Firewalls > Create Firewall, name `privance-edge`, all inbound from `0.0.0.0/0, ::/0`:
-
-| Protocol | Port | Description                     |
-|----------|------|---------------------------------|
-| TCP      | 22   | SSH                             |
-| TCP      | 80   | HTTP (Let's Encrypt + redirect) |
-| TCP      | 443  | HTTPS                           |
-| UDP      | 443  | HTTPS/3 (QUIC)                  |
-
-Outbound: defaults (allow all). Save; do not attach yet.
-
-## Step 3: Create the server
-
-In the Hetzner Console, Servers > Add Server: Ubuntu 24.04 LTS, the SKU and region from above, both IPv4 and IPv6, SSH key from Step 1, `privance-edge` firewall from Step 2, no volumes, Backups off, no placement group, name `privance-prod-01`, empty cloud config.
-
-Hetzner Backups are off because restic to a different provider handles backups (see below). Record the Public IPv4 and IPv6.
-
-## Step 4: First SSH and base update
+On the host as the deploy user:
 
 ```sh
-ssh -i ~/.ssh/id_ed25519_privance -o IdentitiesOnly=yes root@<ipv4>
+# --password-stdin keeps the token out of shell history and process listings.
+echo '<personal-access-token-with-read:packages>' | docker login ghcr.io -u <your-github-username> --password-stdin
 ```
 
-Cross-check the host key fingerprint against the Hetzner Console. Keep this session open until Step 6 confirms the deploy user.
+Expected: `Login Succeeded`.
+
+### Step 2: Create the deploy directory and .env file
 
 ```sh
-apt-get update
-apt-get -y upgrade
-apt-get install -y update-notifier-common ufw unattended-upgrades
-[ -f /var/run/reboot-required ] && echo "REBOOT NEEDED" || echo "no reboot needed"
+mkdir -p ~/privance
+cd ~/privance
 ```
 
-If reboot needed, `reboot` then reconnect.
-
-## Step 5: Create the deploy user and plant the SSH key
-
-On the VPS as root (placeholder name `privance`; substitute your own):
+Fetch the compose file from the release tag you intend to run. While the repository is private, raw GitHub URLs require a token; copying from a local checkout (`scp infra/compose.prod.yaml <host>:~/privance/`) is simpler.
 
 ```sh
-adduser --gecos "" <deploy-user>
-# Prompts for the sudo password. Use a strong one; do not reuse the SSH key passphrase.
-
-install -d -m 700 -o <deploy-user> -g <deploy-user> /home/<deploy-user>/.ssh
-echo '<paste-the-public-key-line-here>' > /home/<deploy-user>/.ssh/authorized_keys
-chmod 600 /home/<deploy-user>/.ssh/authorized_keys
-chown <deploy-user>:<deploy-user> /home/<deploy-user>/.ssh/authorized_keys
-
-echo '<deploy-user> ALL=(ALL) PASSWD: ALL' > /etc/sudoers.d/<deploy-user>
-chmod 440 /etc/sudoers.d/<deploy-user>
-visudo -cf /etc/sudoers.d/<deploy-user>
-# Expected: "/etc/sudoers.d/<deploy-user>: parsed OK"
+curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/<version>/infra/compose.prod.yaml \
+  -o compose.prod.yaml
 ```
 
-## Step 6: Verify the deploy user, then harden sshd
-
-Keep the Step 4 root session open as an escape hatch. In a second terminal: `ssh -i ~/.ssh/id_ed25519_privance <deploy-user>@<ipv4>` (must land at `$` prompt), then `sudo -v` (returns silently on correct password). Only when both succeed, write the hardened sshd drop-in:
+Create the `.env` file beside it:
 
 ```sh
-sudo tee /etc/ssh/sshd_config.d/00-privance.conf >/dev/null <<'EOF'
-HostKey /etc/ssh/ssh_host_ed25519_key
-HostKey /etc/ssh/ssh_host_rsa_key
-PermitRootLogin no
-PasswordAuthentication no
-KbdInteractiveAuthentication no
-PubkeyAuthentication yes
-AuthenticationMethods publickey
-KexAlgorithms curve25519-sha256@libssh.org,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256
-Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
-MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com
-LogLevel VERBOSE
-ClientAliveInterval 300
-ClientAliveCountMax 0
-MaxAuthTries 3
-MaxSessions 5
+tee .env >/dev/null <<'EOF'
+PRIVANCE_IMAGE_PREFIX=ghcr.io/<owner>/privance
+PRIVANCE_VERSION=<version>
+COMPOSE_PROFILES=backups
 EOF
-
-sudo sshd -t
-# Expected: no output. Anything else means STOP and fix before reload.
-sudo systemctl reload ssh
 ```
 
-Verify from your workstation; all three must pass before logging out of the original root session:
+`PRIVANCE_IMAGE_PREFIX` sets the image registry prefix; `PRIVANCE_VERSION` selects the tag pulled from GHCR. `COMPOSE_PROFILES=backups` enables the restic backup scheduler; omit the line to run without backups (you can add it later).
 
-```sh
-ssh -i ~/.ssh/id_ed25519_privance root@<ipv4> whoami
-# Expected: "Permission denied (publickey)."
-ssh -i ~/.ssh/id_ed25519_privance <deploy-user>@<ipv4> whoami
-# Expected: prints "<deploy-user>"
-ssh -o PreferredAuthentications=password -o BatchMode=yes <deploy-user>@<ipv4> whoami
-# Expected: "Permission denied (publickey)."
-```
+### Step 3: Create /etc/privance/env.d/ and write config files
 
-## Step 7: UFW on the host
-
-```sh
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-sudo ufw limit 22/tcp comment 'SSH (rate-limited)'
-sudo ufw allow 80/tcp comment 'HTTP (LE challenge + redirect)'
-sudo ufw allow 443/tcp comment 'HTTPS'
-sudo ufw allow 443/udp comment 'HTTPS/3 (QUIC)'
-sudo ufw --force enable
-sudo ufw status verbose
-# Expected: four rules each on IPv4 and IPv6: 22/tcp LIMIT, 80/tcp ALLOW, 443/tcp ALLOW, 443/udp ALLOW
-```
-
-From your workstation, `nmap -Pn -p 5432 <ipv4>` should report 5432 as filtered.
-
-## Step 8: Unattended-upgrades
-
-As the deploy user:
-
-```sh
-sudo tee /etc/apt/apt.conf.d/52privance-unattended-upgrades >/dev/null <<'EOF'
-Unattended-Upgrade::Allowed-Origins {
-    "${distro_id}:${distro_codename}";
-    "${distro_id}:${distro_codename}-security";
-    "${distro_id}ESMApps:${distro_codename}-apps-security";
-    "${distro_id}ESM:${distro_codename}-infra-security";
-};
-Unattended-Upgrade::Package-Blacklist {
-    "docker-ce";
-    "docker-ce-cli";
-    "containerd.io";
-};
-Unattended-Upgrade::Automatic-Reboot "true";
-Unattended-Upgrade::Automatic-Reboot-WithUsers "false";
-Unattended-Upgrade::Automatic-Reboot-Time "03:00";
-EOF
-
-sudo tee /etc/apt/apt.conf.d/20auto-upgrades >/dev/null <<'EOF'
-APT::Periodic::Update-Package-Lists "1";
-APT::Periodic::Unattended-Upgrade "1";
-EOF
-
-sudo unattended-upgrade --dry-run
-# Expected: exits 0.
-```
-
-## Step 9: Docker Engine and Compose plugin
-
-Install from Docker's official apt repository, pin the exact version. As the deploy user:
-
-```sh
-sudo apt-get update
-sudo apt-get install -y ca-certificates curl
-sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-sudo chmod a+r /etc/apt/keyrings/docker.asc
-
-ARCH=$(dpkg --print-architecture)
-CODENAME=$(. /etc/os-release && echo "${VERSION_CODENAME}")
-
-sudo tee /etc/apt/sources.list.d/docker.sources >/dev/null <<EOF
-Types: deb
-URIs: https://download.docker.com/linux/ubuntu
-Suites: ${CODENAME}
-Components: stable
-Architectures: ${ARCH}
-Signed-By: /etc/apt/keyrings/docker.asc
-EOF
-
-sudo apt-get update
-```
-
-Run `apt-cache madison docker-ce`, copy the latest version string, and install at exactly that version:
-
-```sh
-# Substitute <VERSION_STRING> with the value from `apt-cache madison docker-ce`.
-sudo apt-get install -y \
-  docker-ce=<VERSION_STRING> \
-  docker-ce-cli=<VERSION_STRING> \
-  containerd.io \
-  docker-buildx-plugin \
-  docker-compose-plugin
-sudo apt-mark hold docker-ce docker-ce-cli containerd.io
-
-docker --version
-docker compose version
-systemctl is-active docker
-apt-mark showhold
-```
-
-To upgrade later: `sudo apt-mark unhold docker-ce docker-ce-cli containerd.io`, upgrade, re-hold.
-
-## Step 10: Add the deploy user to the `docker` group
-
-```sh
-sudo usermod -aG docker $USER
-exit
-ssh -i ~/.ssh/id_ed25519_privance <deploy-user>@<ipv4>
-groups                          # lists "docker"
-docker info | head -5           # succeeds without sudo
-docker run --rm hello-world
-```
-
-WARNING: docker group is effectively root (`docker run -v /:/host alpine chroot /host` escalates). Keep to the deploy user only.
-
-## Step 11: Create the secrets directory
-
-Secrets live in `/etc/privance/env.d/`, mode 700, owned by the deploy user; env files mode 600.
+Create the secrets directory (mode 700):
 
 ```sh
 sudo install -d -m 700 -o <deploy-user> -g <deploy-user> /etc/privance /etc/privance/env.d
@@ -233,122 +64,190 @@ stat -c '%a %U %G %n' /etc/privance /etc/privance/env.d
 # Expected: two lines, "700 <deploy-user> <deploy-user> ..."
 ```
 
-WARNING: Docker bypasses UFW for published container ports (the `DOCKER` iptables chain precedes UFW). Bind non-public services to `127.0.0.1` in compose (e.g. `127.0.0.1:5432:5432`); only the reverse proxy binds `0.0.0.0:80`/`0.0.0.0:443`.
+Copy the example templates from the repo (or inline them as shown below), then fill in real values. Each file must be mode 600. The templates in `infra/env.d.example/` are the canonical versions; the blocks below mirror them for hosts without a checkout.
 
-## Rollback notes
+**postgres.env** (`/etc/privance/env.d/postgres.env`):
 
-- Wrong region or SKU: delete and recreate; within-family resize works in-place.
-- Locked out by sshd: `sudo rm /etc/ssh/sshd_config.d/00-privance.conf && sudo systemctl reload ssh`. If no session remains, use the Hetzner Console KVM (root login works there).
-- UFW broke routing: `sudo ufw disable`, then re-apply Step 7.
-- Unattended-upgrades misbehaving: `sudo rm /etc/apt/apt.conf.d/52privance-unattended-upgrades`.
-- Wrong Docker version: unhold, reinstall at the correct version, re-hold.
-- Wrong deploy user: `sudo userdel -r <name>` then re-run Step 5.
+```sh
+tee /etc/privance/env.d/postgres.env >/dev/null <<'EOF'
+POSTGRES_USER=privance
+POSTGRES_DB=privance
+POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+EOF
+chmod 600 /etc/privance/env.d/postgres.env
+```
 
-## TLS and DNS
+**postgres_password** (Docker secret, no extension):
 
-Caddy obtains and renews Let's Encrypt TLS via ACME, serves the Next.js static export at `/`, and reverse-proxies `/api/*` to the Hono server. Security headers (HSTS, CSP, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, X-Frame-Options) come from Caddy on `/` and Hono on `/api/*`. Cloudflare is DNS-only.
+```sh
+openssl rand -base64 48 | tr -d '\n' > /etc/privance/env.d/postgres_password
+chmod 600 /etc/privance/env.d/postgres_password
+cat /etc/privance/env.d/postgres_password
+# Copy the printed value to your password manager NOW, then clear the terminal.
+```
 
-### Step 1: Create Cloudflare DNS records
+WARNING: keep a copy of this password out-of-band. If the secret file is lost alongside the Postgres data volume you cannot recover the database.
 
-In the `privance.app` zone (DNS > Records), create four records all DNS-only (gray cloud), TTL 300:
+**server.env** (`/etc/privance/env.d/server.env`): start from `infra/env.d.example/server.env` in the repo; the minimum required values are:
+
+```sh
+tee /etc/privance/env.d/server.env >/dev/null <<'EOF'
+DATABASE_URL=postgres://privance@postgres:5432/privance
+NODE_ENV=production
+ENUMERATION_SECRET=<replace-with-output-of-openssl-rand-base64-48>
+ALLOWED_ORIGINS=https://<your-domain>
+INVITE_REQUIRED=true
+EOF
+chmod 600 /etc/privance/env.d/server.env
+```
+
+Fill in `ENUMERATION_SECRET` without the value transiting your terminal or shell history:
+
+```sh
+sed -i "s|<replace-with-output-of-openssl-rand-base64-48>|$(openssl rand -base64 48 | tr -d '\n')|" /etc/privance/env.d/server.env
+```
+
+Do not reuse the secret across instances.
+
+**caddy.env** (`/etc/privance/env.d/caddy.env`):
+
+```sh
+tee /etc/privance/env.d/caddy.env >/dev/null <<'EOF'
+DOMAIN=<your-domain>
+WWW_DOMAIN=www.<your-domain>
+ACME_EMAIL=<operator-email>
+LOCAL_HTTP_ONLY=
+EOF
+chmod 600 /etc/privance/env.d/caddy.env
+```
+
+`LOCAL_HTTP_ONLY` must be empty in production. Setting it to `auto_https off` disables TLS in Caddy entirely; it exists only for loopback smoke-testing and must never be set on an internet-facing host.
+
+**restic.env and restic_password** (only when backups are enabled via `COMPOSE_PROFILES=backups`; skip both files otherwise):
+
+```sh
+tee /etc/privance/env.d/restic.env >/dev/null <<'EOF'
+B2_ACCOUNT_ID=<keyID from privance-restic-prod>
+B2_ACCOUNT_KEY=<applicationKey from privance-restic-prod>
+RESTIC_REPOSITORY=b2:<your-bucket-name>:/restic
+RESTIC_PASSWORD_FILE=/run/secrets/restic_password
+EOF
+chmod 600 /etc/privance/env.d/restic.env
+
+openssl rand -base64 48 | tr -d '\n' > /etc/privance/env.d/restic_password
+chmod 600 /etc/privance/env.d/restic_password
+```
+
+WARNING: if `restic_password` is lost, every snapshot is permanently unrecoverable. Store it out-of-band before proceeding.
+
+### Step 4: DNS setup
+
+Create four DNS records, all DNS-only (gray cloud if using Cloudflare), TTL 300:
 
 | Type | Name  | Value |
 |------|-------|-------|
-| A    | `@`   | `<vps-ipv4>` |
-| A    | `www` | `<vps-ipv4>` |
-| AAAA | `@`   | `<vps-ipv6>` |
-| AAAA | `www` | `<vps-ipv6>` |
+| A    | `@`   | `<host-ipv4>` |
+| A    | `www` | `<host-ipv4>` |
+| AAAA | `@`   | `<host-ipv6>` |
+| AAAA | `www` | `<host-ipv6>` |
 
-Orange-cloud proxy mode breaks HTTP-01; keep gray. Raise TTL to 3600 after HTTPS works.
+Orange-cloud proxy mode breaks HTTP-01 challenge; keep gray. Raise TTL to 3600 after HTTPS works.
 
 Verify propagation from your workstation:
 
 ```sh
-dig +short A privance.app @1.1.1.1
-dig +short AAAA privance.app @1.1.1.1
-dig +short A www.privance.app @1.1.1.1
-dig +short AAAA www.privance.app @1.1.1.1
+dig +short A <your-domain> @1.1.1.1
+dig +short AAAA <your-domain> @1.1.1.1
+dig +short A www.<your-domain> @1.1.1.1
+dig +short AAAA www.<your-domain> @1.1.1.1
 ```
 
-Do not proceed until all four return correct values; Caddy's ACME retry backoff can delay the next attempt by hours.
+Do not proceed until all four return the correct host address. Caddy's ACME retry backoff can delay the next attempt by hours.
 
-### Step 2: Write caddy.env on the VPS
+### Step 5: Bring the stack up
 
-As the deploy user:
-
-```sh
-sudo tee /etc/privance/env.d/caddy.env >/dev/null <<'EOF'
-DOMAIN=privance.app
-WWW_DOMAIN=www.privance.app
-ACME_EMAIL=<operator-email>
-LOCAL_HTTP_ONLY=
-EOF
-sudo chmod 600 /etc/privance/env.d/caddy.env
-```
-
-`<operator-email>` is the ACME account address. `LOCAL_HTTP_ONLY` must be empty in production (setting it to `auto_https off` disables TLS).
-
-### Step 3: Build the web static export and rsync to the VPS
-
-Caddy serves `apps/web/out/` directly via bind mount. From the repo root on your workstation:
+From the deploy directory (`~/privance`):
 
 ```sh
-pnpm --filter @privance/web build
-rsync -avz apps/web/out/ <deploy-user>@<vps-ipv4>:/home/<deploy-user>/privance/apps/web/out/
-```
-
-### Step 4: Bring the stack up
-
-As the deploy user, from the repo root:
-
-```sh
-cd infra
 docker compose -f compose.prod.yaml up -d
 docker compose -f compose.prod.yaml logs -f caddy
 ```
 
-Watch for `certificate obtained successfully` (within two minutes). If absent, recheck DNS and port 80.
+Watch for `certificate obtained successfully` within two minutes. If absent, recheck DNS and that port 80 is reachable from the internet. Caddy persists its ACME retry backoff in the `caddy_data` volume, so a plain restart keeps waiting; after fixing DNS, reset it with `docker compose -f compose.prod.yaml exec caddy rm -rf /data/caddy/acme && docker compose -f compose.prod.yaml restart caddy` (this discards any stored certificate and retries issuance immediately; only run it once DNS is confirmed correct).
+
+### Step 6: Verify
 
 ```sh
-curl -fsS https://privance.app/api/health
+curl -fsS https://<your-domain>/api/health
 # Expected: {"ok":true,"service":"privance","ts":<number>}
-curl -sI https://privance.app/ | grep -i location
+
+curl -sI https://<your-domain>/ | grep -i location
 # Expected: no Location header
-curl -sI http://privance.app/ | grep -i location
-# Expected: Location: https://privance.app/
+
+curl -sI http://<your-domain>/ | grep -i location
+# Expected: Location: https://<your-domain>/
 ```
 
-Once HTTPS works, raise all four Cloudflare DNS TTLs from 300 to 3600.
+Once HTTPS works, raise all four DNS TTLs from 300 to 3600.
 
-### Step 5: Verify security headers on / and /api/*
+**Security headers on / and /api/***
 
 Caddy emits headers on `/` only (via the `@notapi { not path /api/* }` matcher); Hono emits its own on `/api/*`.
 
 ```sh
-curl -sI https://privance.app/ | grep -iE '^(strict-transport|x-content-type|referrer-policy|permissions-policy|x-frame-options|content-security-policy):'
+curl -sI https://<your-domain>/ | grep -iE '^(strict-transport|x-content-type|referrer-policy|permissions-policy|x-frame-options|content-security-policy):'
 # Expected: six lines
 
-# No Caddy duplication on /api/*:
-[ "$(curl -sI https://privance.app/api/health | grep -ci '^content-security-policy:')" = "1" ] && echo "CSP count: 1 (PASS)" || echo "CSP count: unexpected (FAIL)"
-[ "$(curl -sI https://privance.app/api/health | grep -ci '^strict-transport-security:')" = "1" ] && echo "HSTS count: 1 (PASS)" || echo "HSTS count: unexpected (FAIL)"
+[ "$(curl -sI https://<your-domain>/api/health | grep -ci '^content-security-policy:')" = "1" ] && echo "CSP count: 1 (PASS)" || echo "CSP count: unexpected (FAIL)"
+[ "$(curl -sI https://<your-domain>/api/health | grep -ci '^strict-transport-security:')" = "1" ] && echo "HSTS count: 1 (PASS)" || echo "HSTS count: unexpected (FAIL)"
 ```
 
 CSP includes `'unsafe-inline'` in `script-src` because the Next.js static export emits inline RSC hydration scripts; nonces require SSR.
 
-### Step 6: SSL Labs scan
+**SSL Labs scan:**
 
 ```sh
-openssl s_client -connect privance.app:443 </dev/null 2>/dev/null | openssl x509 -noout -issuer
+openssl s_client -connect <your-domain>:443 </dev/null 2>/dev/null | openssl x509 -noout -issuer
 # Expected: Issuer contains "Let's Encrypt"
-curl -fsS https://privance.app/ | grep '<title>Privance</title>'
-# Expected: one matching line
-curl -fsS -o /dev/null -w "%{http_code}\n" https://privance.app/accounts/
+
+curl -fsS https://<your-domain>/ | grep -c '<title>Privance'
+# Expected: 1
+
+curl -fsS -o /dev/null -w "%{http_code}\n" https://<your-domain>/app/accounts/
 # Expected: 200
 ```
 
-SSL Labs: browse `https://www.ssllabs.com/ssltest/analyze.html?d=privance.app&hideResults=on`. Target A or higher (A+ realistic with Caddy 2 defaults + 1y HSTS).
+Browse `https://www.ssllabs.com/ssltest/analyze.html?d=<your-domain>&hideResults=on`. Target A or higher (A+ is realistic with Caddy 2 defaults plus 1-year HSTS).
 
 If a cert chain or stapling problem appears: `docker compose -f compose.prod.yaml exec caddy caddy reload --config /etc/caddy/Caddyfile`, wait 60 seconds, re-scan.
+
+## Updating a deployment
+
+Releases are built by GitHub Actions when a `v*` tag is pushed. The workflow builds and pushes `ghcr.io/<owner>/privance-{server,web,restic-runner}` images tagged with the semver version and `latest`.
+
+To deploy a new version from your workstation:
+
+```sh
+export PRIVANCE_DEPLOY_HOST=<ssh-alias-or-user@host>
+export PRIVANCE_DOMAIN=<your-domain>   # health-check target; defaults to privance.app
+./infra/deploy.sh v0.2.0
+```
+
+The host must hold a valid GHCR login for the pull step (quickstart Step 1); `docker login` credentials persist until revoked, so this is one-time per host.
+
+`deploy.sh` verifies the tag exists on origin, checks that the release workflow completed successfully, copies `compose.prod.yaml` to the remote deploy directory, pulls the new images (with the target version as a transient override, so a failed pull leaves `.env` pointing at the running version), then updates `PRIVANCE_VERSION` in `.env`, runs `docker compose up -d`, and health-checks the result.
+
+Without a repo checkout, update manually on the host from the deploy directory: edit `PRIVANCE_VERSION` in `.env`, then `docker compose -f compose.prod.yaml pull && docker compose -f compose.prod.yaml up -d`.
+
+The `server-migrate` service runs automatically (via `depends_on`) before the server container starts. It is a no-op when no new migrations are pending. Schema changes that follow the expand-backfill-contract pattern can be shipped this way without downtime; single-deploy destructive renames are not safe and must be split across two deploys.
+
+### Rollback
+
+If a deploy fails its health check, the stack is left on the new version; recovery is manual by design (a failed health check on a finance app warrants a human decision, not a silent revert).
+
+- No migration in the failed release: edit `PRIVANCE_VERSION` in the deploy directory's `.env` back to the previous tag, then `docker compose -f compose.prod.yaml up -d`. The previous images are still in the local Docker cache.
+- A migration ran: expand-phase migrations are additive, so the previous server version runs safely against the new schema and the step above still works. Anything beyond expand-phase means restoring from the latest snapshot (see the restore drill) before bringing up the previous version.
+- Before every upgrade, take an on-demand backup so the pre-upgrade state is one snapshot away: `docker compose -f compose.prod.yaml run --rm restic-runner /usr/local/bin/backup.sh`.
 
 ## Encrypted offsite backups via restic to Backblaze B2
 
@@ -356,58 +255,44 @@ If a cert chain or stapling problem appears: `docker compose -f compose.prod.yam
 
 In the Backblaze console (https://www.backblaze.com/):
 
-1. Buckets > Create a Bucket: name `privance-backups-prod`, Files Private, Default Encryption Disable (restic encrypts client-side), Object Lock Disable, Lifecycle "Keep all versions".
-2. App Keys > Add a New Application Key: name `privance-restic-prod`, scope to `privance-backups-prod`, type Read and Write, "Allow List All Bucket Names" unchecked. Copy `keyID` and `applicationKey` to the password manager (applicationKey is shown once).
-3. Mint a second key `privance-restic-restore-readonly`, type Read Only, same bucket. Store separately, labelled "restore drill only".
+1. Buckets > Create a Bucket: name `<your-bucket-name>`, Files Private, Default Encryption Disable (restic encrypts client-side), Object Lock Disable, Lifecycle "Keep all versions".
+2. App Keys > Add a New Application Key: name `privance-restic-prod`, scope to the bucket, type Read and Write, "Allow List All Bucket Names" unchecked. Copy `keyID` and `applicationKey` to the password manager (applicationKey is shown once).
+3. Mint a second key `privance-restic-restore-readonly`, type Read Only, same bucket. Store separately. Its purpose is disaster recovery from a machine other than the production host (a stolen or compromised restore machine then cannot delete or alter snapshots); the in-place drill below runs on the host and uses the read-write key already present there.
 
-### Step 2: Generate the restic repository password on the VPS
+### Step 2: Store the restic repository password out-of-band
 
-WARNING: if this password is lost, every snapshot is permanently unrecoverable. Generate once, store out-of-band, never re-derive.
-
-```sh
-openssl rand -base64 48
-```
-
-Copy the single-line output to the password manager as "Privance restic repo password (privance-backups-prod)".
-
-### Step 3: Write restic.env and restic_password on the VPS
+The password file itself was created in Step 3 of the quickstart. WARNING: if it is lost, every snapshot is permanently unrecoverable; store a copy out-of-band before initialising the repository.
 
 ```sh
-sudo tee /etc/privance/env.d/restic.env >/dev/null <<'EOF'
-B2_ACCOUNT_ID=<keyID from privance-restic-prod>
-B2_ACCOUNT_KEY=<applicationKey from privance-restic-prod>
-RESTIC_REPOSITORY=b2:privance-backups-prod:/restic
-RESTIC_PASSWORD_FILE=/run/secrets/restic_password
-EOF
-echo '<single-line openssl output from Step 2>' | sudo tee /etc/privance/env.d/restic_password >/dev/null
-sudo chmod 600 /etc/privance/env.d/restic.env /etc/privance/env.d/restic_password
-sudo chown <deploy-user>:<deploy-user> /etc/privance/env.d/restic.env /etc/privance/env.d/restic_password
-sudo stat -c "%a %U %G %n" /etc/privance/env.d/restic.env /etc/privance/env.d/restic_password
-# Expected: two lines, each starting with "600 <deploy-user> <deploy-user>"
+cat /etc/privance/env.d/restic_password
+# Copy the printed value to the password manager as "Privance restic repo password",
+# then clear the terminal.
 ```
 
-### Step 4: Initialise the restic repository in B2
+### Step 3: Initialise the restic repository in B2
 
 One-shot; the scheduler never calls `init`.
 
 ```sh
-RESTIC_DR="docker run --rm --env-file /etc/privance/env.d/restic.env -v /etc/privance/env.d/restic_password:/run/secrets/restic_password:ro restic/restic:0.18.1"
+RESTIC_DR="docker run --rm --env-file /etc/privance/env.d/restic.env -v /etc/privance/env.d/restic_password:/run/secrets/restic_password:ro restic/restic:0.18.1@sha256:39d9072fb5651c80d75c7a811612eb60b4c06b32ffe87c2e9f3c7222e1797e76"
 
 $RESTIC_DR init
-# Expected: "created restic repository <repo-id> at b2:privance-backups-prod:/restic"
+# Expected: "created restic repository <repo-id> at b2:<your-bucket-name>:/restic"
 $RESTIC_DR snapshots
 # Expected: header "ID  Time  Host  Tags  Paths  Size", no data rows, exit 0
 $RESTIC_DR init
 # Expected: non-zero exit, stderr contains "config file already exists"
 ```
 
-### Step 5: Bring up the long-running scheduler
+### Step 4: Bring up the long-running scheduler
+
+Requires `COMPOSE_PROFILES=backups` in the deploy directory's `.env` (quickstart Step 2); without it compose does not know the service.
 
 ```sh
-docker compose -f compose.prod.yaml build restic-runner
 docker compose -f compose.prod.yaml up -d restic-runner
 docker compose -f compose.prod.yaml ps restic-runner
-# Expected: infra-restic-runner-1 State running, command `crond -f -l 8`
+# Expected: privance-restic-runner-1 with STATUS running and COMMAND `crond -f -l 8`
+# (compose.prod.yaml pins the project name to "privance")
 ```
 
 Cron runs `backup.sh` nightly at 03:30 UTC and `check.sh` Sundays at 04:00 UTC. On-demand:
@@ -416,7 +301,7 @@ Cron runs `backup.sh` nightly at 03:30 UTC and `check.sh` Sundays at 04:00 UTC. 
 docker compose -f compose.prod.yaml run --rm restic-runner /usr/local/bin/backup.sh
 ```
 
-### Step 6: Daily log-inspection habit
+### Step 5: Daily log-inspection habit
 
 ```sh
 docker compose -f compose.prod.yaml logs --tail=40 restic-runner
@@ -431,7 +316,7 @@ Problem signals:
 
 Skim weekly.
 
-### Step 7: Restore drill (in-place verification)
+### Step 6: Restore drill (in-place verification)
 
 Run after first bring-up and at least quarterly. Restores latest snapshot into a side database, diffs row counts vs production, drops it.
 
@@ -453,7 +338,7 @@ docker compose -f compose.prod.yaml exec postgres psql -U privance -d postgres \
 # 4. Stream snapshot through pg_restore
 docker compose -f compose.prod.yaml run --rm restic-runner sh -c '
   PGPASS=$(cat /run/secrets/postgres_password)
-  restic dump latest /privance.dump | PGPASSWORD="$PGPASS" pg_restore \
+  restic dump --tag db --tag nightly latest /privance.dump | PGPASSWORD="$PGPASS" pg_restore \
     --no-owner --no-acl --clean --if-exists \
     -h postgres -U privance -d privance_restore_test
 '
@@ -471,10 +356,12 @@ When active, `POST /api/auth/signup` requires a valid `invite_token`; missing, e
 
 ### Step 1: Enable the gate in production
 
+The quickstart `server.env` already sets `INVITE_REQUIRED=true`; skip this step if you followed it. To enable it on an instance where it was unset:
+
 ```sh
 echo 'INVITE_REQUIRED=true' >> /etc/privance/env.d/server.env
-docker compose -f infra/compose.prod.yaml restart server
-docker compose -f infra/compose.prod.yaml logs --tail=20 server
+docker compose -f compose.prod.yaml restart server
+docker compose -f compose.prod.yaml logs --tail=20 server
 ```
 
 Any value other than the string `"true"` keeps signup open.
@@ -482,7 +369,7 @@ Any value other than the string `"true"` keeps signup open.
 ### Step 2: Mint an invite token
 
 ```sh
-docker compose -f infra/compose.prod.yaml exec server bun dist/mint-invite.js --created-by ops
+docker compose -f compose.prod.yaml exec server bun dist/mint-invite.js --created-by ops
 ```
 
 Expected, in order: one JSON pino log line with `"tokenId":"..."` and `"createdBy":"ops"` (NOT the plaintext), then one plaintext line (43 base64url characters, no `=` padding). Exit 0.
@@ -490,7 +377,7 @@ Expected, in order: one JSON pino log line with `"tokenId":"..."` and `"createdB
 With expiry:
 
 ```sh
-docker compose -f infra/compose.prod.yaml exec server bun dist/mint-invite.js --created-by ops --expires-in 30d
+docker compose -f compose.prod.yaml exec server bun dist/mint-invite.js --created-by ops --expires-in 30d
 ```
 
 Duration suffix: `d`, `h`, `m`. The log line includes `"expiresAt":"<iso-timestamp>"`.
@@ -499,12 +386,12 @@ Note: if signup fails AFTER an invite token is claimed (rare: HIBP outage, uniqu
 
 ### Step 3: Safe handoff to the invitee
 
-Send via a single-use ephemeral channel (Signal disappearing messages, encrypted email, in-person). The DB stores only a hash; once terminal scrollback is cleared, the plaintext is unrecoverable.
+Copy the token, then clear the terminal before anything else (`clear`, or close the SSH session; in tmux/screen also clear the pane history). Send via a single-use ephemeral channel (Signal disappearing messages, encrypted email, in-person). The DB stores only a hash; once terminal scrollback is cleared, the plaintext is unrecoverable.
 
 ### Step 4: Verify mint and claim against the database
 
 ```sh
-docker compose -f infra/compose.prod.yaml exec postgres psql -U privance -d privance
+docker compose -f compose.prod.yaml exec postgres psql -U privance -d privance
 ```
 
 ```sql
@@ -521,42 +408,4 @@ After signup using the token, `used_at` is set and `used_by_user_id` references 
 
 ### Step 5: End-to-end verification (one-time)
 
-Sign up at `https://privance.app` in a real browser using a freshly minted plaintext token. Account is created; `invite_tokens.used_at` and `used_by_user_id` populate; `audit_events` contains `signup_succeeded` for the new user.
-
-## Updating an existing deployment
-
-Once the VPS is bootstrapped, shipping a new version is rsync the source and bundle, rebuild the server image on the VPS, run pending migrations, recreate the server container. Caddy needs no restart because `apps/web/out/` is a read-only bind mount.
-
-From the repo root on your workstation:
-
-```sh
-HOST=<vps-ssh-alias>
-
-pnpm -F @privance/web build
-
-rsync -avz --delete apps/web/out/ $HOST:~/privance/apps/web/out/
-
-rsync -avz --delete \
-  --exclude=node_modules --exclude=.next --exclude=out \
-  --exclude=test-results --exclude=playwright-report --exclude=coverage \
-  --exclude=apps/web/ios --exclude=apps/web/android \
-  --exclude=.git --exclude=secrets --exclude=.planning --exclude=.turbo \
-  ./ $HOST:~/privance/
-
-ssh $HOST 'cd ~/privance/infra && \
-  docker compose -f compose.prod.yaml build server && \
-  docker compose -f compose.prod.yaml up -d --no-deps server-migrate && \
-  docker compose -f compose.prod.yaml up -d --force-recreate --no-deps server'
-```
-
-Verify from your workstation:
-
-```sh
-curl -fsS https://privance.app/api/health
-# Expected: {"ok":true,...}
-
-curl -sI https://privance.app/ | awk -F': ' 'tolower($1)=="last-modified"'
-# Expected: last-modified within the last few minutes
-```
-
-The `server-migrate` job is a no-op when no new migrations are pending and exits cleanly. Schema changes that follow the expand-backfill-contract pattern can be shipped this way without downtime; single-deploy destructive migrations are not safe and must be split across two deploys.
+Sign up at `https://<your-domain>` in a real browser using a freshly minted plaintext token. Account is created; `invite_tokens.used_at` and `used_by_user_id` populate; `audit_events` contains `signup_succeeded` for the new user.

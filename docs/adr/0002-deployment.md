@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-05-23
+- **Amended:** 2026-06-05. Deploys moved from rsync + build-on-VPS to CI-built images pulled from GHCR; the Deploys row, the CI threat-surface consequence, and the push-deploy alternative reflect the amended model.
 
 ## Context
 
@@ -21,33 +22,33 @@ Constraints that shaped the deployment:
 
 | Layer | Choice |
 | ----- | ------ |
-| Host | Single Hetzner Cloud VPS (CPX21, EU region). |
+| Host | Single Hetzner Cloud VPS (small shared-vCPU SKU, EU region; current sizing table in `infra/hetzner-vps.md`). |
 | OS | Ubuntu LTS. SSH-key-only login as a non-root deploy user; root SSH disabled; firewall open on 22/tcp, 80/tcp, 443/tcp, 443/udp only. |
 | Runtime | Docker Compose stack: `server` (Bun, multi-stage Dockerfile, non-root uid 10001, digest-pinned `oven/bun` base) + `postgres` (Postgres 17, loopback-only) + `caddy` + `restic-runner` (cron sidecar). |
 | TLS + ingress | Caddy with Let's Encrypt; serves the Next.js static export at `/` and reverse-proxies `/api/*` to the server container; HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, CSP all set in `infra/Caddyfile`. |
 | DNS | Cloudflare, DNS-only (no proxy / orange cloud). A + AAAA records for apex + `www`. |
 | Secrets | `/etc/privance/env.d/` directory mode 700, owned by the deploy user. Postgres password as a Docker secret; restic password + Backblaze B2 keys + `ENUMERATION_SECRET` + `SIGNUP_ALLOWLIST` + `INVITE_REQUIRED` in env-d files mode 600. Nothing in the repo. |
 | Migrations | `server-migrate` one-shot Compose service runs `bun run db:migrate` before the API container accepts traffic. Failed migrations halt boot. |
-| Signup gating | Invite-only via the `InviteService` module. `INVITE_REQUIRED=true` enforced server-side; operator mints tokens via `docker compose -f infra/compose.prod.yaml exec server bun dist/mint-invite.js` on the VPS over SSH. Tokens are hashed at rest with SHA-256 and single-use via atomic UPDATE. |
+| Signup gating | Invite-only via the `InviteService` module. `INVITE_REQUIRED=true` enforced server-side; operator mints tokens via `docker compose -f compose.prod.yaml exec server bun dist/mint-invite.js` from the deploy directory on the VPS over SSH. Tokens are hashed at rest with SHA-256 and single-use via atomic UPDATE. |
 | Backups | Nightly `pg_dump --format=custom` piped to `restic backup --stdin-from-command`, encrypted and stored in Backblaze B2 (EU Central). Retention: 7 daily / 4 weekly / 6 monthly. Weekly structural `restic check`. In-place restore drill required during bring-up. |
 | PWA | Hand-rolled `apps/web/public/sw.js` (no Workbox dependency), manifest + icons in `public/`, registration via `ServiceWorkerRegistration.tsx` skipped in Capacitor builds. Cache strategy: cache-first for static assets, stale-while-revalidate-with-offline-fallback for navigation, pass-through for `/api/*` and cross-origin. |
-| Deploys | Manual: operator runs `rsync` from the local checkout to the VPS, then `docker compose -f infra/compose.prod.yaml up -d --build`. No CI runner has VPS credentials. |
+| Deploys | Operator-initiated, image-based: GitHub Actions builds and pushes versioned images to GHCR on `v*` tags; the operator runs `infra/deploy.sh <version>` from the workstation, which makes the VPS pull the pinned images and recreate containers. No CI runner has VPS credentials; CI holds only GHCR `packages: write`. |
 
 ## Consequences
 
 **Easier:**
 
 - One operator can fully understand the production surface. Compose file + Caddyfile + env-d directory + restic-runner is the entire moving-parts inventory.
-- A compromised CI runner cannot reach production because no CI runner has credentials. The cost is operator time on deploys; the benefit is one less attack surface.
+- A compromised CI runner cannot reach production directly: no CI runner has VPS credentials, and every deploy is operator-initiated. CI does hold GHCR `packages: write`, so a compromised runner could publish a tampered image; the mitigations are that deploys pull only operator-chosen version tags (never tracking a moving tag in production), the release workflow runs only repo-owned code on tag pushes, and the operator reviews what a tag contains before pushing it.
 - Restore drills are cheap to run because the same compose stack stands up identically on any host.
 - TLS auto-renewal is handled by Caddy; the operator never touches certificates manually.
 - Backups are restic-encrypted before they leave the VPS, so B2 sees only opaque blobs; even a B2 account compromise reveals no plaintext.
 
 **Harder:**
 
-- Manual deploys mean operator-typo risk during `rsync` and `docker compose up`. Mitigation: bring-up runbook in `infra/README.md` with the exact command sequence; a deploy drill before any significant rollout.
+- Operator-typed deploys still carry fat-finger risk. Mitigation: `infra/deploy.sh` wraps the whole sequence (tag check, release-workflow check, pull, recreate, health check) in one command; the bring-up runbook in `infra/README.md` covers the rest.
 - Single VPS has no failover. A Hetzner host outage means downtime until Hetzner recovers or the operator stands up a replacement from backups. Acceptable at current scale; revisit if uptime SLA changes.
-- Vertical-only scale ceiling. The CPX21 sizing handles low-hundreds of users; growth past that requires either a bigger box or a small architectural change (separate Postgres, CDN for the static export). Both reversible.
+- Vertical-only scale ceiling. The small-VPS sizing handles low-hundreds of users; growth past that requires either a bigger box or a small architectural change (separate Postgres, CDN for the static export). Both reversible.
 - The PWA + Capacitor distribution path means the operator must keep two ship surfaces in sync (web at privance.app + app-store binaries from the same static export). Mitigation: same build artefact, so divergence is bounded to native shells only.
 
 **Locked out of (until reversed):**
@@ -58,7 +59,7 @@ Constraints that shaped the deployment:
 
 **Reversal cost:**
 
-- Hetzner → another VPS provider (Linode, DigitalOcean, OVH): the entire stack is Compose, so it's a fresh `compose up -d --build` on the new host after restoring Postgres from B2. Hours of operator time, no data migration code.
+- Hetzner → another VPS provider (Linode, DigitalOcean, OVH): the entire stack is Compose pulling registry images, so it's a fresh `docker compose up -d` on the new host after restoring Postgres from B2. Hours of operator time, no data migration code.
 - Cloudflare → another DNS host: change the registrar's nameservers. Minutes of operator time. No code impact.
 - Caddy → another TLS terminator (nginx, Traefik): rewrite the Caddyfile. Hours of operator time; CSP + HSTS + reverse-proxy rules are well-understood patterns in any tool.
 - Backblaze B2 → another S3-compatible store (Wasabi, R2, native S3): rewrite the restic repository URL. The restic format is portable. Minutes of operator time + one fresh `restic init`.
@@ -74,6 +75,6 @@ Constraints that shaped the deployment:
 
 **S3 instead of Backblaze B2 for backups.** Rejected: B2 is cheaper at our restore-only access pattern (free egress for the first 3x of storage per month). The restic format works on either; choosing B2 is purely cost.
 
-**Push-deploy from a CI runner.** Rejected: manual deploys are slower but eliminate the "compromised CI runner pushes malicious code to prod" path. If push-deploy is revisited, it would require deploy-key scoping, deploy-from-tag-not-branch, and a two-person rule for `main` merges.
+**Push-deploy from a CI runner.** Rejected: manual deploys are slower but eliminate the "compromised CI runner pushes malicious code to prod" path. The amended model keeps this boundary: CI builds and publishes images to a registry (deploy-from-tag), but only the operator can make production pull them; CI never gains VPS credentials. If full push-deploy is revisited, it would require deploy-key scoping and a two-person rule for `main` merges.
 
 **A second VPS for warm standby.** Rejected at current scale. The B2 backups + in-place drill mean the recovery point is "last night" and the recovery time is "however long it takes to stand up a new compose stack and restore the latest snapshot." Revisit when user count justifies the second host.
