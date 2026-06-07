@@ -1,4 +1,10 @@
 export { decryptAead, encryptAead } from "./aead.js";
+export {
+  BIOMETRIC_PROTECTOR_KIND,
+  deriveBiometricKek,
+  openProtectorKey,
+  sealProtectorKey,
+} from "./biometric.js";
 export { equalBytes } from "./compare.js";
 export { deriveKey } from "./hkdf.js";
 export { generateItemsKey, unwrapItemsKey, wrapItemsKey } from "./items-key.js";
@@ -13,6 +19,7 @@ export { phraseToSeed, seedToPhrase, validatePhrase } from "./recovery.js";
 export type {
   AadFields,
   AuthHash,
+  BiometricKek,
   EncryptedBlob,
   ItemsKey,
   KEK,

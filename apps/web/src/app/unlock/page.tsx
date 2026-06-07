@@ -1,5 +1,6 @@
 "use client";
 
+import { deriveBiometricKek, type ItemsKey, openProtectorKey } from "@privance/core";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/Button";
@@ -9,6 +10,17 @@ import * as authApi from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { deriveLoginCrypto, unwrapDek } from "@/lib/auth-crypto";
 import { warmKdfWorker } from "@/lib/crypto/kdf";
+import {
+  assertPrf,
+  BiometricCancelledError,
+  isBiometricSupported,
+} from "@/lib/crypto/webauthn-prf";
+import {
+  loadEnrollment,
+  purgeEnrollment,
+  type UsableEnrollment,
+  unwrapItemsKeyRsa,
+} from "@/lib/storage/biometric-store";
 import { destroyUserStore } from "@/lib/storage/per-user-store";
 import { useHydrated } from "@/lib/use-hydrated";
 import { PASSWORD_MAX } from "@/lib/validation";
@@ -18,7 +30,7 @@ type KdfParamsResponse = Awaited<ReturnType<typeof authApi.kdfParams>>;
 
 export default function UnlockPage() {
   const router = useRouter();
-  const { unlock, logout, user } = useAuth();
+  const { state, unlock, logout, user } = useAuth();
   const username = user?.username ?? "";
 
   const [password, setPassword] = useState("");
@@ -28,6 +40,16 @@ export default function UnlockPage() {
   const hydrated = useHydrated();
   // Holds a prefetch of kdfParams so derivation can start sooner on submit.
   const kdfPrefetch = useRef<Promise<KdfParamsResponse | null> | null>(null);
+
+  // Biometric unlock: enrollment record present when the device is enrolled and cadence fresh.
+  // null = not enrolled or unsupported; undefined = still checking.
+  const [biometricRecord, setBiometricRecord] = useState<UsableEnrollment | null | undefined>(
+    undefined,
+  );
+  const [biometricPending, setBiometricPending] = useState(false);
+  // Enrolled devices lead with the biometric action; the password form stays
+  // one tap away (origin R7 requires the password path always reachable).
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
 
   // Session check runs in the background while the user types their password.
   // On a confirmed rejection it clears the locked marker before redirecting so
@@ -59,6 +81,80 @@ export default function UnlockPage() {
     kdfPrefetch.current = authApi.kdfParams(username).catch(() => null);
     warmKdfWorker();
   }, [username]);
+
+  // Gate on state === "locked" (not "loading") so userId is stable before we
+  // read the enrollment. loadEnrollment self-purges stale and mismatched records.
+  useEffect(() => {
+    if (state !== "locked") return;
+    let cancelled = false;
+    void (async () => {
+      const supported = await isBiometricSupported();
+      if (!supported || cancelled) {
+        if (!cancelled) setBiometricRecord(null);
+        return;
+      }
+      const userId = localStorage.getItem(USER_ID_KEY);
+      if (!userId) {
+        setBiometricRecord(null);
+        return;
+      }
+      const record = await loadEnrollment({ now: Date.now(), userId });
+      if (!cancelled) setBiometricRecord(record);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [state]);
+
+  async function handleBiometric() {
+    if (!biometricRecord) return;
+    setBiometricPending(true);
+    setBanner(undefined);
+    let pkcs8: Uint8Array | null = null;
+    try {
+      const prfOutput = await assertPrf({
+        credentialId: biometricRecord.credentialId,
+        salt: biometricRecord.salt,
+      });
+      const kek = deriveBiometricKek({ prfOutput, salt: biometricRecord.salt });
+      prfOutput.fill(0);
+      pkcs8 = openProtectorKey({
+        sealed: biometricRecord.sealedPrivateKey,
+        kek,
+        pubKeyBytes: biometricRecord.publicKeyBytes,
+        recordUuid: biometricRecord.recordUuid,
+      });
+      const itemsKey = await unwrapItemsKeyRsa({
+        wrappedItemsKey: biometricRecord.wrappedItemsKey,
+        pkcs8,
+        expectedRecordUuid: biometricRecord.recordUuid,
+      });
+      pkcs8.fill(0);
+      pkcs8 = null;
+      await unlock({
+        user: { userId: biometricRecord.userId, username: biometricRecord.username },
+        itemsKey: itemsKey as ItemsKey,
+        persistence: "biometric",
+      });
+      router.replace("/app/");
+    } catch (e) {
+      if (pkcs8 !== null) pkcs8.fill(0);
+      if (e instanceof BiometricCancelledError) {
+        // User dismissed; leave screen and enrollment intact.
+        setBiometricPending(false);
+        return;
+      }
+      // Tamper, credential mismatch, or any other failure: purge and direct to
+      // re-enroll. UI state first so a hung IDB purge cannot strand the screen.
+      setBiometricRecord(null);
+      setBanner(
+        "Biometric unlock failed. Unlock with your password and re-enable biometrics in settings.",
+      );
+      await purgeEnrollment();
+    } finally {
+      setBiometricPending(false);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -122,6 +218,7 @@ export default function UnlockPage() {
     // erase the per-user ciphertext file directly before clearing the session.
     const userId = localStorage.getItem(USER_ID_KEY);
     if (userId !== null) await destroyUserStore(userId);
+    await purgeEnrollment();
     await logout();
     window.location.replace("/auth/login/");
   }
@@ -161,24 +258,51 @@ export default function UnlockPage() {
           </div>
         )}
 
-        <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-6" noValidate>
-          <Input
-            label="Master password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            maxLength={PASSWORD_MAX}
-            autoFocus
-            error={credError}
-          />
-
-          <Button type="submit" loading={pending} disabled={!hydrated} className="w-full mt-2">
-            {pending ? "Unlocking…" : "Unlock"}
+        {biometricRecord && (
+          <Button
+            type="button"
+            variant={showPasswordForm ? "secondary" : "primary"}
+            loading={biometricPending}
+            disabled={!hydrated}
+            onClick={() => void handleBiometric()}
+            className="w-full"
+          >
+            {biometricPending ? "Verifying…" : "Unlock with biometrics"}
           </Button>
-        </form>
+        )}
 
-        <p className="text-center font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
+        {(biometricRecord === null || showPasswordForm) && (
+          <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-6" noValidate>
+            <Input
+              label="Master password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              maxLength={PASSWORD_MAX}
+              autoFocus
+              error={credError}
+            />
+
+            <Button type="submit" loading={pending} disabled={!hydrated} className="w-full mt-2">
+              {pending ? "Unlocking…" : "Unlock"}
+            </Button>
+          </form>
+        )}
+
+        {biometricRecord && !showPasswordForm && (
+          <p className="text-center font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
+            <button
+              type="button"
+              onClick={() => setShowPasswordForm(true)}
+              className="inline-block py-3 px-2 -my-3 -mx-2 hover:text-app-text transition-colors cursor-pointer focus-visible:outline-none focus-visible:text-gold-accent"
+            >
+              Use master password instead
+            </button>
+          </p>
+        )}
+
+        <p className="mt-4 text-center font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim opacity-60">
           <button
             type="button"
             onClick={() => void handleSignOut()}

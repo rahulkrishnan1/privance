@@ -1,5 +1,6 @@
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
+import { BASE_URL } from "../../../playwright/ports";
 
 export type SignupResult = {
   phrase: string;
@@ -75,7 +76,7 @@ export async function loginAndCapture(
   browser: Browser,
   opts: { username: string; password: string },
 ): Promise<SessionSnapshot> {
-  const ctx = await browser.newContext({ baseURL: "http://localhost:8081" });
+  const ctx = await browser.newContext({ baseURL: BASE_URL });
   const page = await ctx.newPage();
 
   const waitForDek = await installDekCapture(page);
@@ -161,7 +162,7 @@ export async function signupAndLogin(
   opts: { username: string; password: string },
 ): Promise<{ phrase: string; session: SessionSnapshot }> {
   // Step 1: Signup to create the account (phrase only, no session needed)
-  const signupCtx = await browser.newContext({ baseURL: "http://localhost:8081" });
+  const signupCtx = await browser.newContext({ baseURL: BASE_URL });
   const signupPage = await signupCtx.newPage();
 
   await signupPage.goto("/auth/signup/");

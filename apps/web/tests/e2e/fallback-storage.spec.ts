@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { BASE_URL } from "../../playwright/ports";
 import { expect, test } from "./fixtures/persistent-webkit";
 
 const LOCAL_WORKER = path.join(__dirname, "..", "..", "public", "sqlite", "privance-worker.mjs");
@@ -94,7 +95,7 @@ test.describe("Storage fallback", () => {
     const browser = persistentPage.context().browser();
     test.skip(browser?.browserType().name() !== "webkit", "webkit-only ephemeral fallback test");
     if (browser === null) throw new Error("browser handle missing on persistent context");
-    const ctx = await browser.newContext({ baseURL: "http://localhost:8081" });
+    const ctx = await browser.newContext({ baseURL: BASE_URL });
     const page = await ctx.newPage();
     await loadLocalWorker(page);
     await page.goto("/auth/login/", { waitUntil: "load" });

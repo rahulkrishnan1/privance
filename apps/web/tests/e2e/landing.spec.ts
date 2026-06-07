@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 import type { Fixtures } from "../../playwright/global-setup";
+import { BASE_URL } from "../../playwright/ports";
 import { loginAndCapture, restoreSession } from "./helpers/auth";
 
 function loadFixtures(): Fixtures {
@@ -42,7 +43,7 @@ test.describe("landing page", () => {
       password: sharedUser.password,
     });
 
-    const ctx = await browser.newContext({ baseURL: "http://localhost:8081" });
+    const ctx = await browser.newContext({ baseURL: BASE_URL });
     const page = await ctx.newPage();
     await restoreSession(page, session);
 

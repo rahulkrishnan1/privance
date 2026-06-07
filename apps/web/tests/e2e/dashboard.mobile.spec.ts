@@ -1,3 +1,4 @@
+import { BASE_URL } from "../../playwright/ports";
 /**
  * Dashboard on the mobile UI.
  *
@@ -41,7 +42,7 @@ test.describe("dashboard mobile", () => {
       password: duplicateUser.password,
     });
 
-    const ctx = await browser.newContext({ baseURL: "http://localhost:8081" });
+    const ctx = await browser.newContext({ baseURL: BASE_URL });
     const page = await ctx.newPage();
     await restoreSession(page, savedSession);
     await page.goto("/app/accounts/");

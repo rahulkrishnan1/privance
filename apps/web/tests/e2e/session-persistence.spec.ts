@@ -3,6 +3,7 @@ import path from "node:path";
 import type { BrowserContext, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import type { Fixtures } from "../../playwright/global-setup";
+import { BASE_URL } from "../../playwright/ports";
 
 function loadFixtures(): Fixtures {
   const p = path.join(__dirname, "../../.playwright-fixtures.json");
@@ -135,7 +136,7 @@ test.describe("session persistence + auto-lock", () => {
 
   test("an installed PWA locks when relaunched, but survives a refresh", async ({ browser }) => {
     const { duplicateUser } = loadFixtures();
-    const ctx = await browser.newContext({ baseURL: "http://localhost:8081" });
+    const ctx = await browser.newContext({ baseURL: BASE_URL });
     // In a real PWA storage persists across a close, so a cold launch must
     // re-lock rather than auto-unlock within the window.
     await emulateStandalonePwa(ctx);
@@ -170,7 +171,7 @@ test.describe("session persistence + auto-lock", () => {
     browser,
   }) => {
     const { duplicateUser } = loadFixtures();
-    const ctx = await browser.newContext({ baseURL: "http://localhost:8081" });
+    const ctx = await browser.newContext({ baseURL: BASE_URL });
 
     // A cold launch makes auth-context clear the vault and resolve to "locked".
     await emulateStandalonePwa(ctx);
@@ -219,7 +220,7 @@ test.describe("session persistence + auto-lock", () => {
 
   test("locking one tab locks the others", async ({ browser }) => {
     const { duplicateUser } = loadFixtures();
-    const ctx = await browser.newContext({ baseURL: "http://localhost:8081" });
+    const ctx = await browser.newContext({ baseURL: BASE_URL });
 
     const tab1 = await ctx.newPage();
     await tab1.goto("/auth/login/");

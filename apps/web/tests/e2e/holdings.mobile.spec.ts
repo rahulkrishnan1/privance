@@ -1,3 +1,4 @@
+import { BASE_URL } from "../../playwright/ports";
 /**
  * Holdings mobile tap targets.
  *
@@ -41,7 +42,7 @@ test.describe("holdings mobile", () => {
       password: sharedUser.password,
     });
 
-    const ctx = await browser.newContext({ baseURL: "http://localhost:8081" });
+    const ctx = await browser.newContext({ baseURL: BASE_URL });
     const page = await ctx.newPage();
     await restoreSession(page, savedSession);
 

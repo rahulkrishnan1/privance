@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 import type { Fixtures } from "../../playwright/global-setup";
+import { BASE_URL } from "../../playwright/ports";
 import type { SessionSnapshot } from "./helpers/auth";
 import {
   acknowledgePhrase,
@@ -54,7 +55,7 @@ test.describe("auth — sign up", () => {
     // can inject the DEK and actually reach the dashboard.
     const { session } = await signupAndLogin(browser, { username, password: PASS });
 
-    const ctx = await browser.newContext({ baseURL: "http://localhost:8081" });
+    const ctx = await browser.newContext({ baseURL: BASE_URL });
     const page = await ctx.newPage();
     await restoreSession(page, session);
 
@@ -73,7 +74,7 @@ test.describe("auth — sign up", () => {
 
 test.describe("auth — login", () => {
   test("logs in with valid credentials and reaches the dashboard", async ({ browser }) => {
-    const ctx = await browser.newContext({ baseURL: "http://localhost:8081" });
+    const ctx = await browser.newContext({ baseURL: BASE_URL });
     const page = await ctx.newPage();
     await restoreSession(page, sharedSession);
 
@@ -128,7 +129,7 @@ test.describe("auth — account recovery", () => {
     const newPass = "Privance-e2e-recovery-new-2026!";
 
     // Step 1: signup to get the phrase
-    const signupCtx = await browser.newContext({ baseURL: "http://localhost:8081" });
+    const signupCtx = await browser.newContext({ baseURL: BASE_URL });
     const signupPage = await signupCtx.newPage();
     await signupPage.goto("/auth/signup/");
     await signupPage.getByLabel("Username").fill(username);
@@ -146,7 +147,7 @@ test.describe("auth — account recovery", () => {
     await signupCtx.close();
 
     // Step 2: recover using the captured phrase
-    const recoveryCtx = await browser.newContext({ baseURL: "http://localhost:8081" });
+    const recoveryCtx = await browser.newContext({ baseURL: BASE_URL });
     const recoveryPage = await recoveryCtx.newPage();
     const { newPhrase } = await recover(recoveryPage, { username, phrase, newPassword: newPass });
     await recoveryCtx.close();
@@ -161,7 +162,7 @@ test.describe("auth — account recovery", () => {
       password: newPass,
     });
 
-    const verifyCtx = await browser.newContext({ baseURL: "http://localhost:8081" });
+    const verifyCtx = await browser.newContext({ baseURL: BASE_URL });
     const verifyPage = await verifyCtx.newPage();
     await restoreSession(verifyPage, loginSession);
     await verifyPage.goto("/app/");
@@ -181,7 +182,7 @@ test.describe("auth — logout", () => {
   test("logs out clears DEK and redirects to login", async ({ browser }) => {
     // Use the shared session snapshot — restoreSession injects both cookies and
     // DEK, so the dashboard renders without an extra login.
-    const ctx = await browser.newContext({ baseURL: "http://localhost:8081" });
+    const ctx = await browser.newContext({ baseURL: BASE_URL });
     const page = await ctx.newPage();
     await restoreSession(page, sharedSession);
 
@@ -202,7 +203,7 @@ test.describe("auth — logout", () => {
     // We use a fresh context rather than re-navigating in the same page because
     // addInitScript (installed by restoreSession) re-injects the DEK on every
     // navigation within a page's lifetime — the fresh context has no such script.
-    const freshCtx = await browser.newContext({ baseURL: "http://localhost:8081" });
+    const freshCtx = await browser.newContext({ baseURL: BASE_URL });
     const freshPage = await freshCtx.newPage();
     await freshPage.goto("/app/");
     await expect(freshPage).toHaveURL(/\/auth\/login/, { timeout: 15_000 });
@@ -238,7 +239,7 @@ test.describe("auth — protected route redirects", () => {
     // Open a new context with the session cookie but *without* the DEK.
     // AuthProvider initialises as "unauthenticated" (no DEK in globalThis).
     // The unlock page checks the server session independently of the DEK.
-    const ctx = await browser.newContext({ baseURL: "http://localhost:8081" });
+    const ctx = await browser.newContext({ baseURL: BASE_URL });
     await ctx.addCookies(snapshot.cookies);
     const page = await ctx.newPage();
 
