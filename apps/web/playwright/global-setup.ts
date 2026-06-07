@@ -3,6 +3,7 @@ import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { chromium } from "@playwright/test";
 import postgres from "postgres";
+import { BASE_URL } from "./ports";
 
 /**
  * Global setup: pre-creates fixture users that most tests reuse.
@@ -28,7 +29,6 @@ import postgres from "postgres";
  */
 
 const FIXTURES_PATH = path.join(__dirname, "../.playwright-fixtures.json");
-const BASE_URL = "http://localhost:8081";
 const PASSWORD = "Privance-e2e-passphrase-2026!";
 const DATABASE_URL =
   process.env.DATABASE_URL ?? "postgres://privance:privance@localhost:5432/privance";
@@ -65,6 +65,8 @@ export type Fixtures = {
   sharedUser: { username: string; password: string };
   duplicateUser: { username: string; password: string };
   recoveryUser: { username: string; password: string; phrase: string };
+  bioUser: { username: string; password: string };
+  bioAltUser: { username: string; password: string };
 };
 
 async function signupUser(
@@ -111,14 +113,24 @@ export default async function globalSetup(): Promise<void> {
   // 3-per-minute signup rate limit. CI never has the file (it's gitignored).
   if (process.env.FORCE_SETUP !== "1" && fs.existsSync(FIXTURES_PATH)) {
     const fixtures = JSON.parse(fs.readFileSync(FIXTURES_PATH, "utf8")) as Fixtures;
-    // biome-ignore lint/suspicious/noConsole: progress output during Playwright global setup
-    console.log("[global-setup] Reusing fixtures; wiping their sync data for a clean run");
-    await resetFixtureData([
-      fixtures.sharedUser.username,
-      fixtures.duplicateUser.username,
-      fixtures.recoveryUser.username,
-    ]);
-    return;
+    // If the file predates the bioUser addition, treat it as stale and recreate.
+    if (!fixtures.bioUser) {
+      // biome-ignore lint/suspicious/noConsole: progress output during Playwright global setup
+      console.log("[global-setup] Stale fixtures (missing bioUser); recreating…");
+      fs.unlinkSync(FIXTURES_PATH);
+      // Fall through to the creation path below.
+    } else {
+      // biome-ignore lint/suspicious/noConsole: progress output during Playwright global setup
+      console.log("[global-setup] Reusing fixtures; wiping their sync data for a clean run");
+      await resetFixtureData([
+        fixtures.sharedUser.username,
+        fixtures.duplicateUser.username,
+        fixtures.recoveryUser.username,
+        fixtures.bioUser.username,
+        fixtures.bioAltUser.username,
+      ]);
+      return;
+    }
   }
 
   const run = Date.now().toString(36);
@@ -128,6 +140,8 @@ export default async function globalSetup(): Promise<void> {
   const sharedUsername = `shared-${run}`;
   const duplicateUsername = `dup-${run}`;
   const recoveryUsername = `recovery-${run}`;
+  const bioUsername = `bio-${run}`;
+  const bioAltUsername = `bioalt-${run}`;
 
   // biome-ignore lint/suspicious/noConsole: progress output during Playwright global setup
   console.log("[global-setup] Creating fixture users (3 signups)…");
@@ -147,12 +161,29 @@ export default async function globalSetup(): Promise<void> {
   // biome-ignore lint/suspicious/noConsole: progress output during Playwright global setup
   console.log("[global-setup] Created recovery user:", recoveryUsername);
 
+  // Sleep 61 s to clear the 3-per-minute rate-limit window before the next batch.
+  // biome-ignore lint/suspicious/noConsole: progress output during Playwright global setup
+  console.log("[global-setup] Waiting 61 s for rate-limit window to clear (bio batch)…");
+  await sleep(61_000);
+
+  // Signup 4: biometric test primary user
+  await signupUser(browser, bioUsername, PASSWORD);
+  // biome-ignore lint/suspicious/noConsole: progress output during Playwright global setup
+  console.log("[global-setup] Created bio user:", bioUsername);
+
+  // Signup 5: biometric test alternate user (cross-user guard)
+  await signupUser(browser, bioAltUsername, PASSWORD);
+  // biome-ignore lint/suspicious/noConsole: progress output during Playwright global setup
+  console.log("[global-setup] Created bio-alt user:", bioAltUsername);
+
   await browser.close();
 
   const fixtures: Fixtures = {
     sharedUser: { username: sharedUsername, password: PASSWORD },
     duplicateUser: { username: duplicateUsername, password: PASSWORD },
     recoveryUser: { username: recoveryUsername, password: PASSWORD, phrase: recoveryPhrase },
+    bioUser: { username: bioUsername, password: PASSWORD },
+    bioAltUser: { username: bioAltUsername, password: PASSWORD },
   };
   fs.writeFileSync(FIXTURES_PATH, JSON.stringify(fixtures, null, 2));
   // biome-ignore lint/suspicious/noConsole: progress output during Playwright global setup

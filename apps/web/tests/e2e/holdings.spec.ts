@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 import type { Fixtures } from "../../playwright/global-setup";
+import { BASE_URL } from "../../playwright/ports";
 import type { SessionSnapshot } from "./helpers/auth";
 import { loginAndCapture, restoreSession } from "./helpers/auth";
 
@@ -59,7 +60,7 @@ test.describe("holdings", () => {
 
     // Create the investment account using a fresh page that has the DEK injected.
     if (!investmentAccountCreated) {
-      const ctx = await browser.newContext({ baseURL: "http://localhost:8081" });
+      const ctx = await browser.newContext({ baseURL: BASE_URL });
       const page = await ctx.newPage();
       await restoreSession(page, savedSession);
 

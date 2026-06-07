@@ -1,5 +1,6 @@
 import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
+import { BASE_URL, SERVER_PORT, SERVER_URL, WEB_PORT } from "./playwright/ports";
 
 // Read env from server/.env for spawning the bun server
 const serverEnv: Record<string, string> = {
@@ -10,7 +11,7 @@ const serverEnv: Record<string, string> = {
     process.env.ENUMERATION_SECRET ??
     "8iAent0DybGgc5dgpHF4IFfLWC0pViapd+5sO9i3OeDGfRTNwwkhfc6xxlITfpoL",
   SIGNUP_ALLOWLIST: "",
-  ALLOWED_ORIGINS: "http://localhost:8081",
+  ALLOWED_ORIGINS: BASE_URL,
   // Reusing a few fixture users across many specs and five projects from one IP
   // would trip the production login caps; lift them for the E2E backend only.
   // Signup stays capped (the suite budgets signups via global-setup's cooldown).
@@ -74,7 +75,7 @@ export default defineConfig({
   reporter: process.env.CI ? "github" : "list",
 
   use: {
-    baseURL: "http://localhost:8081",
+    baseURL: BASE_URL,
 
     // Capture artefacts on failure only
     trace: "on-first-retry",
@@ -122,20 +123,20 @@ export default defineConfig({
       // Bun API server
       command: `bun run src/index.ts`,
       cwd: path.join(MONOREPO_ROOT, "server"),
-      url: "http://localhost:3000/api/auth/session",
+      url: `${SERVER_URL}/api/auth/session`,
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
-      env: serverEnv,
+      env: { ...serverEnv, PORT: String(SERVER_PORT) },
     },
     {
       // Next.js dev server
-      command: "pnpm dev",
+      command: `pnpm exec next dev --webpack --port ${WEB_PORT}`,
       cwd: __dirname,
-      url: "http://localhost:8081",
+      url: BASE_URL,
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
       env: {
-        NEXT_PUBLIC_SERVER_URL: "http://localhost:3000",
+        NEXT_PUBLIC_SERVER_URL: SERVER_URL,
       },
     },
   ],

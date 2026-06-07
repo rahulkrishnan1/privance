@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`deriveBiometricKek, determinism > snapshot vector: fixed PRF input and salt produce expected hex 1`] = `"92ea46c3289fef7db8f50aad30d41ee8f060520b4180bf3738db077d6c473f96"`;

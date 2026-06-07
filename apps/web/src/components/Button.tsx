@@ -44,6 +44,7 @@ export function Button({
     <button
       {...rest}
       disabled={isDisabled}
+      aria-busy={loading}
       className={[
         "inline-flex items-center justify-center rounded-full font-medium tracking-tight",
         "transition-colors duration-150",

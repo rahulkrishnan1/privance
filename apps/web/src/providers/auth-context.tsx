@@ -4,6 +4,7 @@ import type { ItemsKey } from "@privance/core";
 import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { resetPricesCache } from "@/lib/queries/prices";
+import { purgeEnrollment, reArm } from "@/lib/storage/biometric-store";
 import {
   clearSession,
   loadSession,
@@ -326,7 +327,11 @@ export function AuthProvider({
     if (payload.user.userId !== undefined) {
       localStorage.setItem(USER_ID_KEY, payload.user.userId);
     }
-    await persistSession(payload.itemsKey, Date.now());
+    const now = Date.now();
+    await persistSession(payload.itemsKey, now);
+    if (payload.user.userId !== undefined) {
+      await reArm({ itemsKey: payload.itemsKey, userId: payload.user.userId, now });
+    }
     setUser(payload.user);
     setPersistence(payload.persistence);
     resetPricesCache();
@@ -339,7 +344,12 @@ export function AuthProvider({
     if (payload.user.userId !== undefined) {
       localStorage.setItem(USER_ID_KEY, payload.user.userId);
     }
-    await persistSession(payload.itemsKey, Date.now());
+    const now = Date.now();
+    await persistSession(payload.itemsKey, now);
+    // A biometric unlock never extends its own cadence; only password-derived unlocks re-arm.
+    if (payload.persistence !== "biometric" && payload.user.userId !== undefined) {
+      await reArm({ itemsKey: payload.itemsKey, userId: payload.user.userId, now });
+    }
     setUser(payload.user);
     setPersistence(payload.persistence);
     setState("unlocked");
@@ -387,6 +397,10 @@ export function AuthProvider({
   const logout = useCallback(async () => {
     await runLogoutCleanups();
     await clearSession();
+    // Purge before finishLogout removes USERNAME_KEY and broadcasts to sibling
+    // tabs, so they reload into an already-purged state. Any future DEK-rotation
+    // flow must also purge here.
+    await purgeEnrollment();
     finishLogout();
   }, [runLogoutCleanups, finishLogout]);
 

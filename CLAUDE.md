@@ -102,7 +102,7 @@ apps/web/src/features/<feature>/   # reference: apps/web/src/features/accounts/
 
 - HKDF labels are **frozen**: `finance/auth-v1`, `finance/kek-v1`, `finance/recovery-v1`. Bumping = migration, not a code change.
 - Argon2id params are versioned in stored hashes. Param bumps follow expand/contract.
-- AEAD AAD = `{recordUuid, kind, labelVersion, kdfParamVersion}`, prevents record-swap, cross-kind, and downgrade.
+- AEAD AAD = `{recordUuid, kind, labelVersion, kdfParamVersion}`, prevents record-swap, cross-kind, and downgrade. `biometric_protector` records additionally carry `pubKeyDigest` (SHA-256 of the stored protector public key) in the AAD; no other kind uses it.
 - DEK lives in JS memory only via `globalThis[Symbol.for("privance.dekStore.v1")]`. Cleared on tab close and on auto-lock; refresh = re-auth. This is the zero-knowledge tradeoff; don't try to "fix" it by persisting the DEK.
 - Constant-time compare via `equalBytes` (`@noble/ciphers/utils`).
 - HIBP check on signup, fail-closed on timeout: surface a clear error rather than silently allowing a potentially breached password.

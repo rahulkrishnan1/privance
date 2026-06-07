@@ -5,6 +5,7 @@ export type Branded<T, Brand> = T & { readonly [_brand]: Brand };
 export type StretchedMasterKey = Branded<Uint8Array, "StretchedMasterKey">;
 export type AuthHash = Branded<Uint8Array, "AuthHash">;
 export type KEK = Branded<Uint8Array, "KEK">;
+export type BiometricKek = Branded<Uint8Array, "BiometricKek">;
 export type RecoverySeed = Branded<Uint8Array, "RecoverySeed">;
 export type ItemsKey = Branded<Uint8Array, "ItemsKey">;
 export type Nonce = Branded<Uint8Array, "Nonce">;
@@ -53,6 +54,10 @@ export type AadFields = {
   kind: string;
   labelVersion: number;
   kdfParamVersion: number;
+  /** SHA-256 hex digest of the associated public key bytes. Present only for
+   *  biometric_protector records; binding the public key into the AAD means a
+   *  swapped public key breaks the next unseal deterministically. */
+  pubKeyDigest?: string;
 };
 
 export type EncryptedBlob = {

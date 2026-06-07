@@ -27,7 +27,7 @@ Store the username (non-secret) in `localStorage` so the unlock screen is pre-fi
 
 Use only universally supported primitives (IndexedDB, non-extractable WebCrypto keys, the navigation type, and timers), so the behavior is identical on every browser engine and in the installed PWA. Private browsing needs no special code: the browser wipes storage on close (instant lock) and survive-refresh degrades to same-tab-reload only.
 
-Biometric unlock (WebAuthn PRF) is out of scope here and will be its own ADR; this phase ships master-password unlock only.
+Biometric unlock (WebAuthn PRF) is out of scope here and is decided in ADR-0005; this phase ships master-password unlock only.
 
 ## Consequences
 

@@ -5,13 +5,16 @@ import type { AadFields, EncryptedBlob, Nonce } from "./types.js";
 import { DecryptionError } from "./types.js";
 
 function buildAad(fields: AadFields): Uint8Array {
-  const json = JSON.stringify({
+  const base: Record<string, unknown> = {
     recordUuid: fields.recordUuid,
     kind: fields.kind,
     labelVersion: fields.labelVersion,
     kdfParamVersion: fields.kdfParamVersion,
-  });
-  return utf8ToBytes(json);
+  };
+  if (fields.pubKeyDigest !== undefined) {
+    base.pubKeyDigest = fields.pubKeyDigest;
+  }
+  return utf8ToBytes(JSON.stringify(base));
 }
 
 export function encryptAead(opts: {
