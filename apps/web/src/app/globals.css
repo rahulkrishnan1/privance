@@ -87,3 +87,13 @@ html {
 .reveal-fade {
   animation: reveal-fade 1.2s ease-out both;
 }
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .reveal-up,
+  .reveal-fade {
+    animation: none;
+    opacity: 1;
+  }
+}

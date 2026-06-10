@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "Privance · personal finance, encrypted on your device",
+  title: "Privance",
   description:
     "A self-hostable, zero-knowledge personal finance app. Your money, your math. The server never sees your data.",
   openGraph: {
