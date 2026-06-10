@@ -1,60 +1,54 @@
+# Dependencies & build output
 node_modules/
 dist/
 build/
-.turbo/
-.next/
 out/
+.next/
+.turbo/
+*.tsbuildinfo
+*.tgz
+.pnpm-store/
+apps/web/public/sim/
 apps/web/ios/App/Pods/
 apps/web/android/app/build/
 apps/web/android/.gradle/
 
-*.log
-*.tsbuildinfo
-
+# Env & secrets
 .env
 .env.local
 .env.*.local
 !.env.example
-
 /secrets/*
 !/secrets/.gitkeep
 
+# Test output
 coverage/
 .nyc_output/
+.playwright-mcp/
 
+# Logs
+*.log
+
+# Editor & OS
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 
+# Local-only, never committed
 .claude/settings.local.json
-
-# AI working artifacts, plans, scratch, research outputs.
-# Decisions worth keeping flow into docs/decisions/ as ADRs.
-.plans/
-.planning/
 .claude/plans/
 .claude/scratch/
+.compound-engineering/
+.plans/
+.planning/
 .superpowers/
 scratch/
+.worktrees/
 TODO.local.md
 NOTES.local.md
-
-*.tgz
-.pnpm-store/
-.playwright-mcp/
-
-# Local Docker Compose override file used during operator smoke tests.
-# The committed compose.prod.yaml is the source of truth; overrides stay local.
 infra/compose.override.yaml
 infra/compose.override.yml
-
-# Generated simulation worker bundle (produced by scripts/build-sim-worker.mjs).
-# Unlike public/kdf and public/sqlite which are vendored/hand-written and
-# committed, public/sim is built from core source at build time.
-apps/web/public/sim/
-
-# Local planning docs, never committed (lasting decisions become ADRs in docs/adr/).
 docs/plans/
 docs/brainstorms/
 docs/ideation/

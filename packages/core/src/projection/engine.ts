@@ -239,10 +239,8 @@ function runMonteCarlo(
     for (let y = 0; y < horizon; y++) {
       const z = normalSample(rng);
       // mu/sigma already encode the allocation blend (presets derive them from
-      // the weight-blended dataset series; advanced mode overrides them
-      // directly). stockWeightForYear drives replay; per-year MC parameters
-      // are the v2 glide-path extension point. Clamp at -100%: an unlevered
-      // portfolio cannot lose more than everything.
+      // the weight-blended dataset; advanced mode overrides them). Clamp the
+      // draw at -100%: an unlevered portfolio cannot lose more than everything.
       const draw = mu + sigma * z;
       returns.push(draw < -1 ? -1 : draw);
     }

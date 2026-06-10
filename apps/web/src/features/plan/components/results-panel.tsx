@@ -51,10 +51,9 @@ export function ResultsPanel({
   hideLevers = false,
 }: ResultsPanelProps) {
   const { mc, replay } = result;
-  // Off-track: the confidence numbers measure "money never depletes", which is
-  // trivially ~100% when you never retire. Showing them would contradict the
-  // headline, so surface the gap instead. Milestones and levers stay -- they
-  // show how far the plan gets and what would close the gap.
+  // Off-track: the confidence numbers measure "money never depletes", trivially
+  // ~100% when you never retire, so they would contradict the headline. Surface
+  // the gap instead; milestones and levers stay to show what would close it.
   const neverFi = isNeverFiState(mc.medianFireAge, input.planUntilAge, mc.neverFiFraction);
 
   return (
