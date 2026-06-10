@@ -10,6 +10,7 @@ export type HoldingGroupId = Branded<string, "HoldingGroupId">;
 export type PriceId = Branded<string, "PriceId">;
 export type NetWorthSnapshotId = Branded<string, "NetWorthSnapshotId">;
 export type ActivityId = Branded<string, "ActivityId">;
+export type PlanId = Branded<string, "PlanId">;
 
 /** ISO-8601 date string (YYYY-MM-DD). */
 export type IsoDate = Branded<string, "IsoDate">;

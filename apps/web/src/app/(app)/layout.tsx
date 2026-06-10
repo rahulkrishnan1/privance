@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Settings, TrendingUp, Wallet } from "lucide-react";
+import { BarChart3, Settings, Target, TrendingUp, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
@@ -20,6 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/app", Icon: BarChart3 },
   { label: "Accounts", href: "/app/accounts", Icon: Wallet },
   { label: "Holdings", href: "/app/holdings", Icon: TrendingUp },
+  { label: "Plan", href: "/app/plan", Icon: Target },
   { label: "Settings", href: "/app/settings", Icon: Settings },
 ];
 
@@ -177,7 +178,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     <div className="dark min-h-svh bg-app-bg text-app-text">
       <TopBar onLock={lock} onLogout={handleLogout} />
       <MobileHeader />
-      <main className="pb-16 md:pb-0">{children}</main>
+      {/* Clear the fixed bottom tab bar (min-h-14) plus the iOS home-indicator
+          safe area, so the last content (e.g. the projection chart's age axis)
+          is never hidden behind the nav. */}
+      <main className="[padding-bottom:calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+        {children}
+      </main>
       <BottomTabBar />
     </div>
   );

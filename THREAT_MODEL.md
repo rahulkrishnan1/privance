@@ -108,10 +108,19 @@ This document covers the assets Privance protects, the actors that might threate
 |---|---|---|---|
 | Malicious npm package | Dependency compromise | `pnpm audit` in CI and pre-push hook; exact-pinned versions in the lockfile | Zero-day in a pinned package before audit catches it |
 | Compromised build pipeline | CI system compromise | _Planned:_ deterministic builds and artifact signing (not yet implemented) | Build-time injection is an acknowledged gap |
+| Bundled returns dataset tampering | Modified upstream source at regeneration time, or dataset module edited in-repo | Generation script pins the source URL; recorded SHA-256 hash verified at core build and at sim-worker bundling, failing the build on mismatch; Damodaran series cross-checks 1928 onward and spot-check tests pin known Shiller years | A commit that changes the dataset and its recorded hash together passes the gate; the cross-check and spot tests are the secondary control. Skewed data biases projections, it cannot exfiltrate anything |
 
 ### 3.9 Operational bound
 
 The zero-knowledge guarantee protects data **at rest**. Server-side records are ciphertext only and a database or filesystem grab reveals only ciphertext, salts, hashed session and invite tokens, and audit-event metadata. The guarantee does NOT extend to a user's NEXT interaction with a compromised host: the browser executes whatever JS the host serves, so an attacker with control of the served bundle can exfiltrate the master password on the next login. Native Capacitor builds reduce this risk because the JS is bundled into the signed app-store binary instead of fetched per session.
+
+### 3.10 Plan record and sim worker
+
+| Threat | Vector | Mitigation | Residual risk |
+|---|---|---|---|
+| Plaintext sim inputs observed in transit to the worker | `postMessage` to the same-origin sim worker (`/sim/sim-worker.mjs`) read by a malicious extension or XSS | The worker receives no key material (no DEK, no ciphertext); inputs are already-decrypted values the page itself holds | Same as 3.9: a same-origin script compromise reads the same data from the UI directly; the worker adds no new exposure class |
+| PRNG seed exposure | Seed stored inside the encrypted plan payload; accidental logging | Seed is decrypted user data and falls under the existing never-log contract (CLAUDE.md); it carries no key material, but exposure would reveal that a given simulation output corresponds to the user's saved inputs | None beyond the no-logging contract; the seed is a reproducibility aid, not a secret key |
+| Singleton metadata | The plan record uses a deterministic object id, so its presence (and tombstone after deletion) is identifiable among sync rows | Same metadata class the server already sees for every record kind (3.4): kind and id, never contents | Server learns whether a user has (or once had) a plan; accepted, consistent with 3.4 |
 
 ---
 

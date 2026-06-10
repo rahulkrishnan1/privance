@@ -2,17 +2,18 @@
 
 import { useMemo, useState } from "react";
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+import { formatYAxisTick, niceCeil } from "@/lib/chart";
+import { useChartColors } from "@/lib/chart-colors";
 import { formatDate } from "@/lib/format";
 import type { ChartRange, HistoryPoint } from "../types";
-import { useChartColors } from "../use-chart-colors";
 import { ChartTooltip } from "./chart-tooltip";
 import { RangeSelector } from "./range-selector";
 
@@ -65,27 +66,10 @@ function filterByRange(
 
 type ChartDataPoint = {
   date: string;
-  valueDisplay: number;
-  value: HistoryPoint["value"];
   dateLabel: string;
+  valueDisplay?: number;
+  value?: HistoryPoint["value"];
 };
-
-// Compact currency ($1.06M, $300K, $750). Hand-rolled rather than
-// Intl.NumberFormat({notation:"compact"}) because Intl's trailing-zero output
-// varies by the runtime's ICU version (e.g. "$1.5M" locally vs "$1.50M" in CI),
-// which made the labels non-deterministic. Two fraction digits keeps adjacent
-// ticks distinct when the axis is zoomed to a narrow range.
-export function formatYAxisTick(v: number): string {
-  const sign = v < 0 ? "-" : "";
-  const n = Math.abs(v);
-  if (n >= 1_000_000) return `${sign}$${stripTrailingZeros((n / 1_000_000).toFixed(2))}M`;
-  if (n >= 1_000) return `${sign}$${stripTrailingZeros((n / 1_000).toFixed(2))}K`;
-  return `${sign}$${Math.round(n)}`;
-}
-
-function stripTrailingZeros(s: string): string {
-  return s.replace(/\.?0+$/, "");
-}
 
 // Zoom the Y axis to the data with headroom rather than anchoring at $0, so the
 // trend is visible. A minimum span (~1.5% of the value) keeps a near-flat series
@@ -96,12 +80,11 @@ export function computeYDomain(values: number[]): [number, number] {
   const max = Math.max(...values);
   const mid = (min + max) / 2;
   const half = Math.max((max - min) / 2, Math.abs(mid) * 0.015, 1) * 1.3;
-  return [mid - half, mid + half];
+  const lower = min >= 0 ? Math.max(0, mid - half) : mid - half;
+  return [lower, niceCeil(mid + half)];
 }
 
-/**
- * Net worth history line chart with range selector.
- */
+/** Net worth history line chart with a date-range selector. */
 export function HistoryChart({ points, className }: HistoryChartProps) {
   const [range, setRange] = useState<ChartRange>("3M");
   const colors = useChartColors();
@@ -109,8 +92,7 @@ export function HistoryChart({ points, className }: HistoryChartProps) {
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const chartData = useMemo<ChartDataPoint[]>(() => {
-    const filtered = filterByRange(points, range, todayIso);
-    return filtered.map((p) => ({
+    return filterByRange(points, range, todayIso).map((p) => ({
       date: p.date,
       valueDisplay: p.valueDisplay,
       value: p.value,
@@ -118,7 +100,12 @@ export function HistoryChart({ points, className }: HistoryChartProps) {
     }));
   }, [points, range, todayIso]);
 
-  const yDomain = useMemo(() => computeYDomain(chartData.map((d) => d.valueDisplay)), [chartData]);
+  const yDomain = useMemo(() => {
+    const values = chartData.map((d) => d.valueDisplay).filter((v): v is number => v !== undefined);
+    return computeYDomain(values);
+  }, [chartData]);
+
+  const hasEnoughData = chartData.length >= 2;
 
   return (
     <div
@@ -128,7 +115,7 @@ export function HistoryChart({ points, className }: HistoryChartProps) {
       role="img"
       aria-label="Net worth history chart"
     >
-      <div className="flex items-center justify-between mb-3">
+      <div className="mb-3">
         <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
           Net worth history
         </p>
@@ -138,7 +125,7 @@ export function HistoryChart({ points, className }: HistoryChartProps) {
         <RangeSelector selected={range} onChange={setRange} />
       </div>
 
-      {chartData.length < 2 ? (
+      {!hasEnoughData ? (
         <div className="flex-1 min-h-[200px] flex items-center justify-center">
           <p className="text-sm text-app-muted text-center">
             {points.length < 2
@@ -153,7 +140,7 @@ export function HistoryChart({ points, className }: HistoryChartProps) {
             height="100%"
             initialDimension={{ width: 0, height: 240 }}
           >
-            <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+            <AreaChart data={chartData} margin={{ top: 4, right: 12, bottom: 4, left: 4 }}>
               <CartesianGrid stroke={colors.grid} strokeDasharray="3 3" vertical={false} />
               <XAxis
                 dataKey="dateLabel"
@@ -161,25 +148,30 @@ export function HistoryChart({ points, className }: HistoryChartProps) {
                 axisLine={{ stroke: colors.grid }}
                 tickLine={false}
                 interval="preserveStartEnd"
+                minTickGap={24}
               />
               <YAxis
                 tick={{ fontSize: 10, fill: colors.text }}
                 axisLine={false}
                 tickLine={false}
-                width={60}
+                width={48}
                 domain={yDomain}
                 tickFormatter={formatYAxisTick}
               />
               <Tooltip content={<ChartTooltip />} />
-              <Line
+
+              <Area
                 type="monotone"
                 dataKey="valueDisplay"
                 stroke={colors.line}
                 strokeWidth={2}
+                fill="none"
                 dot={false}
                 activeDot={{ r: 4, fill: colors.line }}
+                isAnimationActive={false}
+                connectNulls={false}
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       )}

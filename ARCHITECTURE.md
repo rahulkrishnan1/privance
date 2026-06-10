@@ -10,7 +10,7 @@ User's device  (browser or Capacitor WKWebView / Android WebView)
 │   ├─ /          landing page  (auth-aware: redirects signed-in users to /app/)
 │   ├─ /auth/*    unauthenticated flows  (signup, login, recovery)
 │   ├─ /unlock    locked: session exists but DEK not in memory
-│   └─ /app/*     auth-gated  (dashboard, accounts, holdings, settings)
+│   └─ /app/*     auth-gated  (dashboard, accounts, holdings, plan, settings)
 │
 ├─ providers/  ── React-context wiring
 │   ├─ AuthProvider    auth state machine + DEK store
@@ -23,10 +23,14 @@ User's device  (browser or Capacitor WKWebView / Android WebView)
 │   ├─ domain/      Account, Holding, Price types
 │   ├─ sync/        SyncClient  (push / pull / reconcile)
 │   ├─ storage/     LocalStore interface + WebSqliteAdapter
-│   └─ networth/    Net-worth aggregation
+│   ├─ networth/    Net-worth aggregation
+│   └─ projection/  FIRE simulation engine (Monte Carlo + historical replay)
 │
-└─ Web Worker  (/sqlite/privance-worker.mjs)
-    └─ @sqlite.org/sqlite-wasm: SAH Pool VFS (OPFS-backed) with in-memory fallback
+├─ Web Worker  (/sqlite/privance-worker.mjs)
+│   └─ @sqlite.org/sqlite-wasm: SAH Pool VFS (OPFS-backed) with in-memory fallback
+│
+└─ Web Worker  (/sim/sim-worker.mjs)
+    └─ core projection engine bundled at build time; plaintext sim inputs, no DEK
 
          ↕  HTTPS + CSRF (X-Requested-With)
             only encrypted blobs + session cookie cross this line
@@ -135,6 +139,7 @@ Pure TypeScript. No DOM, no Bun, no Node built-ins. Can run in the browser, in a
 | `@privance/core/domain` | Domain types: `Account`, `Holding`, `Price`, branded IDs |
 | `@privance/core/decimal` | `Decimal` BigInt minor-unit arithmetic |
 | `@privance/core/networth` | Net-worth aggregation functions |
+| `@privance/core/projection` | FIRE simulation engine: deterministic PRNG + normal sampler, bundled 1871-2022 returns dataset, allocation presets, `simulatePlan` (Monte Carlo + historical replay) |
 | `@privance/core/audit-events` | Audit event name constants |
 
 ---
@@ -263,6 +268,14 @@ In the browser, storage is managed by `packages/core/src/storage/web-adapter.ts`
 - In the in-memory branch the local store re-populates from the server's ciphertext on every session via `drainAllChanges()`. Per-tab persistence only; no data is lost because the server is the authoritative store.
 - All SQLite operations are dispatched via a message-based RPC protocol from the main thread to the worker, because `createSyncAccessHandle` requires a dedicated worker context.
 - In tests (Node.js), an injected synchronous `Database` object bypasses the Worker, enabling full unit test coverage without a browser.
+
+### Web: simulation Web Worker
+
+FIRE projections run in a second dedicated worker, `/sim/sim-worker.mjs`, behind the same RPC contract style (ready handshake, `{id, method, args}` request, `{id, ok, result|error}` response, pending map, per-request timeout):
+
+- The worker is **built**, not hand-written: `apps/web/scripts/build-sim-worker.mjs` (esbuild, prebuild/pretest/dev hooks) bundles `apps/web/src/lib/sim/sim-worker-entry.ts` plus the pure `packages/core/src/projection/` engine into `apps/web/public/sim/sim-worker.mjs`. The build verifies the bundled returns dataset against its recorded SHA-256 hash and fails on mismatch.
+- The worker receives **plaintext simulation inputs** (pot, ages, contribution, spend, SWR, seed) over `postMessage` and returns percentile results. It never touches the DEK, ciphertext, or storage; the trust boundary is the same-origin page (see THREAT_MODEL.md 3.10).
+- The client wrapper (`apps/web/src/lib/sim/worker-client.ts`) memoizes results per session keyed by the full input set, so the Plan tab and the dashboard band share one computation, and falls back to running the same core engine on the main thread when the worker cannot boot or times out (restricted WKWebView, strict CSP). The fallback latches for the session.
 
 ### Schema
 

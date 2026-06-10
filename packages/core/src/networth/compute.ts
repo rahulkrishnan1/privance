@@ -7,6 +7,13 @@ import type {
   NetWorthInput,
 } from "./types.js";
 
+/**
+ * Prefix for the synthetic `unknownTickers` entry that flags an account whose
+ * currency differs from the primary. Consumers (e.g. the plan pot derivation)
+ * match on this exact prefix, so it lives here as the single source of truth.
+ */
+export const CURRENCY_MISMATCH_PREFIX = "currency_mismatch:";
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -87,28 +94,6 @@ export function computeNetWorth(input: NetWorthInput): NetWorthBreakdown {
 
   const unknownTickersSet = new Set<string>();
 
-  // ---- Determine primary currency: mode across all accounts with a currency.
-  // On tie, pick the lexicographically smallest code for determinism regardless
-  // of account order.
-  let primaryCurrency: string | null = null;
-  {
-    const freq = new Map<string, number>();
-    for (const acct of accounts) {
-      const c = acct.payload.currency;
-      if (c !== undefined) freq.set(c, (freq.get(c) ?? 0) + 1);
-    }
-    let bestCount = 0;
-    for (const [c, count] of freq) {
-      if (
-        count > bestCount ||
-        (count === bestCount && primaryCurrency !== null && c < primaryCurrency)
-      ) {
-        primaryCurrency = c;
-        bestCount = count;
-      }
-    }
-  }
-
   // ---- Accumulate per-account values ----------------------------------------
   let cashTotal = Decimal.zero(SCALE_CENTS);
   let investmentTotal = Decimal.zero(SCALE_CENTS);
@@ -116,11 +101,12 @@ export function computeNetWorth(input: NetWorthInput): NetWorthBreakdown {
   let manualAssetTotal = Decimal.zero(SCALE_CENTS);
 
   const byAccount: AccountValuation[] = [];
+  // accountId → currency, for the post-valuation mismatch pass.
+  const currencyByAccountId = new Map<string, string>();
 
   for (const acct of accounts) {
-    const currency = acct.payload.currency;
-    if (primaryCurrency !== null && currency !== undefined && currency !== primaryCurrency) {
-      unknownTickersSet.add(`currency_mismatch:${acct.id}`);
+    if (acct.payload.currency !== undefined) {
+      currencyByAccountId.set(acct.id, acct.payload.currency);
     }
 
     switch (acct.payload.kind) {
@@ -189,6 +175,52 @@ export function computeNetWorth(input: NetWorthInput): NetWorthBreakdown {
     }
 
     investmentTotal = investmentTotal.add(marketValue);
+  }
+
+  // ---- Determine primary currency: mode across all accounts with a currency.
+  // Runs after valuation because ties break on money, not letters: the
+  // currency holding more ASSET value wins (a 1 USD + 1 EUR split must not
+  // exclude the bigger account; liabilities don't vote). Equal value falls
+  // back to the lexicographically smallest code for determinism regardless of
+  // account order.
+  let primaryCurrency: string | null = null;
+  {
+    const freq = new Map<string, number>();
+    const assetValue = new Map<string, Decimal>();
+    for (const entry of byAccount) {
+      const c = currencyByAccountId.get(entry.accountId);
+      if (c === undefined) continue;
+      freq.set(c, (freq.get(c) ?? 0) + 1);
+      if (entry.kind !== "liability") {
+        assetValue.set(c, (assetValue.get(c) ?? Decimal.zero(SCALE_CENTS)).add(entry.value));
+      }
+    }
+    const zero = Decimal.zero(SCALE_CENTS);
+    let bestCount = 0;
+    for (const [c, count] of freq) {
+      if (primaryCurrency === null || count > bestCount) {
+        primaryCurrency = c;
+        bestCount = count;
+        continue;
+      }
+      if (count === bestCount) {
+        const cValue = assetValue.get(c) ?? zero;
+        const bestValue = assetValue.get(primaryCurrency) ?? zero;
+        const cmp = cValue.cmp(bestValue);
+        if (cmp > 0 || (cmp === 0 && c < primaryCurrency)) {
+          primaryCurrency = c;
+        }
+      }
+    }
+  }
+
+  // ---- Flag accounts whose currency differs from primary --------------------
+  if (primaryCurrency !== null) {
+    for (const [accountId, currency] of currencyByAccountId) {
+      if (currency !== primaryCurrency) {
+        unknownTickersSet.add(`${CURRENCY_MISMATCH_PREFIX}${accountId}`);
+      }
+    }
   }
 
   const totalAssets = cashTotal.add(investmentTotal).add(manualAssetTotal);

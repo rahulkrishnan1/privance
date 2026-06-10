@@ -21,6 +21,7 @@
       "!**/test-results",
       "!**/public/sqlite",
       "!**/public/kdf",
+      "!**/public/sim",
       "!**/ios",
       "!**/android",
       "!**/.playwright-fixtures.json",

@@ -326,10 +326,59 @@ describe("computeNetWorth, currency mismatch", () => {
   it("flags accounts with a different currency in unknownTickers", () => {
     const accounts: Account[] = [
       makeCash("ca-1", "100000", "USD"),
-      makeCash("ca-2", "50000", "EUR"), // mismatch
+      makeCash("ca-2", "50000", "EUR"), // mismatch: tie on count, USD holds more
     ];
     const bd = computeNetWorth({ accounts, holdings: [], prices: new Map() });
-    expect(bd.unknownTickers.some((s) => s.startsWith("currency_mismatch:"))).toBe(true);
+    expect(bd.unknownTickers).toContain("currency_mismatch:ca-2");
+    expect(bd.unknownTickers).not.toContain("currency_mismatch:ca-1");
+  });
+
+  it("breaks a count tie by asset value, not alphabet", () => {
+    // 1 USD vs 1 EUR with the USD account holding more: USD must be primary
+    // even though EUR sorts first. The lexicographic rule once excluded a
+    // user's largest account here.
+    const accounts: Account[] = [
+      makeCash("ca-usd", "8500000", "USD"),
+      makeCash("ca-eur", "2000000", "EUR"),
+    ];
+    const bd = computeNetWorth({ accounts, holdings: [], prices: new Map() });
+    expect(bd.unknownTickers).toContain("currency_mismatch:ca-eur");
+    expect(bd.unknownTickers).not.toContain("currency_mismatch:ca-usd");
+  });
+
+  it("tie-break counts holdings at market value, not just cash sweeps", () => {
+    // The EUR cash account exceeds the USD investment's sweep, but the USD
+    // holdings at market dominate: USD wins the tie.
+    const accounts: Account[] = [
+      makeInvestment("ia-usd", "10000"),
+      makeCash("ca-eur", "500000", "EUR"),
+    ];
+    const holdings: Holding[] = [makeHolding("h-1", "ia-usd", "VOO", "100.0000", "1000.00")];
+    const prices = priceMap({ VOO: "400.00" });
+    const bd = computeNetWorth({ accounts, holdings, prices });
+    expect(bd.unknownTickers).toContain("currency_mismatch:ca-eur");
+    expect(bd.unknownTickers).not.toContain("currency_mismatch:ia-usd");
+  });
+
+  it("liabilities do not vote in the value tie-break", () => {
+    // A large EUR mortgage must not make EUR primary over the USD assets.
+    const accounts: Account[] = [
+      makeCash("ca-usd", "100000", "USD"),
+      makeLiability("la-eur", "90000000", "EUR"),
+    ];
+    const bd = computeNetWorth({ accounts, holdings: [], prices: new Map() });
+    expect(bd.unknownTickers).toContain("currency_mismatch:la-eur");
+    expect(bd.unknownTickers).not.toContain("currency_mismatch:ca-usd");
+  });
+
+  it("equal asset values fall back to the lexicographically smallest code", () => {
+    const accounts: Account[] = [
+      makeCash("ca-usd", "100000", "USD"),
+      makeCash("ca-eur", "100000", "EUR"),
+    ];
+    const bd = computeNetWorth({ accounts, holdings: [], prices: new Map() });
+    expect(bd.unknownTickers).toContain("currency_mismatch:ca-usd");
+    expect(bd.unknownTickers).not.toContain("currency_mismatch:ca-eur");
   });
 
   it("does not flag accounts with the same currency", () => {

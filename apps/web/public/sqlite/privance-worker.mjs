@@ -150,8 +150,11 @@ async function openDbWithRetry({ attempts = 14, baseDelayMs = 50, maxDelayMs = 1
 async function methodInit({ dbFilename: filename, ddl }) {
   if (db !== null) return null;
   if (filename) dbFilename = filename;
-  // Legacy /privance.sqlite3 from before per-user scoping; unlinked once.
-  if (pool !== null && !legacyUnlinkAttempted) {
+  // Legacy /privance.sqlite3 from before per-user scoping; unlinked once
+  // when the current session uses a per-user filename. If the current
+  // dbFilename IS /privance.sqlite3 (e.g. E2E tests or an unknown userId),
+  // skip: deleting the file we are about to open destroys in-flight data.
+  if (pool !== null && !legacyUnlinkAttempted && dbFilename !== "/privance.sqlite3") {
     legacyUnlinkAttempted = true;
     try {
       pool.unlink("/privance.sqlite3");

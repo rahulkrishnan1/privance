@@ -5,7 +5,10 @@ import { formatCurrency, formatDate } from "@/lib/format";
 
 export type TooltipPayloadEntry = {
   value?: number;
-  payload?: { date?: string; value?: Decimal };
+  payload?: {
+    date?: string;
+    value?: Decimal;
+  };
 };
 
 type ChartTooltipProps = {
@@ -14,15 +17,15 @@ type ChartTooltipProps = {
   label?: string;
 };
 
-/**
- * Custom Recharts tooltip styled to match the app's Card aesthetic.
- */
+/** Custom Recharts tooltip styled to match the app's Card aesthetic. */
 export function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
 
   const entry = payload[0];
-  const decimal = entry?.payload?.value;
-  const dateStr = entry?.payload?.date ?? label ?? "";
+  const pt = entry?.payload;
+  const dateStr = pt?.date ?? label ?? "";
+
+  const decimal = pt?.value;
 
   return (
     <div className="rounded-xl border border-app-line bg-app-panel-2 p-3 shadow-sm">

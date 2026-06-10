@@ -5,7 +5,7 @@ export {
   allocationByRegion,
   allocationBySector,
 } from "./allocation.js";
-export { computeNetWorth } from "./compute.js";
+export { CURRENCY_MISMATCH_PREFIX, computeNetWorth } from "./compute.js";
 export type {
   AccountValuation,
   AllocationSlice,
