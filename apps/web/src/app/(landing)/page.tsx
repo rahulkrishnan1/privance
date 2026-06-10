@@ -28,7 +28,7 @@ const FEATURES = [
     n: "01",
     tag: "live",
     title: "Accounts",
-    body: "Bank, brokerage, retirement, manual. Add and update them on your device; only ciphertext leaves your browser.",
+    body: "Bank, brokerage, retirement, loans, and manual assets.",
     visual: (
       <svg viewBox="0 0 120 80" className="w-full h-full" aria-hidden="true">
         <rect
@@ -70,7 +70,7 @@ const FEATURES = [
     n: "02",
     tag: "live",
     title: "Holdings",
-    body: "Every security and crypto position with cost basis. Decrypted only on your device, never on the wire.",
+    body: "Every security and crypto position, with quantity, cost basis, and current value.",
     visual: (
       <svg viewBox="0 0 120 80" className="w-full h-full" aria-hidden="true">
         <line
@@ -94,7 +94,7 @@ const FEATURES = [
     n: "03",
     tag: "live",
     title: "Dashboard",
-    body: "Net worth and composition at a glance, computed locally from your encrypted records.",
+    body: "Net worth, allocation, and history at a glance.",
     visual: (
       <svg viewBox="0 0 120 80" className="w-full h-full" aria-hidden="true">
         <line
@@ -140,7 +140,7 @@ const TENETS = [
   {
     n: "04",
     title: "No bank linking",
-    body: "We do not integrate with Plaid, MX, or any aggregator. Connecting them would mean a third party reads your transactions in plaintext. That breaks the model. Manual entry and CSV keep the guarantee honest.",
+    body: "We do not integrate with Plaid, MX, or any aggregator. Connecting them would mean a third party reads your transactions in plaintext. Manual entry keeps the guarantee honest, with CSV import on the way.",
     chip: "manual entry · CSV import (soon)",
   },
 ];
@@ -149,7 +149,7 @@ const STEPS = [
   {
     n: "01",
     title: "Choose a master password",
-    body: "We stretch it with Argon2id and derive your key encryption key locally. You write down a BIP39 recovery phrase, once. That phrase plus your password is the only thing standing between you and your data.",
+    body: "We stretch it with Argon2id and derive your key encryption key locally. You write down a BIP39 recovery phrase, once. That phrase and your password are the only keys to your data, and the only way back in.",
     chip: "Argon2id · BIP39",
   },
   {
@@ -203,7 +203,14 @@ function NavBar({ scrolled }: { scrolled: boolean }) {
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 md:px-10 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5 group">
+        <Link
+          href="/"
+          onClick={(e) => {
+            e.preventDefault();
+            window.scrollTo({ top: 0 });
+          }}
+          className="flex items-center gap-2.5 group"
+        >
           <Logo size={26} className="text-gold-accent" />
           <span
             className="font-serif text-lg tracking-tight text-stone-100 group-hover:text-white transition-colors"
@@ -255,13 +262,13 @@ function SectionLabel({ n, label }: { n: string; label: string }) {
 
 function Hero() {
   return (
-    <section className="relative px-6 md:px-10 pt-24 pb-16 md:pt-20 md:pb-20 max-w-7xl mx-auto">
+    <section className="relative px-6 md:px-10 pt-8 pb-16 md:pt-12 md:pb-20 max-w-7xl mx-auto">
       <div className="reveal-fade">
-        <SectionLabel n="01" label="Privance · personal finance, encrypted" />
+        <SectionLabel n="01" label="Privance" />
       </div>
 
       <h1
-        className="mt-10 font-serif text-[clamp(2.75rem,9vw,8rem)] leading-[0.95] tracking-[-0.025em] text-stone-50 font-light"
+        className="mt-6 md:mt-10 font-serif text-[clamp(2.75rem,9vw,8rem)] leading-[0.95] tracking-[-0.025em] text-stone-50 font-light"
         style={{ fontVariationSettings: '"opsz" 144, "SOFT" 50' }}
       >
         <span className="block reveal-up" style={{ animationDelay: "0.05s" }}>
@@ -281,8 +288,9 @@ function Hero() {
         className="mt-10 max-w-xl text-lg md:text-xl leading-relaxed text-stone-400 reveal-up"
         style={{ animationDelay: "0.5s" }}
       >
-        A self-hostable personal finance app that runs on your server and keeps your data unreadable
-        to anyone but you. Open source. Zero-knowledge encryption. Yours.
+        A personal finance app that can&rsquo;t read your finances.{" "}
+        <span className="whitespace-nowrap">Zero-knowledge</span> encrypted, open source, and
+        self-hostable. <span className="whitespace-nowrap">Entirely yours.</span>
       </p>
 
       <div
@@ -310,7 +318,7 @@ function Hero() {
       </div>
 
       <div
-        className="mt-16 pt-8 border-t border-stone-900 flex flex-wrap items-center gap-x-8 gap-y-3 font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500 reveal-fade"
+        className="mt-12 md:mt-16 pt-8 border-t border-stone-900 flex flex-wrap items-center gap-x-8 gap-y-3 font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500 reveal-fade"
         style={{ animationDelay: "0.9s" }}
       >
         <span>AES-256-GCM</span>
@@ -331,13 +339,13 @@ function Features() {
   return (
     <section
       id="features"
-      className="relative px-6 md:px-10 py-20 md:py-28 border-t border-stone-900/70"
+      className="relative px-6 md:px-10 pt-10 pb-14 md:pt-14 md:pb-24 border-t border-stone-900/70"
     >
       <div className="max-w-7xl mx-auto">
         <SectionLabel n="02" label="Features" />
 
         <h2
-          className="mt-10 font-serif text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl"
+          className="mt-6 md:mt-10 font-serif text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl"
           style={{ fontVariationSettings: '"opsz" 96, "SOFT" 50' }}
         >
           Available now.{" "}
@@ -349,7 +357,7 @@ function Features() {
           </span>
         </h2>
 
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-px bg-stone-900/80 border border-stone-900/80">
+        <div className="mt-10 md:mt-16 grid grid-cols-1 md:grid-cols-3 gap-px bg-stone-900/80 border border-stone-900/80">
           {FEATURES.map((f) => (
             <div key={f.title} className="bg-stone-950 p-8 md:p-10">
               <div className="flex items-center justify-between gap-4">
@@ -361,12 +369,12 @@ function Features() {
                 </div>
               </div>
 
-              <div className="mt-8 h-28 flex items-end justify-center text-gold-accent">
+              <div className="mt-6 h-24 md:mt-8 md:h-28 flex items-end justify-center text-gold-accent">
                 {f.visual}
               </div>
 
               <h3
-                className="mt-8 font-serif text-2xl md:text-3xl tracking-[-0.015em] text-stone-50 font-light"
+                className="mt-6 md:mt-8 font-serif text-2xl md:text-3xl tracking-[-0.015em] text-stone-50 font-light"
                 style={{ fontVariationSettings: '"opsz" 32, "SOFT" 50' }}
               >
                 {f.title}
@@ -384,12 +392,12 @@ function Protocol() {
   return (
     <section
       id="protocol"
-      className="relative px-6 md:px-10 py-20 md:py-28 border-t border-stone-900/70"
+      className="relative px-6 md:px-10 pt-10 pb-14 md:pt-14 md:pb-24 border-t border-stone-900/70"
     >
       <div className="max-w-7xl mx-auto">
         <SectionLabel n="03" label="Protocol" />
 
-        <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-20 items-end">
+        <div className="mt-6 md:mt-10 grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-20 items-end">
           <h2
             className="font-serif text-[clamp(2rem,5.5vw,4.5rem)] leading-[1.03] tracking-[-0.025em] text-stone-50 font-light"
             style={{ fontVariationSettings: '"opsz" 96, "SOFT" 50' }}
@@ -404,12 +412,12 @@ function Protocol() {
             actually means.
           </h2>
           <p className="text-stone-400 leading-relaxed text-base md:text-lg max-w-md">
-            The server learns nothing about the contents of your finances, because it cannot. Three
+            The server learns nothing about the contents of your finances, because it cannot. A few
             well-studied primitives keep it that way.
           </p>
         </div>
 
-        <div className="mt-20 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-0 items-stretch">
+        <div className="mt-12 md:mt-20 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-0 items-stretch">
           <div className="relative border border-stone-800 bg-stone-900/30 backdrop-blur-sm p-8 md:p-10 md:border-r-0">
             <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-gold-accent">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-gold-accent" />
@@ -484,7 +492,7 @@ function Protocol() {
           </div>
         </div>
 
-        <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-x-10 gap-y-12">
+        <div className="mt-12 md:mt-20 grid grid-cols-1 md:grid-cols-3 gap-x-10 gap-y-12">
           {STEPS.map((s) => (
             <div key={s.n} className="space-y-4">
               <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-gold-accent">
@@ -512,13 +520,13 @@ function Tenets() {
   return (
     <section
       id="tenets"
-      className="relative px-6 md:px-10 py-20 md:py-28 border-t border-stone-900/70"
+      className="relative px-6 md:px-10 pt-10 pb-14 md:pt-14 md:pb-24 border-t border-stone-900/70"
     >
       <div className="max-w-7xl mx-auto">
         <SectionLabel n="04" label="Tenets" />
 
         <h2
-          className="mt-10 font-serif text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl"
+          className="mt-6 md:mt-10 font-serif text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl"
           style={{ fontVariationSettings: '"opsz" 96, "SOFT" 50' }}
         >
           Four{" "}
@@ -530,7 +538,7 @@ function Tenets() {
           </span>
         </h2>
 
-        <div className="mt-20 grid grid-cols-1 md:grid-cols-2 gap-px bg-stone-900/80 border border-stone-900/80">
+        <div className="mt-10 md:mt-16 grid grid-cols-1 md:grid-cols-2 gap-px bg-stone-900/80 border border-stone-900/80">
           {TENETS.map((t) => (
             <div
               key={t.n}
@@ -546,7 +554,7 @@ function Tenets() {
               </div>
 
               <h3
-                className="mt-10 font-serif text-3xl md:text-4xl tracking-[-0.015em] text-stone-50 font-light"
+                className="mt-6 md:mt-10 font-serif text-3xl md:text-4xl tracking-[-0.015em] text-stone-50 font-light"
                 style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
               >
                 {t.title}
@@ -570,13 +578,13 @@ function ThreatModel() {
   return (
     <section
       id="threats"
-      className="relative px-6 md:px-10 py-20 md:py-28 border-t border-stone-900/70 bg-gradient-to-b from-transparent via-gold-950/10 to-transparent"
+      className="relative px-6 md:px-10 pt-10 pb-14 md:pt-14 md:pb-24 border-t border-stone-900/70 bg-gradient-to-b from-transparent via-gold-950/10 to-transparent"
     >
       <div className="max-w-7xl mx-auto">
         <SectionLabel n="05" label="Threat model" />
 
         <h2
-          className="mt-10 font-serif text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl"
+          className="mt-6 md:mt-10 font-serif text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl"
           style={{ fontVariationSettings: '"opsz" 96, "SOFT" 50' }}
         >
           What we protect{" "}
@@ -589,12 +597,12 @@ function ThreatModel() {
           , and what we don&rsquo;t.
         </h2>
 
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+        <div className="mt-10 md:mt-16 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
           <div className="relative border border-stone-800 bg-stone-900/30 p-8 md:p-10">
             <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-gold-accent">
               we protect against
             </div>
-            <ul className="mt-8 space-y-4 text-stone-300">
+            <ul className="mt-6 md:mt-8 space-y-4 text-stone-300">
               {[
                 "Server compromise. Database dumps yield ciphertext, not balances.",
                 "Subpoena of the operator. We cannot decrypt what we do not hold the key to.",
@@ -614,12 +622,12 @@ function ThreatModel() {
             <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-400">
               we don&rsquo;t protect against
             </div>
-            <ul className="mt-8 space-y-4 text-stone-400">
+            <ul className="mt-6 md:mt-8 space-y-4 text-stone-400">
               {[
                 "A compromised device. If your machine is keylogged, your password is gone.",
                 "A weak master password. Use the recovery phrase as the strong backup.",
                 "Losing both password and phrase. There is no recovery. Yes, really.",
-                "Traffic-pattern analysis at scale. We minimise but cannot eliminate metadata.",
+                "Traffic-pattern analysis at scale. We minimize but cannot eliminate metadata.",
                 "Bugs in the cryptographic libraries we audit and pin.",
               ].map((item) => (
                 <li key={item} className="flex gap-3 text-[15px] leading-relaxed">
@@ -639,13 +647,13 @@ function FAQ() {
   return (
     <section
       id="faq"
-      className="relative px-6 md:px-10 py-20 md:py-28 border-t border-stone-900/70"
+      className="relative px-6 md:px-10 pt-10 pb-14 md:pt-14 md:pb-24 border-t border-stone-900/70"
     >
       <div className="max-w-7xl mx-auto">
         <SectionLabel n="06" label="FAQ" />
 
         <h2
-          className="mt-10 font-serif text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl"
+          className="mt-6 md:mt-10 font-serif text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl"
           style={{ fontVariationSettings: '"opsz" 96, "SOFT" 50' }}
         >
           The{" "}
@@ -658,7 +666,7 @@ function FAQ() {
           answers.
         </h2>
 
-        <dl className="mt-20 grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-14">
+        <dl className="mt-10 md:mt-16 grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-12 md:gap-y-14">
           {FAQS.map((f) => (
             <div key={f.q} className="group">
               <dt
@@ -678,9 +686,9 @@ function FAQ() {
 
 function Footer() {
   return (
-    <footer className="relative px-6 md:px-10 pt-20 md:pt-28 pb-12 border-t border-stone-900/70">
+    <footer className="relative px-6 md:px-10 pt-14 md:pt-24 pb-12 border-t border-stone-900/70">
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-16 md:gap-24 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-12 md:gap-24 items-end">
           <div>
             <h2
               className="font-serif text-[clamp(2.5rem,8vw,7rem)] leading-[0.95] tracking-[-0.025em] text-stone-50 font-light"
@@ -748,7 +756,7 @@ function Footer() {
           </div>
         </div>
 
-        <div className="mt-24 pt-8 border-t border-stone-900 flex flex-wrap items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-[0.22em] text-stone-600">
+        <div className="mt-14 md:mt-24 pt-8 border-t border-stone-900 flex flex-wrap items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-[0.22em] text-stone-600">
           <span>AGPL-3.0 · {YEAR} · Privance</span>
           <span>privance.app</span>
         </div>
