@@ -3,10 +3,19 @@ import react from "@vitejs/plugin-react";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
 
-const alias = {
-  "@privance/core": path.resolve(__dirname, "../../packages/core/src/index.ts"),
-  "@": path.resolve(__dirname, "./src"),
-};
+const coreRoot = path.resolve(__dirname, "../../packages/core/src");
+// Aliases ordered most-specific first so Vite matches subpaths before the root.
+// next/link uses process.env which is absent in the browser test environment;
+// alias it to a minimal shim that renders a plain anchor.
+const alias = [
+  { find: "@privance/core/decimal", replacement: path.join(coreRoot, "decimal/index.ts") },
+  { find: "@privance/core/projection", replacement: path.join(coreRoot, "projection/index.ts") },
+  { find: "@privance/core/storage", replacement: path.join(coreRoot, "storage/index.ts") },
+  { find: "@privance/core/sync", replacement: path.join(coreRoot, "sync/index.ts") },
+  { find: "@privance/core", replacement: path.join(coreRoot, "index.ts") },
+  { find: "@", replacement: path.resolve(__dirname, "./src") },
+  { find: "next/link", replacement: path.resolve(__dirname, "./src/__mocks__/next-link.tsx") },
+];
 
 export default defineConfig({
   // Dedupe React so component deps (e.g. react-hook-form) share the single React
@@ -37,6 +46,10 @@ export default defineConfig({
             enabled: true,
             provider: playwright(),
             headless: true,
+            // Desktop viewport: these component tests assert the wide-screen
+            // layout (e.g. the inline assumptions editor). The mobile sheet flow
+            // is covered by the Playwright *.mobile specs.
+            viewport: { width: 1280, height: 800 },
             instances: [{ browser: "chromium" }],
           },
         },

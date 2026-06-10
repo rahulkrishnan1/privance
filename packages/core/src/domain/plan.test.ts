@@ -1,0 +1,260 @@
+import { describe, expect, it } from "vitest";
+import { KIND_PLAN, PLAN_OBJECT_ID } from "./plan.js";
+import { PlanPayloadSchema } from "./schemas.js";
+
+const validBalanced = {
+  schemaVersion: 1,
+  preset: "balanced",
+  currentAge: 35,
+  planUntilAge: 90,
+  monthlyContributionCents: "500000",
+  annualSpendCents: "4000000",
+  swrBps: 400,
+  seed: "12345",
+};
+
+const validCustom = {
+  schemaVersion: 1,
+  preset: "custom",
+  currentAge: 40,
+  planUntilAge: 95,
+  monthlyContributionCents: "300000",
+  annualSpendCents: "3600000",
+  swrBps: 350,
+  seed: "99999",
+  muBps: 700,
+  sigmaBps: 1500,
+  stockWeightBps: 6000,
+};
+
+// ---------------------------------------------------------------------------
+// KIND_PLAN and PLAN_OBJECT_ID constants
+// ---------------------------------------------------------------------------
+
+describe("KIND_PLAN", () => {
+  it('equals "plan"', () => {
+    expect(KIND_PLAN).toBe("plan");
+  });
+});
+
+describe("PLAN_OBJECT_ID", () => {
+  it('equals "plan-singleton"', () => {
+    expect(PLAN_OBJECT_ID).toBe("plan-singleton");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PlanPayloadSchema happy paths
+// ---------------------------------------------------------------------------
+
+describe("PlanPayloadSchema valid", () => {
+  it("accepts a valid balanced-preset payload", () => {
+    const result = PlanPayloadSchema.safeParse(validBalanced);
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts all named presets", () => {
+    for (const preset of ["conservative", "balanced", "aggressive"] as const) {
+      const result = PlanPayloadSchema.safeParse({ ...validBalanced, preset });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it("accepts a valid custom-preset payload", () => {
+    const result = PlanPayloadSchema.safeParse(validCustom);
+    expect(result.success).toBe(true);
+  });
+
+  it("round-trips through JSON for a named preset", () => {
+    const parsed = PlanPayloadSchema.parse(validBalanced);
+    const roundTripped = PlanPayloadSchema.parse(JSON.parse(JSON.stringify(parsed)));
+    expect(roundTripped).toStrictEqual(parsed);
+  });
+
+  it("round-trips through JSON for a custom preset", () => {
+    const parsed = PlanPayloadSchema.parse(validCustom);
+    const roundTripped = PlanPayloadSchema.parse(JSON.parse(JSON.stringify(parsed)));
+    expect(roundTripped).toStrictEqual(parsed);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Edge cases
+// ---------------------------------------------------------------------------
+
+describe("PlanPayloadSchema edge cases", () => {
+  it('accepts monthlyContributionCents "0"', () => {
+    const result = PlanPayloadSchema.safeParse({
+      ...validBalanced,
+      monthlyContributionCents: "0",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects custom preset when muBps is missing", () => {
+    const { muBps: _, ...withoutMu } = validCustom;
+    const result = PlanPayloadSchema.safeParse(withoutMu);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects custom preset when sigmaBps is missing", () => {
+    const { sigmaBps: _, ...withoutSigma } = validCustom;
+    const result = PlanPayloadSchema.safeParse(withoutSigma);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects custom preset when stockWeightBps is missing", () => {
+    const { stockWeightBps: _, ...withoutWeight } = validCustom;
+    const result = PlanPayloadSchema.safeParse(withoutWeight);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an unknown preset id", () => {
+    const result = PlanPayloadSchema.safeParse({ ...validBalanced, preset: "moderate" });
+    expect(result.success).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Error cases
+// ---------------------------------------------------------------------------
+
+describe("PlanPayloadSchema error cases", () => {
+  it("rejects negative annualSpendCents", () => {
+    const result = PlanPayloadSchema.safeParse({
+      ...validBalanced,
+      annualSpendCents: "-100",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects zero annualSpendCents", () => {
+    const result = PlanPayloadSchema.safeParse({
+      ...validBalanced,
+      annualSpendCents: "0",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects planUntilAge equal to currentAge", () => {
+    const result = PlanPayloadSchema.safeParse({
+      ...validBalanced,
+      currentAge: 60,
+      planUntilAge: 60,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects planUntilAge less than currentAge", () => {
+    const result = PlanPayloadSchema.safeParse({
+      ...validBalanced,
+      currentAge: 60,
+      planUntilAge: 55,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects negative monthlyContributionCents", () => {
+    const result = PlanPayloadSchema.safeParse({
+      ...validBalanced,
+      monthlyContributionCents: "-1",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects currentAge below 16", () => {
+    const result = PlanPayloadSchema.safeParse({ ...validBalanced, currentAge: 15 });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects swrBps above 1000", () => {
+    const result = PlanPayloadSchema.safeParse({ ...validBalanced, swrBps: 1200 });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects out-of-bounds custom overrides", () => {
+    for (const overrides of [{ muBps: 2000 }, { sigmaBps: 50 }, { stockWeightBps: 10001 }]) {
+      const result = PlanPayloadSchema.safeParse({ ...validCustom, ...overrides });
+      expect(result.success).toBe(false);
+    }
+  });
+
+  it("accepts a hex seed (generated by plan-screen)", () => {
+    // generateSeed() in plan-screen.tsx produces a 32-char hex string; ensure
+    // the schema does not reject it via the old decimalString validator.
+    const hexSeed = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6";
+    const result = PlanPayloadSchema.safeParse({ ...validBalanced, seed: hexSeed });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an empty seed", () => {
+    const result = PlanPayloadSchema.safeParse({ ...validBalanced, seed: "" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects missing schemaVersion", () => {
+    const { schemaVersion: _, ...withoutVersion } = validBalanced;
+    const result = PlanPayloadSchema.safeParse(withoutVersion);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects wrong schemaVersion", () => {
+    const result = PlanPayloadSchema.safeParse({ ...validBalanced, schemaVersion: 2 });
+    expect(result.success).toBe(false);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Plan cents fields must be integer strings (no decimal point)
+  // ---------------------------------------------------------------------------
+
+  it("rejects fractional monthlyContributionCents", () => {
+    const result = PlanPayloadSchema.safeParse({
+      ...validBalanced,
+      monthlyContributionCents: "2000.50",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects fractional annualSpendCents", () => {
+    const result = PlanPayloadSchema.safeParse({
+      ...validBalanced,
+      annualSpendCents: "4000000.50",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts "0" for monthlyContributionCents', () => {
+    const result = PlanPayloadSchema.safeParse({
+      ...validBalanced,
+      monthlyContributionCents: "0",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  // Pin the existing isNonNegativeDecimalString behavior: "-0.00" has no
+  // nonzero digit so it is treated as non-negative (sign only applies when
+  // there is a real nonzero magnitude). Fractional strings are now rejected
+  // for plan cents fields by the integer validator, but the sign function
+  // itself remains unchanged.
+  it('isNonNegativeDecimalString accepts "-0.00"-shaped input as non-negative via the outer refine logic', () => {
+    // "-0" as a monthly contribution: sign with no nonzero digit -> non-negative.
+    // However the integer validator now rejects "0.00"-style strings for plan fields.
+    // This test pins the intent: the outer monthlyContributionCents non-negative
+    // refine does not reject zero-valued inputs, only the integer validator would
+    // reject a fractional form. Plain "-0" is an integer string and passes both checks.
+    const result = PlanPayloadSchema.safeParse({
+      ...validBalanced,
+      monthlyContributionCents: "-0",
+    });
+    // "-0" passes the integer check and is non-negative (no nonzero digit after "-").
+    expect(result.success).toBe(true);
+  });
+
+  it('isNonNegativeDecimalString rejects "-1" as monthlyContributionCents', () => {
+    const result = PlanPayloadSchema.safeParse({
+      ...validBalanced,
+      monthlyContributionCents: "-1",
+    });
+    expect(result.success).toBe(false);
+  });
+});

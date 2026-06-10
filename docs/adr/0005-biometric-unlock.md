@@ -80,5 +80,4 @@ The indirection exists to satisfy the re-arm requirement without a biometric pro
 ## References
 
 - ADR-0004: `docs/adr/0004-session-persistence.md`
-- Requirements and spike evidence: `docs/brainstorms/2026-06-05-biometric-unlock-requirements.md`
 - W3C PRF extension specification: https://w3c.github.io/webauthn/#prf-extension

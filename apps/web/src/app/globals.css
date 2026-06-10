@@ -48,6 +48,101 @@ dialog::backdrop {
   background: rgba(0, 0, 0, 0.5);
 }
 
+/* Hide the native number-input spinner so number fields keep the same clean
+   underline as text fields. Values are still typed; the steppers add nothing. */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Plan lever slider: an 18px-tall hit area with a thin 5px track painted as a
+   centered background strip, so JS can fill it gold up to the value. The
+   background-color MUST stay transparent or the input's default field shows
+   through as a white pill. The gold fill is applied inline per value. */
+input[type="range"].plan-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+  outline: none;
+  border-radius: 99px;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-size: 100% 5px;
+  background-position: 0 center;
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+}
+input[type="range"].plan-range::-webkit-slider-runnable-track {
+  height: 18px;
+  background: transparent;
+}
+input[type="range"].plan-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 99px;
+  background: var(--color-gold-accent);
+  border: 3px solid var(--color-app-bg);
+  box-shadow: 0 0 0 1px rgba(230, 211, 154, 0.9);
+  cursor: grab;
+}
+input[type="range"].plan-range::-webkit-slider-thumb:active {
+  cursor: grabbing;
+}
+input[type="range"].plan-range::-moz-range-track {
+  height: 5px;
+  border-radius: 99px;
+  background: transparent;
+}
+input[type="range"].plan-range::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border-radius: 99px;
+  background: var(--color-gold-accent);
+  border: 3px solid var(--color-app-bg);
+  box-shadow: 0 0 0 1px rgba(230, 211, 154, 0.9);
+  cursor: grab;
+}
+/* Keyboard focus on the slider is a soft glow on the thumb, not a hard ring
+   around the whole track (which looked heavy on tap, since range inputs show
+   focus styling on pointer focus too). */
+input[type="range"].plan-range:focus-visible {
+  outline: none;
+}
+input[type="range"].plan-range:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 5px rgba(230, 211, 154, 0.22),
+    0 0 0 1px rgba(230, 211, 154, 0.9);
+}
+input[type="range"].plan-range:focus-visible::-moz-range-thumb {
+  box-shadow:
+    0 0 0 5px rgba(230, 211, 154, 0.22),
+    0 0 0 1px rgba(230, 211, 154, 0.9);
+}
+
+/* No tap-flash on mobile, and no focus ring on the chart surface (Recharts
+   gives its SVG a focusable a11y layer; the cursor line + tooltip already mark
+   the read point, so a hard outline on tap is just noise). */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+.recharts-wrapper:focus,
+.recharts-wrapper :focus,
+.recharts-surface:focus {
+  outline: none;
+}
+
 /* Belt-and-suspenders: the UA stylesheet hides dialogs that aren't open via
    `display: none`, but ANY utility class on the dialog element that sets
    `display` (flex, grid, block) silently overrides that and leaks the dialog

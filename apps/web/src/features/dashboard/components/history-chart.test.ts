@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { computeYDomain, formatYAxisTick } from "./history-chart";
+import { formatYAxisTick } from "@/lib/chart";
+import { computeYDomain } from "./history-chart";
 
 describe("formatYAxisTick", () => {
   it("formats sub-1000 values as plain dollars (fixes $0k bug)", () => {
@@ -59,5 +60,15 @@ describe("computeYDomain", () => {
 
   it("returns a safe default for empty data", () => {
     expect(computeYDomain([])).toEqual([0, 1]);
+  });
+
+  it("nice-rounding the top never balloons the zoom on a near-flat series", () => {
+    // Regression: a coarse nice-ceiling (1.5x10^n steps) once rounded a
+    // $1.072M top to $1.5M, collapsing the near-flat line to the bottom and
+    // silently undoing the flat-line-zoom fix. Two-significant-figure
+    // rounding keeps headroom under 10%.
+    const [, hi] = computeYDomain([1_061_000, 1_062_000]);
+    expect(hi).toBeGreaterThan(1_062_000);
+    expect(hi).toBeLessThan(1_170_000);
   });
 });

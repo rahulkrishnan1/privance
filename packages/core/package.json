@@ -12,10 +12,11 @@
     "./networth": "./src/networth/index.ts",
     "./sync": "./src/sync/index.ts",
     "./storage": "./src/storage/index.ts",
-    "./audit-events": "./src/audit-events/index.ts"
+    "./audit-events": "./src/audit-events/index.ts",
+    "./projection": "./src/projection/index.ts"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node scripts/verify-dataset.mjs && tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "test:watch": "vitest"

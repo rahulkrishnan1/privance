@@ -48,3 +48,13 @@ NOTES.local.md
 # The committed compose.prod.yaml is the source of truth; overrides stay local.
 infra/compose.override.yaml
 infra/compose.override.yml
+
+# Generated simulation worker bundle (produced by scripts/build-sim-worker.mjs).
+# Unlike public/kdf and public/sqlite which are vendored/hand-written and
+# committed, public/sim is built from core source at build time.
+apps/web/public/sim/
+
+# Local planning docs, never committed (lasting decisions become ADRs in docs/adr/).
+docs/plans/
+docs/brainstorms/
+docs/ideation/

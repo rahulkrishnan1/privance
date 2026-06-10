@@ -6,6 +6,51 @@ export type SignupResult = {
   phrase: string;
 };
 
+/**
+ * Fills the signup form so the values survive late hydration. On a cold
+ * next-dev compile, React can hydrate between fills and reset controlled
+ * inputs to empty (observed as "Username is required" with passwords intact).
+ * Re-fill any wiped field and only return once every value sticks across a
+ * short settle.
+ */
+async function fillSignupForm(
+  page: Page,
+  opts: { username: string; password: string },
+): Promise<void> {
+  const username = page.getByLabel("Username");
+  const password = page.getByLabel("Master password", { exact: true });
+  const confirm = page.getByLabel("Confirm master password");
+  await expect(async () => {
+    if ((await username.inputValue()) !== opts.username) await username.fill(opts.username);
+    if ((await password.inputValue()) !== opts.password) await password.fill(opts.password);
+    if ((await confirm.inputValue()) !== opts.password) await confirm.fill(opts.password);
+    await page.waitForTimeout(150);
+    expect(await username.inputValue()).toBe(opts.username);
+    expect(await password.inputValue()).toBe(opts.password);
+    expect(await confirm.inputValue()).toBe(opts.password);
+  }).toPass({ timeout: 15_000 });
+}
+
+/**
+ * Clicks Create account and waits for the recovery-phrase screen, retrying
+ * through the signup rate limit (3 per IP per minute by design; parallel
+ * browser projects can race past the budget at run start and surface the
+ * generic signup alert). Bounded retries keep genuine failures visible.
+ */
+async function submitSignup(page: Page): Promise<void> {
+  const phrase = page.getByText("Write down your recovery phrase");
+  const failed = page.getByText("Signup failed. Try again.");
+  // 12 attempts spans ~4 minutes of windows: a full five-project run queues
+  // ~12 signups against the 3-per-minute budget, and the last in line waits.
+  for (let attempt = 0; attempt < 12; attempt++) {
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(phrase.or(failed).first()).toBeVisible({ timeout: 30_000 });
+    if (await phrase.isVisible()) return;
+    await page.waitForTimeout(21_000);
+  }
+  await expect(phrase).toBeVisible({ timeout: 1_000 });
+}
+
 export type SessionSnapshot = {
   cookies: Awaited<ReturnType<BrowserContext["cookies"]>>;
   dekArray: number[];
@@ -133,15 +178,8 @@ export async function signup(
 ): Promise<SignupResult> {
   await page.goto("/auth/signup/");
 
-  await page.getByLabel("Username").fill(opts.username);
-  await page.getByLabel("Master password", { exact: true }).fill(opts.password);
-  await page.getByLabel("Confirm master password").fill(opts.password);
-  await page.getByRole("button", { name: "Create account" }).click();
-
-  // Wait for the phrase screen; argon2 derivation can take several seconds
-  await expect(page.getByText("Write down your recovery phrase")).toBeVisible({
-    timeout: 30_000,
-  });
+  await fillSignupForm(page, opts);
+  await submitSignup(page);
 
   const phrase = await capturePhrase(page);
   await acknowledgePhrase(page);
@@ -166,14 +204,9 @@ export async function signupAndLogin(
   const signupPage = await signupCtx.newPage();
 
   await signupPage.goto("/auth/signup/");
-  await signupPage.getByLabel("Username").fill(opts.username);
-  await signupPage.getByLabel("Master password", { exact: true }).fill(opts.password);
-  await signupPage.getByLabel("Confirm master password").fill(opts.password);
-  await signupPage.getByRole("button", { name: "Create account" }).click();
+  await fillSignupForm(signupPage, opts);
+  await submitSignup(signupPage);
 
-  await expect(signupPage.getByText("Write down your recovery phrase")).toBeVisible({
-    timeout: 30_000,
-  });
   const phrase = await capturePhrase(signupPage);
   await acknowledgePhrase(signupPage);
   await signupPage.waitForURL(/\//, { timeout: 15_000 });

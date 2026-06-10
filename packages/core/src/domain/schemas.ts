@@ -20,6 +20,34 @@ const decimalString = z.string().refine(isValidDecimalString, {
   message: "Must be a valid decimal string",
 });
 
+// Sign checks stay lexical for the same reason as isValidDecimalString:
+// no Number coercion on money strings, and no scale assumption.
+function hasNonzeroDigit(s: string): boolean {
+  return /[1-9]/.test(s);
+}
+function isPositiveDecimalString(s: string): boolean {
+  const t = s.trim();
+  return !t.startsWith("-") && hasNonzeroDigit(t);
+}
+function isNonNegativeDecimalString(s: string): boolean {
+  const t = s.trim();
+  return !t.startsWith("-") || !hasNonzeroDigit(t);
+}
+
+// Cents fields in the plan payload are always integer (whole cents). A fractional
+// string like "2000.50" would cause BigInt() to throw in sim-input.ts, so we
+// reject it here at validation time.
+const INTEGER_STRING_RE = /^-?\d+$/;
+function isIntegerString(s: string): boolean {
+  return INTEGER_STRING_RE.test(s.trim());
+}
+const nonNegativeIntegerCentsString = z
+  .string()
+  .refine(isIntegerString, { message: "Must be a whole-number string (no decimal point)" })
+  .refine((s) => isNonNegativeDecimalString(s), {
+    message: "Must be 0 or greater",
+  });
+
 // ---------------------------------------------------------------------------
 // Account payload schemas
 // ---------------------------------------------------------------------------
@@ -136,3 +164,46 @@ export const NetWorthSnapshotPayloadSchema = z.object({
   cashCents: decimalString,
   investmentCents: decimalString,
 });
+
+// ---------------------------------------------------------------------------
+// Plan payload schema
+// ---------------------------------------------------------------------------
+
+const planPayloadBase = z.object({
+  schemaVersion: z.literal(1),
+  currentAge: z.number().int().min(16).max(100),
+  planUntilAge: z.number().int().max(110),
+  monthlyContributionCents: nonNegativeIntegerCentsString,
+  annualSpendCents: nonNegativeIntegerCentsString,
+  swrBps: z.number().int().min(50).max(1000),
+  // seed is a PRNG seed string, not a monetary value; accept any non-empty string
+  // so that both hex and decimal seeds (from different generator versions) parse.
+  seed: z.string().min(1),
+});
+
+const planPayloadCustom = planPayloadBase.extend({
+  preset: z.literal("custom"),
+  muBps: z.number().int().min(-500).max(1500),
+  sigmaBps: z.number().int().min(100).max(4000),
+  stockWeightBps: z.number().int().min(0).max(10000),
+});
+
+export const PlanPayloadSchema = z
+  .discriminatedUnion("preset", [
+    planPayloadBase.extend({ preset: z.literal("conservative") }),
+    planPayloadBase.extend({ preset: z.literal("balanced") }),
+    planPayloadBase.extend({ preset: z.literal("aggressive") }),
+    planPayloadCustom,
+  ])
+  .refine((v) => v.planUntilAge > v.currentAge, {
+    message: "planUntilAge must be greater than currentAge",
+    path: ["planUntilAge"],
+  })
+  .refine((v) => isPositiveDecimalString(v.annualSpendCents), {
+    message: "annualSpendCents must be greater than 0",
+    path: ["annualSpendCents"],
+  })
+  .refine((v) => isNonNegativeDecimalString(v.monthlyContributionCents), {
+    message: "monthlyContributionCents must be 0 or greater",
+    path: ["monthlyContributionCents"],
+  });
