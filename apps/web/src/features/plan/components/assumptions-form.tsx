@@ -74,10 +74,9 @@ function Group({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-// A numeric input that edits as free text (so delete-to-empty and decimals work
-// smoothly, unlike a controlled type=number which clobbers mid-entry), parsing
-// to the form's number on the fly and normalising the display on blur. Only
-// digits and a single dot are accepted as keystrokes.
+// Numeric input that edits as free text so delete-to-empty and decimals work
+// (a controlled type=number clobbers mid-entry). Parses to a number on change,
+// normalises the display on blur; accepts only digits and a single dot.
 function NumberInput({
   id,
   value,
