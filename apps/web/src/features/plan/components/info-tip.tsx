@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 // Viewport margin kept on both sides, and the gap below the icon.
@@ -13,20 +13,34 @@ const MOBILE_MAX = 640;
 
 type Pos = { left: number; top: number; width: number };
 
+// Only one tooltip is open at a time across the page: opening one closes the
+// previously open one. Module-level so every InfoTip shares the single slot.
+let activeClose: (() => void) | null = null;
+
 /**
  * Info affordance. The tooltip is portalled to <body> and positioned with fixed
  * coordinates clamped to the viewport, so it never overflows and always keeps a
  * margin from both page edges regardless of where the icon sits (left, centre,
  * or right) or how the surrounding layout reflows between desktop and mobile.
- * Opens on hover (mouse), tap (touch), and focus (keyboard).
+ * Opens on hover (mouse), tap (touch), and focus (keyboard). Only one is open at
+ * a time, and an open tooltip dismisses on outside tap, scroll, or Escape.
  */
 export function InfoTip({ label, text }: { label: string; text: string }) {
   const btnRef = useRef<HTMLButtonElement>(null);
   const [pos, setPos] = useState<Pos | null>(null);
+  const open = pos !== null;
 
-  const show = () => {
+  const hide = useCallback(() => {
+    setPos(null);
+    if (activeClose === hide) activeClose = null;
+  }, []);
+
+  const show = useCallback(() => {
     const el = btnRef.current;
     if (el === null) return;
+    // Close whichever tooltip was open before this one takes the single slot.
+    if (activeClose !== null && activeClose !== hide) activeClose();
+    activeClose = hide;
     const b = el.getBoundingClientRect();
     // Visual viewport, so a raised soft keyboard on Capacitor/WKWebView (which
     // shifts the visual but not the layout viewport) does not push the tooltip
@@ -36,8 +50,39 @@ export function InfoTip({ label, text }: { label: string; text: string }) {
     const center = b.left + b.width / 2;
     const left = Math.max(EDGE, Math.min(center - width / 2, vw - width - EDGE));
     setPos({ left, top: b.bottom + GAP, width });
-  };
-  const hide = () => setPos(null);
+  }, [hide]);
+
+  // While open, dismiss on a tap outside the icon/tooltip, on any scroll (the
+  // fixed tooltip would otherwise detach from the icon), and on Escape.
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      // The tooltip itself is pointer-events:none, so a tap "on" it resolves to
+      // the element behind and counts as outside; only the icon is excluded.
+      if (btnRef.current?.contains(e.target as Node)) return;
+      hide();
+    };
+    const onScroll = () => hide();
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") hide();
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("scroll", onScroll, true);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("scroll", onScroll, true);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, hide]);
+
+  // Release the single-open slot if this tip unmounts while still open.
+  useEffect(
+    () => () => {
+      if (activeClose === hide) activeClose = null;
+    },
+    [hide],
+  );
 
   return (
     <span className="ml-1 inline-flex align-middle">
@@ -53,7 +98,7 @@ export function InfoTip({ label, text }: { label: string; text: string }) {
         }}
         onPointerUp={(e) => {
           if (e.pointerType !== "mouse") {
-            pos === null ? show() : hide();
+            open ? hide() : show();
           }
         }}
         onFocus={show}

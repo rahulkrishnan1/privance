@@ -161,8 +161,8 @@ async function fillMinimumInputs(
 
   await screen.getByRole("textbox", { name: "Current age" }).fill(String(age));
   await screen.getByRole("textbox", { name: "Plan until age" }).fill(String(planUntil));
-  await screen.getByRole("textbox", { name: "Annual retirement spend" }).fill(String(spend));
-  await screen.getByRole("textbox", { name: "Safe withdrawal rate" }).fill(String(swr));
+  await screen.getByRole("textbox", { name: "Target annual spend" }).fill(String(spend));
+  await screen.getByRole("textbox", { name: "Withdrawal rate" }).fill(String(swr));
 }
 
 // ---------------------------------------------------------------------------
@@ -322,6 +322,99 @@ test("AE11: moving the strategy slider feeds derived return params into the simu
   );
 });
 
+test("typing in the stock allocation cell drives the slider and the sim, and the cell can be cleared", async () => {
+  h.accounts = { status: "success", data: [makeCashAccount("c1", "Checking", "100000")] };
+  h.planRecord = { status: "none" };
+  h.simulateDelay = 0;
+  h.simulateResult = null;
+
+  const { simulate: simulateMock } = await import("@/lib/sim/worker-client");
+  const mockFn = simulateMock as ReturnType<typeof vi.fn>;
+  mockFn.mockClear();
+
+  const screen = await render(<PlanScreen />);
+  await fillMinimumInputs(screen, { spend: 40000, swr: 4, age: 35, planUntilAge: 65 });
+
+  const alloc = screen.getByRole("textbox", { name: "Stock allocation" });
+  await alloc.fill("80");
+
+  // The slider tracks the typed value, and the 80% mix reaches the simulation as
+  // the dataset-derived mu/sigma (not a stale default).
+  const slider = screen.getByRole("slider", { name: "Stock allocation percent" });
+  await expect.element(slider).toHaveAttribute("aria-valuetext", "80% stocks, 20% bonds");
+  const expected = deriveAllocationParams(0.8);
+  await vi.waitFor(
+    () => {
+      const calls = mockFn.mock.calls as Array<[{ stockWeight: number; muBps: number }]>;
+      const hit = calls.find((c) => c[0]?.stockWeight === 0.8);
+      if (hit === undefined) throw new Error("no simulate call for the 80% mix yet");
+      expect(hit[0].muBps).toBe(expected.muBps);
+    },
+    { timeout: 5_000 },
+  );
+
+  // The cell can be cleared mid-edit; it must not snap back to the derived value.
+  await alloc.fill("");
+  expect((alloc.element() as HTMLInputElement).value).toBe("");
+});
+
+test("a saved plan loads without ever flashing the intro empty-state", async () => {
+  h.accounts = { status: "success", data: [makeCashAccount("c1", "Checking", "500000")] };
+  h.planRecord = {
+    status: "success",
+    data: {
+      id: "plan-singleton",
+      payload: {
+        schemaVersion: 1 as const,
+        currentAge: 35,
+        planUntilAge: 65,
+        monthlyContributionCents: "100000",
+        annualSpendCents: "4000000",
+        swrBps: 400,
+        preset: "balanced" as const,
+        seed: "abc123",
+      },
+    },
+  };
+  h.simulateResult = null;
+
+  const screen = await render(<PlanScreen />);
+  const intro = "Project your path to financial independence";
+
+  // From the first render a saved plan shows the headline skeleton, never the intro.
+  expect(screen.container.textContent ?? "").not.toContain(intro);
+
+  await vi.waitFor(
+    () => {
+      if (screen.container.querySelector("[data-testid='fire-age-value']") === null) {
+        throw new Error("headline not rendered yet");
+      }
+    },
+    { timeout: 5_000 },
+  );
+
+  // Still no intro after the result resolves.
+  expect(screen.container.textContent ?? "").not.toContain(intro);
+});
+
+test("the first projection runs immediately on load, not after the 300ms debounce", async () => {
+  h.accounts = { status: "success", data: [makeCashAccount("c1", "Checking", "100000")] };
+  h.planRecord = { status: "none" };
+  h.simulateDelay = 0;
+  h.simulateResult = null;
+
+  const { simulate: simulateMock } = await import("@/lib/sim/worker-client");
+  const mockFn = simulateMock as ReturnType<typeof vi.fn>;
+  mockFn.mockClear();
+
+  const screen = await render(<PlanScreen />);
+  await fillMinimumInputs(screen, { spend: 40000, swr: 4, age: 35, planUntilAge: 65 });
+
+  // The first run bypasses the 300ms debounce, so simulate fires well under it.
+  // If the debounce were reintroduced on first load, this would time out at 250ms.
+  await vi.waitFor(() => expect(mockFn).toHaveBeenCalled(), { timeout: 250 });
+});
+
 test("AE11: monthly contribution field carries the manual-estimate label", async () => {
   h.accounts = { status: "success", data: [makeCashAccount("c1", "Checking", "100000")] };
   h.planRecord = { status: "none" };
@@ -346,7 +439,7 @@ test("number fields edit freely: backspace to empty and type a decimal", async (
   h.planRecord = { status: "none" };
 
   const screen = await render(<PlanScreen />);
-  const swr = screen.getByRole("textbox", { name: "Safe withdrawal rate" });
+  const swr = screen.getByRole("textbox", { name: "Withdrawal rate" });
   await expect.element(swr).toHaveValue("4");
 
   // Backspace from the end clears the field entirely (the reported pain point).
@@ -486,7 +579,7 @@ test("in-progress: prior results stay visible while re-computing", async () => {
   // Introduce delay then trigger a re-compute.
   h.simulateDelay = 300;
 
-  await screen.getByRole("textbox", { name: "Safe withdrawal rate" }).fill("4.5");
+  await screen.getByRole("textbox", { name: "Withdrawal rate" }).fill("4.5");
 
   // While computing, the computing indicator should appear.
   await vi.waitFor(
@@ -579,14 +672,14 @@ test("stale in-flight run does not overwrite a newer result", async () => {
   // First form fill -- triggers first (stale) simulation.
   await screen.getByRole("textbox", { name: "Current age" }).fill("35");
   await screen.getByRole("textbox", { name: "Plan until age" }).fill("65");
-  await screen.getByRole("textbox", { name: "Annual retirement spend" }).fill("40000");
-  await screen.getByRole("textbox", { name: "Safe withdrawal rate" }).fill("4");
+  await screen.getByRole("textbox", { name: "Target annual spend" }).fill("40000");
+  await screen.getByRole("textbox", { name: "Withdrawal rate" }).fill("4");
 
   // Let the debounce fire.
   await vi.waitFor(() => expect(callCount).toBeGreaterThanOrEqual(1), { timeout: 1_000 });
 
   // Change an input to trigger the second (newer) simulation.
-  await screen.getByRole("textbox", { name: "Safe withdrawal rate" }).fill("3");
+  await screen.getByRole("textbox", { name: "Withdrawal rate" }).fill("3");
 
   // Wait for second call to complete and render.
   await vi.waitFor(
@@ -654,8 +747,8 @@ test("form filled while pot loading still runs simulation when pot resolves", as
 
   await screen.getByRole("textbox", { name: "Current age" }).fill("40");
   await screen.getByRole("textbox", { name: "Plan until age" }).fill("75");
-  await screen.getByRole("textbox", { name: "Annual retirement spend" }).fill("50000");
-  await screen.getByRole("textbox", { name: "Safe withdrawal rate" }).fill("4");
+  await screen.getByRole("textbox", { name: "Target annual spend" }).fill("50000");
+  await screen.getByRole("textbox", { name: "Withdrawal rate" }).fill("4");
 
   // Past the 300ms debounce: no simulation may run while the price is missing.
   await new Promise((r) => setTimeout(r, 500));

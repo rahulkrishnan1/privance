@@ -221,26 +221,24 @@ export function FanChart({
       role="img"
       aria-label="Projection fan chart"
     >
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-5">
-        <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
-          Portfolio projection (today&apos;s dollars)
-        </p>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-app-muted">
+      {/* Legend only; the "Portfolio projection" title is lifted out to a
+          section eyebrow above the card (ResultsPanel), matching the other
+          sections. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-5 text-[11px] text-app-muted">
+        <span className="flex items-center gap-1.5">
+          <span className="h-0.5 w-3.5 rounded bg-gold-accent" />
+          Median
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-3.5 rounded-sm bg-gold-accent/[0.08]" />
+          Range
+        </span>
+        {fireNumberDisplay !== undefined && fireNumberDisplay > 0 && (
           <span className="flex items-center gap-1.5">
-            <span className="h-0.5 w-3.5 rounded bg-gold-accent" />
-            Median
+            <span className="w-3.5 border-t border-dashed border-app-muted/70" />
+            Target {formatYAxisTick(fireNumberDisplay)}
           </span>
-          <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-3.5 rounded-sm bg-gold-accent/[0.08]" />
-            Range
-          </span>
-          {fireNumberDisplay !== undefined && fireNumberDisplay > 0 && (
-            <span className="flex items-center gap-1.5">
-              <span className="w-3.5 border-t border-dashed border-app-muted/70" />
-              Target {formatYAxisTick(fireNumberDisplay)}
-            </span>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Fixed height: ResponsiveContainer's height="100%" cannot resolve

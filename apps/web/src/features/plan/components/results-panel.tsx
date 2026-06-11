@@ -58,12 +58,15 @@ export function ResultsPanel({
 
   return (
     <div className="flex flex-col gap-7 md:gap-9">
-      <div className="flex flex-col gap-3">
+      <section aria-label="Portfolio projection">
+        <h2 className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim mb-4">
+          Portfolio projection (today&apos;s dollars)
+        </h2>
         {computing && (
           <div
             role="status"
             aria-label="Recomputing projections"
-            className="flex items-center gap-2 text-xs text-app-muted"
+            className="mb-3 flex items-center gap-2 text-xs text-app-muted"
           >
             <svg
               aria-hidden="true"
@@ -98,7 +101,7 @@ export function ResultsPanel({
           medianFireAge={mc.medianFireAge}
           planUntilAge={input.planUntilAge}
         />
-      </div>
+      </section>
 
       {neverFi ? (
         <div className="rounded-2xl border border-app-line bg-app-panel p-5">

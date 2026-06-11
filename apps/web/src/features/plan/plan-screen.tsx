@@ -13,7 +13,7 @@ import { simulate } from "@/lib/sim/worker-client";
 import { AssumptionsBar } from "./components/assumptions-bar";
 import { PlanHeadline } from "./components/plan-headline";
 import { ResultsPanel } from "./components/results-panel";
-import { FanChartSkeleton, ResultsSkeleton } from "./components/skeletons";
+import { FanChartSkeleton, PlanHeadlineSkeleton, ResultsSkeleton } from "./components/skeletons";
 import { useSavePlan } from "./mutations";
 import { deriveLiquidPot } from "./pot";
 import { usePlanRecord } from "./queries";
@@ -250,6 +250,12 @@ export function PlanScreen() {
   useEffect(() => {
     if (workingValues === null || potResult === null) return;
     const input = formToSimInput(workingValues, potResult.potCents, seed);
+    // First sim runs immediately so the page isn't held behind a 300ms debounce
+    // on load; only live edits afterward (lastInputRef set) are debounced.
+    if (lastInputRef.current === null) {
+      void runSimulation(input, workingValues);
+      return;
+    }
     if (debounceRef.current !== null) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       void runSimulation(input, workingValues);
@@ -310,6 +316,10 @@ export function PlanScreen() {
 
   const isLoading = accountsQuery.status === "initialising" || planQuery.status === "initialising";
   const excludedAccounts = potResult?.excludedAccounts ?? [];
+  // The intro is the genuine empty state only: data loaded, no saved plan, and
+  // nothing entered yet. While loading or computing the first sim we show a
+  // headline skeleton instead, so a saved plan never flashes the intro first.
+  const showIntro = !isLoading && planQuery.status !== "success" && !hasMinInputs;
 
   return (
     <Screen width="wide">
@@ -326,7 +336,7 @@ export function PlanScreen() {
             neverFiFraction={sim.result.mc.neverFiFraction}
             planUntilAge={sim.input.planUntilAge}
           />
-        ) : (
+        ) : showIntro ? (
           <div>
             <h1
               className="font-serif text-[40px] md:text-[46px] leading-tight font-light tracking-[-0.015em] text-app-muted"
@@ -338,6 +348,8 @@ export function PlanScreen() {
               Enter your assumptions below to see when your money reaches your target.
             </p>
           </div>
+        ) : (
+          <PlanHeadlineSkeleton />
         )}
 
         {/* Currency exclusion disclosure */}
@@ -392,7 +404,7 @@ export function PlanScreen() {
         )}
 
         {/* Results area */}
-        {!hasMinInputs && (
+        {showIntro && (
           <section
             className="rounded-xl border border-app-line bg-app-panel p-8 flex flex-col items-center justify-center min-h-[300px] text-center"
             aria-label="Results placeholder"
@@ -403,14 +415,14 @@ export function PlanScreen() {
           </section>
         )}
 
-        {hasMinInputs && sim === null && !simFailed && (
+        {!showIntro && sim === null && !simFailed && (
           <div className="flex flex-col gap-7 md:gap-9">
             <FanChartSkeleton />
             <ResultsSkeleton />
           </div>
         )}
 
-        {hasMinInputs && sim === null && simFailed && (
+        {!showIntro && sim === null && simFailed && (
           <section
             role="alert"
             aria-label="Projection error"

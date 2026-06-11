@@ -389,11 +389,11 @@ export function AssumptionsBar({
           />
           <div
             id="assumptions-panel"
-            className="overflow-hidden rounded-2xl border border-app-line bg-app-panel"
+            className="rounded-2xl border border-app-line bg-app-panel p-6"
           >
-            <div className="flex items-center justify-between border-b border-app-line-soft px-6 py-4">
+            <div className="mb-6 flex items-center justify-between">
               <h2
-                className="font-serif text-[21px] font-light leading-tight text-app-text"
+                className="font-serif text-[22px] font-light leading-tight tracking-[-0.01em] text-app-text"
                 style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
               >
                 Adjust your plan
@@ -404,22 +404,27 @@ export function AssumptionsBar({
                 aria-controls="assumptions-panel"
                 aria-label="Done editing assumptions"
                 onClick={() => setUserToggled(false)}
-                className="text-[13px] text-app-muted hover:text-app-text transition-colors cursor-pointer"
+                className="flex h-[26px] w-[26px] items-center justify-center rounded-full border border-app-line text-app-muted transition-colors hover:border-app-muted/45 hover:text-app-text cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent"
               >
-                Done
+                <X size={13} />
               </button>
             </div>
-            <div className="px-6 pb-6 pt-1">{form()}</div>
+            {form()}
           </div>
         </div>
       ) : (
-        <CollapsedSummary
-          summary={summary}
-          manualAssetsCents={manualAssetsCents}
-          liabilitiesCents={liabilitiesCents}
-          onAdjust={() => setUserToggled(true)}
-          isMobile={isMobile}
-        />
+        <div>
+          <h2 className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim mb-4">
+            Assumptions
+          </h2>
+          <CollapsedSummary
+            summary={summary}
+            manualAssetsCents={manualAssetsCents}
+            liabilitiesCents={liabilitiesCents}
+            onAdjust={() => setUserToggled(true)}
+            isMobile={isMobile}
+          />
+        </div>
       )}
 
       <AssumptionsSheet open={sheetOpen} onClose={() => setUserToggled(false)}>
