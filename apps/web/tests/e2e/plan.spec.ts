@@ -121,12 +121,12 @@ async function fillPlanAssumptions(
   await contribInput.press("Tab");
 
   // Annual spend (required; triggers simulation once ages are also valid)
-  const spendInput = page.getByLabel("Annual retirement spend");
+  const spendInput = page.getByLabel("Target annual spend");
   await spendInput.fill(String(annualSpend));
   await spendInput.press("Tab");
 
   // SWR
-  const swrInput = page.getByLabel("Safe withdrawal rate");
+  const swrInput = page.getByLabel("Withdrawal rate");
   await swrInput.fill(String(swrPercent));
   await swrInput.press("Tab");
 }
@@ -314,7 +314,7 @@ test.describe
       await expect(ageInput).toHaveValue("35", { timeout: 15_000 });
 
       // Annual spend = 40000 (set in F1)
-      const spendInput = page.getByLabel("Annual retirement spend");
+      const spendInput = page.getByLabel("Target annual spend");
       await expect(spendInput).toHaveValue("40000", { timeout: 10_000 });
 
       // Monthly contribution = 5000 (saved in this test)

@@ -26,7 +26,7 @@ export function presetLabel(preset: PlanFormValues["preset"]): string {
 }
 
 // ---------------------------------------------------------------------------
-// Field: label above, underline input, optional $ prefix / % suffix (mock style)
+// Field: mono-uppercase label above an underline input, optional $ prefix / suffix
 // ---------------------------------------------------------------------------
 
 function Field({
@@ -38,20 +38,25 @@ function Field({
 }: {
   label: string;
   prefix?: string;
-  suffix?: string;
+  suffix?: React.ReactNode;
   error?: string;
   children: (id: string) => React.ReactNode;
 }) {
   const id = useId();
   return (
-    <div>
-      <label htmlFor={id} className="mb-1.5 block text-[11px] text-app-muted">
+    <div className="flex min-w-0 flex-col gap-[9px]">
+      <label
+        htmlFor={id}
+        className="font-mono text-[9.5px] tracking-[0.14em] uppercase text-app-dim"
+      >
         {label}
       </label>
-      <div className="flex items-baseline border-b border-app-line pb-[7px] transition-colors focus-within:border-gold-accent">
-        {prefix !== undefined && <span className="mr-1.5 text-[15px] text-app-dim">{prefix}</span>}
+      <div className="flex items-baseline border-b border-app-line pb-2 transition-colors focus-within:border-gold-accent">
+        {prefix !== undefined && <span className="mr-1 text-[14px] text-app-dim">{prefix}</span>}
         {children(id)}
-        {suffix !== undefined && <span className="ml-1.5 text-[13px] text-app-dim">{suffix}</span>}
+        {suffix !== undefined && (
+          <span className="ml-[5px] whitespace-nowrap text-[13px] text-app-dim">{suffix}</span>
+        )}
       </div>
       {error !== undefined && (
         <p className="mt-1.5 text-[13px] text-app-red" role="alert">
@@ -62,21 +67,14 @@ function Field({
   );
 }
 
-const INPUT_CLASS =
-  "w-full flex-1 border-0 bg-transparent p-0 text-[17px] tabular-nums text-app-text outline-none placeholder:text-app-dim";
-
-function Group({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="border-b border-app-line-soft py-5 last:border-b-0">
-      <p className="mb-4 font-mono text-[10px] tracking-[0.2em] uppercase text-app-dim">{label}</p>
-      {children}
-    </div>
-  );
-}
+const INPUT_BASE =
+  "min-w-0 border-0 bg-transparent p-0 text-[19px] font-medium tabular-nums text-app-text outline-none placeholder:text-app-dim";
 
 // Numeric input that edits as free text so delete-to-empty and decimals work
 // (a controlled type=number clobbers mid-entry). Parses to a number on change,
-// normalises the display on blur; accepts only digits and a single dot.
+// normalises the display on blur; accepts only digits and a single dot. When
+// `autosize` is set it sizes to its content (native field-sizing) so a trailing
+// suffix sits snug against the number instead of being pushed to the cell edge.
 function NumberInput({
   id,
   value,
@@ -84,6 +82,7 @@ function NumberInput({
   onBlur,
   inputMode,
   placeholder,
+  autosize = false,
 }: {
   id: string;
   value: number | undefined;
@@ -91,6 +90,7 @@ function NumberInput({
   onBlur: () => void;
   inputMode: "numeric" | "decimal";
   placeholder?: string;
+  autosize?: boolean;
 }) {
   const [text, setText] = useState(value === undefined ? "" : String(value));
   return (
@@ -100,7 +100,8 @@ function NumberInput({
       inputMode={inputMode}
       autoComplete="off"
       placeholder={placeholder}
-      className={INPUT_CLASS}
+      size={autosize ? 4 : undefined}
+      className={autosize ? `${INPUT_BASE} field-sizing-content` : `${INPUT_BASE} w-full flex-1`}
       value={text}
       onChange={(e) => {
         const raw = e.target.value;
@@ -133,14 +134,16 @@ function NumberField({
   suffix,
   inputMode = "decimal",
   placeholder,
+  autosize,
 }: {
   control: Control<PlanFormValues>;
   name: NumericFieldName;
   label: string;
   prefix?: string;
-  suffix?: string;
+  suffix?: React.ReactNode;
   inputMode?: "numeric" | "decimal";
   placeholder?: string;
+  autosize?: boolean;
 }) {
   return (
     <Controller
@@ -156,6 +159,7 @@ function NumberField({
               onBlur={field.onBlur}
               inputMode={inputMode}
               placeholder={placeholder}
+              autosize={autosize}
             />
           )}
         </Field>
@@ -165,7 +169,56 @@ function NumberField({
 }
 
 // ---------------------------------------------------------------------------
-// StrategySlider: one allocation knob; return + volatility derive from history
+// AllocationField: editable stock-allocation cell, two-way synced with the slider
+// ---------------------------------------------------------------------------
+
+function AllocationField({
+  stockPct,
+  onAllocation,
+}: {
+  stockPct: number;
+  onAllocation: (pct: number) => void;
+}) {
+  // Local text buffer (same reason as NumberInput): binding the input straight to
+  // the derived stockPct would snap the caret to the end on every keystroke and
+  // make the cell impossible to clear. The slider and snap presets drive stockPct,
+  // so sync the buffer back from it; blur normalises a transient/empty edit.
+  const [text, setText] = useState(String(stockPct));
+  useEffect(() => setText(String(stockPct)), [stockPct]);
+  return (
+    <Field
+      label="Stock allocation"
+      suffix={
+        <>
+          % stocks <span className="text-app-muted">&middot; {100 - stockPct}% bonds</span>
+        </>
+      }
+    >
+      {(id) => (
+        <input
+          id={id}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          size={4}
+          className={`${INPUT_BASE} field-sizing-content`}
+          value={text}
+          onChange={(e) => {
+            const raw = e.target.value.replace(/[^0-9]/g, "");
+            setText(raw);
+            // Empty is a transient edit state, not 0; blur restores the committed value.
+            if (raw !== "") onAllocation(Math.max(0, Math.min(100, Number(raw))));
+          }}
+          onBlur={() => setText(String(stockPct))}
+        />
+      )}
+    </Field>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// StrategySlider: expected-return caption + allocation slider + snap presets.
+// The allocation number lives in the grid (AllocationField); this is the knob.
 // ---------------------------------------------------------------------------
 
 function fillStyle(pct: number): React.CSSProperties {
@@ -186,15 +239,11 @@ function StrategySlider({
 }) {
   const expectedReturn = (deriveAllocationParams(stockPct / 100).muBps / 100).toFixed(1);
   return (
-    <div>
-      <p className="text-[17px] font-medium text-app-text">
-        {stockPct}% stocks
-        <span className="ml-3 text-app-muted">{100 - stockPct}% bonds</span>
-      </p>
-      <p className="mt-1.5 text-[12.5px] text-app-dim">~{expectedReturn}% / year expected return</p>
+    <div className="mt-6">
+      <p className="text-[13px] text-app-muted">~{expectedReturn}% / year expected return</p>
       <input
         type="range"
-        className="plan-range mt-3.5 w-full"
+        className="plan-range mt-4 w-full"
         min={0}
         max={100}
         step={1}
@@ -204,13 +253,14 @@ function StrategySlider({
         aria-label="Stock allocation percent"
         aria-valuetext={`${stockPct}% stocks, ${100 - stockPct}% bonds`}
       />
-      <div className="relative mt-3.5 h-4">
+      <div className="relative mt-4 h-4">
         {ALLOCATION_SNAPS.map((s) => {
           const active = stockPct === s.pct;
           return (
             <button
               key={s.pct}
               type="button"
+              aria-label={s.label}
               onClick={() => onSnap(s.preset)}
               className={[
                 "absolute -translate-x-1/2 font-mono text-[9.5px] cursor-pointer transition-colors",
@@ -221,7 +271,8 @@ function StrategySlider({
               ].join(" ")}
               style={{ left: `calc(${s.pct / 100} * (100% - 18px) + 9px)` }}
             >
-              {s.label}
+              <span className="md:hidden">{s.short}</span>
+              <span className="hidden md:inline">{s.label}</span>
             </button>
           );
         })}
@@ -283,9 +334,9 @@ export function AssumptionsForm({
   const swrWarn = typeof swrPercent === "number" ? swrWarning(swrPercent) : null;
   const stockPct = resolveStockPct(watchedValues);
 
-  // Dragging the strategy slider stores a derived mu/sigma alongside the chosen
-  // allocation (preset=custom), so the sim wiring is unchanged; snapping picks a
-  // named preset.
+  // Dragging the strategy slider (or typing in the allocation cell) stores a
+  // derived mu/sigma alongside the chosen allocation (preset=custom), so the sim
+  // wiring is unchanged; snapping picks a named preset.
   const applyAllocation = (pct: number) => {
     const params = deriveAllocationParams(pct / 100);
     setValue("preset", "custom", { shouldValidate: true });
@@ -327,24 +378,14 @@ export function AssumptionsForm({
       noValidate
       className="flex flex-col"
     >
-      <Group label="You">
-        <div className="grid grid-cols-1 gap-[18px] md:grid-cols-2">
-          <NumberField
-            control={control}
-            name="currentAge"
-            label="Current age"
-            inputMode="numeric"
-          />
-          <NumberField
-            control={control}
-            name="planUntilAge"
-            label="Plan until age"
-            inputMode="numeric"
-          />
-        </div>
-      </Group>
-
-      <Group label="Saving">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <NumberField control={control} name="currentAge" label="Current age" inputMode="numeric" />
+        <NumberField
+          control={control}
+          name="planUntilAge"
+          label="Plan until age"
+          inputMode="numeric"
+        />
         <NumberField
           control={control}
           name="monthlyContribution"
@@ -352,37 +393,32 @@ export function AssumptionsForm({
           prefix="$"
           placeholder="0"
         />
-      </Group>
-
-      <Group label="Spending">
-        <div className="grid grid-cols-1 gap-[18px] md:grid-cols-2">
+        <NumberField
+          control={control}
+          name="annualSpend"
+          label="Target annual spend"
+          prefix="$"
+          placeholder="40000"
+        />
+        <div>
           <NumberField
             control={control}
-            name="annualSpend"
-            label="Annual retirement spend"
-            prefix="$"
-            placeholder="40000"
+            name="swrPercent"
+            label="Withdrawal rate"
+            suffix="%"
+            placeholder="4"
+            autosize
           />
-          <div>
-            <NumberField
-              control={control}
-              name="swrPercent"
-              label="Safe withdrawal rate"
-              suffix="%"
-              placeholder="4"
-            />
-            {swrWarn !== null && errors.swrPercent === undefined && (
-              <p className="mt-1.5 text-[13px] text-amber-500" role="alert">
-                {swrWarn}
-              </p>
-            )}
-          </div>
+          {swrWarn !== null && errors.swrPercent === undefined && (
+            <p className="mt-1.5 text-[13px] text-amber-500" role="alert">
+              {swrWarn}
+            </p>
+          )}
         </div>
-      </Group>
+        <AllocationField stockPct={stockPct} onAllocation={applyAllocation} />
+      </div>
 
-      <Group label="Strategy">
-        <StrategySlider stockPct={stockPct} onAllocation={applyAllocation} onSnap={applySnap} />
-      </Group>
+      <StrategySlider stockPct={stockPct} onAllocation={applyAllocation} onSnap={applySnap} />
 
       {saveError !== null && (
         <div
@@ -397,7 +433,7 @@ export function AssumptionsForm({
         type="submit"
         loading={saving}
         disabled={saving || saveDisabled}
-        className="mt-5 w-full"
+        className="mt-6 w-full"
       >
         {saving ? "Saving…" : "Save plan"}
       </Button>

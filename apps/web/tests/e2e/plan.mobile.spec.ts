@@ -140,11 +140,11 @@ test.describe("plan mobile: F1 + AE6", () => {
     // attaches to the DOM) behind it; measure attachment, not visibility.
     const perfStart = Date.now();
 
-    const spendInput = page.getByLabel("Annual retirement spend");
+    const spendInput = page.getByLabel("Target annual spend");
     await spendInput.fill("40000");
     await spendInput.press("Tab");
 
-    const swrInput = page.getByLabel("Safe withdrawal rate");
+    const swrInput = page.getByLabel("Withdrawal rate");
     await swrInput.fill("4");
     await swrInput.press("Tab");
 
@@ -251,10 +251,10 @@ test.describe("plan mobile: AE6 interactivity during recompute", () => {
     await page.getByLabel("Plan until age").press("Tab");
 
     await page.getByLabel("Monthly contribution").fill("1000");
-    await page.getByLabel("Annual retirement spend").fill("45000");
-    await page.getByLabel("Annual retirement spend").press("Tab");
-    await page.getByLabel("Safe withdrawal rate").fill("4");
-    await page.getByLabel("Safe withdrawal rate").press("Tab");
+    await page.getByLabel("Target annual spend").fill("45000");
+    await page.getByLabel("Target annual spend").press("Tab");
+    await page.getByLabel("Withdrawal rate").fill("4");
+    await page.getByLabel("Withdrawal rate").press("Tab");
 
     // Wait for first results to compute (attached behind the open sheet)
     await expect(page.getByTestId("fire-age-value")).toBeAttached({ timeout: 20_000 });
