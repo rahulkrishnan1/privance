@@ -205,6 +205,10 @@ jobs:
   test-e2e:
     name: E2E (chromium + firefox + webkit + mobile)
     runs-on: ubuntu-latest
+    # Browsers + system deps are preinstalled, so CI never runs the apt-bound
+    # `playwright install --with-deps` (it stalled the job). Pin to the
+    # @playwright/test version; bump both together.
+    container: mcr.microsoft.com/playwright:v1.60.0-noble
     timeout-minutes: 30
     needs: [lint, typecheck, test-unit-core, test-unit-web, test-unit-server]
     services:
@@ -214,14 +218,18 @@ jobs:
           POSTGRES_USER: privance
           POSTGRES_PASSWORD: privance
           POSTGRES_DB: privance
-        ports: ["5432:5432"]
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgres://privance:privance@localhost:5432/privance
+      # Firefox refuses to launch unless $HOME is owned by the run user; the image
+      # defaults it to a non-root-owned dir, so point it at root's home.
+      HOME: /root
+      # The job runs in a container, so Postgres is reached by its service name
+      # on the job network, not localhost.
+      DATABASE_URL: postgres://privance:privance@postgres:5432/privance
       # Throwaway CI-only value. Matches the default already baked into
       # playwright.config.ts (process.env.ENUMERATION_SECRET ?? "8iAent0D...").
       # Set explicitly so the bun server starts cleanly without reading server/.env.
@@ -249,6 +257,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # setup-bun needs unzip to extract Bun; the Playwright image ships without it.
+      - name: Install unzip (for setup-bun)
+        run: apt-get update && apt-get install -y --no-install-recommends unzip
+
       - name: Set up Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -257,21 +269,6 @@ jobs:
       - name: Apply DB migrations
         working-directory: server
         run: bun run db:migrate
-
-      - name: Restore Playwright browser cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        id: pw-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('apps/web/package.json') }}
-
-      - name: Install Playwright browsers
-        if: steps.pw-cache.outputs.cache-hit != 'true'
-        run: pnpm -F @privance/web e2e:install --with-deps
-
-      - name: Install Playwright system deps (cached hit)
-        if: steps.pw-cache.outputs.cache-hit == 'true'
-        run: pnpm -F @privance/web e2e:install --with-deps
 
       - name: Run E2E tests (chromium)
         run: pnpm -F @privance/web e2e --project=chromium
