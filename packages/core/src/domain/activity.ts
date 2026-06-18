@@ -1,10 +1,5 @@
 import type { AccountId, ActivityId, HoldingId, IsoDateTime } from "./types.js";
 
-// ---------------------------------------------------------------------------
-// ActivityKind: 14-type transaction taxonomy. Schema-only in v1; the UI is
-// read-only and activity-driven holdings derivation is a later phase.
-// ---------------------------------------------------------------------------
-
 /**
  * The complete activity taxonomy.
  *
@@ -42,7 +37,6 @@ export type ActivityKind =
   | "ADJUSTMENT"
   | "UNKNOWN";
 
-/** All 14 activity kinds in canonical order. */
 export const ACTIVITY_KINDS: readonly ActivityKind[] = [
   "BUY",
   "SELL",
@@ -60,10 +54,6 @@ export const ACTIVITY_KINDS: readonly ActivityKind[] = [
   "UNKNOWN",
 ] as const;
 
-// ---------------------------------------------------------------------------
-// Activity, server-side metadata
-// ---------------------------------------------------------------------------
-
 /** Server metadata for an activity record. */
 export interface ActivityMeta {
   readonly id: ActivityId;
@@ -74,10 +64,6 @@ export interface ActivityMeta {
   readonly settledAt: IsoDateTime;
   readonly createdAt: IsoDateTime;
 }
-
-// ---------------------------------------------------------------------------
-// Decrypted payload
-// ---------------------------------------------------------------------------
 
 /** Decrypted financial payload for an activity. */
 export interface ActivityPayload {

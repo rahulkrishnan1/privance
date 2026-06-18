@@ -1,6 +1,9 @@
+import type { Database } from "@sqlite.org/sqlite-wasm";
+import initSqlite from "@sqlite.org/sqlite-wasm";
 import * as fc from "fast-check";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LocalStore, OutboundItem, StoredObject } from "../storage/types.js";
+import { WebSqliteAdapter } from "../storage/web-adapter.js";
 import { createSyncClient } from "./client.js";
 import {
   fromBase64,
@@ -13,17 +16,7 @@ import { pullChanges } from "./pull.js";
 import { pushPending } from "./push.js";
 import { applyReconcile, fetchServerObject, handleConflict } from "./reconcile.js";
 import type { ConflictChoice, ConflictResolutionInput, SyncClientConfig } from "./types.js";
-import {
-  SyncConflictError,
-  SyncError,
-  SyncNetworkError,
-  SyncNotFoundError,
-  SyncProtocolError,
-} from "./types.js";
-
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
+import { SyncError, SyncNetworkError, SyncNotFoundError, SyncProtocolError } from "./types.js";
 
 const SERVER_URL = "https://privance.test";
 
@@ -66,6 +59,16 @@ function makeStoredObject(overrides?: Partial<StoredObject>): StoredObject {
   };
 }
 
+async function makeInMemoryAdapter(): Promise<WebSqliteAdapter> {
+  const sqlite3 = await initSqlite();
+  const db: Database = new sqlite3.oo1.DB({ filename: ":memory:" });
+  return new WebSqliteAdapter({
+    workerUrl: "unused-in-test",
+    dbFilename: "/sync-test.sqlite3",
+    injectedDb: db,
+  });
+}
+
 function makeStore(overrides?: Partial<LocalStore>): LocalStore {
   return {
     init: vi.fn().mockResolvedValue(undefined),
@@ -103,10 +106,6 @@ function mockFetch(responses: Response[]): typeof fetch {
   }) as unknown as typeof fetch;
 }
 
-// ---------------------------------------------------------------------------
-// Envelope helpers, property tests
-// ---------------------------------------------------------------------------
-
 describe("toBase64 / fromBase64 round-trip", () => {
   it("deterministic encode-decode on fixed input", () => {
     const input = new Uint8Array([0x00, 0xff, 0x80, 0x42]);
@@ -127,10 +126,6 @@ describe("toBase64 / fromBase64 round-trip", () => {
     expect(fromBase64("")).toEqual(new Uint8Array(0));
   });
 });
-
-// ---------------------------------------------------------------------------
-// pushPending, happy path
-// ---------------------------------------------------------------------------
 
 describe("pushPending, happy path", () => {
   it("drains queue and sends batch, acks successful items, updates local store", async () => {
@@ -261,11 +256,38 @@ describe("pushPending, happy path", () => {
     expect(deletes[0]?.object_id).toBe(OBJ_ID);
     expect(deletes[0]?.prev_version).toBe("4");
   });
-});
 
-// ---------------------------------------------------------------------------
-// pushPending, 409 conflict → callback fires → resolution applied
-// ---------------------------------------------------------------------------
+  // Fallback contract: when prevVersion is undefined the wire prev_version must
+  // be version-1, the version the server held before this tombstone bump.
+  it("falls back to version-1 as prev_version when prevVersion is undefined", async () => {
+    const tombstone = makeOutboundItem({
+      version: 6n,
+      prevVersion: undefined,
+      tombstone: true,
+    });
+    const store = makeStore({ drainQueue: vi.fn().mockResolvedValue([tombstone]) });
+
+    let parsedBody: Record<string, unknown> = {};
+    const fetchFn = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      parsedBody = JSON.parse(init?.body as string) as Record<string, unknown>;
+      return Promise.resolve(
+        jsonResponse({ results: [{ id: OBJ_ID, ok: true, server_seq: "9", version: "6" }] }),
+      );
+    }) as unknown as typeof fetch;
+
+    await pushPending({
+      config: makeConfig(fetchFn as unknown as typeof fetch),
+      store,
+      encryptEnvelope,
+      decryptEnvelope,
+      onConflict: null,
+    });
+
+    const deletes = parsedBody.deletes as Array<Record<string, unknown>>;
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0]?.prev_version).toBe("5");
+  });
+});
 
 describe("pushPending, conflict resolution", () => {
   it("fires conflict callback when server returns conflict; applies keep-mine", async () => {
@@ -400,10 +422,6 @@ describe("pushPending, conflict resolution", () => {
     expect(store.ackQueueItem).toHaveBeenCalledWith("queue-1");
   });
 });
-
-// ---------------------------------------------------------------------------
-// pullChanges, happy path and cursor advance
-// ---------------------------------------------------------------------------
 
 describe("pullChanges, happy path", () => {
   it("fetches changes, applies to store, advances cursor", async () => {
@@ -567,6 +585,105 @@ describe("pullChanges, local newer than server", () => {
   });
 });
 
+describe("pullChanges, LWW tie-break at equal version", () => {
+  it("clobbers the local copy when the server version equals local (strictly-greater guard)", async () => {
+    // The guard is `existing.version > change.version`. At equal version the
+    // guard is false, so the server's record is applied over the local one.
+    // This pins last-writer-wins semantics: a same-version server record wins.
+    const localSameVersion = makeStoredObject({ version: 4n, ciphertext: new Uint8Array([0x11]) });
+    const store = makeStore({
+      getCursor: vi.fn().mockResolvedValue(null),
+      get: vi.fn().mockResolvedValue(localSameVersion),
+    });
+
+    const serverCipher = new Uint8Array([0x22, 0x33]);
+    const changesBody = {
+      changes: [
+        {
+          id: OBJ_ID,
+          kind: KIND,
+          version: "4",
+          server_seq: "9",
+          ciphertext: toBase64(serverCipher),
+          nonce: toBase64(NONCE),
+          tombstone: false,
+        },
+      ],
+      next: null,
+    };
+
+    const localDecrypt = vi.fn().mockResolvedValue(PLAINTEXT);
+    await pullChanges({
+      config: makeConfig(mockFetch([jsonResponse(changesBody)])),
+      store,
+      decryptEnvelope: localDecrypt,
+    });
+
+    // Server record decrypted and written over the local same-version copy.
+    expect(localDecrypt).toHaveBeenCalledOnce();
+    expect(store.put).toHaveBeenCalledWith(
+      expect.objectContaining({ objectId: OBJ_ID, version: 4n, ciphertext: serverCipher }),
+    );
+    expect(store.setCursor).toHaveBeenCalledWith(9n);
+  });
+});
+
+describe("pullChanges, conflict convergence (property)", () => {
+  it("any order of versioned changes for one object converges on the highest version and max seq", async () => {
+    const versionSeq = fc.uniqueArray(
+      fc.record({
+        version: fc.integer({ min: 1, max: 50 }),
+        seq: fc.integer({ min: 1, max: 200 }),
+      }),
+      { minLength: 1, maxLength: 8, selector: (r) => r.version },
+    );
+
+    await fc.assert(
+      fc.asyncProperty(versionSeq, fc.gen(), async (records, gen) => {
+        const adapter = await makeInMemoryAdapter();
+        await adapter.init();
+        try {
+          const shuffled = gen(fc.shuffledSubarray, records, {
+            minLength: records.length,
+            maxLength: records.length,
+          });
+
+          const changesBody = {
+            changes: shuffled.map((r) => ({
+              id: OBJ_ID,
+              kind: KIND,
+              // Distinct ciphertext per version so we can tell which one landed.
+              ciphertext: toBase64(new Uint8Array([r.version & 0xff])),
+              nonce: toBase64(NONCE),
+              version: String(r.version),
+              server_seq: String(r.seq),
+              tombstone: false,
+            })),
+            next: null,
+          };
+
+          await pullChanges({
+            config: makeConfig(mockFetch([jsonResponse(changesBody)])),
+            store: adapter,
+            decryptEnvelope: vi.fn().mockResolvedValue(PLAINTEXT),
+          });
+
+          const highest = records.reduce((a, b) => (b.version > a.version ? b : a));
+          const maxSeq = records.reduce((a, b) => (b.seq > a.seq ? b : a)).seq;
+
+          const stored = await adapter.get({ kind: KIND, objectId: OBJ_ID });
+          expect(stored?.version).toBe(BigInt(highest.version));
+          expect(stored?.ciphertext).toEqual(new Uint8Array([highest.version & 0xff]));
+          expect(await adapter.getCursor()).toBe(BigInt(maxSeq));
+        } finally {
+          await adapter.close();
+        }
+      }),
+      { numRuns: 40 },
+    );
+  });
+});
+
 describe("pushPending, server-reported per-item error", () => {
   it("surfaces an error variant without acking so the next push retries", async () => {
     const item = makeOutboundItem();
@@ -720,10 +837,6 @@ describe("SyncClient.drainAllChanges", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// pullChanges, error handling
-// ---------------------------------------------------------------------------
-
 describe("pullChanges, error handling", () => {
   it("throws SyncNetworkError on non-200 status", async () => {
     const store = makeStore({ getCursor: vi.fn().mockResolvedValue(null) });
@@ -752,10 +865,6 @@ describe("pullChanges, error handling", () => {
     ).rejects.toThrow(SyncProtocolError);
   });
 });
-
-// ---------------------------------------------------------------------------
-// pushPending, error handling
-// ---------------------------------------------------------------------------
 
 describe("pushPending, error handling", () => {
   it("throws SyncNetworkError on server error", async () => {
@@ -791,10 +900,6 @@ describe("pushPending, error handling", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// fetchServerObject
-// ---------------------------------------------------------------------------
-
 describe("fetchServerObject", () => {
   it("fetches and decrypts the server object", async () => {
     const serverBody = {
@@ -829,10 +934,6 @@ describe("fetchServerObject", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// applyReconcile
-// ---------------------------------------------------------------------------
-
 describe("applyReconcile", () => {
   it("keep-mine: re-encrypts and pushes to server, updates local store", async () => {
     const fetchFn = mockFetch([jsonResponse({ server_seq: "8", version: "4" })]);
@@ -846,7 +947,8 @@ describe("applyReconcile", () => {
         kind: KIND,
         choice: { action: "keep-mine" },
         myPlaintext: PLAINTEXT,
-        theirPlaintext: new Uint8Array([0xaa]),
+        theirCiphertext: new Uint8Array([0xa1]),
+        theirNonce: new Uint8Array(12).fill(0xa2),
         theirVersion: 3n,
         theirServerSeq: 5n,
       },
@@ -863,10 +965,12 @@ describe("applyReconcile", () => {
     );
   });
 
-  it("keep-theirs: re-encrypts theirs and updates local store without pushing", async () => {
+  it("keep-theirs: stores the server ciphertext verbatim without pushing or re-encrypting", async () => {
     const fetchFn = vi.fn() as unknown as typeof fetch;
     const localEncrypt = vi.fn().mockResolvedValue({ ciphertext: CIPHER, nonce: NONCE });
     const store = makeStore();
+    const theirCiphertext = new Uint8Array([0xb1]);
+    const theirNonce = new Uint8Array(12).fill(0xb2);
 
     await applyReconcile(
       {
@@ -874,7 +978,8 @@ describe("applyReconcile", () => {
         kind: KIND,
         choice: { action: "keep-theirs" },
         myPlaintext: PLAINTEXT,
-        theirPlaintext: new Uint8Array([0xbb]),
+        theirCiphertext,
+        theirNonce,
         theirVersion: 3n,
         theirServerSeq: 7n,
       },
@@ -882,8 +987,15 @@ describe("applyReconcile", () => {
     );
 
     expect(fetchFn).not.toHaveBeenCalled();
+    expect(localEncrypt).not.toHaveBeenCalled();
     expect(store.put).toHaveBeenCalledWith(
-      expect.objectContaining({ objectId: OBJ_ID, version: 3n }),
+      expect.objectContaining({
+        objectId: OBJ_ID,
+        version: 3n,
+        serverSeq: 7n,
+        ciphertext: theirCiphertext,
+        nonce: theirNonce,
+      }),
     );
   });
 
@@ -893,6 +1005,8 @@ describe("applyReconcile", () => {
 
     const localEncrypt = vi.fn().mockResolvedValue({ ciphertext: CIPHER, nonce: NONCE });
     const store = makeStore();
+    const theirCiphertext = new Uint8Array([0xc1]);
+    const theirNonce = new Uint8Array(12).fill(0xc2);
 
     await applyReconcile(
       {
@@ -900,7 +1014,8 @@ describe("applyReconcile", () => {
         kind: KIND,
         choice: { action: "keep-both", newObjectId: NEW_ID },
         myPlaintext: PLAINTEXT,
-        theirPlaintext: new Uint8Array([0xcc]),
+        theirCiphertext,
+        theirNonce,
         theirVersion: 3n,
         theirServerSeq: 9n,
       },
@@ -908,17 +1023,16 @@ describe("applyReconcile", () => {
     );
 
     expect(store.put).toHaveBeenCalledTimes(2);
-    const calls = (store.put as ReturnType<typeof vi.fn>).mock.calls.map(
-      (c: unknown[]) => (c[0] as { objectId: string }).objectId,
+    const calls = (store.put as ReturnType<typeof vi.fn>).mock.calls;
+    const ids = calls.map((c: unknown[]) => (c[0] as { objectId: string }).objectId);
+    expect(ids).toContain(NEW_ID);
+    expect(ids).toContain(OBJ_ID);
+    const theirsCall = calls.find(
+      (c: unknown[]) => (c[0] as { objectId: string }).objectId === OBJ_ID,
     );
-    expect(calls).toContain(NEW_ID);
-    expect(calls).toContain(OBJ_ID);
+    expect(theirsCall?.[0]).toMatchObject({ ciphertext: theirCiphertext, nonce: theirNonce });
   });
 });
-
-// ---------------------------------------------------------------------------
-// SyncClient, lifecycle
-// ---------------------------------------------------------------------------
 
 describe("SyncClient, lifecycle", () => {
   beforeEach(() => {
@@ -1093,7 +1207,8 @@ describe("SyncClient, lifecycle", () => {
       kind: KIND,
       choice: { action: "keep-mine" },
       myPlaintext: PLAINTEXT,
-      theirPlaintext: new Uint8Array([0xee]),
+      theirCiphertext: new Uint8Array([0xe1]),
+      theirNonce: new Uint8Array(12).fill(0xe2),
       theirVersion: 3n,
       theirServerSeq: 5n,
     });
@@ -1101,10 +1216,6 @@ describe("SyncClient, lifecycle", () => {
     expect(store.put).toHaveBeenCalled();
   });
 });
-
-// ---------------------------------------------------------------------------
-// bigint wire serialisation
-// ---------------------------------------------------------------------------
 
 describe("bigint wire format", () => {
   it("pushPending sends version as decimal string", async () => {
@@ -1193,10 +1304,6 @@ describe("bigint wire format", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Custom CSRF header value
-// ---------------------------------------------------------------------------
-
 describe("csrfHeaderValue override", () => {
   it("uses custom CSRF header value when configured", async () => {
     const item = makeOutboundItem();
@@ -1222,10 +1329,6 @@ describe("csrfHeaderValue override", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// makeStoredObject usage guard, ensures fixture is exercised
-// ---------------------------------------------------------------------------
-
 describe("makeStoredObject fixture", () => {
   it("creates a valid StoredObject shape", () => {
     const obj = makeStoredObject({ version: 5n });
@@ -1234,23 +1337,11 @@ describe("makeStoredObject fixture", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Error constructors, ensure class hierarchy is exercised
-// ---------------------------------------------------------------------------
-
 describe("SyncError hierarchy", () => {
   it("SyncError is an Error subclass", () => {
     const e = new SyncError("base");
     expect(e).toBeInstanceOf(Error);
     expect(e.name).toBe("SyncError");
-  });
-
-  it("SyncConflictError carries objectId and currentVersion", () => {
-    const e = new SyncConflictError("obj-z", 7n);
-    expect(e).toBeInstanceOf(SyncError);
-    expect(e.name).toBe("SyncConflictError");
-    expect(e.objectId).toBe("obj-z");
-    expect(e.currentVersion).toBe(7n);
   });
 
   it("SyncNotFoundError carries objectId", () => {
@@ -1273,10 +1364,6 @@ describe("SyncError hierarchy", () => {
     expect(e.status).toBe(429);
   });
 });
-
-// ---------------------------------------------------------------------------
-// envelope, error branches
-// ---------------------------------------------------------------------------
 
 describe("envelope parse helpers, error branches", () => {
   it("parseBigIntField throws SyncProtocolError on null", () => {
@@ -1313,10 +1400,6 @@ describe("envelope parse helpers, error branches", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// fetchServerObject, 404 path
-// ---------------------------------------------------------------------------
-
 describe("fetchServerObject, 404 handling", () => {
   it("throws SyncNotFoundError on 404", async () => {
     const fetchFn = mockFetch([new Response(null, { status: 404 })]);
@@ -1326,10 +1409,6 @@ describe("fetchServerObject, 404 handling", () => {
     ).rejects.toThrow(SyncNotFoundError);
   });
 });
-
-// ---------------------------------------------------------------------------
-// handleConflict, keep-theirs and keep-both branches
-// ---------------------------------------------------------------------------
 
 describe("handleConflict, keep-theirs", () => {
   it("stores server version locally without re-pushing when user picks keep-theirs", async () => {
@@ -1412,10 +1491,6 @@ describe("handleConflict, keep-both", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// pushPending, tombstone (delete) items in batch
-// ---------------------------------------------------------------------------
-
 describe("pushPending, delete (tombstone) items", () => {
   it("includes tombstone items as deletes in the batch body", async () => {
     const deleteItem = makeOutboundItem({
@@ -1453,10 +1528,6 @@ describe("pushPending, delete (tombstone) items", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// pushPending, unknown objectId in server response
-// ---------------------------------------------------------------------------
-
 describe("pushPending, server result for unknown objectId", () => {
   it("gracefully handles ok result for an objectId not in the local queue", async () => {
     const item = makeOutboundItem({ objectId: "obj-known" });
@@ -1483,10 +1554,6 @@ describe("pushPending, server result for unknown objectId", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// reconcile, applyReconcile keep-both server error
-// ---------------------------------------------------------------------------
-
 describe("applyReconcile, keep-both server error", () => {
   it("throws SyncNetworkError when server rejects the new object push", async () => {
     const fetchFn = mockFetch([new Response(null, { status: 409 })]);
@@ -1500,7 +1567,8 @@ describe("applyReconcile, keep-both server error", () => {
           kind: KIND,
           choice: { action: "keep-both", newObjectId: "obj-brand-new-2" },
           myPlaintext: PLAINTEXT,
-          theirPlaintext: new Uint8Array([0xff]),
+          theirCiphertext: new Uint8Array([0xf1]),
+          theirNonce: new Uint8Array(12).fill(0xf2),
           theirVersion: 5n,
           theirServerSeq: 11n,
         },
@@ -1509,10 +1577,6 @@ describe("applyReconcile, keep-both server error", () => {
     ).rejects.toThrow(SyncNetworkError);
   });
 });
-
-// ---------------------------------------------------------------------------
-// pushResolution, server error branch
-// ---------------------------------------------------------------------------
 
 describe("handleConflict, pushResolution server error", () => {
   it("throws SyncNetworkError when re-push of keep-mine choice fails", async () => {
@@ -1549,10 +1613,6 @@ describe("handleConflict, pushResolution server error", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// SyncClient background error suppression
-// ---------------------------------------------------------------------------
-
 describe("SyncClient, background error suppression", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -1586,10 +1646,6 @@ describe("SyncClient, background error suppression", () => {
     expect(fetchFn).not.toHaveBeenCalled();
   });
 });
-
-// ---------------------------------------------------------------------------
-// Critical 1: batch puts carry prev_version
-// ---------------------------------------------------------------------------
 
 describe("pushPending, prev_version in batch puts", () => {
   it("omits prev_version for a brand-new object (prevVersion undefined)", async () => {
@@ -1644,10 +1700,6 @@ describe("pushPending, prev_version in batch puts", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Critical 2: keep-theirs stores server_seq (not version) as watermark
-// ---------------------------------------------------------------------------
-
 describe("handleConflict, keep-theirs stores server_seq correctly", () => {
   it("stores server.serverSeq not server.version in the local record", async () => {
     const item = makeOutboundItem({ version: 1n });
@@ -1680,10 +1732,6 @@ describe("handleConflict, keep-theirs stores server_seq correctly", () => {
     );
   });
 });
-
-// ---------------------------------------------------------------------------
-// Important 3: pull cursor advances past decrypt failures
-// ---------------------------------------------------------------------------
 
 describe("pullChanges, decrypt failure handling", () => {
   it("skips undecryptable objects, advances cursor past them, continues with rest", async () => {
@@ -1771,10 +1819,6 @@ describe("pullChanges, decrypt failure handling", () => {
     ).resolves.toMatchObject({ applied: 0 });
   });
 });
-
-// ---------------------------------------------------------------------------
-// Important 4: polling tick in-flight guard
-// ---------------------------------------------------------------------------
 
 describe("SyncClient, in-flight guard prevents concurrent ticks", () => {
   beforeEach(() => {

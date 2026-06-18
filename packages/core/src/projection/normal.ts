@@ -59,10 +59,6 @@
 
 import type { Sfc32 } from "./random.js";
 
-// ---------------------------------------------------------------------------
-// Error bounds (documentation constants, not used at runtime)
-// ---------------------------------------------------------------------------
-
 /** Max absolute error |approx(z) - true(z)| for |z| <= 2 (central region). */
 export const MAX_ABS_ERROR_CENTRAL = 1.15e-9;
 
@@ -73,10 +69,6 @@ export const MAX_ABS_ERROR_CENTRAL = 1.15e-9;
  */
 export const MAX_ABS_ERROR_TAIL = 6.5e-2;
 
-// ---------------------------------------------------------------------------
-// Input clamping
-// ---------------------------------------------------------------------------
-
 /** Minimum u (maps to z ~ -6.2). */
 const U_MIN = 2.3e-10;
 /** Maximum u (maps to z ~ +6.2). */
@@ -84,7 +76,6 @@ const U_MAX = 1 - U_MIN;
 /** Boundary between central and tail regions. */
 const P_TAIL = 0.02275;
 
-// ---------------------------------------------------------------------------
 // Acklam central region coefficients (p in [0.02275, 0.97725])
 // Rational [6/5] minimax approximation of probit(p). Public domain.
 // Source: Acklam (2003), https://stackedboxes.org/2017/05/01/acklams-normal-quantile-function/
@@ -93,7 +84,6 @@ const P_TAIL = 0.02275;
 // coefficient (a1, b1) down to the constant (a6, 1).
 // Numerator:   q * (((((a1*r+a2)*r+a3)*r+a4)*r+a5)*r+a6)
 // Denominator: (((((b1*r+b2)*r+b3)*r+b4)*r+b5)*r+1)
-// ---------------------------------------------------------------------------
 
 const A1 = -3.969683028665376e1;
 const A2 = 2.209460984245205e2;
@@ -108,13 +98,10 @@ const B3 = -1.556989798598866e2;
 const B4 = 6.680131188771972e1;
 const B5 = -1.328068155288572e1;
 
-// ---------------------------------------------------------------------------
-// Tail lookup table
-// Precomputed at dev time; no transcendentals at runtime.
+// Tail lookup table: precomputed at dev time; no transcendentals at runtime.
 // Variable: v = p^(1/4) = sqrt(sqrt(p)).
 // Table is 64 entries evenly spaced in v from V_MIN to V_MAX.
 // TAIL_Z[i] = probit(p) where p = (V_MIN + i * V_STEP)^4.
-// ---------------------------------------------------------------------------
 
 /** v = (U_MIN)^(1/4). */
 const TAIL_V_MIN = 3.8943229049608996e-3;
@@ -146,10 +133,6 @@ const TAIL_Z: readonly number[] = [
   -2.053732381676509, -2.027003993035487, -2.000437771951076,
 ];
 
-// ---------------------------------------------------------------------------
-// Tail lookup: given p in lower tail, return probit(p)
-// ---------------------------------------------------------------------------
-
 function tailProbit(p: number): number {
   // Compute v = p^(1/4) via two allowed sqrt calls.
   const v = Math.sqrt(Math.sqrt(p));
@@ -163,10 +146,6 @@ function tailProbit(p: number): number {
   // biome-ignore lint/style/noNonNullAssertion: indices are bounds-checked above
   return TAIL_Z[i]! + frac * (TAIL_Z[i + 1]! - TAIL_Z[i]!);
 }
-
-// ---------------------------------------------------------------------------
-// Inverse-CDF evaluation
-// ---------------------------------------------------------------------------
 
 function probit(p: number): number {
   if (p < P_TAIL) {

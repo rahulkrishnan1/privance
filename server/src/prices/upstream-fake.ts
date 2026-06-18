@@ -6,17 +6,13 @@ import type { UpstreamPrice } from "./types.js";
  * suite exercises; everything else lands in the "unknown" bucket so the
  * "unknown ticker" code paths still get coverage.
  */
-// Each entry is [currentPrice, previousClose]. previousClose can be null to
-// exercise the "no prior price" path; today every ticker has one.
+// Each entry is [currentPrice, previousClose]. previousClose can be null to exercise the "no prior price" path.
 const FAKE_PRICES: Record<string, [string, string | null]> = {
   AAPL: ["180.00", "178.50"],
   MSFT: ["400.00", "402.10"],
   GOOG: ["150.00", "149.20"],
   NVDA: ["120.00", "118.75"],
   VOO: ["500.00", "499.10"],
-  // Formerly-restricted holding with no public quote, used to exercise the
-  // proxy un-anchor path: anchored to VOO while illiquid, priced directly here
-  // as if it had since listed.
   PRVT: ["300.00", "298.50"],
   FXAIX: ["180.00", "179.60"],
   bitcoin: ["65000.00", "64200.00"],

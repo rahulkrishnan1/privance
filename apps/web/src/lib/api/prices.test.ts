@@ -36,7 +36,14 @@ describe("refreshPrices", () => {
   it("happy path, returns prices and unknown", async () => {
     mockFetch.mockResolvedValueOnce(
       ok({
-        prices: [{ ticker: "AAPL", price: "182.34", fetchedAt: "2026-01-01T00:00:00Z" }],
+        prices: [
+          {
+            ticker: "AAPL",
+            price: "182.34",
+            previousPrice: null,
+            fetchedAt: "2026-01-01T00:00:00Z",
+          },
+        ],
         unknown: ["UNKNOWN"],
       }),
     );

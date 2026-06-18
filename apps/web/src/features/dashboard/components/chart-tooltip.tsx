@@ -28,9 +28,11 @@ export function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
   const decimal = pt?.value;
 
   return (
-    <div className="rounded-xl border border-app-line bg-app-panel-2 p-3 shadow-sm">
-      {dateStr ? <p className="text-xs text-app-muted mb-1">{formatDate(dateStr)}</p> : null}
-      <p className="text-sm font-semibold text-app-text">
+    <div className="rounded-lg border border-line bg-panel-2 px-3 py-2 shadow-sm">
+      {dateStr ? (
+        <p className="font-mono text-[10px] text-faint mb-1">{formatDate(dateStr)}</p>
+      ) : null}
+      <p className="vfig font-mono text-[13px] text-cream">
         {decimal !== undefined ? formatCurrency(decimal) : "-"}
       </p>
     </div>

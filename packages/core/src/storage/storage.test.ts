@@ -46,10 +46,6 @@ describe("WebSqliteAdapter", () => {
     await adapter.close();
   });
 
-  // -------------------------------------------------------------------------
-  // Init guard
-  // -------------------------------------------------------------------------
-
   it("throws StorageNotInitializedError before init()", async () => {
     const raw = await makeInMemoryAdapter();
     await expect(raw.get({ kind: "account", objectId: "x" })).rejects.toThrow(
@@ -60,10 +56,6 @@ describe("WebSqliteAdapter", () => {
   it("init() is idempotent, calling twice does not throw", async () => {
     await expect(adapter.init()).resolves.toBeUndefined();
   });
-
-  // -------------------------------------------------------------------------
-  // put / get round-trip
-  // -------------------------------------------------------------------------
 
   it("put then get returns the stored object", async () => {
     await adapter.put({
@@ -143,9 +135,25 @@ describe("WebSqliteAdapter", () => {
     expect(hld?.ciphertext).toEqual(CIPHER_B);
   });
 
-  // -------------------------------------------------------------------------
-  // list
-  // -------------------------------------------------------------------------
+  it("round-trips a version above 2^53 without precision loss through the INTEGER column", async () => {
+    // version/server_seq are SQLite INTEGER (int64). If the driver coerced them
+    // through a JS Number anywhere, values above Number.MAX_SAFE_INTEGER (2^53)
+    // would silently corrupt. Pin an exact bigint round-trip.
+    const bigVersion = 9_007_199_254_740_993n; // 2^53 + 1, not representable as a Number
+    const bigSeq = 9_223_372_036_854_775_807n; // int64 max
+    await adapter.put({
+      kind: "account",
+      objectId: "big-1",
+      ciphertext: CIPHER_A,
+      nonce: NONCE_A,
+      version: bigVersion,
+      serverSeq: bigSeq,
+    });
+
+    const obj = await adapter.get({ kind: "account", objectId: "big-1" });
+    expect(obj?.version).toBe(bigVersion);
+    expect(obj?.serverSeq).toBe(bigSeq);
+  });
 
   it("list returns only objects of the requested kind, ordered by objectId", async () => {
     await adapter.put({
@@ -181,10 +189,6 @@ describe("WebSqliteAdapter", () => {
     const result = await adapter.list({ kind: "transaction" });
     expect(result).toEqual([]);
   });
-
-  // -------------------------------------------------------------------------
-  // delete
-  // -------------------------------------------------------------------------
 
   it("delete removes the object so get returns null", async () => {
     await adapter.put({
@@ -226,10 +230,6 @@ describe("WebSqliteAdapter", () => {
     expect(await adapter.get({ kind: "holding", objectId: "x" })).not.toBeNull();
   });
 
-  // -------------------------------------------------------------------------
-  // cursor
-  // -------------------------------------------------------------------------
-
   it("getCursor returns null when never set", async () => {
     const cursor = await adapter.getCursor();
     expect(cursor).toBeNull();
@@ -246,10 +246,6 @@ describe("WebSqliteAdapter", () => {
     await adapter.setCursor(999n);
     expect(await adapter.getCursor()).toBe(999n);
   });
-
-  // -------------------------------------------------------------------------
-  // outbound queue
-  // -------------------------------------------------------------------------
 
   it("enqueue + drainQueue returns items oldest-first", async () => {
     await adapter.enqueue({
@@ -342,10 +338,6 @@ describe("WebSqliteAdapter", () => {
     const items = await adapter.drainQueue();
     expect(items[0]?.id).toBeTruthy();
   });
-
-  // -------------------------------------------------------------------------
-  // destroy
-  // -------------------------------------------------------------------------
 
   it("destroy wipes all rows then closes the adapter", async () => {
     // Populate data and verify it's present.

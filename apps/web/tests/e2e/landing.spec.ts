@@ -15,8 +15,7 @@ test.describe("landing page", () => {
     await page.goto("/");
     await expect(page).toHaveURL("/");
 
-    await expect(page.getByText("Track your wealth.").first()).toBeVisible();
-    await expect(page.getByText(/AGPL-3\.0 licensed/).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Personal finance/ }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: /Sign up/i }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Sign in" }).first()).toBeVisible();
   });

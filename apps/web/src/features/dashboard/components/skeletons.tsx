@@ -6,88 +6,28 @@ function SkeletonBox({ className }: { className?: string }) {
   );
 }
 
-function NetWorthSkeleton() {
-  return (
-    <div
-      className="rounded-xl border border-app-line bg-app-panel p-4"
-      role="status"
-      aria-label="Loading net worth"
-    >
-      <SkeletonBox className="h-3 w-20 mb-4" />
-      <SkeletonBox className="h-10 w-48 mb-3" />
-      <SkeletonBox className="h-4 w-36" />
-    </div>
-  );
-}
-
-function SummaryTileSkeleton() {
-  return (
-    <div className="rounded-xl border border-app-line bg-app-panel p-4" role="status">
-      <SkeletonBox className="h-3 w-16 mb-4" />
-      <SkeletonBox className="h-7 w-32 mb-2" />
-      <SkeletonBox className="h-3 w-24" />
-    </div>
-  );
-}
-
-export function KpiRowSkeleton() {
-  return (
-    <div
-      className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4"
-      role="status"
-      aria-label="Loading dashboard summary"
-    >
-      <NetWorthSkeleton />
-      <SummaryTileSkeleton />
-      <SummaryTileSkeleton />
-    </div>
-  );
-}
-
 export function AllocationPieSkeleton() {
   return (
     <div
-      className="rounded-xl border border-app-line bg-app-panel p-4 flex flex-col items-center"
+      className="bg-panel border border-line rounded-[10px] p-6 flex gap-7 items-center"
       role="status"
       aria-label="Loading allocation"
     >
-      <SkeletonBox className="h-3 w-20 self-start mb-4" />
-      <SkeletonBox className="w-40 h-40 rounded-full mb-3" />
-      <SkeletonBox className="h-3 w-28" />
+      <SkeletonBox className="w-[168px] h-[168px] rounded-full shrink-0" />
+      <div className="flex-1 min-w-[200px] flex flex-col gap-3">
+        <SkeletonBox className="h-3 w-full" />
+        <SkeletonBox className="h-3 w-5/6" />
+        <SkeletonBox className="h-3 w-2/3" />
+      </div>
     </div>
   );
 }
 
 export function HistoryChartSkeleton() {
   return (
-    <div
-      className="rounded-xl border border-app-line bg-app-panel p-4"
-      role="status"
-      aria-label="Loading history chart"
-    >
-      <SkeletonBox className="h-3 w-32 mb-3" />
-      <SkeletonBox className="h-px w-full mb-3" />
-      <SkeletonBox className="h-48 w-full" />
-    </div>
-  );
-}
-
-export function TopHoldingsSkeleton() {
-  return (
-    <div
-      className="rounded-xl border border-app-line bg-app-panel p-4"
-      role="status"
-      aria-label="Loading holdings"
-    >
-      <SkeletonBox className="h-5 w-28 mb-3" />
-      {[0, 1, 2, 3, 4].map((i) => (
-        <div key={i} className="flex justify-between mb-3">
-          <SkeletonBox className="h-4 w-16" />
-          <SkeletonBox className="h-4 w-12" />
-          <SkeletonBox className="h-4 w-20" />
-          <SkeletonBox className="h-4 w-12" />
-        </div>
-      ))}
+    <div className="mt-[26px]" role="status" aria-label="Loading history chart">
+      <SkeletonBox className="h-7 w-44" />
+      <SkeletonBox className="mt-1.5 h-[170px] w-full md:h-[240px]" />
     </div>
   );
 }

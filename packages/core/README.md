@@ -35,6 +35,7 @@ system.
 @privance/core/domain      # Account, Holding, Price, branded ID types
 @privance/core/decimal     # BigInt minor-unit arithmetic
 @privance/core/networth    # Net-worth aggregation
+@privance/core/projection  # FIRE simulation engine (Monte Carlo + historical replay)
 @privance/core/audit-events # Audit event name constants
 ```
 

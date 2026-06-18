@@ -3,10 +3,6 @@ import type { Holding, HoldingGroup, SymbolProfile } from "../domain/index.js";
 import { holdingMarketValue } from "./compute.js";
 import type { AllocationSlice } from "./types.js";
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
 function buildSlices(buckets: Map<string, Decimal>, total: Decimal): AllocationSlice[] {
   const slices: AllocationSlice[] = [];
   const totalFloat = total.toFloat();
@@ -49,10 +45,6 @@ function groupHoldingsByLabel(
 
   return { buckets, total };
 }
-
-// ---------------------------------------------------------------------------
-// Public allocation views
-// ---------------------------------------------------------------------------
 
 /**
  * Allocation breakdown by asset class (e.g. "equity", "etf", "fixed_income").

@@ -11,6 +11,5 @@ export type {
   AllocationSlice,
   HoldingValuation,
   NetWorthBreakdown,
-  NetWorthError,
   NetWorthInput,
 } from "./types.js";

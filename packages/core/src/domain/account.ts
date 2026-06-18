@@ -1,8 +1,7 @@
 import type { AccountId, AssetType, IsoDateTime, UserId } from "./types.js";
 
-// ---------------------------------------------------------------------------
-// AccountKind, mirrors v0's CashAccount / InvestmentAccount table split
-// ---------------------------------------------------------------------------
+// Frozen: part of the AEAD AAD, so renaming breaks decryption of existing records.
+export const KIND_ACCOUNT = "account" as const;
 
 /** The broad classification of an account. */
 export type AccountKind = "cash" | "investment" | "liability" | "manual_asset";
@@ -22,7 +21,9 @@ export type InvestmentAccountSubKind =
   | "roth_ira"
   | "401k"
   | "roth_401k"
+  | "after_tax_401k"
   | "403b"
+  | "sep_solo_401k"
   | "hsa"
   | "529"
   | "crypto_wallet"
@@ -53,10 +54,6 @@ export type ManualAssetSubKind =
   | "precious_metal"
   | "other_asset";
 
-// ---------------------------------------------------------------------------
-// Common record fields (what the server persists as metadata)
-// ---------------------------------------------------------------------------
-
 /** Fields the server stores for every account row (all plaintext-safe). */
 export interface AccountMeta {
   readonly id: AccountId;
@@ -64,10 +61,6 @@ export interface AccountMeta {
   readonly createdAt: IsoDateTime;
   readonly lastUpdatedAt: IsoDateTime;
 }
-
-// ---------------------------------------------------------------------------
-// Decrypted payload shapes (client-only; never sent to server in plaintext)
-// ---------------------------------------------------------------------------
 
 /** Decrypted payload for a cash account. */
 export interface CashAccountPayload {
@@ -78,6 +71,8 @@ export interface CashAccountPayload {
   /** Balance in minor units (cents). Stored as string for JSON safety. */
   readonly balanceCents: string;
   readonly currency: string;
+  /** Annual percentage yield as a decimal fraction string (e.g. "0.041" = 4.1%). Feeds the estimated-income calc. */
+  readonly apy?: string | undefined;
   readonly notes?: string | undefined;
 }
 
@@ -91,6 +86,8 @@ export interface InvestmentAccountPayload {
   readonly cashBalanceCents: string;
   readonly currency: string;
   readonly assetType: AssetType;
+  /** Annual percentage yield on the cash sweep as a decimal fraction string (e.g. "0.041" = 4.1%). Feeds the estimated-income calc. */
+  readonly apy?: string | undefined;
   readonly notes?: string | undefined;
 }
 
@@ -109,6 +106,8 @@ export interface LiabilityAccountPayload {
   readonly currency: string;
   /** Optional annual interest rate as a decimal string (e.g. "0.0625" for 6.25%). */
   readonly interestRate?: string | undefined;
+  /** Optional remaining term in years as a decimal string (e.g. "22"). Display-only. */
+  readonly termYearsRemaining?: string | undefined;
   /** Optional original principal in minor units, useful for amortisation views. */
   readonly originalPrincipalCents?: string | undefined;
   readonly notes?: string | undefined;
@@ -130,12 +129,10 @@ export interface ManualAssetAccountPayload {
   /** Optional acquisition cost basis in minor units. */
   readonly costBasisCents?: string | undefined;
   readonly acquiredAt?: IsoDateTime | undefined;
+  /** Date the asset was last valued by the user, as an ISO date string (yyyy-mm-dd). Display-only. */
+  readonly valuedAt?: IsoDateTime | undefined;
   readonly notes?: string | undefined;
 }
-
-// ---------------------------------------------------------------------------
-// Full account records (meta + decrypted payload)
-// ---------------------------------------------------------------------------
 
 /** A fully-decrypted cash account, as held in client memory. */
 export interface CashAccount extends AccountMeta {

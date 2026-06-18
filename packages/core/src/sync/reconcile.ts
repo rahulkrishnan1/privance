@@ -127,8 +127,16 @@ export async function applyReconcile(
   input: ReconcileInput,
   deps: Pick<ReconcileDeps, "config" | "store" | "encryptEnvelope">,
 ): Promise<void> {
-  const { objectId, kind, choice, myPlaintext, theirPlaintext, theirVersion, theirServerSeq } =
-    input;
+  const {
+    objectId,
+    kind,
+    choice,
+    myPlaintext,
+    theirCiphertext,
+    theirNonce,
+    theirVersion,
+    theirServerSeq,
+  } = input;
   const { config, store, encryptEnvelope } = deps;
 
   if (choice.action === "keep-mine") {
@@ -153,12 +161,11 @@ export async function applyReconcile(
       tombstone: false,
     });
   } else if (choice.action === "keep-theirs") {
-    const encrypted = await encryptEnvelope({ plaintext: theirPlaintext, objectId, kind });
     await store.put({
       kind,
       objectId,
-      ciphertext: encrypted.ciphertext,
-      nonce: encrypted.nonce,
+      ciphertext: theirCiphertext,
+      nonce: theirNonce,
       version: theirVersion,
       serverSeq: theirServerSeq,
       tombstone: false,
@@ -184,12 +191,11 @@ export async function applyReconcile(
       serverSeq: pushed.serverSeq,
       tombstone: false,
     });
-    const theirEncrypted = await encryptEnvelope({ plaintext: theirPlaintext, objectId, kind });
     await store.put({
       kind,
       objectId,
-      ciphertext: theirEncrypted.ciphertext,
-      nonce: theirEncrypted.nonce,
+      ciphertext: theirCiphertext,
+      nonce: theirNonce,
       version: theirVersion,
       serverSeq: theirServerSeq,
       tombstone: false,

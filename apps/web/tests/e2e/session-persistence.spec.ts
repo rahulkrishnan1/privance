@@ -95,7 +95,7 @@ test.describe("session persistence + auto-lock", () => {
     await backdateVault(page, 16 * 60 * 1000);
     await page.reload();
     await expect(page).toHaveURL(/\/unlock\/?$/, { timeout: 15_000 });
-    await expect(page.getByRole("heading", { name: /Unlock your/ })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /Master password|Welcome back/ })).toBeVisible({
       timeout: 10_000,
     });
     // Username is pre-filled from localStorage so the screen names the account.
@@ -119,7 +119,7 @@ test.describe("session persistence + auto-lock", () => {
     // locked state (offline PWA boot); only a confirmed 401 logs out.
     await page.route("**/api/auth/session", (route) => route.abort());
     await page.reload();
-    await expect(page.getByRole("heading", { name: /Unlock your/ })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /Master password|Welcome back/ })).toBeVisible({
       timeout: 10_000,
     });
     await expect(page).toHaveURL(/\/unlock\/?$/);
@@ -160,7 +160,7 @@ test.describe("session persistence + auto-lock", () => {
     // redirect is the behavior under test, so tolerate the interrupt and assert.
     await page.goto("/app/").catch(() => {});
     await expect(page).toHaveURL(/\/unlock\/?$/, { timeout: 15_000 });
-    await expect(page.getByRole("heading", { name: /Unlock your/ })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /Master password|Welcome back/ })).toBeVisible({
       timeout: 10_000,
     });
 
@@ -192,7 +192,7 @@ test.describe("session persistence + auto-lock", () => {
     // so a window flag would be reset by a hard navigation).
     await page.addInitScript(() => {
       const check = () => {
-        if (document.querySelector('[aria-label="Main navigation"]') !== null) {
+        if (document.querySelector('[aria-label="Primary navigation"]') !== null) {
           sessionStorage.setItem("e2e.sawAppShell", "1");
         }
       };
@@ -208,7 +208,7 @@ test.describe("session persistence + auto-lock", () => {
     // suppress the app shell and redirect to /unlock before any chrome paints.
     await page.goto("/app/").catch(() => {});
     await expect(page).toHaveURL(/\/unlock\/?$/, { timeout: 15_000 });
-    await expect(page.getByRole("heading", { name: /Unlock your/ })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /Master password|Welcome back/ })).toBeVisible({
       timeout: 10_000,
     });
 

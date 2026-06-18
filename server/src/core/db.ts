@@ -32,3 +32,7 @@ export const db = drizzle(sql);
 export { sql };
 
 export type Db = typeof db;
+
+// Drizzle's transaction executor, narrowed from the transaction callback arg.
+// Shared so modules can expose tx-scoped operations (e.g. cross-module purge).
+export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];

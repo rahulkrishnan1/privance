@@ -4,10 +4,6 @@ import { beforeAll, expect, test } from "vitest";
 import { render } from "vitest-browser-react";
 import { FanChart } from "./fan-chart";
 
-// ---------------------------------------------------------------------------
-// Fixture: fixed-seed result with distinct band values
-// ---------------------------------------------------------------------------
-
 function makeBand(
   p10Dollars: number,
   p25Dollars: number,
@@ -56,13 +52,8 @@ test("renders chart container and role=img label", async () => {
   await expect.element(screen.getByRole("img", { name: /projection fan chart/i })).toBeVisible();
 });
 
-// ---------------------------------------------------------------------------
-// Rendered-geometry helpers
-// The flat-line incident: a chart can render *something* while being visibly
-// broken, so these tests parse the SVG paths Recharts actually drew instead of
-// re-asserting the fixture.
-// ---------------------------------------------------------------------------
-
+// A chart can render *something* while being visibly broken, so these helpers
+// parse the SVG paths Recharts actually drew instead of re-asserting the fixture.
 function pathYs(d: string): number[] {
   return [...d.matchAll(/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g)].map((m) => Number(m[2]));
 }
@@ -86,18 +77,18 @@ async function renderAndGetSvg(): Promise<HTMLElement> {
   return container;
 }
 
-test("renders two filled areas: the uncertainty band and the median gradient fill", async () => {
+test("renders two nested uncertainty bands (p10..p90 and p25..p75)", async () => {
   const container = await renderAndGetSvg();
-  // Two filled areas: the p10..p90 uncertainty band and the median's
-  // gradient-to-baseline fill. Both reference a url(#...) gradient, never "none".
+  // Two filled areas: the p10..p90 outer band and the p25..p75 inner band. Both
+  // reference a url(#...) gradient, never "none". The median draws stroke-only
+  // (fill="none"), so the bands carry all the shading, matching the design mock.
   const areaPaths = [...container.querySelectorAll("path.recharts-area-area")].filter(
     (p) => p.getAttribute("fill") !== "none",
   );
   expect(areaPaths).toHaveLength(2);
 
-  // The band's outline traces a top edge out and a distinct bottom edge back, so
-  // its y values span a wide range. (The median fill drops to a flat baseline,
-  // so it is not asserted here; the "outer band is a true band" test covers it.)
+  // A band traces a top edge out and a distinct bottom edge back, so its y
+  // values span a wide range (not a flat fill).
   const widest = areaPaths
     .map((p) => {
       const ys = pathYs(p.getAttribute("d") ?? "");
@@ -127,28 +118,21 @@ test("median line is drawn and is not flat", async () => {
   expect(lastY as number).toBeLessThan(firstY as number);
 });
 
-test("uncertainty band is a true band: its bottom edge varies, not a flat fill", async () => {
+test("the inner band nests inside the outer band (p25..p75 within p10..p90)", async () => {
   const container = await renderAndGetSvg();
-  // The band fill (declared first) traces p90 along the top and p10 back along
-  // the bottom; both edges vary year to year. The median gradient fill instead
-  // drops to a flat $0 baseline. Distinguishing them: the band's lower half is
-  // far above the chart floor, while the median fill's lower half sits on it.
+  // Both areas are true bands tracing a top edge out and a bottom edge back. The
+  // outer band (declared first, p10..p90) reaches further down to its p10 floor
+  // than the inner band's p25 floor, so its maximum SVG y is larger.
   const fills = [...container.querySelectorAll("path.recharts-area-area")].filter(
     (p) => p.getAttribute("fill") !== "none",
   );
   const maxYOf = (p: Element | undefined) => Math.max(...pathYs(p?.getAttribute("d") ?? ""));
-  const bandMaxY = maxYOf(fills[0]); // p10..p90 band, declared first
-  const medianMaxY = maxYOf(fills[1]); // median gradient-to-baseline fill
-  // The median fill reaches the $0 baseline (larger SVG y) than the band's p10
-  // floor, which stays above $0 for a growing portfolio.
-  expect(medianMaxY).toBeGreaterThan(bandMaxY);
+  const outerMaxY = maxYOf(fills[0]); // p10..p90 band, declared first
+  const innerMaxY = maxYOf(fills[1]); // p25..p75 band
+  expect(outerMaxY).toBeGreaterThan(innerMaxY);
 });
 
-// ---------------------------------------------------------------------------
-// FIRE target reference line
-// ---------------------------------------------------------------------------
-
-test("fireNumberDisplay renders a reference line in the SVG and labels it in the legend", async () => {
+test("fireNumberDisplay renders a reference line in the SVG and names it in the legend", async () => {
   // Use a target well above the fixture bands so the line is always in domain.
   const fireTarget = 1_500_000;
   const screen = await render(
@@ -173,24 +157,115 @@ test("fireNumberDisplay renders a reference line in the SVG and labels it in the
   const refLines = container.querySelectorAll(".recharts-reference-line line");
   expect(refLines.length).toBeGreaterThan(0);
 
-  // The target value lives in the HTML legend (not drawn on the plot, so it
-  // never collides with the axis ticks).
+  // The FI number lives in the HTML legend below the chart (not drawn on the
+  // plot, so it never collides with the axis ticks).
   const legendTexts = [...container.querySelectorAll("span")].map((el) => el.textContent ?? "");
-  const hasTargetLegend = legendTexts.some((t) => t.startsWith("Target"));
-  expect(hasTargetLegend, "expected a Target entry in the legend").toBe(true);
+  const hasFiLegend = legendTexts.some((t) => t.includes("FI number"));
+  expect(hasFiLegend, "expected an FI number entry in the legend").toBe(true);
 
-  // The target is also labelled inline at the reference line (right edge), the
-  // same as the design mock, so the value reads against the line itself.
-  const svgText = [...container.querySelectorAll("svg text")].map((el) => el.textContent ?? "");
-  expect(svgText.some((t) => t.startsWith("Target"))).toBe(true);
-
-  // The y-axis ticks must include a value >= the target (domain reaches it).
-  const yTickTexts = [...container.querySelectorAll('[class*="recharts-yAxis"] text')].map(
-    (el) => el.textContent?.trim() ?? "",
+  // The dollar scale renders as veil-able HTML labels in the gutter, not SVG
+  // <text> the Veil blur can't reach. Confirm the scale has non-empty labels and
+  // that every money figure (scale ticks + the legend FI number) is veiled.
+  const veiledLabels = [...container.querySelectorAll("span.vfig")].filter(
+    (el) => (el.textContent ?? "").trim().length > 0,
   );
-  // formatYAxisTick renders large numbers with M/K suffix; just confirm the axis
-  // has at least one non-empty tick and the domain includes the target.
-  expect(yTickTexts.filter((t) => t.length > 0).length).toBeGreaterThan(0);
+  expect(veiledLabels.length).toBeGreaterThan(0);
+});
+
+test("when the median crosses the target within the horizon, an FI marker is labelled", async () => {
+  // A low target the growing median reaches mid-horizon, with the FI age inside
+  // the plan window so the crossing marker renders.
+  const screen = await render(
+    <div style={{ width: 760, height: 340 }}>
+      <FanChart
+        bands={FIXTURE_BANDS}
+        startAge={35}
+        fireNumberDisplay={250_000}
+        medianFireAge={41}
+        fireYear={2032}
+        planUntilAge={95}
+      />
+    </div>,
+  );
+  const container = screen.container as HTMLElement;
+  const { vi } = await import("vitest");
+  const markerText = await vi.waitFor(
+    () => {
+      const texts = [...container.querySelectorAll("svg text")].map((el) => el.textContent ?? "");
+      const hit = texts.find((t) => t.includes("FI ·"));
+      if (hit === undefined) throw new Error("FI marker not drawn yet");
+      return hit;
+    },
+    { timeout: 5_000 },
+  );
+  expect(markerText).toContain("2032");
+});
+
+test("exposes a screen-reader data table of the year-by-year projection", async () => {
+  const container = await renderAndGetSvg();
+  const rows = [...container.querySelectorAll(".sr-only table tbody tr")];
+  // One row per band, plus the "today" origin point.
+  expect(rows.length).toBeGreaterThanOrEqual(FIXTURE_BANDS.length);
+  const cells = rows[0]?.querySelectorAll("td");
+  expect(Number(cells?.[0]?.textContent)).toBeGreaterThan(0); // age
+  expect(cells?.[1]?.textContent ?? "").toMatch(/\$/); // median dollars
+});
+
+// startingPot origin: the cone fans out from today's value at startAge.
+test("startingPot adds a Today origin row at startAge equal to the starting value", async () => {
+  const startingPot = Decimal.fromMinorUnits(4_000_000n, SCALE_CENTS); // $40,000
+  const screen = await render(
+    <div style={{ width: 760, height: 340 }}>
+      <FanChart bands={FIXTURE_BANDS} startAge={35} startingPot={startingPot} />
+    </div>,
+  );
+  const container = screen.container as HTMLElement;
+  const { vi } = await import("vitest");
+  await vi.waitFor(
+    () => {
+      if (container.querySelector("svg.recharts-surface") === null) {
+        throw new Error("chart svg not drawn yet");
+      }
+    },
+    { timeout: 5_000 },
+  );
+
+  const rows = [...container.querySelectorAll(".sr-only table tbody tr")];
+  // One extra row for the origin point on top of the per-band rows.
+  expect(rows.length).toBe(FIXTURE_BANDS.length + 1);
+  const firstCells = rows[0]?.querySelectorAll("td");
+  // The origin row sits at startAge (not startAge+1) and its median equals the pot.
+  expect(Number(firstCells?.[0]?.textContent)).toBe(35);
+  expect(firstCells?.[1]?.textContent ?? "").toContain("40,000");
+});
+
+test("the origin point tooltip labels the starting value as Today", async () => {
+  // The BandTooltip prints "Today" for the point whose age equals startAge.
+  // Asserting through the SR origin row plus the x domain proves the origin is
+  // pinned at startAge; the tooltip label is derived from that same age check.
+  const startingPot = Decimal.fromMinorUnits(4_000_000n, SCALE_CENTS);
+  const screen = await render(
+    <div style={{ width: 760, height: 340 }}>
+      <FanChart bands={FIXTURE_BANDS} startAge={35} startingPot={startingPot} />
+    </div>,
+  );
+  const container = screen.container as HTMLElement;
+  const { vi } = await import("vitest");
+
+  const tickTexts = await vi.waitFor(
+    () => {
+      const ticks = [...container.querySelectorAll('[class*="recharts-xAxis"] text')].map((el) =>
+        Number(el.textContent?.trim()),
+      );
+      const numeric = ticks.filter((t) => !Number.isNaN(t) && t > 0);
+      if (numeric.length === 0) throw new Error("no x-axis ticks yet");
+      return numeric;
+    },
+    { timeout: 5_000 },
+  );
+  // With an origin point the axis must start at startAge, a year earlier than
+  // the band-only chart (which starts at startAge+1).
+  expect(Math.min(...tickTexts)).toBe(35);
 });
 
 test("shows empty state for fewer than 2 bands", async () => {
@@ -202,11 +277,8 @@ test("shows empty state for fewer than 2 bands", async () => {
   await expect.element(screen.getByText(/not enough data/i)).toBeVisible();
 });
 
-// ---------------------------------------------------------------------------
-// Age axis semantics: yearlyBands[i] is the pot at END of year i+1,
-// so the first tick must be startAge+1 and the last must be startAge+N.
-// ---------------------------------------------------------------------------
-
+// Age axis semantics: yearlyBands[i] is the pot at END of year i+1, so the first
+// tick must be startAge+1 and the last must be startAge+N.
 test("age axis: first x value is startAge+1 and last is startAge+N", async () => {
   const container = await renderAndGetSvg();
   const N = FIXTURE_BANDS.length; // 10

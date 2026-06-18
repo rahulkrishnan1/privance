@@ -1,6 +1,6 @@
 ## Summary
 
-<!-- 1–2 sentences. Lead with motivation: problem solved, debt closed,
+<!-- 1-2 sentences. Lead with motivation: problem solved, debt closed,
 risk reduced. The diff shows what changed; the body says why. -->
 
 ## Changes

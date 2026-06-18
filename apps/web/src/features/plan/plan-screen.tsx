@@ -3,6 +3,9 @@
 import type { Holding, HoldingGroupId, HoldingId, PlanPayload } from "@privance/core";
 import { asId, asIsoDateTime, Decimal, SCALE_CENTS } from "@privance/core";
 import type { SimulateResult } from "@privance/core/projection";
+import { DATASET_START_YEAR, PRESET_BALANCED } from "@privance/core/projection";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Screen } from "@/components/index";
 import { useAccountsQuery } from "@/features/accounts/queries";
@@ -10,19 +13,24 @@ import { useHoldingsQuery } from "@/features/holdings/queries";
 import { usePricesQuery } from "@/lib/queries/prices";
 import type { SimWorkerInput } from "@/lib/sim/worker-client";
 import { simulate } from "@/lib/sim/worker-client";
-import { AssumptionsBar } from "./components/assumptions-bar";
-import { PlanHeadline } from "./components/plan-headline";
-import { ResultsPanel } from "./components/results-panel";
-import { FanChartSkeleton, PlanHeadlineSkeleton, ResultsSkeleton } from "./components/skeletons";
+import { AdjustPanel } from "./components/adjust-panel";
+import { MilestonesSection } from "./components/milestones-section";
+import { PlanHeadline, type SimMethod } from "./components/plan-headline";
+import { FanChartSkeleton, PlanHeadlineSkeleton } from "./components/skeletons";
 import { useSavePlan } from "./mutations";
 import { deriveLiquidPot } from "./pot";
 import { usePlanRecord } from "./queries";
 import { payloadToSimInput } from "./sim-input";
 import { isNeverFiState, type PlanFormValues, samePlanValues } from "./types";
 
-// ---------------------------------------------------------------------------
-// Seed helpers
-// ---------------------------------------------------------------------------
+// Lazy-load the fan chart so Recharts is not in the initial bundle.
+const FanChart = dynamic(
+  () => import("./components/fan-chart").then((m) => ({ default: m.FanChart })),
+  {
+    ssr: false,
+    loading: () => <FanChartSkeleton />,
+  },
+);
 
 function generateSeed(): string {
   const buf = new Uint8Array(16);
@@ -32,43 +40,47 @@ function generateSeed(): string {
     .join("");
 }
 
-// ---------------------------------------------------------------------------
-// Form <-> sim/payload conversions
-// ---------------------------------------------------------------------------
-
-// Form -> payload -> sim input, so preset resolution and the custom-override
-// defaults live in exactly one place (payloadToSimInput) instead of being
-// duplicated with magic fallback literals here.
-function formToSimInput(values: PlanFormValues, potCents: Decimal, seed: string): SimWorkerInput {
-  return payloadToSimInput(formToPayload(values, seed), potCents);
+function fromDollars(dollars: number): Decimal {
+  return Decimal.fromMinorUnits(BigInt(Math.round(dollars * 100)), SCALE_CENTS);
 }
 
 function formToPayload(values: PlanFormValues, seed: string): PlanPayload {
   const base = {
-    schemaVersion: 1 as const,
+    schemaVersion: 2 as const,
     currentAge: values.currentAge,
     planUntilAge: values.planUntilAge,
-    // Dollars -> cents through Decimal (no float arithmetic on the amount): the
-    // form value is rounded to cents at the display boundary, then parsed exactly.
     monthlyContributionCents: Decimal.fromString((values.monthlyContribution ?? 0).toFixed(2))
       .toMinorUnits()
       .toString(),
     annualSpendCents: Decimal.fromString(values.annualSpend.toFixed(2)).toMinorUnits().toString(),
     swrBps: Math.round(values.swrPercent * 100),
     seed,
+    ...(values.manualStartingDollars !== undefined
+      ? {
+          manualStartingPotCents: Decimal.fromString(values.manualStartingDollars.toFixed(2))
+            .toMinorUnits()
+            .toString(),
+        }
+      : {}),
   };
 
   if (values.preset === "custom") {
     return {
       ...base,
       preset: "custom" as const,
-      muBps: Math.round((values.muPercent ?? 5.91) * 100),
-      sigmaBps: Math.round((values.sigmaPercent ?? 11.67) * 100),
-      stockWeightBps: Math.round((values.stockWeightPercent ?? 60) * 100),
+      muBps: Math.round((values.muPercent ?? PRESET_BALANCED.muBps / 100) * 100),
+      sigmaBps: Math.round((values.sigmaPercent ?? PRESET_BALANCED.sigmaBps / 100) * 100),
+      stockWeightBps: Math.round(
+        (values.stockWeightPercent ?? PRESET_BALANCED.stockWeight * 100) * 100,
+      ),
     };
   }
 
   return { ...base, preset: values.preset };
+}
+
+function formToSimInput(values: PlanFormValues, potCents: Decimal, seed: string): SimWorkerInput {
+  return payloadToSimInput(formToPayload(values, seed), potCents);
 }
 
 function planToFormValues(plan: PlanPayload): PlanFormValues {
@@ -82,6 +94,14 @@ function planToFormValues(plan: PlanPayload): PlanFormValues {
     annualSpend: Decimal.fromMinorUnits(BigInt(plan.annualSpendCents), SCALE_CENTS).toFloat(),
     swrPercent: plan.swrBps / 100,
     preset: plan.preset,
+    ...(plan.manualStartingPotCents !== undefined
+      ? {
+          manualStartingDollars: Decimal.fromMinorUnits(
+            BigInt(plan.manualStartingPotCents),
+            SCALE_CENTS,
+          ).toFloat(),
+        }
+      : {}),
   };
 
   if (plan.preset === "custom") {
@@ -96,23 +116,23 @@ function planToFormValues(plan: PlanPayload): PlanFormValues {
   return base;
 }
 
-const EMPTY_DEFAULTS: Partial<PlanFormValues> = {
-  swrPercent: 4,
+// Auto-seeded for a first-time user who already has accounts: the panel opens
+// straight away with the account-derived pot, like the shipped app did.
+const ACCOUNT_DEFAULTS: PlanFormValues = {
+  currentAge: 35,
   planUntilAge: 95,
-  preset: "balanced",
   monthlyContribution: 0,
+  annualSpend: 40000,
+  swrPercent: 4,
+  preset: "balanced",
 };
 
-// ---------------------------------------------------------------------------
-// PlanScreen
-// ---------------------------------------------------------------------------
-
 export function PlanScreen() {
+  const router = useRouter();
   const accountsQuery = useAccountsQuery();
   const planQuery = usePlanRecord();
   const { holdings } = useHoldingsQuery();
 
-  // Route tickers for prices (investment account holdings need current market value).
   const { yahooTickers, coingeckoTickers } = useMemo(() => {
     const yahoo = new Set<string>();
     const coingecko = new Set<string>();
@@ -123,18 +143,15 @@ export function PlanScreen() {
     }
     return { yahooTickers: [...yahoo], coingeckoTickers: [...coingecko] };
   }, [holdings]);
-  const { prices } = usePricesQuery({ yahooTickers, coingeckoTickers });
+  const { prices, isLoading: pricesLoading } = usePricesQuery({ yahooTickers, coingeckoTickers });
 
-  // Derive liquid pot from loaded accounts + holdings + prices.
   const potResult = useMemo(() => {
     if (accountsQuery.status !== "success") return null;
-    // Hold while any priced holding still lacks a price entry: computing with
-    // a missing price values that holding at $0 and pre-fills an undercounted
-    // pot (same guard as the dashboard's compute effect).
-    if (holdings.some((h) => prices.get(h.proxyTicker ?? h.ticker) === undefined)) {
-      return null;
-    }
-    // Rehydrate LocalHolding into the domain Holding shape computeNetWorth takes.
+    // Wait while prices are loading for the first time, but never block forever
+    // on a holding whose price never resolves (delisted or unknown ticker): once
+    // the fetch settles, value what resolved and let computeNetWorth leave the
+    // unpriced holding out rather than wedging the whole projection on a skeleton.
+    if (pricesLoading && holdings.length > 0) return null;
     const domainHoldings: Holding[] = holdings.map((h) => ({
       id: asId<HoldingId>(h.id),
       userId: asId(""),
@@ -154,69 +171,67 @@ export function PlanScreen() {
       },
     }));
     return deriveLiquidPot({ accounts: accountsQuery.data, holdings: domainHoldings, prices });
-  }, [accountsQuery, holdings, prices]);
+  }, [accountsQuery, holdings, prices, pricesLoading]);
 
-  // Seed: stable within session; loaded from saved plan when one exists.
   const sessionSeedRef = useRef<string | null>(null);
   const seed = useMemo(() => {
-    if (planQuery.status === "success") {
-      return planQuery.data.payload.seed;
-    }
-    if (sessionSeedRef.current === null) {
-      sessionSeedRef.current = generateSeed();
-    }
+    if (planQuery.status === "success") return planQuery.data.payload.seed;
+    if (sessionSeedRef.current === null) sessionSeedRef.current = generateSeed();
     return sessionSeedRef.current;
   }, [planQuery]);
 
-  // Saved-plan form values (full), or null when no plan exists yet.
   const savedValues = useMemo<PlanFormValues | null>(() => {
     if (planQuery.status === "success") return planToFormValues(planQuery.data.payload);
     return null;
   }, [planQuery]);
 
-  // Single source of truth for the live plan inputs. Both the Adjust form and
-  // the levers write here; the headline, chart, confidence, and milestones all
-  // recompute from the resulting simulation.
   const [workingValues, setWorkingValues] = useState<PlanFormValues | null>(null);
-  // Saved-plan baseline: lever ranges scale to it, and the sooner/later delta is
-  // measured against its FIRE age. Captured on the first run, reset on save.
+  // Saved-plan baseline: slider ranges scale to its values, and the lever
+  // readout measures sooner/later against its FIRE age. Anchored on the first
+  // settled sim (so fireAge/neverFi reflect a real run), reset on save.
   const [baseline, setBaseline] = useState<{
     values: PlanFormValues;
     fireAge: number;
     neverFi: boolean;
   } | null>(null);
-  // True while the Adjust editor is open, so the levers hide (they edit the same
-  // plan and must not be driven simultaneously).
-  const [editing, setEditing] = useState(false);
+  const [method, setMethod] = useState<SimMethod>("mc");
 
-  // The result is stored with the input it was computed from, so display props
-  // (age axis, already-FI headline) always match the run.
   const [sim, setSim] = useState<{ result: SimulateResult; input: SimWorkerInput } | null>(null);
   const [computing, setComputing] = useState(false);
-  // Set when a run fails and there is no prior result to keep showing; drives
-  // the retry affordance so a first-run failure never sits as an endless skeleton.
   const [simFailed, setSimFailed] = useState(false);
-  // Minimum inputs present (form filled or saved plan loaded); gates the skeleton.
   const [hasMinInputs, setHasMinInputs] = useState(false);
 
   const lastInputRef = useRef<SimWorkerInput | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Generation counter: guards against stale in-flight runs overwriting newer results.
   const genRef = useRef(0);
-  // Latest computed sim, readable synchronously in handleSave without making it a
-  // dependency (so the baseline snapshots the result shown at save time).
+  const savingRef = useRef(false);
+  // Latest sim, readable synchronously in handleSave so the new baseline
+  // snapshots the result shown at save time without making it a dependency.
   const simRef = useRef(sim);
   simRef.current = sim;
-  // Guards against overlapping saves (a mobile double-tap before the button disables).
-  const savingRef = useRef(false);
 
-  // Seed the working values from a saved plan on first load.
+  // Seed working values from a saved plan on first load. The baseline is left
+  // for runSimulation to anchor once the first sim settles.
   useEffect(() => {
     if (savedValues !== null && workingValues === null) {
       setWorkingValues(savedValues);
       setHasMinInputs(true);
     }
   }, [savedValues, workingValues]);
+
+  // First-time user who already has accounts: open the panel with the
+  // account-derived pot instead of the empty state (which is for no-accounts).
+  useEffect(() => {
+    // Seed once the plan is settled with no usable saved values ("none", or
+    // "error" so the corrupt-record path still gets a working panel). Never
+    // while "initialising": seeding then would block a saved plan from loading.
+    if (planQuery.status === "initialising" || planQuery.status === "success") return;
+    if (workingValues !== null || hasMinInputs) return;
+    if (potResult !== null && !potResult.potCents.isZero()) {
+      setWorkingValues(ACCOUNT_DEFAULTS);
+      setHasMinInputs(true);
+    }
+  }, [planQuery.status, potResult, workingValues, hasMinInputs]);
 
   const runSimulation = useCallback(async (input: SimWorkerInput, values: PlanFormValues) => {
     lastInputRef.current = input;
@@ -227,82 +242,93 @@ export function PlanScreen() {
       const result = await simulate(input);
       if (genRef.current !== myGen) return;
       setSim({ result, input });
-      const neverFi = isNeverFiState(
-        result.mc.medianFireAge,
-        input.planUntilAge,
-        result.mc.neverFiFraction,
+      // First settled run anchors the baseline; later runs leave it, and save
+      // resets it explicitly.
+      setBaseline(
+        (prev) =>
+          prev ?? {
+            values,
+            fireAge: result.mc.medianFireAge,
+            neverFi: isNeverFiState(
+              result.mc.medianFireAge,
+              input.planUntilAge,
+              result.mc.neverFiFraction,
+            ),
+          },
       );
-      // First successful run anchors the baseline (no plan saved yet, or the
-      // saved plan loaded). Later runs leave it; save resets it explicitly.
-      setBaseline((prev) => prev ?? { values, fireAge: result.mc.medianFireAge, neverFi });
     } catch {
-      // Keep any prior result visible; flag failure so the no-result state offers
-      // a retry instead of an endless skeleton.
       if (genRef.current === myGen) setSimFailed(true);
     } finally {
       if (genRef.current === myGen) setComputing(false);
     }
   }, []);
 
-  // Recompute whenever the working values or the pot change (debounced). One
-  // path serves both the form and the levers, so every edit updates the whole
-  // page together.
+  // The effective starting pot: manual amount when set, else the account-derived
+  // pot (manual mode can run with no accounts, to explore the math first).
+  // Memoised so its identity is stable: an inline `fromDollars` would mint a new
+  // Decimal every render and, in manual mode where nothing else re-anchors it,
+  // reschedule the debounced sim forever.
+  const manualSet = workingValues?.manualStartingDollars !== undefined;
+  const effectivePot = useMemo(
+    () =>
+      manualSet
+        ? fromDollars(workingValues?.manualStartingDollars ?? 0)
+        : (potResult?.potCents ?? null),
+    [manualSet, workingValues?.manualStartingDollars, potResult],
+  );
+
+  // Recompute whenever the working values or pot change (debounced).
   useEffect(() => {
-    if (workingValues === null || potResult === null) return;
-    const input = formToSimInput(workingValues, potResult.potCents, seed);
-    // First sim runs immediately so the page isn't held behind a 300ms debounce
-    // on load; only live edits afterward (lastInputRef set) are debounced.
+    if (workingValues === null || effectivePot === null) return;
+    const input = formToSimInput(workingValues, effectivePot, seed);
     if (lastInputRef.current === null) {
       void runSimulation(input, workingValues);
       return;
     }
     if (debounceRef.current !== null) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      void runSimulation(input, workingValues);
-    }, 300);
+    debounceRef.current = setTimeout(() => void runSimulation(input, workingValues), 300);
     return () => {
       if (debounceRef.current !== null) clearTimeout(debounceRef.current);
     };
-  }, [workingValues, potResult, seed, runSimulation]);
+  }, [workingValues, effectivePot, seed, runSimulation]);
 
-  const handleFormChange = useCallback((values: PlanFormValues) => {
-    setHasMinInputs(true);
-    setWorkingValues((prev) => (prev !== null && samePlanValues(prev, values) ? prev : values));
-  }, []);
-
-  const handleLeverChange = useCallback((patch: Partial<PlanFormValues>) => {
-    setWorkingValues((v) => (v === null ? v : { ...v, ...patch }));
+  const handleChange = useCallback((patch: Partial<PlanFormValues>) => {
+    setWorkingValues((v) => {
+      if (v === null) return v;
+      const next = { ...v, ...patch };
+      return samePlanValues(v, next) ? v : next;
+    });
   }, []);
 
   const { savePlan, state: saveState } = useSavePlan();
 
-  const handleSave = useCallback(
-    async (values: PlanFormValues) => {
-      if (savingRef.current) return;
-      savingRef.current = true;
-      // Snapshot the result shown at save time before awaiting, so a sim that
-      // resolves during the save cannot re-anchor the baseline to a newer run.
-      const snapshot = simRef.current;
-      try {
-        const payload = formToPayload(values, seed);
-        await savePlan(payload);
-        // The saved plan (with the result it was showing) becomes the new baseline.
-        if (snapshot !== null) {
-          const neverFi = isNeverFiState(
+  const handleSave = useCallback(async () => {
+    if (savingRef.current || workingValues === null) return;
+    savingRef.current = true;
+    // Snapshot the result shown at save time before awaiting, so a sim that
+    // resolves mid-save can't re-anchor the new baseline to a newer run.
+    const snapshot = simRef.current;
+    try {
+      await savePlan(formToPayload(workingValues, seed));
+      if (snapshot !== null) {
+        setBaseline({
+          values: workingValues,
+          fireAge: snapshot.result.mc.medianFireAge,
+          neverFi: isNeverFiState(
             snapshot.result.mc.medianFireAge,
             snapshot.input.planUntilAge,
             snapshot.result.mc.neverFiFraction,
-          );
-          setBaseline({ values, fireAge: snapshot.result.mc.medianFireAge, neverFi });
-        }
-      } finally {
-        savingRef.current = false;
+          ),
+        });
       }
-    },
-    [savePlan, seed],
-  );
+    } catch {
+      // savePlan surfaces the failure via saveState === "error" (rendered below);
+      // swallow here so the click handler's promise doesn't reject unhandled.
+    } finally {
+      savingRef.current = false;
+    }
+  }, [savePlan, seed, workingValues]);
 
-  // Cleanup debounce on unmount; bump generation so any in-flight run is ignored.
   useEffect(() => {
     return () => {
       genRef.current++;
@@ -310,125 +336,122 @@ export function PlanScreen() {
     };
   }, []);
 
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
-
   const isLoading = accountsQuery.status === "initialising" || planQuery.status === "initialising";
   const excludedAccounts = potResult?.excludedAccounts ?? [];
-  // The intro is the genuine empty state only: data loaded, no saved plan, and
-  // nothing entered yet. While loading or computing the first sim we show a
-  // headline skeleton instead, so a saved plan never flashes the intro first.
-  const showIntro = !isLoading && planQuery.status !== "success" && !hasMinInputs;
+  const showEmpty = !isLoading && planQuery.status !== "success" && !hasMinInputs;
+
+  const headlineState: "normal" | "alreadyFi" | "neverFi" = (() => {
+    if (sim === null) return "normal";
+    if (sim.input.startingPotCents.cmp(sim.result.fireNumber) >= 0) return "alreadyFi";
+    if (
+      isNeverFiState(
+        sim.result.mc.medianFireAge,
+        sim.input.planUntilAge,
+        sim.result.mc.neverFiFraction,
+      )
+    )
+      return "neverFi";
+    return "normal";
+  })();
+
+  const currentYear = new Date().getFullYear();
+  // Calendar year the median reaches FI; shared by the headline and the chart
+  // marker. Only read where sim is present.
+  const fireYear =
+    sim !== null ? currentYear + (sim.result.mc.medianFireAge - sim.input.currentAge) : currentYear;
+  // Dirty against the persisted plan (not the baseline used for slider ranges):
+  // a never-saved plan is always dirty, so its first Save is offered.
+  const dirty =
+    workingValues !== null && (savedValues === null || !samePlanValues(workingValues, savedValues));
 
   return (
     <Screen width="wide">
-      {/* Matches the inter-section gap inside ResultsPanel so the vertical rhythm
-          between every main section (hero, assumptions, chart, confidence,
-          milestones, levers) is even. Tighter on mobile where space is scarce. */}
-      <div className="flex flex-col gap-7 md:gap-9">
-        {/* Answer headline leads the page (no page-name label, like a result) */}
+      <div className="flex flex-col gap-4">
         {sim !== null ? (
           <PlanHeadline
-            medianFireAge={sim.result.mc.medianFireAge}
-            fireNumber={sim.result.fireNumber}
+            state={headlineState}
+            fireAge={sim.result.mc.medianFireAge}
+            fireYear={fireYear}
+            annualSpendCents={sim.input.annualSpendCents}
             potCents={sim.input.startingPotCents}
-            neverFiFraction={sim.result.mc.neverFiFraction}
-            planUntilAge={sim.input.planUntilAge}
+            fireNumber={sim.result.fireNumber}
+            successRate={sim.result.mc.successRate}
+            survivalShare={sim.result.replay.survivalShare}
+            method={method}
+            onMethodChange={setMethod}
           />
-        ) : showIntro ? (
-          <div>
-            <h1
-              className="font-serif text-[40px] md:text-[46px] leading-tight font-light tracking-[-0.015em] text-app-muted"
-              style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
-            >
-              Project your path to financial independence.
-            </h1>
-            <p className="mt-2 text-sm text-app-muted">
-              Enter your assumptions below to see when your money reaches your target.
-            </p>
-          </div>
-        ) : (
+        ) : showEmpty ? null : (
           <PlanHeadlineSkeleton />
         )}
 
-        {/* Currency exclusion disclosure */}
         {excludedAccounts.length > 0 && (
           <div
             role="note"
             aria-label="Currency exclusion notice"
-            className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-app-muted"
+            className="rounded-xl border border-signal/30 bg-signal/5 px-4 py-3 text-sm text-cream-soft"
           >
-            <span className="font-medium text-app-text">Not simulated: </span>
+            <span className="font-medium text-cream">Not simulated: </span>
             {excludedAccounts.map((a) => `${a.name} (${a.currency})`).join(", ")}
-            <span className="block mt-1 text-xs">
+            <span className="mt-1 block text-xs">
               Only {potResult?.primaryCurrency ?? ""} accounts are included in the projected
               portfolio.
             </span>
           </div>
         )}
 
-        {/* Corrupt/unreadable plan record notice */}
         {planQuery.status === "error" && (
           <div
             role="note"
             aria-label="Plan load error"
-            className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-app-muted"
+            className="rounded-xl border border-signal/30 bg-signal/5 px-4 py-3 text-sm text-cream-soft"
           >
             Your saved plan could not be loaded. It may have been saved by a newer version of
             Privance.
           </div>
         )}
 
-        {/* Assumptions bar */}
-        {!isLoading && (
-          <AssumptionsBar
-            key={planQuery.status === "success" ? planQuery.data.id : "no-plan"}
-            summary={{
-              potCents: potResult?.potCents ?? null,
-              values: workingValues ?? savedValues,
-            }}
-            defaultExpanded={planQuery.status !== "success"}
-            showStartingPot={sim === null}
-            manualAssetsCents={potResult?.manualAssetsCents}
-            liabilitiesCents={potResult?.liabilitiesCents}
-            // Restore last entered values on re-mount so collapse or a failed
-            // save never drops unsaved edits.
-            defaultValues={workingValues ?? savedValues ?? EMPTY_DEFAULTS}
-            onChange={handleFormChange}
-            onSave={handleSave}
-            saving={saveState === "pending"}
-            saveDisabled={planQuery.status === "error"}
-            onExpandedChange={setEditing}
-          />
-        )}
-
-        {/* Results area */}
-        {showIntro && (
-          <section
-            className="rounded-xl border border-app-line bg-app-panel p-8 flex flex-col items-center justify-center min-h-[300px] text-center"
-            aria-label="Results placeholder"
-          >
-            <p className="text-app-muted text-sm">
-              Enter your annual spend and ages to see projections.
+        {showEmpty && (
+          <section className="px-6 pb-20 pt-9 text-center" aria-label="Project your path">
+            <div className="mx-auto mb-7 flex h-[84px] w-[84px] items-center justify-center rounded-full border border-dashed border-cream/20 text-accent">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                aria-hidden="true"
+                className="h-[30px] w-[30px]"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <circle cx="12" cy="12" r="5" />
+                <circle cx="12" cy="12" r="1.5" />
+              </svg>
+            </div>
+            <h2 className="font-serif text-[32px] font-normal tracking-[-0.01em]">
+              Project your path to <em className="text-accent">independence.</em>
+            </h2>
+            <p className="text-dim mx-auto mt-3 max-w-[44ch] text-[14.5px]">
+              Privance models your future from what you have today. Add accounts and it pulls your
+              balance in automatically.
             </p>
+            <button
+              type="button"
+              onClick={() => router.push("/app/accounts/")}
+              className="mt-7 inline-block cursor-pointer rounded-md bg-accent px-[26px] py-3.5 font-mono text-[11.5px] uppercase tracking-[.12em] text-vault transition-colors hover:bg-cream"
+            >
+              Add accounts
+            </button>
           </section>
         )}
 
-        {!showIntro && sim === null && !simFailed && (
-          <div className="flex flex-col gap-7 md:gap-9">
-            <FanChartSkeleton />
-            <ResultsSkeleton />
-          </div>
-        )}
+        {!showEmpty && sim === null && !simFailed && <FanChartSkeleton />}
 
-        {!showIntro && sim === null && simFailed && (
+        {!showEmpty && sim === null && simFailed && (
           <section
             role="alert"
             aria-label="Projection error"
-            className="rounded-xl border border-app-red/40 bg-app-red/10 p-8 flex flex-col items-center justify-center gap-3 min-h-[300px] text-center"
+            className="flex min-h-[300px] flex-col items-center justify-center gap-3 rounded-[10px] border border-down/40 bg-down/10 p-8 text-center"
           >
-            <p className="text-sm text-app-text">The projection could not be computed.</p>
+            <p className="text-sm text-cream">The projection could not be computed.</p>
             <Button
               type="button"
               variant="secondary"
@@ -444,18 +467,83 @@ export function PlanScreen() {
           </section>
         )}
 
+        {sim !== null && (
+          <section aria-label="Portfolio projection">
+            {computing && (
+              <div
+                role="status"
+                aria-label="Recomputing projections"
+                className="mb-3 flex items-center gap-2 text-xs text-cream-soft"
+              >
+                <svg
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 animate-spin text-accent"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+                <span>Updating projection&hellip;</span>
+              </div>
+            )}
+            <FanChart
+              bands={sim.result.mc.yearlyBands}
+              startAge={sim.input.currentAge}
+              className="w-full"
+              fireNumberDisplay={sim.result.fireNumber.toFloat()}
+              startingPot={sim.input.startingPotCents}
+              medianFireAge={sim.result.mc.medianFireAge}
+              fireYear={fireYear}
+              planUntilAge={sim.input.planUntilAge}
+            />
+            <p className="mt-3 font-mono text-[10px] leading-relaxed text-faint">
+              {method === "mc"
+                ? "Percentile bands from 1,000 simulated futures, drawn on your allocation's return and volatility."
+                : `Your plan replayed through every market stretch since ${DATASET_START_YEAR}, crashes and recoveries included.`}
+            </p>
+          </section>
+        )}
+
         {sim !== null && workingValues !== null && baseline !== null && (
-          <ResultsPanel
-            result={sim.result}
-            input={sim.input}
-            computing={computing}
-            workingValues={workingValues}
-            baselineValues={baseline.values}
-            baselineFireAge={baseline.fireAge}
-            baselineNeverFi={baseline.neverFi}
-            onLeverChange={handleLeverChange}
-            hideLevers={editing}
-          />
+          <div className="grid grid-cols-12 gap-4">
+            <div className="col-span-12 lg:col-span-8">
+              <AdjustPanel
+                values={workingValues}
+                potCents={potResult?.potCents ?? null}
+                baseline={baseline.values}
+                currentFireAge={sim.result.mc.medianFireAge}
+                currentNeverFi={headlineState === "neverFi"}
+                baselineFireAge={baseline.fireAge}
+                baselineNeverFi={baseline.neverFi}
+                dirty={dirty}
+                saving={saveState === "pending"}
+                saveError={saveState === "error"}
+                saveDisabled={planQuery.status === "error"}
+                onChange={handleChange}
+                onSave={handleSave}
+              />
+            </div>
+            <div className="col-span-12 lg:col-span-4">
+              <MilestonesSection
+                result={sim.result}
+                input={sim.input}
+                currentYear={currentYear}
+                neverFi={headlineState === "neverFi"}
+              />
+            </div>
+          </div>
         )}
       </div>
     </Screen>

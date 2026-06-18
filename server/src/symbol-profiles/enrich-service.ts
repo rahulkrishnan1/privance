@@ -41,7 +41,6 @@ export class EnrichService {
   async refresh(opts: { userId: string; tickers: string[] }): Promise<LookupResult> {
     const { userId, tickers } = opts;
 
-    // Per-user cooldown gate (throws RateLimitedError if too soon).
     rateLimit.gateRefresh(userId, this.#cooldownMs);
 
     const upstream = USE_FAKE_UPSTREAM

@@ -1,19 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
-// ---------------------------------------------------------------------------
-// Unit tests for PriceService, no network, no DB.
-// Upstream clients accept an injectable fetcher so tests are fully isolated.
-// ---------------------------------------------------------------------------
-
 import { PriceService } from "./price-service.js";
 import * as rateLimit from "./rate-limit.js";
 import type { CachedPriceRow } from "./repo.js";
 import { InvalidSourceError, RateLimitedError, UpstreamUnavailableError } from "./types.js";
 import { fetchYahooPrices } from "./upstream-yahoo.js";
-
-// ---------------------------------------------------------------------------
-// Stub repo
-// ---------------------------------------------------------------------------
 
 type StubRepo = {
   rows: Map<string, CachedPriceRow>;
@@ -38,10 +29,6 @@ function createStubRepo(initial: CachedPriceRow[] = []): StubRepo {
     },
   };
 }
-
-// ---------------------------------------------------------------------------
-// Mock fetcher helpers
-// ---------------------------------------------------------------------------
 
 function yahooResponse(
   _ticker: string,
@@ -87,7 +74,6 @@ function coingeckoResponse(
   });
 }
 
-// Short cooldown so tests don't have to wait 60 s.
 const TEST_COOLDOWN_MS = 100;
 
 beforeEach(() => {
@@ -97,10 +83,6 @@ beforeEach(() => {
 afterEach(() => {
   rateLimit.resetAll();
 });
-
-// ---------------------------------------------------------------------------
-// Yahoo, happy path
-// ---------------------------------------------------------------------------
 
 describe("PriceService, Yahoo happy path", () => {
   it("returns fetched prices and empty unknown list", async () => {
@@ -128,10 +110,6 @@ describe("PriceService, Yahoo happy path", () => {
     expect(aapl?.price).toMatch(/^182\./);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Yahoo, unknown ticker (missing in response)
-// ---------------------------------------------------------------------------
 
 describe("PriceService, unknown ticker", () => {
   it("places unrecognised tickers in unknown array, not prices", async () => {
@@ -174,9 +152,7 @@ describe("PriceService, unknown ticker", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Yahoo, upstream 5xx (per-ticker isolation — one bad ticker doesn't fail the batch)
-// ---------------------------------------------------------------------------
+// Yahoo upstream 5xx: per-ticker isolation, one bad ticker doesn't fail the batch.
 
 describe("PriceService, upstream 5xx", () => {
   it("single ticker 5xx → that ticker lands in unknown, does not throw", async () => {
@@ -219,10 +195,6 @@ describe("PriceService, upstream 5xx", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Yahoo, upstream 429 masked (per-ticker isolation)
-// ---------------------------------------------------------------------------
-
 describe("PriceService, upstream 429 masked", () => {
   it("upstream 429 on a ticker → lands in unknown, not RateLimitedError", async () => {
     const fetcher = async () => new Response("rate limited", { status: 429 });
@@ -237,10 +209,6 @@ describe("PriceService, upstream 429 masked", () => {
     expect(result.unknown).toEqual(["AAPL"]);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Yahoo, malformed response (per-ticker isolation)
-// ---------------------------------------------------------------------------
 
 describe("PriceService, malformed response", () => {
   it("malformed JSON body on a ticker → that ticker lands in unknown, does not throw", async () => {
@@ -260,10 +228,6 @@ describe("PriceService, malformed response", () => {
     expect(result.unknown).toEqual(["AAPL"]);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Yahoo, partial response (some OK, some unknown)
-// ---------------------------------------------------------------------------
 
 describe("PriceService, partial response", () => {
   it("returns available prices and lists missing tickers as unknown", async () => {
@@ -288,10 +252,6 @@ describe("PriceService, partial response", () => {
     expect(result.unknown).toEqual(["NOPE1", "NOPE2"]);
   });
 });
-
-// ---------------------------------------------------------------------------
-// CoinGecko, happy path
-// ---------------------------------------------------------------------------
 
 describe("PriceService, CoinGecko happy path", () => {
   it("returns fetched prices from CoinGecko", async () => {
@@ -366,10 +326,6 @@ describe("PriceService, CoinGecko happy path", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Invalid source
-// ---------------------------------------------------------------------------
-
 describe("PriceService, invalid source", () => {
   it("throws InvalidSourceError for unknown source", async () => {
     const service = new PriceService({
@@ -382,10 +338,6 @@ describe("PriceService, invalid source", () => {
     ).rejects.toBeInstanceOf(InvalidSourceError);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Per-user cooldown
-// ---------------------------------------------------------------------------
 
 describe("PriceService, per-user cooldown", () => {
   it("allows first request", async () => {
@@ -475,10 +427,6 @@ describe("PriceService, per-user cooldown", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Q1, UpstreamUnavailableError messages must not contain ticker symbols
-// ---------------------------------------------------------------------------
-
 describe("upstream-yahoo, error messages contain no ticker symbols", () => {
   const TICKER = "SECRET_TICKER_XYZ";
 
@@ -523,10 +471,6 @@ describe("upstream-yahoo, error messages contain no ticker symbols", () => {
     }
   });
 });
-
-// ---------------------------------------------------------------------------
-// Cache layer
-// ---------------------------------------------------------------------------
 
 describe("PriceService, cache layer", () => {
   it("serves from fresh cache without hitting fetcher", async () => {
@@ -625,7 +569,9 @@ describe("PriceService, cache layer", () => {
     expect(result.prices).toHaveLength(1);
     expect(result.prices[0]?.price).toBe("99.00000000");
     expect(result.unknown).toEqual([]);
-    expect(service.msUntilNextRefresh("cache-user-4")).toBe(0);
+    // An upstream call was attempted, so the cooldown is consumed even though it
+    // failed; this stops a failing upstream from being hammered every request.
+    expect(service.msUntilNextRefresh("cache-user-4")).toBeGreaterThan(0);
   });
 
   it("upstream empty result with no cache row → unknown", async () => {
@@ -641,7 +587,7 @@ describe("PriceService, cache layer", () => {
 
     expect(result.prices).toEqual([]);
     expect(result.unknown).toEqual(["NOPE"]);
-    expect(service.msUntilNextRefresh("cache-user-5")).toBe(0);
+    expect(service.msUntilNextRefresh("cache-user-5")).toBeGreaterThan(0);
   });
 
   it("mix: one fresh cached, one fetched", async () => {
@@ -670,7 +616,6 @@ describe("PriceService, cache layer", () => {
     expect(result.prices).toHaveLength(2);
     expect(result.unknown).toEqual([]);
     expect(repo.rows.has("yahoo MSFT")).toBe(true);
-    // Cooldown consumed because we hit upstream.
     expect(service.msUntilNextRefresh("cache-user-6")).toBeGreaterThan(0);
   });
 
@@ -731,7 +676,7 @@ describe("PriceService, cache layer", () => {
     expect(result.prices).toHaveLength(1);
     expect(result.prices[0]?.price).toBe("60000.00000000");
     expect(result.unknown).toEqual([]);
-    expect(service.msUntilNextRefresh("cache-user-9")).toBe(0);
+    expect(service.msUntilNextRefresh("cache-user-9")).toBeGreaterThan(0);
   });
 
   it("cache hit on a different source does not satisfy the requested source", async () => {
@@ -763,10 +708,6 @@ describe("PriceService, cache layer", () => {
     expect(service.msUntilNextRefresh("cache-user-10")).toBeGreaterThan(0);
   });
 });
-
-// ---------------------------------------------------------------------------
-// previousPrice round-trip across all three return paths
-// ---------------------------------------------------------------------------
 
 describe("PriceService, previousPrice round-trip", () => {
   it("upstream-fresh path preserves Yahoo previousClose", async () => {

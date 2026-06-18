@@ -3,10 +3,6 @@ import { asId, asIsoDateTime, Decimal, SCALE_CENTS } from "@privance/core";
 import { expect, test } from "vitest";
 import { deriveLiquidPot } from "./pot";
 
-// ---------------------------------------------------------------------------
-// Test helpers
-// ---------------------------------------------------------------------------
-
 const NOW = asIsoDateTime("2024-01-01T00:00:00.000Z");
 const NO_PRICES = new Map<string, Decimal>();
 
@@ -100,15 +96,8 @@ function priceMap(entries: [string, number][]): Map<string, Decimal> {
   return m;
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 test("sums cash and investment accounts", () => {
-  const accounts = [
-    cash("c1", "Checking", "100000"), // $1,000
-    investment("i1", "Brokerage", "200000"), // $2,000 cash sweep
-  ];
+  const accounts = [cash("c1", "Checking", "100000"), investment("i1", "Brokerage", "200000")];
   const result = deriveLiquidPot({ accounts, holdings: [], prices: NO_PRICES });
   // $1,000 + $2,000 = $3,000 = 300000 cents
   expect(result.potCents.toMinorUnits()).toBe(300000n);
@@ -118,17 +107,14 @@ test("sums cash and investment accounts", () => {
 
 test("includes investment account holdings at market value", () => {
   const accounts = [investment("i1", "Brokerage", "0")];
-  const holdings_ = [holding("i1", "AAPL", "10", 0)]; // 10 shares
-  const prices = priceMap([["AAPL", 150]]); // $150/share = $1,500
+  const holdings_ = [holding("i1", "AAPL", "10", 0)];
+  const prices = priceMap([["AAPL", 150]]);
   const result = deriveLiquidPot({ accounts, holdings: holdings_, prices });
-  expect(result.potCents.toMinorUnits()).toBe(150000n); // $1,500
+  expect(result.potCents.toMinorUnits()).toBe(150000n);
 });
 
 test("manual_asset accounts are excluded from pot and returned as context", () => {
-  const accounts = [
-    cash("c1", "Checking", "100000"),
-    manualAsset("m1", "Home", "50000000"), // $500,000 home
-  ];
+  const accounts = [cash("c1", "Checking", "100000"), manualAsset("m1", "Home", "50000000")];
   const result = deriveLiquidPot({ accounts, holdings: [], prices: NO_PRICES });
   expect(result.potCents.toMinorUnits()).toBe(100000n); // only cash
   expect(result.manualAssetsCents.toMinorUnits()).toBe(50000000n);
@@ -137,17 +123,13 @@ test("manual_asset accounts are excluded from pot and returned as context", () =
 });
 
 test("liability accounts are excluded from pot and returned as context", () => {
-  const accounts = [
-    cash("c1", "Checking", "100000"),
-    liability("l1", "Mortgage", "20000000"), // $200,000 owed
-  ];
+  const accounts = [cash("c1", "Checking", "100000"), liability("l1", "Mortgage", "20000000")];
   const result = deriveLiquidPot({ accounts, holdings: [], prices: NO_PRICES });
   expect(result.potCents.toMinorUnits()).toBe(100000n); // only cash
   expect(result.liabilitiesCents.toMinorUnits()).toBe(20000000n);
 });
 
 test("mixed-currency accounts: restricts pot to primary currency", () => {
-  // 2 USD accounts + 1 EUR account => primary is USD
   const accounts = [
     cash("c1", "USD Checking", "100000", "USD"),
     cash("c2", "USD Savings", "200000", "USD"),

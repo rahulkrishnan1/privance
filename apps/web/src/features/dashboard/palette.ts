@@ -1,22 +1,24 @@
-// Allocation chart palette. Two color families only: warm gold and cool slate.
-// Alternates between them so neighbouring slices stay distinct. Order is
-// largest-to-smallest by slice value, so the brightest tones anchor the
-// dominant slices.
+// One ordered palette applied by slice rank (largest first). The color in a
+// given position is identical across the allocation donut (class + sector) and
+// the "Where it lives" bar, so the three views share one color order.
 export const allocationPalette = [
-  "#e6d39a", // gold-accent (brand, primary)
-  "#9ba5b8", // cool slate
-  "#c4b18a", // lighter gold
-  "#6e7a91", // muted slate
-  "#a39378", // dim gold
-  "#525c70", // deep slate
-  "#867963", // dark gold
-  "#7c8597", // pale slate
-  "#5d5648", // graphite gold
-  "#41485a", // ink slate (fallback)
+  "#7fc4c6", // teal (brand)
+  "#c9a86b", // gold
+  "#c8551f", // clay
+  "#4f898c", // teal-dim
+  "#8e9bc4", // slate-blue
+  "#b0879b", // mauve
+  "#9bb0a6", // sage
+  "#5e7e80", // deep teal-gray
+  "#c7c5bc", // cream-soft
 ] as const;
 
-// Defensive fallbacks. The palette is non-empty so these almost never render;
-// they exist to satisfy the type checker on indexed access.
+// Defensive fallback. The palette is non-empty so this almost never renders.
 export const PALETTE_FALLBACK_GRAY = "#6b7280";
-// Empty-state fill: subtle dark-surface tone consistent with the app line tokens.
-export const EMPTY_PIE_FILL = "rgba(255,255,255,0.08)";
+
+/** Colors for a value-ordered slice list: rank N always gets palette position N. */
+export function assignColors(labels: readonly string[]): string[] {
+  return labels.map(
+    (_, i) => allocationPalette[i % allocationPalette.length] ?? PALETTE_FALLBACK_GRAY,
+  );
+}

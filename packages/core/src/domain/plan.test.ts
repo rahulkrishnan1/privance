@@ -27,10 +27,6 @@ const validCustom = {
   stockWeightBps: 6000,
 };
 
-// ---------------------------------------------------------------------------
-// KIND_PLAN and PLAN_OBJECT_ID constants
-// ---------------------------------------------------------------------------
-
 describe("KIND_PLAN", () => {
   it('equals "plan"', () => {
     expect(KIND_PLAN).toBe("plan");
@@ -42,10 +38,6 @@ describe("PLAN_OBJECT_ID", () => {
     expect(PLAN_OBJECT_ID).toBe("plan-singleton");
   });
 });
-
-// ---------------------------------------------------------------------------
-// PlanPayloadSchema happy paths
-// ---------------------------------------------------------------------------
 
 describe("PlanPayloadSchema valid", () => {
   it("accepts a valid balanced-preset payload", () => {
@@ -77,10 +69,6 @@ describe("PlanPayloadSchema valid", () => {
     expect(roundTripped).toStrictEqual(parsed);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Edge cases
-// ---------------------------------------------------------------------------
 
 describe("PlanPayloadSchema edge cases", () => {
   it('accepts monthlyContributionCents "0"', () => {
@@ -114,10 +102,6 @@ describe("PlanPayloadSchema edge cases", () => {
     expect(result.success).toBe(false);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Error cases
-// ---------------------------------------------------------------------------
 
 describe("PlanPayloadSchema error cases", () => {
   it("rejects negative annualSpendCents", () => {
@@ -198,14 +182,33 @@ describe("PlanPayloadSchema error cases", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects wrong schemaVersion", () => {
+  it("accepts schemaVersion 2", () => {
     const result = PlanPayloadSchema.safeParse({ ...validBalanced, schemaVersion: 2 });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects wrong schemaVersion", () => {
+    const result = PlanPayloadSchema.safeParse({ ...validBalanced, schemaVersion: 3 });
     expect(result.success).toBe(false);
   });
 
-  // ---------------------------------------------------------------------------
-  // Plan cents fields must be integer strings (no decimal point)
-  // ---------------------------------------------------------------------------
+  it("accepts a v2 manualStartingPotCents", () => {
+    const result = PlanPayloadSchema.safeParse({
+      ...validBalanced,
+      schemaVersion: 2,
+      manualStartingPotCents: "114839200",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects fractional manualStartingPotCents", () => {
+    const result = PlanPayloadSchema.safeParse({
+      ...validBalanced,
+      schemaVersion: 2,
+      manualStartingPotCents: "114839200.50",
+    });
+    expect(result.success).toBe(false);
+  });
 
   it("rejects fractional monthlyContributionCents", () => {
     const result = PlanPayloadSchema.safeParse({

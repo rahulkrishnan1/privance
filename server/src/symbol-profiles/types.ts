@@ -3,24 +3,12 @@ import type { AssetType, SymbolProfile } from "@privance/core/domain";
 
 export type { AssetType, SymbolProfile };
 
-// ---------------------------------------------------------------------------
-// Errors
-// ---------------------------------------------------------------------------
-
 export class SymbolProfileError extends Error {
   readonly code: string;
   constructor(code: string, message: string) {
     super(message);
     this.name = "SymbolProfileError";
     this.code = code;
-  }
-}
-
-/** Ticker not found in DB or upstream. */
-export class NotFoundError extends SymbolProfileError {
-  constructor(ticker: string) {
-    super("not_found", `symbol profile not found: ${ticker}`);
-    this.name = "NotFoundError";
   }
 }
 
@@ -43,10 +31,6 @@ export class RateLimitedError extends SymbolProfileError {
 }
 
 export type { FetchLike } from "../core/fetch.js";
-
-// ---------------------------------------------------------------------------
-// Result types
-// ---------------------------------------------------------------------------
 
 export type LookupResult = {
   profiles: SymbolProfile[];

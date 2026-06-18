@@ -4,25 +4,25 @@ import {
   deriveFakeKdfSalt,
   deriveFakeRecoveryBlob,
   deriveFakeWrappedDekRecovery,
+  generateSessionToken,
   hashAuthHash,
+  hashSessionToken,
   verifyAuthHash,
 } from "./kdf.js";
 import type { AuthRepo } from "./repo.js";
-import { SessionService } from "./session-service.js";
 import type { KdfParamsJson, RecoveryResult } from "./types.js";
-import { RecoveryFailedError } from "./types.js";
+import { RecoveryFailedError, SESSION_LIFETIME_MS } from "./types.js";
 
 const DUMMY_HASH =
   "$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
 export class RecoveryService {
-  private readonly sessionService: SessionService;
+  private readonly repo: AuthRepo;
+  private readonly enumerationSecret: Buffer;
 
-  constructor(
-    private readonly repo: AuthRepo,
-    private readonly enumerationSecret: Buffer,
-  ) {
-    this.sessionService = new SessionService(repo);
+  constructor(opts: { repo: AuthRepo; enumerationSecret: Buffer }) {
+    this.repo = opts.repo;
+    this.enumerationSecret = opts.enumerationSecret;
   }
 
   async getRecoveryParams(username: string): Promise<{
@@ -107,22 +107,27 @@ export class RecoveryService {
     // argon2id before storing, mirrors the signup-service convention.
     const { hash: newRecoveryBlobHash } = await hashAuthHash(opts.newRecoveryBlob);
 
-    await this.repo.updateUserCredentials({
-      userId: user.userId,
-      authHashHash: Buffer.from(newAuthHashHash),
-      kdfParams: opts.newKdfParams,
-      recoveryBlob: Buffer.from(newRecoveryBlobHash),
-      recoverySalt: opts.newRecoverySalt,
-      recoveryParams: opts.newRecoveryParams,
-      wrappedDek: opts.newWrappedDek,
-      wrappedDekIv: opts.newWrappedDekIv,
-      wrappedDekRecovery: opts.newWrappedDekRecovery,
-      wrappedDekRecoveryIv: opts.newWrappedDekRecoveryIv,
-      kdfSalt: opts.newKdfSalt,
+    // Recovery invalidates every existing session; credential update, revoke-all,
+    // and new-session insert run in one transaction (rotateCredentials) so a
+    // failure mid-reset can't leave new credentials with live old sessions.
+    const { token, raw } = generateSessionToken();
+    const expiresAt = new Date(Date.now() + SESSION_LIFETIME_MS);
+    await this.repo.rotateCredentials({
+      credentials: {
+        userId: user.userId,
+        authHashHash: Buffer.from(newAuthHashHash),
+        kdfParams: opts.newKdfParams,
+        recoveryBlob: Buffer.from(newRecoveryBlobHash),
+        recoverySalt: opts.newRecoverySalt,
+        recoveryParams: opts.newRecoveryParams,
+        wrappedDek: opts.newWrappedDek,
+        wrappedDekIv: opts.newWrappedDekIv,
+        wrappedDekRecovery: opts.newWrappedDekRecovery,
+        wrappedDekRecoveryIv: opts.newWrappedDekRecoveryIv,
+        kdfSalt: opts.newKdfSalt,
+      },
+      newSession: { userId: user.userId, tokenHash: hashSessionToken(raw), expiresAt },
     });
-
-    await this.repo.revokeAllUserSessions(user.userId);
-    const { token, expiresAt } = await this.sessionService.createSession(user.userId);
     await this.repo.logEvent({ userId: user.userId, eventClass: "recovery_succeeded" });
     logger.info({ event: "recovery_succeeded", userId: user.userId }, "recovery reset completed");
 

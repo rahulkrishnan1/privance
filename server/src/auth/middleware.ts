@@ -19,10 +19,10 @@ export async function requireSession(c: Context, next: Next): Promise<Response |
   const token = getCookie(c, SESSION_COOKIE);
   if (!token) throw new HTTPException(401, { message: "unauthenticated" });
 
-  // Note(M11): using per-request instantiation to avoid bun mock.module
-  // cross-test contamination; DI via wire.ts is deferred until the test
-  // framework supports stable singleton injection across test files.
-  const service = new SessionService(new AuthRepo(db));
+  // Per-request instantiation keeps bun's mock.module from leaking a shared
+  // SessionService across test files; the repo is a thin wrapper over the
+  // pooled db, so this is cheap.
+  const service = new SessionService({ repo: new AuthRepo(db) });
 
   try {
     const auth = await service.validateToken(token);

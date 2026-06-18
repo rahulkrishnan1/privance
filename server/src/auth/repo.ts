@@ -1,8 +1,19 @@
 import type { AuditEventClass } from "@privance/core/audit-events";
 import { and, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
-import type { Db } from "../core/db.js";
+import type { Db, Tx } from "../core/db.js";
 import { auditEvents, inviteTokens, sessions, users } from "./schema.js";
 import type { KdfParamsJson } from "./types.js";
+
+// Deletes every auth-owned row for a user within the caller's transaction. Owned
+// by this module so account deletion never reaches across into auth's schema.
+// Deleting `users` cascades to `sessions` (FK ON DELETE CASCADE); sessions and
+// audit_events are deleted explicitly first so the order is correct regardless.
+export async function purgeUserData(opts: { tx: Tx; userId: string }): Promise<void> {
+  const { tx, userId } = opts;
+  await tx.delete(auditEvents).where(eq(auditEvents.userId, userId));
+  await tx.delete(sessions).where(eq(sessions.userId, userId));
+  await tx.delete(users).where(eq(users.userId, userId));
+}
 
 export type UserRow = {
   userId: string;
@@ -52,6 +63,15 @@ export class AuthRepo {
       wrappedDekRecoveryIv: row.wrappedDekRecoveryIv,
       kdfSalt: row.kdfSalt,
     };
+  }
+
+  async getUserAuthHashById(userId: string): Promise<Buffer | null> {
+    const rows = await this.db
+      .select({ authHashHash: users.authHashHash })
+      .from(users)
+      .where(eq(users.userId, userId))
+      .limit(1);
+    return rows[0]?.authHashHash ?? null;
   }
 
   async createUser(opts: {
@@ -134,6 +154,55 @@ export class AuthRepo {
       .where(eq(users.userId, opts.userId));
   }
 
+  // Rotates a user's credentials atomically: update the user row, revoke every
+  // existing session, and insert the caller's new session in one transaction so
+  // a failure mid-rotation can't leave updated credentials with a stale session
+  // set. Returns the new session row.
+  async rotateCredentials(opts: {
+    credentials: Parameters<AuthRepo["updateUserCredentials"]>[0];
+    newSession: { userId: string; tokenHash: Buffer; expiresAt: Date };
+  }): Promise<SessionRow> {
+    return this.db.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({
+          authHashHash: opts.credentials.authHashHash,
+          kdfParams: opts.credentials.kdfParams,
+          recoveryBlob: opts.credentials.recoveryBlob,
+          recoverySalt: opts.credentials.recoverySalt,
+          recoveryParams: opts.credentials.recoveryParams,
+          wrappedDek: opts.credentials.wrappedDek,
+          wrappedDekIv: opts.credentials.wrappedDekIv,
+          wrappedDekRecovery: opts.credentials.wrappedDekRecovery,
+          wrappedDekRecoveryIv: opts.credentials.wrappedDekRecoveryIv,
+          kdfSalt: opts.credentials.kdfSalt,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.userId, opts.credentials.userId));
+      await tx
+        .update(sessions)
+        .set({ revokedAt: new Date() })
+        .where(and(eq(sessions.userId, opts.newSession.userId), isNull(sessions.revokedAt)));
+      const rows = await tx
+        .insert(sessions)
+        .values({
+          userId: opts.newSession.userId,
+          tokenHash: opts.newSession.tokenHash,
+          expiresAt: opts.newSession.expiresAt,
+        })
+        .returning();
+      const row = rows[0];
+      if (!row) throw new Error("insert returned no rows");
+      return {
+        sessionId: row.sessionId,
+        userId: row.userId,
+        tokenHash: row.tokenHash,
+        expiresAt: row.expiresAt,
+        revokedAt: row.revokedAt ?? null,
+      };
+    });
+  }
+
   async createSession(opts: {
     userId: string;
     tokenHash: Buffer;
@@ -187,13 +256,6 @@ export class AuthRepo {
       .update(sessions)
       .set({ revokedAt: new Date() })
       .where(and(eq(sessions.sessionId, sessionId), isNull(sessions.revokedAt)));
-  }
-
-  async revokeAllUserSessions(userId: string): Promise<void> {
-    await this.db
-      .update(sessions)
-      .set({ revokedAt: new Date() })
-      .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
   }
 
   async createInviteToken(opts: {

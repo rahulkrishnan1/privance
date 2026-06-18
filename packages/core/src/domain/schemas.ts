@@ -1,8 +1,5 @@
 import { z } from "zod";
-
-// ---------------------------------------------------------------------------
-// Shared refinements
-// ---------------------------------------------------------------------------
+import { BILLING_UNITS, SPEND_CATEGORIES, SPEND_GROUPS, SPEND_STATUSES } from "./spend.js";
 
 /**
  * Validates the lexical shape of a decimal string. The actual storage scale
@@ -48,10 +45,6 @@ const nonNegativeIntegerCentsString = z
     message: "Must be 0 or greater",
   });
 
-// ---------------------------------------------------------------------------
-// Account payload schemas
-// ---------------------------------------------------------------------------
-
 export const CashAccountPayloadSchema = z.object({
   kind: z.literal("cash"),
   subKind: z.enum(["checking", "savings", "money_market", "cd", "other_cash"]),
@@ -59,6 +52,7 @@ export const CashAccountPayloadSchema = z.object({
   institutionName: z.string().optional(),
   balanceCents: decimalString,
   currency: z.string(),
+  apy: decimalString.optional(),
   notes: z.string().optional(),
 });
 
@@ -70,7 +64,9 @@ export const InvestmentAccountPayloadSchema = z.object({
     "roth_ira",
     "401k",
     "roth_401k",
+    "after_tax_401k",
     "403b",
+    "sep_solo_401k",
     "hsa",
     "529",
     "crypto_wallet",
@@ -81,6 +77,7 @@ export const InvestmentAccountPayloadSchema = z.object({
   cashBalanceCents: decimalString,
   currency: z.string(),
   assetType: z.string(),
+  apy: decimalString.optional(),
   notes: z.string().optional(),
 });
 
@@ -100,6 +97,7 @@ export const LiabilityAccountPayloadSchema = z.object({
   balanceCents: decimalString,
   currency: z.string(),
   interestRate: decimalString.optional(),
+  termYearsRemaining: decimalString.optional(),
   originalPrincipalCents: decimalString.optional(),
   notes: z.string().optional(),
 });
@@ -120,6 +118,7 @@ export const ManualAssetAccountPayloadSchema = z.object({
   currency: z.string(),
   costBasisCents: decimalString.optional(),
   acquiredAt: z.string().optional(),
+  valuedAt: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -129,10 +128,6 @@ export const AccountPayloadSchema = z.discriminatedUnion("kind", [
   LiabilityAccountPayloadSchema,
   ManualAssetAccountPayloadSchema,
 ]);
-
-// ---------------------------------------------------------------------------
-// Holding payload schemas
-// ---------------------------------------------------------------------------
 
 export const HoldingPayloadSchema = z.object({
   accountId: z.string(),
@@ -154,9 +149,23 @@ export const HoldingGroupPayloadSchema = z.object({
   notes: z.string().optional(),
 });
 
-// ---------------------------------------------------------------------------
-// Net-worth snapshot payload schema
-// ---------------------------------------------------------------------------
+export const SpendItemPayloadSchema = z.object({
+  name: z.string().min(1).max(64),
+  // Per-cycle amount in whole cents; must be a positive integer string.
+  amountCents: nonNegativeIntegerCentsString.refine(isPositiveDecimalString, {
+    message: "Amount must be greater than 0",
+  }),
+  intervalCount: z.number().int().min(1).max(99),
+  intervalUnit: z.enum(BILLING_UNITS),
+  category: z.enum(SPEND_CATEGORIES),
+  group: z.enum(SPEND_GROUPS),
+  nextRenewalAt: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  status: z.enum(SPEND_STATUSES),
+  notes: z.string().optional(),
+});
 
 export const NetWorthSnapshotPayloadSchema = z.object({
   snapshotAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be ISO date YYYY-MM-DD"),
@@ -165,16 +174,14 @@ export const NetWorthSnapshotPayloadSchema = z.object({
   investmentCents: decimalString,
 });
 
-// ---------------------------------------------------------------------------
-// Plan payload schema
-// ---------------------------------------------------------------------------
-
 const planPayloadBase = z.object({
-  schemaVersion: z.literal(1),
+  // v1 records (no manualStartingPotCents) and v2 records both parse.
+  schemaVersion: z.union([z.literal(1), z.literal(2)]),
   currentAge: z.number().int().min(16).max(100),
   planUntilAge: z.number().int().max(110),
   monthlyContributionCents: nonNegativeIntegerCentsString,
   annualSpendCents: nonNegativeIntegerCentsString,
+  manualStartingPotCents: nonNegativeIntegerCentsString.optional(),
   swrBps: z.number().int().min(50).max(1000),
   // seed is a PRNG seed string, not a monetary value; accept any non-empty string
   // so that both hex and decimal seeds (from different generator versions) parse.

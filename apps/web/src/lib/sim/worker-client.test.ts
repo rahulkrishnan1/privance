@@ -17,10 +17,6 @@ import { clearSimMemo, resetWorkerState, type SimWorkerInput, simulate } from ".
 // MEMO_MAX must match the constant in worker-client.ts.
 const MEMO_MAX = 20;
 
-// ---------------------------------------------------------------------------
-// Minimal fixture inputs
-// ---------------------------------------------------------------------------
-
 const FIXTURE: SimWorkerInput = {
   startingPotCents: Decimal.fromString("500000.00"),
   monthlyContributionCents: Decimal.fromString("2000.00"),
@@ -44,17 +40,13 @@ function inThreadResult() {
     swrBps: FIXTURE.swrBps,
     currentAge: FIXTURE.currentAge,
     planUntilAge: FIXTURE.planUntilAge,
-    stockWeightForYear: () => FIXTURE.stockWeight,
+    stockWeight: FIXTURE.stockWeight,
     seed: asSimSeed(FIXTURE.seed),
     muBps: FIXTURE.muBps,
     sigmaBps: FIXTURE.sigmaBps,
     paths: FIXTURE.paths,
   });
 }
-
-// ---------------------------------------------------------------------------
-// Worker mock factory
-// ---------------------------------------------------------------------------
 
 type WorkerListener = ((event: MessageEvent) => void) | null;
 
@@ -156,10 +148,6 @@ function toWireResult(result: ReturnType<typeof inThreadResult>) {
     },
   };
 }
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
 
 describe("simulate()", () => {
   beforeEach(() => {
@@ -341,40 +329,44 @@ describe("simulate()", () => {
     expect(r1).toBe(r2);
   });
 
-  // ---------------------------------------------------------------------------
-  // Memo eviction cap
-  // ---------------------------------------------------------------------------
-
-  it("memo evicts the oldest entry when MEMO_MAX+1 distinct inputs are simulated", async () => {
+  it("memo evicts the oldest entry but keeps recent ones (LRU by reference identity)", async () => {
     // Use the in-thread fallback path by latching workerUnavailable via a boot-fail stub.
     vi.stubGlobal("Worker", () => {
       throw new Error("no worker in this test");
     });
 
-    // Simulate MEMO_MAX+1 distinct inputs by varying paths (cheap; changes the memo key).
+    // A memo hit returns the SAME object reference; a recompute returns a fresh
+    // one. That identity check distinguishes eviction from a silent pass.
     const inputs: SimWorkerInput[] = Array.from({ length: MEMO_MAX + 1 }, (_, i) => ({
       ...FIXTURE,
-      paths: i + 1, // distinct paths values 1..MEMO_MAX+1
+      paths: i + 1, // distinct paths values 1..MEMO_MAX+1 -> distinct memo keys
     }));
 
-    for (const input of inputs) {
-      await simulate(input);
+    // biome-ignore lint/style/noNonNullAssertion: inputs is non-empty by construction
+    const oldest = inputs[0]!;
+    // biome-ignore lint/style/noNonNullAssertion: inputs has > 1 entry
+    const second = inputs[1]!;
+
+    const oldestFirst = await simulate(oldest);
+    const secondFirst = await simulate(second);
+
+    // Fill the rest. After MEMO_MAX+1 distinct inputs, the very first (oldest)
+    // entry has been evicted; "second" is still within the window.
+    for (let i = 2; i < inputs.length; i++) {
+      // biome-ignore lint/style/noNonNullAssertion: bounded by length
+      await simulate(inputs[i]!);
     }
 
-    // Re-simulate the FIRST input. If it was evicted, simulate() recomputes it
-    // (in-thread fallback, since workerUnavailable is latched). The result is
-    // still correct but a new entry is added -- verifying the eviction happened.
-    // We can observe this indirectly: the memo size must never exceed MEMO_MAX.
-    // Because clearSimMemo is exported we can check size via re-call timing:
-    // just confirm no throw and we get a valid result back.
-    // biome-ignore lint/style/noNonNullAssertion: inputs has MEMO_MAX+1 entries, index 0 always exists
-    const recomputed = await simulate(inputs[0]!);
-    expect(recomputed.mc.pathCount).toBe(1); // paths=1, so pathCount=1
-  });
+    // Check the survivor first: re-simulating "second" before touching anything
+    // else is a memo hit -> same reference. (Doing the oldest recompute first
+    // would itself evict another entry and perturb the window.)
+    const secondAgain = await simulate(second);
+    expect(secondAgain).toBe(secondFirst);
 
-  // ---------------------------------------------------------------------------
-  // Post-ready worker error event
-  // ---------------------------------------------------------------------------
+    // The oldest entry was evicted, so this recomputes -> a new object reference.
+    const oldestAgain = await simulate(oldest);
+    expect(oldestAgain).not.toBe(oldestFirst);
+  });
 
   it("post-ready worker error causes in-flight simulate to resolve via in-thread fallback", async () => {
     let errorListener: ((ev: ErrorEvent) => void) | null = null;

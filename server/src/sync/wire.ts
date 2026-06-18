@@ -1,35 +1,26 @@
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import type { MiddlewareHandler } from "hono/types";
 import type { FeatureRouter } from "../core/app.js";
 import { db } from "../core/db.js";
-import { logger } from "../core/logger.js";
+import { parseB64Buf, parseBigInt } from "../core/wire-parse.js";
 import { SyncRepo } from "./repo.js";
 import { SyncService } from "./sync-service.js";
 import { ConflictError, NotFoundError } from "./types.js";
 
-// ---------------------------------------------------------------------------
-// Wire helpers
-// ---------------------------------------------------------------------------
+// AES-GCM nonce is fixed at 12 bytes (NONCE_BYTES in @privance/core).
+const NONCE_LEN = 12;
 
-function parseBase64(value: string, fieldName: string): Buffer {
-  try {
-    return Buffer.from(value, "base64");
-  } catch {
-    throw new HTTPException(400, { message: `invalid_base64: ${fieldName}` });
-  }
-}
+// A full sync from a fresh client batches every object; cap it so a single
+// authenticated request can't open thousands of per-item DB round-trips in one
+// transaction. 500 covers a large real portfolio (accounts + holdings + lots +
+// transactions) while bounding worst-case transaction size; clients page beyond it.
+const MAX_BATCH_ITEMS = 500;
 
-function parseBigInt(value: unknown, fieldName: string): bigint {
-  if (value === undefined || value === null) {
-    throw new HTTPException(400, { message: `missing_field: ${fieldName}` });
-  }
-  try {
-    return BigInt(String(value));
-  } catch {
-    throw new HTTPException(400, { message: `invalid_integer: ${fieldName}` });
-  }
-}
+// Encrypted blobs are small (a few KB each); 5 MB bounds a maxed-out batch and
+// stops oversized-body memory blowups before parsing.
+const MAX_BODY_BYTES = 5 * 1024 * 1024;
 
 function makeService(): SyncService {
   const repo = new SyncRepo(db);
@@ -51,13 +42,14 @@ function syncErrorToHttp(err: unknown): never {
   throw err;
 }
 
-// ---------------------------------------------------------------------------
-// Router factory
-// ---------------------------------------------------------------------------
-
 function buildRouter(sessionMiddleware: MiddlewareHandler): Hono {
   const router = new Hono();
+  router.onError((err) => {
+    if (err instanceof HTTPException) return err.getResponse();
+    return syncErrorToHttp(err);
+  });
   router.use("*", sessionMiddleware);
+  router.use("*", bodyLimit({ maxSize: MAX_BODY_BYTES }));
 
   router.put("/objects/:id", async (c) => {
     const userId = c.get("userId");
@@ -68,37 +60,26 @@ function buildRouter(sessionMiddleware: MiddlewareHandler): Hono {
     const kind = String(body.kind ?? "");
     if (!kind) throw new HTTPException(400, { message: "missing_field: kind" });
 
-    const ciphertextStr = body.ciphertext;
-    const nonceStr = body.nonce;
-    if (typeof ciphertextStr !== "string" || typeof nonceStr !== "string") {
-      throw new HTTPException(400, { message: "missing_field: ciphertext or nonce" });
-    }
-
-    const ciphertext = parseBase64(ciphertextStr, "ciphertext");
-    const nonce = parseBase64(nonceStr, "nonce");
+    const ciphertext = parseB64Buf(body.ciphertext, "ciphertext");
+    const nonce = parseB64Buf(body.nonce, "nonce", NONCE_LEN);
     const version = parseBigInt(body.version, "version");
     const prevVersion =
       body.prev_version !== undefined ? parseBigInt(body.prev_version, "prev_version") : undefined;
 
     const service = makeService();
-    try {
-      const result = await service.put({
-        userId,
-        objectId,
-        kind,
-        ciphertext,
-        nonce,
-        version,
-        ...(prevVersion !== undefined ? { prevVersion } : {}),
-      });
-      return c.json(
-        { server_seq: result.serverSeq.toString(), version: result.version.toString() },
-        200,
-      );
-    } catch (err) {
-      logger.warn({ objectId, event: "sync.put.error" }, "put conflict");
-      syncErrorToHttp(err);
-    }
+    const result = await service.put({
+      userId,
+      objectId,
+      kind,
+      ciphertext,
+      nonce,
+      version,
+      ...(prevVersion !== undefined ? { prevVersion } : {}),
+    });
+    return c.json(
+      { server_seq: result.serverSeq.toString(), version: result.version.toString() },
+      200,
+    );
   });
 
   router.get("/objects/:id", async (c) => {
@@ -106,21 +87,16 @@ function buildRouter(sessionMiddleware: MiddlewareHandler): Hono {
     const objectId = c.req.param("id");
 
     const service = makeService();
-    try {
-      const result = await service.get({ userId, objectId });
-      if (result.tombstone) throw new HTTPException(404, { message: "not_found" });
-      return c.json({
-        object_id: result.objectId,
-        kind: result.kind,
-        ciphertext: result.ciphertext.toString("base64"),
-        nonce: result.nonce.toString("base64"),
-        version: result.version.toString(),
-        server_seq: result.serverSeq.toString(),
-      });
-    } catch (err) {
-      if (err instanceof HTTPException) throw err;
-      syncErrorToHttp(err);
-    }
+    const result = await service.get({ userId, objectId });
+    if (result.tombstone) throw new HTTPException(404, { message: "not_found" });
+    return c.json({
+      object_id: result.objectId,
+      kind: result.kind,
+      ciphertext: result.ciphertext.toString("base64"),
+      nonce: result.nonce.toString("base64"),
+      version: result.version.toString(),
+      server_seq: result.serverSeq.toString(),
+    });
   });
 
   router.get("/changes", async (c) => {
@@ -129,13 +105,16 @@ function buildRouter(sessionMiddleware: MiddlewareHandler): Hono {
     const limitStr = c.req.query("limit") ?? "100";
 
     let since: bigint;
-    let limit: number;
     try {
       since = BigInt(sinceStr);
-      limit = Math.min(Math.max(1, Number(limitStr)), 500);
     } catch {
       throw new HTTPException(400, { message: "invalid query params" });
     }
+    const limitNum = Number(limitStr);
+    if (!Number.isFinite(limitNum)) {
+      throw new HTTPException(400, { message: "invalid query params" });
+    }
+    const limit = Math.min(Math.max(1, limitNum), 500);
 
     const service = makeService();
     const result = await service.changes({ userId, since, limit });
@@ -162,13 +141,8 @@ function buildRouter(sessionMiddleware: MiddlewareHandler): Hono {
     const prevVersion = parseBigInt(body.prev_version, "prev_version");
 
     const service = makeService();
-    try {
-      await service.delete({ userId, objectId, prevVersion });
-      return new Response(null, { status: 204 });
-    } catch (err) {
-      if (err instanceof HTTPException) throw err;
-      syncErrorToHttp(err);
-    }
+    await service.delete({ userId, objectId, prevVersion });
+    return new Response(null, { status: 204 });
   });
 
   router.post("/batch", async (c) => {
@@ -181,24 +155,23 @@ function buildRouter(sessionMiddleware: MiddlewareHandler): Hono {
     const putsRaw = Array.isArray(body.puts) ? body.puts : [];
     const deletesRaw = Array.isArray(body.deletes) ? body.deletes : [];
 
+    if (putsRaw.length + deletesRaw.length > MAX_BATCH_ITEMS) {
+      throw new HTTPException(400, { message: `too_many_items: max ${MAX_BATCH_ITEMS}` });
+    }
+
     const puts = putsRaw.map((item) => {
       const p = item as Record<string, unknown>;
       const objectId = String(p.object_id ?? "");
       if (!objectId) throw new HTTPException(400, { message: "batch put missing object_id" });
       const kind = String(p.kind ?? "");
       if (!kind) throw new HTTPException(400, { message: "batch put missing kind" });
-      const ciphertextStr = p.ciphertext;
-      const nonceStr = p.nonce;
-      if (typeof ciphertextStr !== "string" || typeof nonceStr !== "string") {
-        throw new HTTPException(400, { message: "batch put missing ciphertext or nonce" });
-      }
       const prevVersion =
         p.prev_version !== undefined ? parseBigInt(p.prev_version, "prev_version") : undefined;
       return {
         objectId,
         kind,
-        ciphertext: parseBase64(ciphertextStr, "ciphertext"),
-        nonce: parseBase64(nonceStr, "nonce"),
+        ciphertext: parseB64Buf(p.ciphertext, "ciphertext"),
+        nonce: parseB64Buf(p.nonce, "nonce", NONCE_LEN),
         version: parseBigInt(p.version, "version"),
         ...(prevVersion !== undefined ? { prevVersion } : {}),
       };

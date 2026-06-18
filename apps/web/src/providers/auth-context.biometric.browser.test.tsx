@@ -36,11 +36,7 @@ vi.mock("@/lib/storage/biometric-store", async (importActual) => {
 import { loadEnrollment, purgeEnrollment } from "@/lib/storage/biometric-store";
 import { readRawBiometricIdb, seedEnrollment } from "@/lib/storage/biometric-store.test-helpers";
 import { clearSession } from "@/lib/storage/session-vault";
-import { AuthProvider, useAuth } from "./auth-context";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+import { AuthProvider, USERNAME_KEY, useAuth } from "./auth-context";
 
 function makeItemsKey(): ItemsKey {
   return crypto.getRandomValues(new Uint8Array(32)) as unknown as ItemsKey;
@@ -68,10 +64,6 @@ async function renderAuth() {
   return { getApi: () => api };
 }
 
-// ---------------------------------------------------------------------------
-// Cleanup
-// ---------------------------------------------------------------------------
-
 beforeEach(async () => {
   biometricStore.purgeEnrollmentSpy.mockClear();
   biometricStore.reArmSpy.mockClear();
@@ -85,10 +77,6 @@ afterEach(async () => {
   await clearSession();
   localStorage.clear();
 });
-
-// ---------------------------------------------------------------------------
-// Re-arm on password login
-// ---------------------------------------------------------------------------
 
 describe("login() re-arms the biometric record", () => {
   it("updates the wrapped blob bytes and lastPasswordUnlockAt when a record is enrolled", async () => {
@@ -161,10 +149,6 @@ describe("login() re-arms the biometric record", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Re-arm on non-biometric unlock
-// ---------------------------------------------------------------------------
-
 describe("unlock() re-arms unless persistence is biometric", () => {
   it("re-arms when persistence is 'memory'", async () => {
     const userId = "user-unlock-memory";
@@ -210,10 +194,6 @@ describe("unlock() re-arms unless persistence is biometric", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// logout() purges the biometric record before USERNAME_KEY removal (AE5)
-// ---------------------------------------------------------------------------
-
 describe("logout() purge ordering", () => {
   it("biometric record is absent after logout completes", async () => {
     const userId = "user-logout-purge";
@@ -221,7 +201,7 @@ describe("logout() purge ordering", () => {
     const itemsKey = makeItemsKey();
     await seedEnrollment({ userId, username, itemsKey });
 
-    localStorage.setItem("privance.username", username);
+    localStorage.setItem(USERNAME_KEY, username);
     localStorage.setItem("privance.userId", userId);
 
     const { getApi } = await renderAuth();
@@ -237,7 +217,7 @@ describe("logout() purge ordering", () => {
     const itemsKey = makeItemsKey();
     await seedEnrollment({ userId, username, itemsKey });
 
-    localStorage.setItem("privance.username", username);
+    localStorage.setItem(USERNAME_KEY, username);
     localStorage.setItem("privance.userId", userId);
 
     const { getApi } = await renderAuth();
@@ -247,7 +227,7 @@ describe("logout() purge ordering", () => {
     // so privance.username must still be present at the time the spy fires.
     let usernameKeyPresentAtPurge: boolean | null = null;
     biometricStore.purgeEnrollmentSpy.mockImplementationOnce(() => {
-      usernameKeyPresentAtPurge = localStorage.getItem("privance.username") !== null;
+      usernameKeyPresentAtPurge = localStorage.getItem(USERNAME_KEY) !== null;
     });
 
     await getApi().logout();
@@ -255,17 +235,12 @@ describe("logout() purge ordering", () => {
     // Ordering assertion: purge fired before USERNAME_KEY removal
     expect(usernameKeyPresentAtPurge).toBe(true);
     // After logout: key gone
-    expect(localStorage.getItem("privance.username")).toBeNull();
+    expect(localStorage.getItem(USERNAME_KEY)).toBeNull();
   });
 });
 
-// ---------------------------------------------------------------------------
-// login never purges an existing enrollment
-// ---------------------------------------------------------------------------
 // lock() cannot run here: it calls window.location.reload(), which navigates
-// the vitest iframe. The lock-keeps-enrollment invariant (AE6) is covered by
-// the real-browser E2E suite.
-
+// the vitest iframe. The lock-keeps-enrollment invariant is covered by the E2E suite.
 describe("login leaves an existing enrollment intact", () => {
   it("purgeEnrollment is never called on the way to the unlocked state", async () => {
     const userId = "user-lock-survive";
@@ -273,7 +248,7 @@ describe("login leaves an existing enrollment intact", () => {
     const itemsKey = makeItemsKey();
     await seedEnrollment({ userId, username, itemsKey });
 
-    localStorage.setItem("privance.username", username);
+    localStorage.setItem(USERNAME_KEY, username);
     localStorage.setItem("privance.userId", userId);
 
     biometricStore.purgeEnrollmentSpy.mockClear();

@@ -17,23 +17,20 @@
  *   Year order (matches the plan lifecycle diagram): accumulation adds the
  *     contribution then applies the return; drawdown subtracts the spend then
  *     applies the return.
- *   Float boundary: the return application only. Balance (Decimal cents) is
- *     converted to float, multiplied by (1 + r), then banker-rounded back to
- *     integer cents. No float anywhere else.
+ *   Money float boundary: applying a return to a balance. Balance (Decimal
+ *     cents) is converted to float, multiplied by (1 + r), then banker-rounded
+ *     back to integer cents. Returns themselves (the MC draw and the replay
+ *     stock/bond blend) are float; money never is except at this boundary.
  *   MC returns are clamped at -100% (an unlevered portfolio cannot lose more
  *     than everything); depletion is terminal only in drawdown.
  *   Allowed float ops: +, -, *, / only. No transcendentals.
  */
 
-import { Decimal } from "../decimal/decimal.js";
+import { Decimal } from "../decimal/index.js";
 import { ANNUAL_RETURNS } from "./dataset.js";
 import { normalSample } from "./normal.js";
 import { seededRng } from "./random.js";
 import type { SimSeed, SimulateResult, WorstCohort, YearBand } from "./types.js";
-
-// ---------------------------------------------------------------------------
-// Engine inputs
-// ---------------------------------------------------------------------------
 
 export interface SimulatePlanOptions {
   /** Current pot value in cents. */
@@ -48,12 +45,8 @@ export interface SimulatePlanOptions {
   readonly currentAge: number;
   /** Age to run the simulation until (integer). */
   readonly planUntilAge: number;
-  /**
-   * Returns the stock weight (0..1) for a given simulation year index.
-   * Year index 0 = first simulated year. v1 callers pass a constant function.
-   * The seam is here so glide-path support in v2 requires no engine changes.
-   */
-  readonly stockWeightForYear: (yearIndex: number) => number;
+  /** Stock weight (0..1) applied across the whole horizon. */
+  readonly stockWeight: number;
   /** Seed for the Monte Carlo PRNG. */
   readonly seed: SimSeed;
   /** MC: arithmetic mean annual real return in basis points. */
@@ -65,10 +58,6 @@ export interface SimulatePlanOptions {
 }
 
 export type { SimulateResult } from "./types.js";
-
-// ---------------------------------------------------------------------------
-// Float-boundary helper
-// ---------------------------------------------------------------------------
 
 /**
  * Apply a return to a Decimal balance via the permitted float boundary.
@@ -100,10 +89,6 @@ function applyReturn(balanceCents: Decimal, r: number): Decimal {
   return Decimal.fromMinorUnits(rounded);
 }
 
-// ---------------------------------------------------------------------------
-// Percentile selection (nearest-rank, pure index)
-// ---------------------------------------------------------------------------
-
 /**
  * Select the value at percentile `p` (0..1) from an already-sorted array.
  * Index = floor(p * (n - 1)). Pure integer index -- no float in result.
@@ -114,10 +99,6 @@ function selectPercentile(sorted: Decimal[], p: number): Decimal {
   return sorted[idx]!;
 }
 
-// ---------------------------------------------------------------------------
-// FIRE number computation
-// ---------------------------------------------------------------------------
-
 function computeFireNumber(annualSpendCents: Decimal, swrBps: number): Decimal {
   // FIRE number = annualSpend / SWR
   // SWR as Decimal: swrBps cents / 10000 cents, but we want the rate as a
@@ -126,10 +107,6 @@ function computeFireNumber(annualSpendCents: Decimal, swrBps: number): Decimal {
   const swr = Decimal.fromString(`${swrBps}.00`);
   return annualSpendCents.mul(ten_thousand, { round: "banker" }).div(swr, "banker");
 }
-
-// ---------------------------------------------------------------------------
-// Per-path simulation loop (shared by MC and replay)
-// ---------------------------------------------------------------------------
 
 interface PathResult {
   /** true if pot > 0 at planUntilAge */
@@ -208,10 +185,6 @@ function simulatePath(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Monte Carlo
-// ---------------------------------------------------------------------------
-
 function runMonteCarlo(
   opts: SimulatePlanOptions,
   fireTarget: Decimal,
@@ -256,8 +229,13 @@ function runMonteCarlo(
     );
 
     if (path.survived) successes++;
-    if (path.neverFi) neverFiCount++;
-    fireAges.push(path.fireAge);
+    if (path.neverFi) {
+      neverFiCount++;
+    } else {
+      // Median FIRE age is taken over paths that actually reached FI; never-FI
+      // paths carry planUntilAge as a sentinel and would skew it upward.
+      fireAges.push(path.fireAge);
+    }
 
     for (let y = 0; y < horizon; y++) {
       // biome-ignore lint/style/noNonNullAssertion: both arrays have length horizon
@@ -283,10 +261,14 @@ function runMonteCarlo(
     };
   });
 
-  // Median FIRE age: nearest-rank on sorted fireAges
+  // Median FIRE age: nearest-rank on sorted fireAges (FI-reaching paths only).
+  // When no path reaches FI, fall back to planUntilAge (callers gate on neverFi).
   fireAges.sort((a, b) => a - b);
-  // biome-ignore lint/style/noNonNullAssertion: index floor(0.5*(n-1)) is in [0, n-1] for n >= 1
-  const medianFireAge = fireAges[Math.floor(0.5 * (fireAges.length - 1))]!;
+  const medianFireAge =
+    fireAges.length > 0
+      ? // biome-ignore lint/style/noNonNullAssertion: guarded by length > 0; index floor(0.5*(n-1)) is in [0, n-1]
+        fireAges[Math.floor(0.5 * (fireAges.length - 1))]!
+      : planUntilAge;
 
   return {
     mcResult: {
@@ -299,17 +281,14 @@ function runMonteCarlo(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Historical replay
-// ---------------------------------------------------------------------------
-
 function runReplay(
   opts: SimulatePlanOptions,
   fireTarget: Decimal,
   annualContrib: Decimal,
 ): { replayResult: import("./types.js").ReplayResult } {
-  const { startingPotCents, annualSpendCents, currentAge, planUntilAge, stockWeightForYear } = opts;
+  const { startingPotCents, annualSpendCents, currentAge, planUntilAge, stockWeight } = opts;
   const horizon = planUntilAge - currentAge;
+  const bondWeight = 1 - stockWeight;
   const total = ANNUAL_RETURNS.length; // 152
   // biome-ignore lint/style/noNonNullAssertion: ANNUAL_RETURNS is a non-empty compile-time constant
   const firstYear = ANNUAL_RETURNS[0]!.year; // 1871
@@ -332,9 +311,7 @@ function runReplay(
     for (let y = 0; y < horizon; y++) {
       // biome-ignore lint/style/noNonNullAssertion: i + y < completeWindowCount + horizon - 1 <= total
       const row = ANNUAL_RETURNS[i + y]!;
-      const stockW = stockWeightForYear(y);
-      const bondW = 1 - stockW;
-      const r = (stockW * row.stocksBps + bondW * row.bondsBps) / 10000;
+      const r = (stockWeight * row.stocksBps + bondWeight * row.bondsBps) / 10000;
       returns.push(r);
     }
 
@@ -357,7 +334,6 @@ function runReplay(
     }
   }
 
-  // Worst cohorts: up to 3 with earliest depletion
   failedCohorts.sort((a, b) => a.depletionAge - b.depletionAge);
   const worstCohorts = failedCohorts.slice(0, 3);
 
@@ -372,10 +348,6 @@ function runReplay(
     },
   };
 }
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
 
 /**
  * Run a complete FIRE simulation: Monte Carlo and historical replay.

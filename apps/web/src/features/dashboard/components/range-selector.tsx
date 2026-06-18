@@ -3,17 +3,17 @@
 import { useEffect, useRef } from "react";
 import type { ChartRange } from "../types";
 
-const RANGES: ChartRange[] = ["1D", "1W", "1M", "3M", "6M", "1Y", "All"];
-
 type RangeSelectorProps = {
   selected: ChartRange;
   onChange: (range: ChartRange) => void;
+  ranges: ChartRange[];
 };
 
 /**
- * Horizontal segmented control for selecting the history chart date range.
+ * Minimal text range buttons for the history chart. The active range reads as a
+ * filled chip; the rest are quiet until hover.
  */
-export function RangeSelector({ selected, onChange }: RangeSelectorProps) {
+export function RangeSelector({ selected, onChange, ranges }: RangeSelectorProps) {
   const selectedRef = useRef<HTMLButtonElement | null>(null);
 
   // The row scrolls horizontally on narrow screens; keep the selected option visible.
@@ -23,9 +23,8 @@ export function RangeSelector({ selected, onChange }: RangeSelectorProps) {
   }, [selected]);
 
   return (
-    // Horizontal scroll instead of wrapping so options never drop onto a second row.
-    <div className="flex gap-1 overflow-x-auto">
-      {RANGES.map((range) => {
+    <div className="flex gap-0.5 overflow-x-auto">
+      {ranges.map((range) => {
         const isSelected = range === selected;
         return (
           <button
@@ -36,10 +35,8 @@ export function RangeSelector({ selected, onChange }: RangeSelectorProps) {
             aria-pressed={isSelected}
             aria-label={`${range} range`}
             className={[
-              "shrink-0 whitespace-nowrap px-3 py-1.5 min-h-[44px] sm:min-h-0 items-center rounded-full text-xs font-medium tracking-tight border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] cursor-pointer transition-colors",
-              isSelected
-                ? "bg-gold-accent/10 border-gold-accent text-gold-accent"
-                : "border-app-line text-app-muted hover:text-app-text hover:border-app-muted/40",
+              "shrink-0 whitespace-nowrap rounded-[5px] px-3 py-[7px] font-mono text-[10.5px] tracking-[.1em] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent focus-visible:rounded-[inherit]",
+              isSelected ? "text-cream bg-panel-2" : "text-faint hover:text-cream-soft",
             ].join(" ")}
           >
             {range}

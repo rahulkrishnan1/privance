@@ -14,7 +14,7 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 import type { Fixtures } from "../../playwright/global-setup";
 import type { SessionSnapshot } from "./helpers/auth";
-import { loginAndCapture, restoreSession } from "./helpers/auth";
+import { loginAndCapture, restoreSession, waitForSynced } from "./helpers/auth";
 
 function loadFixtures(): Fixtures {
   const p = path.join(__dirname, "../../.playwright-fixtures.json");
@@ -43,13 +43,16 @@ test.describe("accounts mobile", () => {
 
   test("creates a cash account and sees it in the list", async ({ page }) => {
     await page.goto("/app/accounts/");
+    await expect(page).toHaveURL("/app/accounts/", { timeout: 15_000 });
+    // Wait until the invest screen finishes loading (OPFS resolves locally, not network).
     await expect(
       page
-        .getByRole("heading", { name: "Accounts" })
-        .or(page.getByRole("heading", { name: "Add your first account" })),
+        .getByRole("heading", { name: /vault is empty/i })
+        .or(page.getByRole("navigation", { name: "Invest sub-navigation" })),
     ).toBeVisible({ timeout: 15_000 });
-    await page.waitForLoadState("networkidle");
+    await waitForSynced(page);
 
+    // The subnav "+ account" button or empty-state "+ Add account" button
     await page
       .getByRole("button", { name: /Add.*account/i })
       .first()
@@ -59,9 +62,12 @@ test.describe("accounts mobile", () => {
     await expect(dialog).toBeVisible();
 
     const name = `MobCash-${RUN}`;
-    await dialog.getByLabel("Account name").fill(name);
-    await dialog.getByLabel("Balance").fill("1234.56");
-    await dialog.getByRole("button", { name: "Save" }).click();
+    await dialog.getByLabel("Name").fill(name);
+    // Kind defaults to investment; select Cash so Current balance field appears.
+    await dialog.getByRole("button", { name: "Cash" }).click();
+    await dialog.getByLabel("Account type").selectOption("checking");
+    await dialog.getByLabel("Current balance").fill("1234.56");
+    await dialog.getByRole("button", { name: "Create account" }).click();
 
     await expect(dialog).not.toBeVisible({ timeout: SAVE_TIMEOUT });
     await expect(page.getByText(name)).toBeVisible({ timeout: SAVE_TIMEOUT });

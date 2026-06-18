@@ -1,7 +1,7 @@
 "use client";
 
-import { DashboardScreen } from "@/features/dashboard";
+import { InvestScreen } from "@/features/invest";
 
-export default function DashboardPage() {
-  return <DashboardScreen />;
+export default function OverviewPage() {
+  return <InvestScreen view="overview" />;
 }

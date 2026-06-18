@@ -15,7 +15,7 @@ export type { LabelKey } from "./labels.js";
 export { LABEL_VERSION, LABELS } from "./labels.js";
 
 export { randomBytes, randomNonce } from "./random.js";
-export { phraseToSeed, seedToPhrase, validatePhrase } from "./recovery.js";
+export { countRecognizedWords, phraseToSeed, seedToPhrase, validatePhrase } from "./recovery.js";
 export type {
   AadFields,
   AuthHash,

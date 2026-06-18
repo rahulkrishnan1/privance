@@ -9,10 +9,6 @@ import {
   resetAll,
 } from "./rate-limit.js";
 
-// ---------------------------------------------------------------------------
-// R2, evictInactive evicts stale keys and is schedulable
-// ---------------------------------------------------------------------------
-
 beforeEach(() => {
   resetAll();
 });
@@ -25,9 +21,6 @@ describe("evictInactive", () => {
   it("after calling evictInactive, fresh signup gates still work", () => {
     gateSignup("hash-ip-1");
     evictInactive();
-    // After eviction of empty/active windows we can still gate normally.
-    // The eviction only removes truly expired entries; this one is fresh.
-    // Subsequent calls within the window should still be counted.
     expect(() => gateSignup("hash-ip-1")).not.toThrow();
   });
 
@@ -38,20 +31,26 @@ describe("evictInactive", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// R2, backoff resets on success (verifies progressive backoff state)
-// ---------------------------------------------------------------------------
-
 describe("progressive backoff state", () => {
-  it("records failure then resets on success", async () => {
-    recordLoginFailure("testuser");
-    recordLoginFailure("testuser");
-    recordLoginSuccess("testuser");
-    // After success the backoff should be cleared; gateLogin should not delay.
-    // We verify by calling gateLogin and expecting it to resolve quickly.
-    const start = Date.now();
-    await gateLogin("testuser", "some-hashed-ip");
-    const elapsed = Date.now() - start;
-    expect(elapsed).toBeLessThan(100);
+  it("accumulated failures delay the next gate, and a success removes that delay", async () => {
+    // Two failures put the user into backoff (base 250 ms, doubling). The gate
+    // after them must sleep noticeably; we assert it against the known base, not
+    // a bare upper bound that could pass even if backoff were broken.
+    recordLoginFailure("backoff-user");
+    recordLoginFailure("backoff-user");
+
+    const delayedStart = Date.now();
+    await gateLogin("backoff-user", "ip-a");
+    const delayedElapsed = Date.now() - delayedStart;
+    // After 2 failures the delay is base * 2^(2-1) = 500 ms; allow scheduler slack.
+    expect(delayedElapsed).toBeGreaterThanOrEqual(400);
+
+    // A success clears the failure counter, so the next gate does not sleep.
+    recordLoginSuccess("backoff-user");
+    const clearedStart = Date.now();
+    await gateLogin("backoff-user", "ip-a");
+    const clearedElapsed = Date.now() - clearedStart;
+    expect(clearedElapsed).toBeLessThan(delayedElapsed);
+    expect(clearedElapsed).toBeLessThan(100);
   });
 });

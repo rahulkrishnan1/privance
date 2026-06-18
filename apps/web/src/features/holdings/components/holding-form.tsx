@@ -14,6 +14,7 @@ type HoldingFormProps = {
   initialValues?: Partial<HoldingFormValues>;
   investmentAccounts: InvestmentAccount[];
   groups: LocalGroup[];
+  isEdit: boolean;
   submitting: boolean;
   onSubmit: (values: HoldingFormValues, opts: { proxyPrice?: string }) => void | Promise<void>;
   onLookupProxyPrice?: (ticker: string) => Promise<string | null>;
@@ -24,6 +25,7 @@ export function HoldingForm({
   initialValues,
   investmentAccounts,
   groups,
+  isEdit,
   submitting,
   onSubmit,
   onLookupProxyPrice,
@@ -143,28 +145,35 @@ export function HoldingForm({
         name="assetType"
         render={({ field }) => (
           <div className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
+            <span className="font-mono text-[9px] tracking-[.22em] uppercase text-faint">
               Asset type
             </span>
-            <div role="radiogroup" aria-label="Asset type" className="flex gap-2 self-start">
-              {(["stock", "crypto"] as const).map((type) => (
-                // biome-ignore lint/a11y/useSemanticElements: styled segmented control needs button, role+aria provide radio semantics
-                <button
-                  key={type}
-                  type="button"
-                  role="radio"
-                  aria-checked={field.value === type}
-                  onClick={() => field.onChange(type)}
-                  className={[
-                    "rounded-full border px-4 sm:px-5 h-9 sm:h-10 text-xs sm:text-[13px] font-medium tracking-tight whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] cursor-pointer",
-                    field.value === type
-                      ? "bg-gold-accent/10 border-gold-accent text-gold-accent"
-                      : "bg-transparent border-app-line text-app-muted hover:text-app-text hover:border-app-muted/40",
-                  ].join(" ")}
-                >
-                  {type === "stock" ? "Stock" : "Crypto"}
-                </button>
-              ))}
+            <div
+              role="radiogroup"
+              aria-label="Asset type"
+              className="flex gap-1 bg-panel-2 border border-line rounded-lg p-1 self-start"
+            >
+              {(["stock", "crypto"] as const).map((type) => {
+                const active = field.value === type;
+                return (
+                  // biome-ignore lint/a11y/useSemanticElements: styled segmented control needs button, role+aria provide radio semantics
+                  <button
+                    key={type}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => field.onChange(type)}
+                    className={[
+                      "font-mono text-[9.5px] tracking-[.1em] uppercase rounded-md py-2.5 px-4 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                      active
+                        ? "bg-vault text-accent border border-line"
+                        : "text-faint hover:text-cream-soft",
+                    ].join(" ")}
+                  >
+                    {type === "stock" ? "Stock" : "Crypto"}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -205,10 +214,8 @@ export function HoldingForm({
                 placeholder="e.g. bitcoin"
                 error={errors.ticker?.message}
               />
-              <p className="text-xs text-app-muted">
-                Find IDs at coingecko.com (URL ends with the ID). Use{" "}
-                <span className="font-mono">bitcoin</span>, not{" "}
-                <span className="font-mono">BTC</span>.
+              <p className="font-mono text-[9.5px] text-faint tracking-[.04em]">
+                Find IDs at coingecko.com (URL ends with the ID).
               </p>
             </div>
           )}
@@ -219,7 +226,7 @@ export function HoldingForm({
       <div className="flex flex-col gap-2">
         <label
           htmlFor="holding-account"
-          className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim"
+          className="font-mono text-[9px] tracking-[.22em] uppercase text-faint"
         >
           Account
         </label>
@@ -231,13 +238,13 @@ export function HoldingForm({
               id="holding-account"
               {...field}
               className={[
-                "bg-transparent border-b px-1 py-2.5 text-[15px] text-app-text min-h-11 focus:outline-none cursor-pointer appearance-none transition-colors",
-                "bg-[length:14px] bg-[right_center] bg-no-repeat pr-7",
-                errors.accountId ? "border-app-red" : "border-app-line focus:border-gold-accent",
+                "w-full bg-panel-2 border border-line rounded-lg text-cream font-mono text-[14px] px-3.5 py-3 outline-none focus:border-accent-dim transition-colors cursor-pointer appearance-none",
+                "bg-[length:14px] bg-[right_12px_center] bg-no-repeat pr-9",
+                errors.accountId ? "border-signal" : "",
               ].join(" ")}
               style={{
                 backgroundImage:
-                  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23696c79'><path d='M5.5 7.5l4.5 4.5 4.5-4.5' stroke='%23696c79' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
+                  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%235e5e5a'><path d='M5.5 7.5l4.5 4.5 4.5-4.5' stroke='%235e5e5a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
               }}
               disabled={investmentAccounts.length === 0}
             >
@@ -259,19 +266,19 @@ export function HoldingForm({
           )}
         />
         {errors.accountId && (
-          <p role="alert" className="text-[13px] text-app-red">
+          <p role="alert" className="text-[13px] text-signal">
             {errors.accountId.message}
           </p>
         )}
       </div>
 
-      {/* Shares */}
+      {/* Quantity */}
       <Controller
         control={control}
         name="shares"
         render={({ field }) => (
           <Input
-            label="Shares"
+            label="Quantity"
             {...field}
             inputMode="decimal"
             placeholder="e.g. 10.5"
@@ -280,13 +287,13 @@ export function HoldingForm({
         )}
       />
 
-      {/* Avg cost per share */}
+      {/* Avg cost per share (total cost basis = this times shares) */}
       <Controller
         control={control}
         name="avgCostPerShare"
         render={({ field }) => (
           <Input
-            label="Avg cost per share"
+            label="Avg cost basis"
             {...field}
             inputMode="decimal"
             placeholder="e.g. 150.00"
@@ -295,60 +302,87 @@ export function HoldingForm({
         )}
       />
 
-      {/* Group picker */}
-      <div className="flex flex-col gap-2">
-        <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
-          Group (optional)
-        </span>
-        <div className="flex flex-wrap gap-2">
-          {groups.map((g) => (
-            <GroupChip
-              key={g.id}
-              group={g}
-              selected={selectedGroupId === g.id}
-              onPress={() => setValue("groupId", selectedGroupId === g.id ? "" : g.id)}
-            />
-          ))}
-        </div>
+      {/* Current price per share of the actual asset, shown alongside cost basis
+          because it describes the holding, not the proxy. Only when a proxy is set. */}
+      {currentProxyTicker.trim().length > 0 && (
+        <Controller
+          control={control}
+          name="nav"
+          render={({ field }) => (
+            <div className="flex flex-col gap-1">
+              <Input
+                label="Current price per share"
+                {...field}
+                value={field.value ?? ""}
+                inputMode="decimal"
+                placeholder="e.g. 342.19"
+                error={errors.nav?.message}
+              />
+              <p className="font-mono text-[9.5px] text-faint tracking-[.04em]">
+                Today's per-share price of your actual asset (not the proxy). We anchor the proxy to
+                this so your market value tracks reality. Re-anchor anytime by editing this holding.
+              </p>
+            </div>
+          )}
+        />
+      )}
 
-        {/* Inline group creation */}
-        <div className="flex flex-col gap-1 mt-1">
-          <div className="flex gap-2 items-end">
-            <input
-              value={newGroupName}
-              onChange={(e) => {
-                setNewGroupName(e.target.value);
-                if (groupNameError !== undefined) setGroupNameError(undefined);
-              }}
-              placeholder="New group name"
-              aria-label="New group name"
-              maxLength={64}
-              className="flex-1 bg-transparent border-b border-app-line focus:border-gold-accent px-1 py-2 text-[14px] text-app-text placeholder:text-app-dim/70 focus:outline-none transition-colors min-h-9"
-            />
-            <Button
-              type="button"
-              onClick={() => void handleCreateGroup()}
-              disabled={creatingGroup || newGroupName.trim().length === 0}
-              loading={creatingGroup}
-              aria-label="Create group"
-              size="sm"
-            >
-              {creatingGroup ? "Creating…" : "Create"}
-            </Button>
+      {/* Group picker, edit-only */}
+      {isEdit && (
+        <div className="flex flex-col gap-2">
+          <span className="font-mono text-[9px] tracking-[.22em] uppercase text-faint">
+            Group (optional)
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {groups.map((g) => (
+              <GroupChip
+                key={g.id}
+                group={g}
+                selected={selectedGroupId === g.id}
+                onPress={() => setValue("groupId", selectedGroupId === g.id ? "" : g.id)}
+              />
+            ))}
           </div>
-          {groupNameError !== undefined && (
-            <p role="alert" className="text-[13px] text-app-red">
-              {groupNameError}
+
+          {/* Inline group creation */}
+          <div className="flex flex-col gap-1 mt-1">
+            <div className="flex gap-2 items-end">
+              <input
+                value={newGroupName}
+                onChange={(e) => {
+                  setNewGroupName(e.target.value);
+                  if (groupNameError !== undefined) setGroupNameError(undefined);
+                }}
+                placeholder="New group name"
+                aria-label="New group name"
+                maxLength={64}
+                className="flex-1 bg-transparent border-b border-line focus:border-accent-dim px-1 py-2 text-[14px] text-cream placeholder:text-faint/70 focus:outline-none transition-colors min-h-9"
+              />
+              <Button
+                type="button"
+                onClick={() => void handleCreateGroup()}
+                disabled={creatingGroup || newGroupName.trim().length === 0}
+                loading={creatingGroup}
+                aria-label="Create group"
+                size="sm"
+              >
+                {creatingGroup ? "Creating..." : "Create"}
+              </Button>
+            </div>
+            {groupNameError !== undefined && (
+              <p role="alert" className="text-[13px] text-signal">
+                {groupNameError}
+              </p>
+            )}
+          </div>
+
+          {selectedGroup !== undefined && (
+            <p className="font-mono text-[9.5px] text-faint tracking-[.04em]">
+              Selected: {selectedGroup.name}, click to deselect
             </p>
           )}
         </div>
-
-        {selectedGroup !== undefined && (
-          <p className="text-xs text-app-muted">
-            Selected: {selectedGroup.name}, click to deselect
-          </p>
-        )}
-      </div>
+      )}
 
       {/* Advanced section */}
       <button
@@ -356,18 +390,14 @@ export function HoldingForm({
         onClick={() => setAdvancedOpen((o) => !o)}
         aria-label={advancedOpen ? "Collapse advanced options" : "Expand advanced options"}
         aria-expanded={advancedOpen}
-        className="flex items-center gap-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] rounded min-h-9 cursor-pointer"
+        className="flex items-center gap-1 font-mono text-[10px] tracking-[.1em] uppercase text-accent-dim hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent focus-visible:rounded rounded min-h-9 cursor-pointer transition-colors"
       >
-        <span className="text-sm font-medium text-gold-accent">Advanced options</span>
-        {advancedOpen ? (
-          <ChevronUp size={16} className="text-gold-accent" />
-        ) : (
-          <ChevronDown size={16} className="text-gold-accent" />
-        )}
+        <span>No public ticker? Use a price proxy</span>
+        {advancedOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
       </button>
 
       {advancedOpen && (
-        <div className="flex flex-col gap-4 pl-2 border-l-2 border-app-line">
+        <div className="flex flex-col gap-4 pl-3 border-l border-line">
           <Controller
             control={control}
             name="proxyTicker"
@@ -382,35 +412,13 @@ export function HoldingForm({
                   placeholder="e.g. VOO"
                   error={errors.proxyTicker?.message}
                 />
-                <p className="text-xs text-app-muted">
+                <p className="font-mono text-[9.5px] text-faint tracking-[.04em]">
                   Use a public ticker to track an asset we can't price directly (mutual funds,
                   private holdings). Leave blank if your ticker already has a live price.
                 </p>
               </div>
             )}
           />
-          {currentProxyTicker.trim().length > 0 && (
-            <Controller
-              control={control}
-              name="nav"
-              render={({ field }) => (
-                <div className="flex flex-col gap-1">
-                  <Input
-                    label="Current price per share"
-                    {...field}
-                    value={field.value ?? ""}
-                    inputMode="decimal"
-                    placeholder="e.g. 342.19"
-                    error={errors.nav?.message}
-                  />
-                  <p className="text-xs text-app-muted">
-                    Today's per-share price of your actual asset. We anchor the proxy to this so
-                    your market value tracks reality. Re-anchor anytime by editing this holding.
-                  </p>
-                </div>
-              )}
-            />
-          )}
         </div>
       )}
 
@@ -423,7 +431,7 @@ export function HoldingForm({
         size="md"
         className="w-full"
       >
-        {submitting || lookingUp ? "Saving…" : "Save"}
+        {submitting || lookingUp ? "Saving..." : "Save holding"}
       </Button>
     </form>
   );

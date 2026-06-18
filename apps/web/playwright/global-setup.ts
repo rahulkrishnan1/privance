@@ -81,28 +81,40 @@ async function signupUser(
   await page.getByLabel("Username").fill(username);
   await page.getByLabel("Master password", { exact: true }).fill(password);
   await page.getByLabel("Confirm master password").fill(password);
-  await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
 
-  // Wait for phrase screen (argon2 × 2 + HIBP = up to 15 s)
-  await page
-    .getByText("Write down your recovery phrase")
-    .waitFor({ state: "visible", timeout: 45_000 });
-
-  // Capture words from the 4×3 grid
+  // Wait for phrase screen (argon2 × 2 = up to 15 s).
+  // New UI heading: "Your recovery phrase." (fieldset with legend "Recovery phrase words")
   const fieldset = page.locator("fieldset").filter({
     has: page.locator("legend", { hasText: "Recovery phrase words" }),
   });
-  const wordCells = fieldset.locator("div.flex.flex-col.gap-0\\.5");
+  await fieldset.waitFor({ state: "visible", timeout: 45_000 });
+
+  // Capture words from the 3×4 grid.
+  // Each cell: <div class="...bg-panel...flex..."><span>{num}</span>{word}</div>
+  // The grid div is the direct child of the fieldset; word cells are its direct children.
+  const gridDiv = fieldset.locator("div").first();
+  const wordCells = gridDiv.locator("> div");
+  await wordCells.first().waitFor({ state: "visible", timeout: 10_000 });
+  const count = await wordCells.count();
   const words: string[] = [];
-  for (let i = 0; i < 12; i++) {
-    const word = await wordCells.nth(i).locator("span").nth(1).innerText();
-    words.push(word.trim());
+  for (let i = 0; i < count; i++) {
+    const cell = wordCells.nth(i);
+    // innerText = "<num>\n<word>" or similar; strip the leading number.
+    const raw = (await cell.innerText()).trim();
+    words.push(raw.replace(/^\d+\s*/, "").trim());
   }
   const phrase = words.join(" ");
 
-  // Acknowledge
-  await page.getByLabel("I have written down my recovery phrase in a safe place.").check();
-  await page.getByRole("button", { name: "Continue" }).click();
+  // Acknowledge, new UI: different checkbox label + "I have it. Continue" button
+  const newCheckbox = page.getByLabel("I wrote the phrase down, on paper, somewhere safe.");
+  const oldCheckbox = page.getByLabel("I have written down my recovery phrase in a safe place.");
+  const checkbox = (await newCheckbox.count()) > 0 ? newCheckbox : oldCheckbox;
+  await checkbox.check();
+  const newBtn = page.getByRole("button", { name: "I have it. Continue" });
+  const oldBtn = page.getByRole("button", { name: "Continue" });
+  const btn = (await newBtn.count()) > 0 ? newBtn : oldBtn;
+  await btn.click();
 
   await ctx.close();
   return { phrase };
@@ -146,17 +158,17 @@ export default async function globalSetup(): Promise<void> {
   // biome-ignore lint/suspicious/noConsole: progress output during Playwright global setup
   console.log("[global-setup] Creating fixture users (3 signups)…");
 
-  // Signup 1 — shared user for login/logout/accounts/holdings/dashboard
+  // Signup 1: shared user for login/logout/accounts/holdings/dashboard
   await signupUser(browser, sharedUsername, PASSWORD);
   // biome-ignore lint/suspicious/noConsole: progress output during Playwright global setup
   console.log("[global-setup] Created shared user:", sharedUsername);
 
-  // Signup 2 — user that exists for the duplicate-signup test
+  // Signup 2: user that exists for the duplicate-signup test
   await signupUser(browser, duplicateUsername, PASSWORD);
   // biome-ignore lint/suspicious/noConsole: progress output during Playwright global setup
   console.log("[global-setup] Created duplicate-target user:", duplicateUsername);
 
-  // Signup 3 — recovery user (phrase is saved so the recovery test can use it)
+  // Signup 3: recovery user (phrase is saved so the recovery test can use it)
   const { phrase: recoveryPhrase } = await signupUser(browser, recoveryUsername, PASSWORD);
   // biome-ignore lint/suspicious/noConsole: progress output during Playwright global setup
   console.log("[global-setup] Created recovery user:", recoveryUsername);

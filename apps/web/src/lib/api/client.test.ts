@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, apiFetch } from "./client";
+import { z } from "zod";
+import { ApiError, apiFetch, parseJson } from "./client";
 
 const mockFetch = vi.fn<typeof fetch>();
 
@@ -109,6 +110,29 @@ describe("apiFetch", () => {
     mockFetch.mockResolvedValueOnce(makeJsonResponse(400, { error: "missing_field" }));
     await expect(apiFetch("/api/test")).rejects.toSatisfy(
       (e: unknown) => e instanceof ApiError && e.status === 400,
+    );
+  });
+});
+
+describe("parseJson", () => {
+  const schema = z.object({ status: z.literal("ok") });
+
+  it("returns parsed data on a valid body", async () => {
+    const res = makeJsonResponse(200, { status: "ok" });
+    await expect(parseJson(res, schema)).resolves.toEqual({ status: "ok" });
+  });
+
+  it("throws ApiError parse_error on a non-JSON success body", async () => {
+    const res = makeTextResponse(200, "not json");
+    await expect(parseJson(res, schema)).rejects.toSatisfy(
+      (e: unknown) => e instanceof ApiError && e.code === "parse_error",
+    );
+  });
+
+  it("throws ApiError schema_error when the body shape does not match", async () => {
+    const res = makeJsonResponse(200, { status: "nope" });
+    await expect(parseJson(res, schema)).rejects.toSatisfy(
+      (e: unknown) => e instanceof ApiError && e.code === "schema_error",
     );
   });
 });

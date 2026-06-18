@@ -13,7 +13,7 @@ import { stretchMasterPassword } from "./kdf.js";
 import { deriveAuthHash, deriveKek, deriveRecoverySeed } from "./keys.js";
 import { LABEL_VERSION, LABELS } from "./labels.js";
 import { randomBytes, randomNonce } from "./random.js";
-import { phraseToSeed, seedToPhrase, validatePhrase } from "./recovery.js";
+import { countRecognizedWords, phraseToSeed, seedToPhrase, validatePhrase } from "./recovery.js";
 import type { AadFields, KEK, Nonce, RecoverySeed, StretchedMasterKey } from "./types.js";
 import {
   AUTH_HASH_BYTES,
@@ -24,10 +24,6 @@ import {
   KDF_PARAMS,
   NONCE_BYTES,
 } from "./types.js";
-
-// ---------------------------------------------------------------------------
-// Test vectors
-// ---------------------------------------------------------------------------
 
 describe("HKDF-SHA-256, RFC 5869 A.2 test vector", () => {
   it("matches the authoritative SHA-256 HKDF reference output", () => {
@@ -84,6 +80,10 @@ describe("HKDF, frozen labels", () => {
   it("RECOVERY label is finance/recovery-v1", () => {
     expect(LABELS.RECOVERY).toBe("finance/recovery-v1");
   });
+
+  it("BIOMETRIC label is finance/biometric-v1", () => {
+    expect(LABELS.BIOMETRIC).toBe("finance/biometric-v1");
+  });
 });
 
 describe("AES-GCM NIST test vector", () => {
@@ -97,6 +97,45 @@ describe("AES-GCM NIST test vector", () => {
     const decrypted = decryptAead({ ciphertext: blob.ciphertext, nonce, key, aad });
     expect(equalBytes(decrypted, plaintext)).toBe(true);
     expect(blob.ciphertext.length).toBe(plaintext.length + 16);
+  });
+});
+
+describe("AEAD AAD, golden vector (frozen byte layout)", () => {
+  // The AAD bytes (JSON of the AAD fields in fixed key order) are a frozen
+  // contract: any reordering would change the GCM tag and make existing
+  // ciphertexts undecryptable. These vectors pin the exact ciphertext+tag for a
+  // fixed key/nonce/plaintext so a reorder fails this test loudly. The first 16
+  // ciphertext bytes are AAD-independent; the trailing 16-byte tag authenticates
+  // the AAD, so it is the byte sequence under contract.
+  const KEY = hexToBytes("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+  const NONCE = hexToBytes("000000000000000000000001") as Nonce;
+  const PLAINTEXT = hexToBytes("00112233445566778899aabbccddeeff");
+
+  it("pins ciphertext for a record without pubKeyDigest", () => {
+    const aad: AadFields = {
+      recordUuid: "11111111-2222-3333-4444-555555555555",
+      kind: "account",
+      labelVersion: 1,
+      kdfParamVersion: 1,
+    };
+    const blob = encryptAead({ plaintext: PLAINTEXT, key: KEY, aad, nonce: NONCE });
+    expect(bytesToHex(blob.ciphertext)).toBe(
+      "15c79dcf00a1566986b7fb82207bd408b4e4686c3a464f88f50652ed4bdb4f38",
+    );
+  });
+
+  it("pins ciphertext for a biometric_protector record with pubKeyDigest", () => {
+    const aad: AadFields = {
+      recordUuid: "11111111-2222-3333-4444-555555555555",
+      kind: "biometric_protector",
+      labelVersion: 1,
+      kdfParamVersion: 1,
+      pubKeyDigest: "deadbeef",
+    };
+    const blob = encryptAead({ plaintext: PLAINTEXT, key: KEY, aad, nonce: NONCE });
+    expect(bytesToHex(blob.ciphertext)).toBe(
+      "15c79dcf00a1566986b7fb82207bd408546087b6321a8bf5b0df1aeb8f79b217",
+    );
   });
 });
 
@@ -220,6 +259,38 @@ describe("AEAD, round-trip property", () => {
               nonce: blob.nonce,
               key,
               aad: { ...aad, kdfParamVersion: 2 },
+            });
+          } catch (e) {
+            threw = e instanceof DecryptionError;
+          }
+          return threw;
+        },
+      ),
+    );
+  });
+
+  it("cross-kind swap: an account record cannot be decrypted as a holding (same uuid/key/nonce)", () => {
+    // The kind is bound into the AAD, so a hostile server cannot pass off a
+    // ciphertext encrypted under one kind as another (record-swap defense).
+    fc.assert(
+      fc.property(
+        fc.uint8Array({ minLength: 1, maxLength: 64 }),
+        fc.uint8Array({ minLength: 32, maxLength: 32 }),
+        (plaintext, key) => {
+          const aad: AadFields = {
+            recordUuid: "11111111-2222-3333-4444-555555555555",
+            kind: "account",
+            labelVersion: 1,
+            kdfParamVersion: 1,
+          };
+          const blob = encryptAead({ plaintext, key, aad });
+          let threw = false;
+          try {
+            decryptAead({
+              ciphertext: blob.ciphertext,
+              nonce: blob.nonce,
+              key,
+              aad: { ...aad, kind: "holding" },
             });
           } catch (e) {
             threw = e instanceof DecryptionError;
@@ -354,6 +425,17 @@ describe("BIP39 recovery phrase, round-trip", () => {
     const phrase24 = entropyToMnemonic(largeEntropy, bip39Wordlist);
     expect(() => phraseToSeed(phrase24)).toThrow(InvalidLengthError);
   });
+
+  it("countRecognizedWords counts every BIP39 word in a valid phrase", () => {
+    const seed = randomBytes(16) as RecoverySeed;
+    const phrase = seedToPhrase(seed);
+    expect(countRecognizedWords(phrase)).toBe(12);
+  });
+
+  it("countRecognizedWords ignores casing, extra whitespace, and unknown words", () => {
+    expect(countRecognizedWords("  Ability   ABLE   zzzznotaword ")).toBe(2);
+    expect(countRecognizedWords("")).toBe(0);
+  });
 });
 
 describe("items_key, wrap/unwrap", () => {
@@ -400,6 +482,28 @@ describe("items_key, wrap/unwrap", () => {
         nonce: blob.nonce,
         kek,
         labelVersion: opts.labelVersion + 1,
+        kdfParamVersion: opts.kdfParamVersion,
+      }),
+    ).toThrow(DecryptionError);
+  });
+
+  it("kdfParamVersion downgrade fails unwrap: wrap at N, unwrap at N-1 rejected", () => {
+    // The KDF param version is bound into the items_key AAD, so a key wrapped at
+    // version N cannot be unwrapped while asserting an older version. This
+    // prevents a downgrade attack that would coax the client into a weaker KDF.
+    const original = generateItemsKey();
+    const blob = wrapItemsKey({
+      itemsKey: original,
+      kek,
+      labelVersion: opts.labelVersion,
+      kdfParamVersion: opts.kdfParamVersion + 1,
+    });
+    expect(() =>
+      unwrapItemsKey({
+        ciphertext: blob.ciphertext,
+        nonce: blob.nonce,
+        kek,
+        labelVersion: opts.labelVersion,
         kdfParamVersion: opts.kdfParamVersion,
       }),
     ).toThrow(DecryptionError);

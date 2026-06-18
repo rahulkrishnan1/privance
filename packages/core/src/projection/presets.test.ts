@@ -10,12 +10,6 @@ import {
   PRESETS,
 } from "./presets.js";
 
-// ---------------------------------------------------------------------------
-// Consistency gate: stored constants must match dataset-derived values.
-// deriveAllocationParams is the same function the Custom allocation slider
-// uses, so this gate keeps the slider and the fixed cards coherent.
-// ---------------------------------------------------------------------------
-
 describe("preset constants match dataset-derived values (consistency gate)", () => {
   const cases: { preset: Preset; label: string }[] = [
     { preset: PRESET_CONSERVATIVE, label: "conservative 30/70" },
@@ -70,11 +64,6 @@ describe("deriveAllocationParams", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Arithmetic-geometric gap test: mu - geo ~ sigma^2 / 2
-// Verifies the derivation method; tests the relationship, not just pinned values.
-// ---------------------------------------------------------------------------
-
 describe("arithmetic-geometric gap approximately equals sigma^2/2", () => {
   for (const preset of PRESETS) {
     it(`${preset.id}: mu - geoMean ~ sigma^2 / 2 (within 10% relative)`, () => {
@@ -90,10 +79,6 @@ describe("arithmetic-geometric gap approximately equals sigma^2/2", () => {
     });
   }
 });
-
-// ---------------------------------------------------------------------------
-// Mu is arithmetic mean, not geometric (mu > geoMean for positive sigma)
-// ---------------------------------------------------------------------------
 
 describe("preset ordering", () => {
   it("arithmetic mean > geometric mean for all presets (Jensen's inequality)", () => {
@@ -115,10 +100,6 @@ describe("preset ordering", () => {
     expect(PRESET_AGGRESSIVE.stockWeight).toBe(0.9);
   });
 });
-
-// ---------------------------------------------------------------------------
-// getPreset lookup
-// ---------------------------------------------------------------------------
 
 describe("getPreset", () => {
   it("returns the correct preset for each id", () => {

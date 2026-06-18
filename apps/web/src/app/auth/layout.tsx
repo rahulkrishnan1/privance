@@ -20,25 +20,31 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   }, [state, router]);
 
   return (
-    <div className="dark relative flex min-h-svh flex-col items-center justify-center bg-app-bg text-app-text px-4 py-12">
+    <div className="relative flex min-h-svh flex-col bg-vault text-cream">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[55vh] bg-[radial-gradient(ellipse_at_top,_rgba(230,211,154,0.08),_transparent_60%)]"
+        className="pointer-events-none fixed w-[900px] h-[900px] rounded-full"
+        style={{
+          left: "50%",
+          top: -480,
+          transform: "translateX(-50%)",
+          background: "radial-gradient(circle, rgba(127,196,198,.07), transparent 62%)",
+          zIndex: 0,
+        }}
       />
-      <Link
-        href="/"
-        aria-label="Back to home"
-        className="relative z-10 mb-10 flex items-center gap-2.5 transition-opacity hover:opacity-80"
-      >
-        <Logo size={26} className="text-gold-accent" />
-        <span
-          className="font-serif text-[17px] text-app-text"
-          style={{ fontVariationSettings: '"opsz" 24, "SOFT" 80' }}
+      <header className="px-8 py-[26px] flex justify-between items-center relative z-10">
+        <Link
+          href="/"
+          aria-label="Back to home"
+          className="flex items-center gap-[9px] no-underline font-serif text-[22px] text-cream hover:opacity-80 transition-opacity"
         >
+          <Logo size={24} className="text-cream flex-none" />
           Privance
-        </span>
-      </Link>
-      <div className="relative z-10 w-full max-w-md">{children}</div>
+        </Link>
+      </header>
+      <main className="flex-1 flex items-center justify-center px-5 pb-16 pt-8 relative z-10">
+        <div className="auth-rise w-full max-w-[440px]">{children}</div>
+      </main>
     </div>
   );
 }

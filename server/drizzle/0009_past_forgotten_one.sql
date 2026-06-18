@@ -1,0 +1,1 @@
+ALTER TABLE "symbol_profiles" ADD COLUMN "sector_weightings" text;

@@ -2,10 +2,9 @@ import { BASE_URL } from "../../playwright/ports";
 /**
  * Holdings mobile tap targets.
  *
- * Before the fix, the row-expand disclosure was on a button inside the ticker
- * cell only. Tapping the Value or G/L % cell (the only other mobile-visible
- * cells) did nothing. The fix moved the disclosure to the whole <tr>, so
- * tapping any visible cell expands the detail sub-row.
+ * On mobile the Price, Gain, and Weight columns are hidden; only Holding, Day,
+ * and Value are visible. Tapping any cell in a holding row opens the holding
+ * detail sheet (a bottom sheet / dialog) with position details.
  *
  * This file matches *.mobile.spec.ts and runs exclusively under the mobile
  * Playwright project (Pixel 5 viewport), where detail columns are hidden and
@@ -17,7 +16,7 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 import type { Fixtures } from "../../playwright/global-setup";
 import type { SessionSnapshot } from "./helpers/auth";
-import { loginAndCapture, restoreSession } from "./helpers/auth";
+import { loginAndCapture, restoreSession, waitForSynced } from "./helpers/auth";
 
 function loadFixtures(): Fixtures {
   const p = path.join(__dirname, "../../.playwright-fixtures.json");
@@ -47,12 +46,14 @@ test.describe("holdings mobile", () => {
     await restoreSession(page, savedSession);
 
     await page.goto("/app/accounts/");
+    await expect(page).toHaveURL("/app/accounts/", { timeout: 15_000 });
+    // Wait for invest screen to finish loading (OPFS resolves locally, networkidle fires too early).
     await expect(
       page
-        .getByRole("heading", { name: "Accounts" })
-        .or(page.getByRole("heading", { name: "Add your first account" })),
+        .getByRole("heading", { name: /vault is empty/i })
+        .or(page.getByRole("navigation", { name: "Invest sub-navigation" })),
     ).toBeVisible({ timeout: 15_000 });
-    await page.waitForLoadState("networkidle");
+    await waitForSynced(page);
 
     await page
       .getByRole("button", { name: /Add.*account/i })
@@ -60,10 +61,11 @@ test.describe("holdings mobile", () => {
       .click();
     const dialog = page.getByRole("dialog", { name: /Add account/i });
     await expect(dialog).toBeVisible();
-    await dialog.getByLabel("Account name").fill(INVESTMENT_ACCOUNT_NAME);
+    await dialog.getByLabel("Name").fill(INVESTMENT_ACCOUNT_NAME);
     await dialog.getByRole("button", { name: "Investment" }).click();
-    await dialog.getByLabel("Balance").fill("0.00");
-    await dialog.getByRole("button", { name: "Save" }).click();
+    await dialog.getByLabel("Account type").selectOption("brokerage");
+    await dialog.getByLabel("Cash balance / optional").fill("0.00");
+    await dialog.getByRole("button", { name: "Create account" }).click();
     await expect(dialog).not.toBeVisible({ timeout: 10_000 });
     accountReady = true;
 
@@ -78,17 +80,21 @@ test.describe("holdings mobile", () => {
     expect(accountReady).toBe(true);
   });
 
-  test("tapping the Value cell of a holding row expands the detail sub-row (regression)", async ({
+  test("tapping a holding row opens the detail sheet with position details (regression)", async ({
     page,
   }) => {
     await page.goto("/app/holdings/");
-    await expect(page.getByRole("heading", { name: "Holdings", exact: true })).toBeVisible({
-      timeout: 10_000,
-    });
-    await page.waitForLoadState("networkidle");
+    await expect(page).toHaveURL("/app/holdings/", { timeout: 10_000 });
+    await waitForSynced(page);
 
     const ticker = `MOB${RUN.slice(-4).toUpperCase()}`;
-    await page.getByRole("button", { name: "Add holding" }).first().click();
+
+    // On mobile the subnav shows "+ Add" and the empty state shows
+    // "Add holding". Use the first matching button.
+    await page
+      .getByRole("button", { name: /Add holding|\+ Add/i })
+      .first()
+      .click();
     const addDialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(addDialog).toBeVisible();
     await addDialog.getByLabel("Ticker").fill(ticker);
@@ -97,37 +103,39 @@ test.describe("holdings mobile", () => {
       await page.keyboard.press("Escape");
     }
     await addDialog.getByLabel("Account").selectOption({ label: INVESTMENT_ACCOUNT_NAME });
-    await addDialog.getByLabel("Shares").fill("5");
-    await addDialog.getByLabel("Avg cost per share").fill("100.00");
-    await addDialog.getByRole("button", { name: "Save" }).click();
+    await addDialog.getByLabel("Quantity").fill("5");
+    await addDialog.getByLabel("Avg cost basis").fill("100.00");
+    await addDialog.getByRole("button", { name: "Save holding" }).click();
     await expect(addDialog).not.toBeVisible({ timeout: 15_000 });
 
     const holdingsTable = page.getByRole("table", { name: "Holdings" });
     await expect(holdingsTable).toBeVisible({ timeout: 10_000 });
     await expect(holdingsTable.getByText(ticker)).toBeVisible({ timeout: 10_000 });
 
-    // Only the data row has aria-expanded; the collapsed detail sub-row does not.
-    const holdingRow = holdingsTable
-      .locator("tr[aria-expanded]")
-      .filter({ hasText: ticker })
-      .first();
-
-    await expect(holdingRow).toHaveAttribute("aria-expanded", "false");
-
-    // On mobile only Ticker, Value, and G/L % cells are visible (the rest are
-    // md:hidden). Tap td index 5 (Value cell) to prove a non-ticker cell works.
+    // Tap the holding row (by its accessible name). On mobile only
+    // Ticker/Day/Value cells are visible, but the whole row is tappable.
     //
-    // locator.tap() fires the full pointer+touch sequence AND the synthetic click
-    // event React's onClick listens for. page.touchscreen.tap() would not.
-    await holdingRow.locator("td").nth(5).tap();
+    // locator.tap() fires the full pointer+touch sequence AND the synthetic
+    // click event React's onClick listens for.
+    const holdingRow = page.getByRole("row", {
+      name: new RegExp(`${ticker}.*open holding details`),
+    });
+    await expect(holdingRow).toBeVisible({ timeout: 5_000 });
+    // Dispatch the click directly on the row: a coordinate tap is intercepted by
+    // the fixed bottom tab bar when the row sits low in the list, and a
+    // touchscreen tap fires a delayed synthetic click at the same point that
+    // then lands on the opened sheet's backdrop and closes it. dispatchEvent
+    // fires the click React's onClick listens for, with no overlay/coords race.
+    await holdingRow.dispatchEvent("click");
 
-    // The detail sub-row must now be visible. Use aria-controls to scope the
-    // assertion to the exact sub-row, avoiding the nav "Accounts" link text.
-    await expect(holdingRow).toHaveAttribute("aria-expanded", "true", { timeout: 5_000 });
-    const subRowId = await holdingRow.getAttribute("aria-controls");
-    const subRow = page.locator(`#${subRowId}`);
-    await expect(subRow).toBeVisible({ timeout: 5_000 });
-    await expect(subRow.getByText("Account")).toBeVisible({ timeout: 5_000 });
-    await expect(subRow.getByText("Shares")).toBeVisible({ timeout: 5_000 });
+    // The detail sheet (dialog) must open and show position rows.
+    const sheet = page.getByRole("dialog");
+    await expect(sheet).toBeVisible({ timeout: 5_000 });
+
+    // Sheet shows the ticker prominently and Position KV rows. Use exact text so
+    // "Quantity" does not also match the footer note "quantity is yours to update".
+    await expect(sheet.getByText(ticker)).toBeVisible({ timeout: 5_000 });
+    await expect(sheet.getByText("Quantity", { exact: true })).toBeVisible({ timeout: 5_000 });
+    await expect(sheet.getByText("Account", { exact: true })).toBeVisible({ timeout: 5_000 });
   });
 });

@@ -38,12 +38,17 @@ async function fillSignupForm(
  * generic signup alert). Bounded retries keep genuine failures visible.
  */
 async function submitSignup(page: Page): Promise<void> {
-  const phrase = page.getByText("Write down your recovery phrase");
+  // Redesigned signup shows the "Your recovery phrase." heading; the pre-redesign
+  // copy was "Write down your recovery phrase". Accept either so the helper works
+  // across both UIs.
+  const phrase = page
+    .getByRole("heading", { name: /recovery phrase/i })
+    .or(page.getByText("Write down your recovery phrase"));
   const failed = page.getByText("Signup failed. Try again.");
   // 12 attempts spans ~4 minutes of windows: a full five-project run queues
   // ~12 signups against the 3-per-minute budget, and the last in line waits.
   for (let attempt = 0; attempt < 12; attempt++) {
-    await page.getByRole("button", { name: "Create account" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
     await expect(phrase.or(failed).first()).toBeVisible({ timeout: 30_000 });
     if (await phrase.isVisible()) return;
     await page.waitForTimeout(21_000);
@@ -161,6 +166,20 @@ export async function restoreSession(page: Page, snapshot: SessionSnapshot): Pro
 }
 
 /**
+ * Waits for the initial sync to fully drain. The top-bar sync pill reads "synced"
+ * only once the sync context's `initialising` flips false, which happens after
+ * drainAllChanges() has populated the local store. Until then an Invest/app
+ * screen can flip from its empty to its populated state, and a flip landing
+ * mid-interaction races form fills (firefox's slower pull makes this reliable to
+ * hit). Call after navigating into the app, before interacting with the screen.
+ */
+export async function waitForSynced(page: Page): Promise<void> {
+  await expect(page.getByRole("status", { name: "Sync status: synced" })).toBeVisible({
+    timeout: 20_000,
+  });
+}
+
+/**
  * Full signup flow: fills the form, submits, captures the recovery phrase,
  * acknowledges it, and lands on the dashboard.
  *
@@ -183,6 +202,7 @@ export async function signup(
 
   const phrase = await capturePhrase(page);
   await acknowledgePhrase(page);
+  await verifyPhrase(page, phrase);
 
   // Wait for the navigation to complete. The hard reload to "/" wipes the DEK,
   // so the app will redirect to /auth/login/. Wait for either destination.
@@ -209,6 +229,7 @@ export async function signupAndLogin(
 
   const phrase = await capturePhrase(signupPage);
   await acknowledgePhrase(signupPage);
+  await verifyPhrase(signupPage, phrase);
   await signupPage.waitForURL(/\//, { timeout: 15_000 });
   await signupCtx.close();
 
@@ -225,24 +246,22 @@ export async function signupAndLogin(
  */
 export async function capturePhrase(page: Page): Promise<string> {
   // The phrase grid is inside a <fieldset> with a sr-only legend
-  // "Recovery phrase words". Each word cell has two <span>s: the number
-  // (mono, text-[10px]) and the word (mono, text-sm). We grab all
-  // word cells in DOM order by selecting the larger mono spans inside the grid.
+  // "Recovery phrase words". Each cell: <div><span>{num}</span>{word}</div>.
+  // The grid div is the direct child of the fieldset; word cells are its children.
   const fieldset = page.locator("fieldset").filter({
     has: page.locator("legend", { hasText: "Recovery phrase words" }),
   });
 
-  // Each word lives in a <div class="flex flex-col gap-0.5"> with two spans.
-  // The second span carries the word text. There are exactly 12.
-  const wordCells = fieldset.locator("div.flex.flex-col.gap-0\\.5");
-  await expect(wordCells).toHaveCount(12, { timeout: 5_000 });
+  const gridDiv = fieldset.locator("div").first();
+  const wordCells = gridDiv.locator("> div");
+  await wordCells.first().waitFor({ state: "visible", timeout: 5_000 });
+  const count = await wordCells.count();
 
   const words: string[] = [];
-  for (let i = 0; i < 12; i++) {
-    const cell = wordCells.nth(i);
-    // Second span = the word (first span = the number)
-    const word = await cell.locator("span").nth(1).innerText();
-    words.push(word.trim());
+  for (let i = 0; i < count; i++) {
+    const raw = (await wordCells.nth(i).innerText()).trim();
+    // Strip leading number (e.g. "1 word" -> "word")
+    words.push(raw.replace(/^\d+\s*/, "").trim());
   }
 
   return words.join(" ");
@@ -253,8 +272,32 @@ export async function capturePhrase(page: Page): Promise<string> {
  * Continue. Assumes the phrase acknowledgement screen is already visible.
  */
 export async function acknowledgePhrase(page: Page): Promise<void> {
-  await page.getByLabel("I have written down my recovery phrase in a safe place.").check();
-  await page.getByRole("button", { name: "Continue" }).click();
+  // The checkbox label changed to "I wrote the phrase down, on paper, somewhere safe."
+  // Fall back to the old label if the new one is not found (for compatibility).
+  const newLabel = page.getByLabel("I wrote the phrase down, on paper, somewhere safe.");
+  const oldLabel = page.getByLabel("I have written down my recovery phrase in a safe place.");
+  const checkbox = (await newLabel.count()) > 0 ? newLabel : oldLabel;
+  await checkbox.check();
+  // Button says "I have it. Continue" (new UI) or "Continue" (old UI).
+  const newBtn = page.getByRole("button", { name: "I have it. Continue" });
+  const oldBtn = page.getByRole("button", { name: "Continue" });
+  const btn = (await newBtn.count()) > 0 ? newBtn : oldBtn;
+  await btn.click();
+}
+
+/**
+ * Completes the signup verify step ("Prove it."), which asks for words 3, 7,
+ * and 12 of the just-issued phrase. No-op on the pre-redesign UI, where this
+ * step does not exist. `phrase` is the space-separated phrase from capturePhrase.
+ */
+export async function verifyPhrase(page: Page, phrase: string): Promise<void> {
+  const heading = page.getByRole("heading", { name: /prove/i });
+  if (!(await heading.isVisible().catch(() => false))) return;
+  const words = phrase.split(" ");
+  for (const wordNumber of [3, 7, 12]) {
+    await page.getByLabel(`Word ${wordNumber}`).fill(words[wordNumber - 1]);
+  }
+  await page.getByRole("button", { name: "Seal the vault" }).click();
 }
 
 /**
@@ -281,10 +324,18 @@ export async function login(
 }
 
 /**
- * Clicks the Sign out button in the top bar.
+ * Signs out via the redesigned flow: Sign out now lives in Settings behind a
+ * confirmation dialog. Navigate through the in-app nav link (a client-side
+ * transition that preserves the in-memory DEK; a hard goto would wipe it and
+ * bounce to /unlock), open the confirm dialog, and confirm.
  */
 export async function logout(page: Page): Promise<void> {
+  await page.getByRole("link", { name: "Settings" }).click();
+  await expect(page).toHaveURL("/app/settings/", { timeout: 10_000 });
   await page.getByRole("button", { name: "Sign out" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible({ timeout: 5_000 });
+  await dialog.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL("/auth/login/", { timeout: 10_000 });
 }
 
@@ -306,18 +357,32 @@ export async function recover(
   await page.getByLabel("Recovery phrase (12 words)").fill(opts.phrase);
   await page.getByLabel("New master password", { exact: true }).fill(opts.newPassword);
   await page.getByLabel("Confirm new master password").fill(opts.newPassword);
-  await page.getByRole("button", { name: "Recover account" }).click();
+  // Button label changed to "Derive new keys & continue" in new UI
+  const newRecoverBtn = page.getByRole("button", { name: /Derive new keys/i });
+  const oldRecoverBtn = page.getByRole("button", { name: "Recover account" });
+  const recoverBtn = (await newRecoverBtn.count()) > 0 ? newRecoverBtn : oldRecoverBtn;
+  await recoverBtn.click();
 
-  // Argon2 × 2 derivations; allow 45 s
-  await expect(page.getByText("Save your new recovery phrase")).toBeVisible({
-    timeout: 45_000,
+  // Argon2 × 2 derivations; allow 45 s. The new UI heading is "Recovery worked..."
+  const fieldset = page.locator("fieldset").filter({
+    has: page.locator("legend", { hasText: "Recovery phrase words" }),
   });
+  await fieldset.waitFor({ state: "visible", timeout: 45_000 });
 
   const newPhrase = await capturePhrase(page);
 
-  // Acknowledge the new phrase (label is slightly different on recovery screen)
-  await page.getByLabel("I have written down my new recovery phrase in a safe place.").check();
-  await page.getByRole("button", { name: "Continue" }).click();
+  // Acknowledge the new phrase (label changed in new UI)
+  const newCheckbox = page.getByLabel("I replaced the paper. The old phrase is in the shredder.");
+  const oldCheckbox = page.getByLabel(
+    "I have written down my new recovery phrase in a safe place.",
+  );
+  const checkbox = (await newCheckbox.count()) > 0 ? newCheckbox : oldCheckbox;
+  await checkbox.check();
+  // Button says "Enter the vault" (new UI) or "Continue" (old UI)
+  const newBtn = page.getByRole("button", { name: "Enter the vault" });
+  const oldBtn = page.getByRole("button", { name: "Continue" });
+  const btn = (await newBtn.count()) > 0 ? newBtn : oldBtn;
+  await btn.click();
 
   await page.waitForURL(/\//, { timeout: 15_000 });
 

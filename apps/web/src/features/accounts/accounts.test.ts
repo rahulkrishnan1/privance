@@ -4,14 +4,10 @@
  */
 
 import type { Account, AccountId, CashAccount, UserId } from "@privance/core";
-import { asId, asIsoDateTime, SCALE_CENTS } from "@privance/core";
+import { asId, asIsoDateTime } from "@privance/core";
 import { describe, expect, it } from "vitest";
-import { centsToDecimal, getBalanceCents, sumBalances } from "./balance";
+import { centsToDecimal, formatAccountBalanceWhole, getBalanceCents } from "./balance";
 import { accountFormSchema, SECTION_ORDER } from "./types";
-
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
 
 function makeCash(opts: { id?: string; balanceCents?: string; currency?: string }): CashAccount {
   return {
@@ -44,10 +40,6 @@ function makeLiability(opts: { balanceCents?: string }): Account {
     },
   };
 }
-
-// ---------------------------------------------------------------------------
-// getBalanceCents
-// ---------------------------------------------------------------------------
 
 describe("getBalanceCents", () => {
   it("returns balanceCents for cash", () => {
@@ -96,10 +88,6 @@ describe("getBalanceCents", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// centsToDecimal
-// ---------------------------------------------------------------------------
-
 describe("centsToDecimal", () => {
   it("converts positive cents string to Decimal", () => {
     const d = centsToDecimal("10050");
@@ -117,46 +105,28 @@ describe("centsToDecimal", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// sumBalances
-// ---------------------------------------------------------------------------
-
-describe("sumBalances", () => {
-  it("sums multiple cash accounts", () => {
-    const accounts: Account[] = [
-      makeCash({ balanceCents: "10000" }),
-      makeCash({ id: "cash-2", balanceCents: "5050" }),
-    ];
-    const result = sumBalances(accounts);
-    expect(result.toString()).toBe("150.50");
+describe("formatAccountBalanceWhole", () => {
+  it("formats a cash balance in the account's own currency", () => {
+    const eur = makeCash({ balanceCents: "150000", currency: "EUR" });
+    const { text, showNegative } = formatAccountBalanceWhole(eur, centsToDecimal("150000"));
+    expect(text).toBe("€1,500");
+    expect(showNegative).toBe(false);
   });
 
-  it("subtracts liability balances from total", () => {
-    const accounts: Account[] = [
-      makeCash({ balanceCents: "20000" }),
-      makeLiability({ balanceCents: "5000" }),
-    ];
-    const result = sumBalances(accounts);
-    expect(result.toString()).toBe("150.00");
+  it("renders a normal liability (positive stored value) as a negative debt", () => {
+    const debt = makeLiability({ balanceCents: "500" });
+    const { text, showNegative } = formatAccountBalanceWhole(debt, centsToDecimal("500"));
+    expect(text).toBe("-$5");
+    expect(showNegative).toBe(true);
   });
 
-  it("returns zero for empty list", () => {
-    const result = sumBalances([]);
-    expect(result.isZero()).toBe(true);
-    expect(result.scale).toBe(SCALE_CENTS);
-  });
-
-  it("handles all liabilities", () => {
-    const accounts: Account[] = [makeLiability({ balanceCents: "10000" })];
-    const result = sumBalances(accounts);
-    expect(result.toString()).toBe("-100.00");
-    expect(result.isNegative()).toBe(true);
+  it("renders a liability credit (negative stored value) as a positive, no double negative", () => {
+    const credit = makeLiability({ balanceCents: "-500" });
+    const { text, showNegative } = formatAccountBalanceWhole(credit, centsToDecimal("-500"));
+    expect(text).toBe("$5");
+    expect(showNegative).toBe(false);
   });
 });
-
-// ---------------------------------------------------------------------------
-// accountFormSchema validation
-// ---------------------------------------------------------------------------
 
 describe("accountFormSchema", () => {
   const valid = {
@@ -164,12 +134,23 @@ describe("accountFormSchema", () => {
     kind: "cash" as const,
     currency: "USD",
     balance: "1234.56",
+    subKind: "checking" as const,
     archived: false,
   };
 
   it("accepts a valid form payload", () => {
     const result = accountFormSchema.safeParse(valid);
     expect(result.success).toBe(true);
+  });
+
+  it("requires a subKind for cash and investment accounts", () => {
+    const { subKind, ...withoutSubKind } = valid;
+    const result = accountFormSchema.safeParse(withoutSubKind);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((i) => i.path[0] === "subKind");
+      expect(issue?.message).toBe("Select an account type");
+    }
   });
 
   it("rejects empty name", () => {
@@ -224,19 +205,11 @@ describe("accountFormSchema", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Section order
-// ---------------------------------------------------------------------------
-
 describe("SECTION_ORDER", () => {
-  it("renders Cash -> Investment -> Manual Asset -> Liability", () => {
-    expect(SECTION_ORDER).toEqual(["cash", "investment", "manual_asset", "liability"]);
+  it("renders Investment -> Cash -> Manual Asset -> Liability (investments first)", () => {
+    expect(SECTION_ORDER).toEqual(["investment", "cash", "manual_asset", "liability"]);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Decimal usage, no Number coercion
-// ---------------------------------------------------------------------------
 
 describe("no floating-point coercion in Decimal usage", () => {
   it("centsToDecimal avoids floating-point errors for large values", () => {

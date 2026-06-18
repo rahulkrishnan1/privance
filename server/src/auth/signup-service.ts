@@ -1,16 +1,10 @@
 import { logger } from "../core/logger.js";
-import { authHashToHex, isBreached as defaultIsBreached } from "./hibp.js";
 import type { InviteService } from "./invite-service.js";
 import { hashAuthHash as hashArgon2 } from "./kdf.js";
 import type { AuthRepo } from "./repo.js";
 import { SessionService } from "./session-service.js";
 import type { KdfParamsJson, SignupResult } from "./types.js";
-import {
-  AllowlistDeniedError,
-  HibpUnavailableError,
-  UsernameTakenError,
-  WeakPasswordError,
-} from "./types.js";
+import { AllowlistDeniedError, UsernameTakenError } from "./types.js";
 
 // PostgreSQL unique-constraint violation (SQLSTATE 23505).
 // Drizzle wraps the raw DB error; the original PostgresError is attached as
@@ -25,11 +19,8 @@ function isUniqueConstraintError(err: unknown): boolean {
   return false;
 }
 
-type HibpChecker = (hex: string) => Promise<boolean | null>;
-
 export class SignupService {
   private readonly sessionService: SessionService;
-  private readonly checkHibp: HibpChecker;
   private readonly inviteService: InviteService | undefined;
   private readonly inviteRequired: boolean;
   private readonly repo: AuthRepo;
@@ -38,14 +29,12 @@ export class SignupService {
   constructor(opts: {
     repo: AuthRepo;
     allowedUsernames: ReadonlySet<string>;
-    hibpChecker?: HibpChecker;
     inviteService?: InviteService;
     inviteRequired?: boolean;
   }) {
     this.repo = opts.repo;
     this.allowedUsernames = opts.allowedUsernames;
-    this.sessionService = new SessionService(opts.repo);
-    this.checkHibp = opts.hibpChecker ?? defaultIsBreached;
+    this.sessionService = new SessionService({ repo: opts.repo });
     this.inviteService = opts.inviteService;
     this.inviteRequired = opts.inviteRequired ?? false;
   }
@@ -66,7 +55,7 @@ export class SignupService {
   }): Promise<SignupResult> {
     const username = opts.username.toLowerCase();
 
-    // Invite gate runs before allowlist, HIBP, and Argon2id so reject is cheap.
+    // Invite gate runs before allowlist and Argon2id so reject is cheap.
     // Pre-allocate userId so the token claim records the consumer before the user row exists.
     let preAllocatedUserId: string | undefined;
     if (this.inviteRequired) {
@@ -81,15 +70,6 @@ export class SignupService {
     if (this.allowedUsernames.size > 0 && !this.allowedUsernames.has(username)) {
       await this.repo.logEvent({ userId: null, eventClass: "signup_blocked_allowlist" });
       throw new AllowlistDeniedError();
-    }
-
-    const authHashHex = authHashToHex(opts.authHash);
-    const breached = await this.checkHibp(authHashHex);
-    if (breached === null) {
-      throw new HibpUnavailableError();
-    }
-    if (breached) {
-      throw new WeakPasswordError();
     }
 
     const { hash: authHashHash } = await hashArgon2(opts.authHash);

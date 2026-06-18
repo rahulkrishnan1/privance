@@ -3,12 +3,8 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { PricesRepo } from "./repo.js";
 
-// ---------------------------------------------------------------------------
 // Integration tests for PricesRepo against a real Postgres instance.
-// DATABASE_URL is read from the .env file (same dev DB used by the server).
 // Tests clean up their own rows before each run so they are order-independent.
-// ---------------------------------------------------------------------------
-
 const TEST_SOURCE_A = "yahoo";
 const TEST_SOURCE_B = "coingecko";
 const TEST_TICKER = "REPO_TEST_VOO";
@@ -41,10 +37,6 @@ afterAll(async () => {
   await sql.end();
 });
 
-// ---------------------------------------------------------------------------
-// getMany
-// ---------------------------------------------------------------------------
-
 describe("PricesRepo.getMany", () => {
   it("returns [] for empty tickers", async () => {
     const result = await repo.getMany({ source: TEST_SOURCE_A, tickers: [] });
@@ -57,19 +49,11 @@ describe("PricesRepo.getMany", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// upsertMany
-// ---------------------------------------------------------------------------
-
 describe("PricesRepo.upsertMany", () => {
   it("is a no-op when rows is empty", async () => {
     await expect(repo.upsertMany([])).resolves.toBeUndefined();
   });
 });
-
-// ---------------------------------------------------------------------------
-// round-trip: insert then read back
-// ---------------------------------------------------------------------------
 
 describe("PricesRepo round-trip", () => {
   it("upsertMany then getMany returns the inserted row with exact values", async () => {
@@ -94,7 +78,7 @@ describe("PricesRepo round-trip", () => {
     expect(row?.fetchedAt.toISOString()).toBe(fetchedAt.toISOString());
   });
 
-  it("upsert overwrites: second upsert wins on price and fetchedAt", async () => {
+  it("upsert overwrites price, fetchedAt, AND previousPrice on conflict", async () => {
     const first = new Date("2025-01-15T10:00:00.000Z");
     const second = new Date("2025-01-15T11:00:00.000Z");
 
@@ -111,7 +95,9 @@ describe("PricesRepo round-trip", () => {
       {
         source: TEST_SOURCE_A,
         ticker: TEST_TICKER,
-        previousPrice: null,
+        // A non-null previousPrice on the second write must replace the first
+        // write's null; an upsert that omitted previous_price would keep null.
+        previousPrice: "95.50000000",
         price: "200.00000000",
         fetchedAt: second,
       },
@@ -121,12 +107,9 @@ describe("PricesRepo round-trip", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.price).toBe("200.00000000");
     expect(rows[0]?.fetchedAt.toISOString()).toBe(second.toISOString());
+    expect(rows[0]?.previousPrice).toBe("95.50000000");
   });
 });
-
-// ---------------------------------------------------------------------------
-// multi-source isolation
-// ---------------------------------------------------------------------------
 
 describe("PricesRepo multi-source isolation", () => {
   it("getMany by source only returns rows for that source", async () => {

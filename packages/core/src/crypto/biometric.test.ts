@@ -13,10 +13,6 @@ import {
 import { randomNonce } from "./random.js";
 import { DecryptionError, InvalidLengthError } from "./types.js";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 const PRF_BYTES = 32;
 const SALT_BYTES = 32;
 
@@ -38,19 +34,11 @@ function makePubKey(fill: number = 0xdd, len = 32): Uint8Array {
 
 const FIXED_UUID = "11111111-1111-1111-1111-111111111111";
 
-// ---------------------------------------------------------------------------
-// BIOMETRIC_PROTECTOR_KIND constant
-// ---------------------------------------------------------------------------
-
 describe("BIOMETRIC_PROTECTOR_KIND", () => {
   it("is the frozen string biometric_protector", () => {
     expect(BIOMETRIC_PROTECTOR_KIND).toBe("biometric_protector");
   });
 });
-
-// ---------------------------------------------------------------------------
-// deriveBiometricKek
-// ---------------------------------------------------------------------------
 
 describe("deriveBiometricKek, determinism", () => {
   it("same PRF output and salt always yields the same KEK", () => {
@@ -110,10 +98,6 @@ describe("deriveBiometricKek, length validation", () => {
     );
   });
 });
-
-// ---------------------------------------------------------------------------
-// sealProtectorKey / openProtectorKey round-trip
-// ---------------------------------------------------------------------------
 
 describe("sealProtectorKey / openProtectorKey, round-trip", () => {
   it("seal then open returns original pkcs8 bytes", () => {
@@ -176,10 +160,6 @@ describe("sealProtectorKey / openProtectorKey, round-trip", () => {
     );
   });
 });
-
-// ---------------------------------------------------------------------------
-// openProtectorKey, error branches
-// ---------------------------------------------------------------------------
 
 describe("openProtectorKey, wrong PRF output throws DecryptionError", () => {
   it("wrong PRF output yields DecryptionError", () => {
@@ -325,10 +305,6 @@ describe("openProtectorKey, AAD mismatch throws", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Default parameter paths (labelVersion and kdfParamVersion omitted)
-// ---------------------------------------------------------------------------
-
 describe("sealProtectorKey / openProtectorKey, default versions", () => {
   it("round-trips without explicit labelVersion and kdfParamVersion", () => {
     const kek = deriveBiometricKek({ prfOutput: makePrf(), salt: makeSalt() });
@@ -349,10 +325,6 @@ describe("sealProtectorKey / openProtectorKey, default versions", () => {
     expect(equalBytes(opened, pkcs8)).toBe(true);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Cross-enrollment substitution
-// ---------------------------------------------------------------------------
 
 describe("cross-enrollment substitution throws", () => {
   it("enrollment A sealed blob opened against enrollment B AAD fields throws", () => {

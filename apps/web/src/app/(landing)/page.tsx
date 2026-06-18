@@ -1,385 +1,477 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Logo } from "@/components/index";
 import { useAuth } from "@/providers/auth-context";
 
 // useLayoutEffect on the server logs a warning; fall back to useEffect there.
-// The ternary is evaluated at module load, so the resolved reference is
-// stable across renders and rules-of-hooks is satisfied.
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-// Evaluated at module load (static-export build time); avoids per-render
-// Date construction and the SSR/client divergence a render-time call would
-// introduce when crossing midnight on Dec 31.
-const YEAR = new Date().getFullYear();
-
 const NAV_LINKS = [
-  { label: "Features", href: "#features" },
-  { label: "Protocol", href: "#protocol" },
   { label: "Tenets", href: "#tenets" },
-  { label: "Threat model", href: "#threats" },
-  { label: "FAQ", href: "#faq" },
+  { label: "Protocol", href: "#protocol" },
+  { label: "Self‑host", href: "#deploy" },
+  { label: "Features", href: "#features" },
 ];
 
-const FEATURES = [
-  {
-    n: "01",
-    tag: "live",
-    title: "Accounts",
-    body: "Bank, brokerage, retirement, loans, and manual assets.",
-    visual: (
-      <svg viewBox="0 0 120 80" className="w-full h-full" aria-hidden="true">
-        <rect
-          x="14"
-          y="8"
-          width="84"
-          height="18"
-          rx="2"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.4"
-          opacity="0.35"
-        />
-        <rect
-          x="22"
-          y="30"
-          width="84"
-          height="18"
-          rx="2"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.4"
-          opacity="0.6"
-        />
-        <rect
-          x="30"
-          y="52"
-          width="84"
-          height="18"
-          rx="2"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-        />
-      </svg>
-    ),
-  },
-  {
-    n: "02",
-    tag: "live",
-    title: "Holdings",
-    body: "Every security and crypto position, with quantity, cost basis, and current value.",
-    visual: (
-      <svg viewBox="0 0 120 80" className="w-full h-full" aria-hidden="true">
-        <line
-          x1="6"
-          y1="74"
-          x2="114"
-          y2="74"
-          stroke="currentColor"
-          strokeWidth="1"
-          opacity="0.25"
-        />
-        <rect x="14" y="46" width="14" height="28" fill="currentColor" opacity="0.35" />
-        <rect x="34" y="30" width="14" height="44" fill="currentColor" opacity="0.55" />
-        <rect x="54" y="18" width="14" height="56" fill="currentColor" opacity="0.75" />
-        <rect x="74" y="38" width="14" height="36" fill="currentColor" opacity="0.5" />
-        <rect x="94" y="24" width="14" height="50" fill="currentColor" />
-      </svg>
-    ),
-  },
-  {
-    n: "03",
-    tag: "live",
-    title: "Dashboard",
-    body: "Net worth, allocation, and history at a glance.",
-    visual: (
-      <svg viewBox="0 0 120 80" className="w-full h-full" aria-hidden="true">
-        <line
-          x1="6"
-          y1="74"
-          x2="114"
-          y2="74"
-          stroke="currentColor"
-          strokeWidth="1"
-          opacity="0.25"
-        />
-        <polyline
-          points="10,62 28,52 46,56 64,38 82,42 100,22 114,12"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-        />
-        <circle cx="114" cy="12" r="3" fill="currentColor" />
-      </svg>
-    ),
-  },
-];
+const GLYPHS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789+/=";
+function randStr(n: number): string {
+  let s = "";
+  for (let i = 0; i < n; i++) s += GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+  return s;
+}
 
-const TENETS = [
-  {
-    n: "01",
-    title: "Zero-knowledge",
-    body: "Every record is sealed with AES-256-GCM in your browser before it touches the network. The server stores ciphertext and an audit log. No plaintext. No master key. No escape hatch.",
-    chip: "AES-256-GCM · per-record AAD",
-  },
-  {
-    n: "02",
-    title: "Self-hostable",
-    body: "One compose file. Bring your own VPS, an old laptop, a Raspberry Pi. The hosted instance at privance.app runs the same image you would. No vendor lock-in by construction.",
-    chip: "Bun · Hono · Postgres 17",
-  },
-  {
-    n: "03",
-    title: "Open source",
-    body: "Every line of client, server, and crypto is auditable. Dependencies are exact-pinned, never carets, never tildes. No telemetry, no analytics, no funnels. AGPL-3.0 licensed.",
-    chip: "AGPL-3.0 · pinned · zero telemetry",
-  },
-  {
-    n: "04",
-    title: "No bank linking",
-    body: "We do not integrate with Plaid, MX, or any aggregator. Connecting them would mean a third party reads your transactions in plaintext. Manual entry keeps the guarantee honest, with CSV import on the way.",
-    chip: "manual entry · CSV import (soon)",
-  },
-];
-
-const STEPS = [
-  {
-    n: "01",
-    title: "Choose a master password",
-    body: "We stretch it with Argon2id and derive your key encryption key locally. You write down a BIP39 recovery phrase, once. That phrase and your password are the only keys to your data, and the only way back in.",
-    chip: "Argon2id · BIP39",
-  },
-  {
-    n: "02",
-    title: "Encrypt on your device",
-    body: "Every record is sealed with AES-256-GCM in your browser, bound to a per-record AAD that prevents record swapping, downgrade attacks, and cross-kind confusion. The key never leaves memory.",
-    chip: "AES-256-GCM · HKDF",
-  },
-  {
-    n: "03",
-    title: "Sync to a server you trust",
-    body: "Encrypted blobs sync to the Postgres you own. Open Privance on another device, unlock with the same password, and your data decrypts locally. Lose the device, your data is unaffected. Lose the password and recovery phrase, it is gone, by design.",
-    chip: "Postgres 17 · idempotent sync",
-  },
-];
-
-const FAQS = [
-  {
-    q: "What if I forget my master password?",
-    a: "Use your recovery phrase to set a new one. If you lose both, your data is unrecoverable. We cannot reset it because we do not have it. That is what zero-knowledge means.",
-  },
-  {
-    q: "Can the operator see my balances?",
-    a: "No. The server stores ciphertext bound to a per-record AAD. Encryption and decryption happen in your browser, against a key derived from your password. Compromise the database and an attacker walks away with opaque bytes.",
-  },
-  {
-    q: "Why no bank linking?",
-    a: "Aggregators have to see your data. That is their job. Connecting them would mean a third party reads your transactions in plaintext, breaking the privacy guarantee. Manual entry keeps the model honest.",
-  },
-  {
-    q: "Self-host or hosted?",
-    a: "Both. The hosted instance at privance.app is a deployment of the same Docker image you would run. Hosted is invite-only during beta; self-host is unrestricted.",
-  },
-  {
-    q: "Can I install it on my phone?",
-    a: 'Yes. Privance is a Progressive Web App. Open it in Safari, Chrome, or Edge and use "Add to Home Screen" to install it like a native app. Same SQLite-on-device store, same encryption everywhere.',
-  },
-  {
-    q: "What if Privance shuts down?",
-    a: "You can move. Self-host the whole product as a single Docker compose file. Your data lives on devices and a Postgres you own. The hosted instance going down has no bearing on a self-hosted one.",
-  },
-];
-
-function NavBar({ scrolled }: { scrolled: boolean }) {
+function NavBar() {
   return (
-    <header
-      className={`fixed top-0 inset-x-0 z-50 transition-all duration-500 ${
-        scrolled
-          ? "bg-stone-950/70 backdrop-blur-xl border-b border-stone-900/80"
-          : "bg-transparent border-b border-transparent"
-      }`}
-    >
-      <div className="max-w-7xl mx-auto px-6 md:px-10 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-30 bg-vault/86 backdrop-blur-[12px] border-b border-line-soft">
+      <div className="max-w-[1160px] mx-auto px-8 h-[66px] flex items-center justify-between">
         <Link
           href="/"
           onClick={(e) => {
             e.preventDefault();
-            window.scrollTo({ top: 0 });
+            window.scrollTo({ top: 0, behavior: "smooth" });
           }}
-          className="flex items-center gap-2.5 group"
+          className="flex items-center gap-[10px] no-underline font-serif text-[23px] text-cream"
+          aria-label="Privance"
         >
-          <Logo size={26} className="text-gold-accent" />
-          <span
-            className="font-serif text-lg tracking-tight text-stone-100 group-hover:text-white transition-colors"
-            style={{ fontVariationSettings: '"opsz" 24, "SOFT" 80' }}
-          >
-            Privance
-          </span>
+          <Logo size={26} className="text-cream flex-none" aria-hidden={true} />
+          <span aria-hidden="true">Privance</span>
         </Link>
 
-        <nav
-          aria-label="Sections"
-          className="hidden md:flex items-center gap-9 font-mono text-[11px] uppercase tracking-[0.18em] text-stone-400"
-        >
+        <nav aria-label="Sections" className="hidden md:flex gap-[30px]">
           {NAV_LINKS.map((l) => (
-            <a key={l.href} href={l.href} className="hover:text-stone-100 transition-colors">
+            <a
+              key={l.href}
+              href={l.href}
+              className="font-mono text-[11px] tracking-[0.16em] uppercase text-dim hover:text-accent transition-colors no-underline"
+            >
               {l.label}
             </a>
           ))}
         </nav>
 
-        <div className="flex items-center gap-3 md:gap-5">
-          <Link
-            href="/auth/login"
-            className="inline-block py-3 px-2 -my-3 -mx-2 font-mono text-[11px] uppercase tracking-[0.18em] text-stone-400 hover:text-stone-100 transition-colors"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/auth/signup"
-            className="inline-flex items-center gap-2 bg-stone-100 text-stone-950 hover:bg-white px-4 py-3 text-[13px] font-medium rounded-full transition-colors"
-          >
-            Sign up
-          </Link>
-        </div>
+        <Link
+          href="/auth/login"
+          className="font-mono text-[11px] tracking-[0.12em] uppercase font-medium bg-accent text-vault no-underline px-5 py-[11px] rounded-[6px] hover:bg-cream transition-colors max-[560px]:px-[14px] max-[560px]:py-[10px] max-[560px]:text-[10px] max-[560px]:whitespace-nowrap"
+        >
+          Sign in
+        </Link>
       </div>
     </header>
   );
 }
 
-function SectionLabel({ n, label }: { n: string; label: string }) {
+function ScrambleWidget() {
+  const [who, setWho] = useState("What you see");
+  const [val, setVal] = useState("$1,248,392 · +1.9% this month");
+  const [youSide, setYouSide] = useState(true);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) return;
+
+    const PLAIN = "$1,248,392 · +1.9% this month";
+
+    function morph(target: string, nextWho: string, nextYouSide: boolean) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      let frame = 0;
+      const total = 22;
+      setWho(nextWho);
+      setYouSide(nextYouSide);
+      timerRef.current = setInterval(() => {
+        frame++;
+        const prog = frame / total;
+        const reveal = Math.floor(target.length * prog);
+        const displayed = target.slice(0, reveal) + randStr(Math.max(0, target.length - reveal));
+        setVal(displayed);
+        if (frame >= total) {
+          setVal(target);
+          if (timerRef.current) clearInterval(timerRef.current);
+        }
+      }, 34);
+    }
+
+    let showingPlain = true;
+    const cycle = setInterval(() => {
+      showingPlain = !showingPlain;
+      if (showingPlain) morph(PLAIN, "What you see", true);
+      else morph(`${randStr(26)}==`, "What the server sees", false);
+    }, 3600);
+
+    return () => {
+      clearInterval(cycle);
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
   return (
-    <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
-      <span className="text-gold-accent">§ {n}</span>
-      <span className="h-px w-12 bg-stone-700" />
-      <span>{label}</span>
+    <div
+      className="reveal-up mt-10 mx-auto border border-line rounded-[10px] flex items-center gap-[18px] justify-between px-[26px] py-[18px] max-[560px]:flex-col max-[560px]:gap-2 max-[560px]:items-start"
+      style={{
+        background: "rgba(235,235,230,.02)",
+        animationDelay: "0.48s",
+        maxWidth: 720,
+      }}
+    >
+      <span
+        className={`font-mono text-[9.5px] tracking-[0.22em] uppercase text-left flex-none w-[160px] whitespace-nowrap transition-colors duration-[400ms] ${
+          youSide ? "text-accent" : "text-faint"
+        }`}
+      >
+        {who}
+      </span>
+      <span
+        className="font-mono tabular-nums text-cream text-right overflow-hidden whitespace-nowrap max-[560px]:text-left max-[560px]:text-[14px]"
+        style={{ fontSize: "clamp(15px, 2.6vw, 22px)" }}
+      >
+        {val}
+      </span>
     </div>
   );
 }
 
 function Hero() {
   return (
-    <section className="relative px-6 md:px-10 pt-8 pb-16 md:pt-12 md:pb-20 max-w-7xl mx-auto">
-      <div className="reveal-fade">
-        <SectionLabel n="01" label="Privance" />
-      </div>
-
-      <h1
-        className="mt-6 md:mt-10 font-serif text-[clamp(2.75rem,9vw,8rem)] leading-[0.95] tracking-[-0.025em] text-stone-50 font-light"
-        style={{ fontVariationSettings: '"opsz" 144, "SOFT" 50' }}
-      >
-        <span className="block reveal-up" style={{ animationDelay: "0.05s" }}>
-          Track your wealth.
-        </span>
-        <span className="block reveal-up" style={{ animationDelay: "0.18s" }}>
-          <span
-            className="font-serif italic text-gold-accent"
-            style={{ fontVariationSettings: '"opsz" 96, "SOFT" 100' }}
+    <section
+      className="relative pt-[78px] pb-[60px] text-center"
+      style={{
+        background:
+          "radial-gradient(490px 490px at 50% 150px, rgba(127,196,198,.10), rgba(127,196,198,.03) 45%, transparent 65%)",
+      }}
+    >
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none opacity-50"
+        style={{
+          background:
+            "repeating-linear-gradient(to bottom, transparent 0 110px, rgba(235,235,230,.045) 110px 111px)",
+        }}
+      />
+      <div className="max-w-[1160px] mx-auto px-8">
+        <p className="reveal-up font-mono text-[10.5px] tracking-[0.26em] uppercase text-accent-dim whitespace-nowrap max-[480px]:text-[9px] max-[480px]:tracking-[0.18em]">
+          Open source &middot; zero&#8209;knowledge &middot; yours
+        </p>
+        <h1
+          className="reveal-up font-serif font-normal leading-[0.98] tracking-[-0.015em] mt-6 relative"
+          style={{
+            fontSize: "clamp(54px, 8.6vw, 116px)",
+            animationDelay: "0.1s",
+          }}
+        >
+          Personal finance,
+          <br />
+          <em className="text-accent">kept personal.</em>
+        </h1>
+        <p
+          className="reveal-up mt-[22px] mx-auto max-w-[52ch] text-[17.5px] text-dim leading-[1.65]"
+          style={{ animationDelay: "0.22s" }}
+        >
+          Privance is a full command center for your money. Everything is encrypted in your browser
+          before it leaves. The server, ours or yours, holds ciphertext and nothing else.
+        </p>
+        <div
+          className="reveal-up flex gap-[14px] mt-[30px] justify-center flex-wrap"
+          style={{ animationDelay: "0.34s" }}
+        >
+          <a
+            href="/auth/signup/"
+            className="font-mono text-[12px] tracking-[0.14em] uppercase font-medium bg-accent text-vault no-underline px-[30px] py-[17px] rounded-[7px] hover:bg-cream inline-block"
+            style={{ transition: "transform .15s, background .2s" }}
           >
-            Privately.
-          </span>
-        </span>
-      </h1>
+            Sign up
+          </a>
+          <a
+            href="#deploy"
+            className="font-mono text-[12px] tracking-[0.14em] uppercase text-cream-soft no-underline px-[26px] py-[17px] border border-line rounded-[7px] hover:border-accent-dim hover:text-accent transition-colors inline-block"
+          >
+            Self&#8209;host instead
+          </a>
+        </div>
 
-      <p
-        className="mt-10 max-w-xl text-lg md:text-xl leading-relaxed text-stone-400 reveal-up"
-        style={{ animationDelay: "0.5s" }}
-      >
-        A personal finance app that can&rsquo;t read your finances.{" "}
-        <span className="whitespace-nowrap">Zero-knowledge</span> encrypted, open source, and
-        self-hostable. <span className="whitespace-nowrap">Entirely yours.</span>
-      </p>
-
-      <div
-        className="mt-12 flex flex-wrap items-center gap-x-6 gap-y-4 reveal-up"
-        style={{ animationDelay: "0.65s" }}
-      >
-        <Link
-          href="/auth/signup"
-          className="group relative inline-flex items-center gap-3 bg-gold-accent hover:bg-gold-accent-hover text-stone-950 px-7 py-3.5 text-sm font-medium tracking-wide rounded-full transition-colors"
-        >
-          Sign up
-          <span aria-hidden="true" className="transition-transform group-hover:translate-x-1">
-            →
-          </span>
-        </Link>
-        <a
-          href="#protocol"
-          className="group inline-flex items-center gap-2.5 text-stone-300 hover:text-stone-100 px-2 py-3 text-sm font-medium tracking-wide transition-colors"
-        >
-          Read the protocol
-          <span aria-hidden="true" className="transition-transform group-hover:translate-x-1">
-            →
-          </span>
-        </a>
-      </div>
-
-      <div
-        className="mt-12 md:mt-16 pt-8 border-t border-stone-900 flex flex-wrap items-center gap-x-8 gap-y-3 font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500 reveal-fade"
-        style={{ animationDelay: "0.9s" }}
-      >
-        <span>AES-256-GCM</span>
-        <span className="text-stone-700">/</span>
-        <span>Argon2id</span>
-        <span className="text-stone-700">/</span>
-        <span>BIP39 recovery</span>
-        <span className="text-stone-700">/</span>
-        <span>AGPL-3.0 licensed</span>
-        <span className="text-stone-700">/</span>
-        <span className="text-gold-accent">invite-only beta</span>
+        <ScrambleWidget />
       </div>
     </section>
   );
 }
 
-function Features() {
+function AppFrame() {
+  const [veiled, setVeiled] = useState(false);
   return (
-    <section
-      id="features"
-      className="relative px-6 md:px-10 pt-10 pb-14 md:pt-14 md:pb-24 border-t border-stone-900/70"
-    >
-      <div className="max-w-7xl mx-auto">
-        <SectionLabel n="02" label="Features" />
-
-        <h2
-          className="mt-6 md:mt-10 font-serif text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl"
-          style={{ fontVariationSettings: '"opsz" 96, "SOFT" 50' }}
+    <section className="max-w-[1160px] mx-auto px-8 py-6 pb-[68px]">
+      <div
+        className="border border-line rounded-[14px] overflow-hidden"
+        style={{
+          background: "#121317",
+          boxShadow:
+            "0 50px 120px -30px rgba(0,0,0,.8), 0 0 0 1px rgba(127,196,198,.05), 0 -1px 0 rgba(235,235,230,.06) inset",
+        }}
+      >
+        <div
+          className="flex items-center gap-2 px-[18px] py-[13px] border-b border-line-soft"
+          style={{ background: "rgba(235,235,230,.015)" }}
         >
-          Available now.{" "}
-          <span
-            className="font-serif italic text-stone-300"
-            style={{ fontVariationSettings: '"opsz" 96, "SOFT" 100' }}
-          >
-            More on the way.
+          <span className="w-[9px] h-[9px] rounded-full bg-[rgba(235,235,230,.12)]" />
+          <span className="w-[9px] h-[9px] rounded-full bg-[rgba(235,235,230,.12)]" />
+          <span className="w-[9px] h-[9px] rounded-full bg-[rgba(235,235,230,.12)]" />
+          <span className="mx-auto font-mono text-[10.5px] text-faint tracking-[0.06em] border border-line-soft rounded-[6px] px-[14px] py-[5px] flex items-center gap-[7px]">
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              className="text-accent"
+              aria-hidden="true"
+            >
+              <rect x="5" y="11" width="14" height="9" rx="2" />
+              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+            </svg>
+            privance.app
           </span>
-        </h2>
-
-        <div className="mt-10 md:mt-16 grid grid-cols-1 md:grid-cols-3 gap-px bg-stone-900/80 border border-stone-900/80">
-          {FEATURES.map((f) => (
-            <div key={f.title} className="bg-stone-950 p-8 md:p-10">
-              <div className="flex items-center justify-between gap-4">
-                <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-gold-accent">
-                  {f.n}
-                </div>
-                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-stone-500">
-                  {f.tag}
-                </div>
-              </div>
-
-              <div className="mt-6 h-24 md:mt-8 md:h-28 flex items-end justify-center text-gold-accent">
-                {f.visual}
-              </div>
-
-              <h3
-                className="mt-6 md:mt-8 font-serif text-2xl md:text-3xl tracking-[-0.015em] text-stone-50 font-light"
-                style={{ fontVariationSettings: '"opsz" 32, "SOFT" 50' }}
+        </div>
+        <div
+          className={`p-[34px_38px_38px] max-[680px]:p-[22px_18px_24px] ${veiled ? "[&_.vfig]:blur-[8px] [&_.vfig]:opacity-50" : ""}`}
+        >
+          <div className="flex justify-between items-end flex-wrap gap-4">
+            <div>
+              <p className="font-mono text-[9.5px] tracking-[0.24em] uppercase text-faint">
+                Net worth &middot; today
+              </p>
+              <p className="vfig font-serif text-[clamp(40px,6vw,62px)] leading-none mt-[10px] tracking-[-0.01em] transition-[filter,opacity] duration-[450ms]">
+                $1,248,392
+              </p>
+              <p className="vfig font-mono text-[12px] text-up mt-[9px] transition-[filter,opacity] duration-[450ms]">
+                &#9650; $23,847 <span className="text-faint">&middot; 1.9% &middot; 30 days</span>
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-pressed={veiled}
+              onClick={() => setVeiled((v) => !v)}
+              className={[
+                "flex items-center gap-2 border rounded-full px-4 py-2 font-mono text-[10px] tracking-[0.16em] uppercase cursor-pointer transition-colors",
+                veiled
+                  ? "text-accent border-accent-dim bg-[rgba(127,196,198,.08)]"
+                  : "text-dim border-line hover:text-accent hover:border-accent-dim",
+              ].join(" ")}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                aria-hidden="true"
               >
-                {f.title}
+                <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z" />
+                <circle cx="12" cy="12" r="2.6" />
+              </svg>
+              {veiled ? "Unveil" : "Veil"}
+            </button>
+          </div>
+          <svg
+            viewBox="0 0 1000 150"
+            preserveAspectRatio="none"
+            className="w-full h-[150px] mt-6 block"
+            aria-hidden="true"
+          >
+            <defs>
+              <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stopColor="#7FC4C6" stopOpacity=".2" />
+                <stop offset="1" stopColor="#7FC4C6" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M0,122 C70,114 120,120 190,106 C260,92 320,98 400,84 C470,72 530,78 610,62 C680,50 740,56 820,38 C880,26 940,30 1000,16 L1000,150 L0,150 Z"
+              fill="url(#tg)"
+            />
+            <path
+              className="trendline"
+              d="M0,122 C70,114 120,120 190,106 C260,92 320,98 400,84 C470,72 530,78 610,62 C680,50 740,56 820,38 C880,26 940,30 1000,16"
+              fill="none"
+              stroke="#7FC4C6"
+              strokeWidth="2"
+            />
+            <circle cx="1000" cy="16" r="4" fill="#7FC4C6" />
+          </svg>
+          <div className="grid gap-[30px] mt-2 grid-cols-[1.2fr_.8fr] max-[680px]:grid-cols-1">
+            <div>
+              {[
+                ["VTI", "Vanguard Total Market", "$412,288"],
+                ["AAPL", "Apple", "$188,114"],
+                ["BTC", "Bitcoin", "$96,402"],
+                ["NVDA", "NVIDIA", "$81,719"],
+              ].map(([tk, nm, v]) => (
+                <div
+                  key={tk}
+                  className="flex justify-between items-baseline py-3 border-b border-line-soft last:border-b-0"
+                >
+                  <span className="font-mono text-[11.5px] text-accent tracking-[0.06em] w-[52px] flex-none">
+                    {tk}
+                  </span>
+                  <span className="flex-1 text-[13px] text-cream-soft text-left">{nm}</span>
+                  <span className="vfig font-mono text-[12.5px] transition-[filter,opacity] duration-[450ms]">
+                    {v}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div>
+              <p className="font-mono text-[9.5px] tracking-[0.24em] uppercase text-faint mt-3">
+                Allocation
+              </p>
+              <div className="flex h-[7px] rounded-full overflow-hidden mt-[14px]">
+                <span style={{ width: "60%", background: "#7FC4C6" }} />
+                <span style={{ width: "20%", background: "#4F898C" }} />
+                <span style={{ width: "10%", background: "#C8551F" }} />
+                <span style={{ flex: 1, background: "rgba(235,235,230,.2)" }} />
+              </div>
+              <div className="flex gap-[18px] mt-3 flex-wrap">
+                {[
+                  ["#7FC4C6", "Equities 60"],
+                  ["#4F898C", "Bonds 20"],
+                  ["#C8551F", "Crypto 10"],
+                  ["rgba(235,235,230,.4)", "Cash 10"],
+                ].map(([color, label]) => (
+                  <span
+                    key={label}
+                    className="font-mono text-[9.5px] tracking-[0.1em] uppercase text-faint flex gap-[7px] items-center"
+                  >
+                    <span className="w-2 h-2 rounded-[2px]" style={{ background: color }} />
+                    {label}
+                  </span>
+                ))}
+              </div>
+              <p className="font-mono text-[9.5px] tracking-[0.24em] uppercase text-faint mt-[26px]">
+                Plan
+              </p>
+              <p className="font-serif text-[19px] mt-2">
+                Independent by <em className="text-accent">2041</em>
+              </p>
+              <p className="font-mono text-[10.5px] text-faint mt-[5px]">
+                84% of 1,000 simulated futures
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="flex justify-end mt-[18px] font-mono text-[9.5px] tracking-[0.16em] uppercase text-faint flex-wrap gap-2">
+        <span className={`text-accent transition-opacity ${veiled ? "opacity-0" : ""}`}>
+          &#9650; tap the veil, numbers off, shape on
+        </span>
+      </div>
+    </section>
+  );
+}
+
+function CipherBelt() {
+  const chunks: string[] = [];
+  for (let i = 0; i < 6; i++) {
+    let chunk = "";
+    for (let j = 0; j < 56; j++) chunk += GLYPHS[(i * 56 + j * 7 + 3) % GLYPHS.length];
+    chunks.push(`${chunk}==`);
+  }
+  // Doubled so the marquee can scroll -50% seamlessly.
+  const doubled = [...chunks, ...chunks];
+
+  return (
+    <div
+      aria-hidden="true"
+      className="border-t border-b border-line-soft overflow-hidden py-[15px] relative"
+      style={{ background: "#121317" }}
+    >
+      <span
+        className="absolute left-0 top-0 bottom-0 z-[2] flex items-center font-mono text-[10px] tracking-[0.22em] uppercase text-accent"
+        style={{
+          padding: "0 22px 0 32px",
+          background: "linear-gradient(to right, #121317 72%, transparent)",
+        }}
+      >
+        What our servers see
+      </span>
+      <div className="belt-marquee flex w-max">
+        {doubled.map((chunk, i) => (
+          <span
+            // biome-ignore lint/suspicious/noArrayIndexKey: static decorative marquee, never reordered
+            key={i}
+            className="font-mono text-[12px] text-faint whitespace-nowrap pr-12"
+          >
+            {chunk}
+          </span>
+        ))}
+      </div>
+      <style>{`@keyframes belt{to{transform:translateX(-50%)}}.belt-marquee{animation:belt 38s linear infinite}@media(prefers-reduced-motion:reduce){.belt-marquee{animation:none}}`}</style>
+    </div>
+  );
+}
+
+function Tenets() {
+  const items = [
+    {
+      idx: "i.",
+      seal: "SEALED",
+      title: "Encrypted",
+      titleEm: "before",
+      titleSuffix: "it leaves",
+      body: "Argon2id stretches your master password in the browser. Keys never travel. Every record is sealed on your device and only ever opens there.",
+    },
+    {
+      idx: "ii.",
+      seal: "YOURS",
+      title: "Yours,",
+      titleEm: "either way",
+      titleSuffix: "",
+      body: "Use privance.app, where we store ciphertext we cannot read, or run it yourself with one container. Same protocol, same blindness.",
+    },
+    {
+      idx: "iii.",
+      seal: "HONEST",
+      title: "No backdoor,",
+      titleEm: "by design.",
+      titleSuffix: "",
+      body: "No resets, no recovery email, no master key in a drawer. Lose your password and your phrase and the data is gone. We can't undo that, and we won't pretend otherwise.",
+    },
+  ];
+
+  return (
+    <section id="tenets" className="py-12">
+      <div className="max-w-[1160px] mx-auto px-8">
+        <div className="mb-9">
+          <p className="font-mono text-[10.5px] tracking-[0.26em] uppercase text-accent-dim">
+            Three tenets
+          </p>
+          <h2
+            className="font-serif font-normal leading-[1.03] tracking-[-0.015em] mt-[14px] max-w-[20ch]"
+            style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
+          >
+            Privacy isn&rsquo;t a setting here.{" "}
+            <em className="text-accent">It&rsquo;s the architecture.</em>
+          </h2>
+        </div>
+        <div className="grid gap-4 grid-cols-[repeat(3,1fr)] max-[880px]:grid-cols-1">
+          {items.map((t) => (
+            <div
+              key={t.idx}
+              className="border border-line rounded-[12px] px-[30px] py-[34px] bg-panel relative group transition-[transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-[rgba(127,196,198,.35)]"
+            >
+              <span className="absolute top-5 right-[22px] font-serif italic text-[18px] text-faint">
+                {t.idx}
+              </span>
+              <div
+                className="w-[52px] h-[52px] border border-accent-dim rounded-full flex items-center justify-center text-accent font-mono text-[7.5px] tracking-[0.12em] relative mb-[26px]"
+                style={{ transform: "rotate(-8deg)" }}
+              >
+                <span className="absolute inset-[4px] border border-dashed border-[rgba(127,196,198,.35)] rounded-full" />
+                {t.seal}
+              </div>
+              <h3 className="font-serif font-normal text-[26px] tracking-[-0.01em] leading-[1.12]">
+                {t.title} <em className="text-accent">{t.titleEm}</em> {t.titleSuffix}
               </h3>
-              <p className="mt-4 text-base leading-relaxed text-stone-400">{f.body}</p>
+              <p className="mt-3 text-[14px] text-dim max-w-[36ch] leading-[1.6]">{t.body}</p>
             </div>
           ))}
         </div>
@@ -390,375 +482,406 @@ function Features() {
 
 function Protocol() {
   return (
-    <section
-      id="protocol"
-      className="relative px-6 md:px-10 pt-10 pb-14 md:pt-14 md:pb-24 border-t border-stone-900/70"
-    >
-      <div className="max-w-7xl mx-auto">
-        <SectionLabel n="03" label="Protocol" />
-
-        <div className="mt-6 md:mt-10 grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-20 items-end">
-          <h2
-            className="font-serif text-[clamp(2rem,5.5vw,4.5rem)] leading-[1.03] tracking-[-0.025em] text-stone-50 font-light"
-            style={{ fontVariationSettings: '"opsz" 96, "SOFT" 50' }}
-          >
-            What{" "}
-            <span
-              className="font-serif italic text-gold-accent"
-              style={{ fontVariationSettings: '"opsz" 96, "SOFT" 100' }}
-            >
-              zero-knowledge
-            </span>{" "}
-            actually means.
-          </h2>
-          <p className="text-stone-400 leading-relaxed text-base md:text-lg max-w-md">
-            The server learns nothing about the contents of your finances, because it cannot. A few
-            well-studied primitives keep it that way.
+    <section id="protocol" className="py-12 border-t border-line-soft relative overflow-hidden">
+      <div
+        aria-hidden="true"
+        className="absolute pointer-events-none w-[760px] h-[760px] rounded-full right-[-300px] top-[-200px]"
+        style={{ background: "radial-gradient(circle, rgba(127,196,198,.07), transparent 62%)" }}
+      />
+      <div className="max-w-[1160px] mx-auto px-8 grid gap-12 items-start grid-cols-[.9fr_1.1fr] max-[920px]:grid-cols-1 max-[920px]:gap-11">
+        <div>
+          <p className="font-mono text-[10.5px] tracking-[0.26em] uppercase text-accent-dim">
+            The protocol
           </p>
-        </div>
-
-        <div className="mt-12 md:mt-20 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-0 items-stretch">
-          <div className="relative border border-stone-800 bg-stone-900/30 backdrop-blur-sm p-8 md:p-10 md:border-r-0">
-            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-gold-accent">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-gold-accent" />
-              on your device
-            </div>
-
-            <div className="mt-10 space-y-1.5">
-              <div className="font-mono text-sm text-stone-200">master password</div>
-              <div className="font-mono text-[11px] text-stone-500 pl-4 py-1">↓ argon2id</div>
-              <div className="inline-flex border border-stone-700 px-4 py-2 font-mono text-sm text-stone-200 bg-stone-950/40">
-                KEK
-              </div>
-              <div className="font-mono text-[11px] text-stone-500 pl-4 py-1">↓ unwraps</div>
-              <div className="inline-flex border border-gold-accent/50 bg-gold-accent/[0.06] px-4 py-2 font-mono text-sm text-gold-accent">
-                DEK
-              </div>
-              <div className="font-mono text-[11px] text-stone-500 pl-4 py-1">↓ aes-256-gcm</div>
-              <div className="inline-flex border border-stone-700 px-4 py-2 font-mono text-sm text-stone-200 bg-stone-950/40">
-                ciphertext
-              </div>
-            </div>
-
-            <div className="mt-10 pt-6 border-t border-stone-800/80 font-mono text-[10px] uppercase tracking-[0.18em] text-stone-500 leading-relaxed">
-              in-memory only
-              <br />
-              cleared on lock or tab close
-            </div>
-          </div>
-
-          <div className="relative flex md:flex-col items-center justify-center px-6 py-6 md:py-0 md:px-10 border-t border-b md:border-y-0 md:border-l md:border-r border-stone-800 bg-stone-950/60">
-            <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500 whitespace-nowrap">
-              over TLS
-            </div>
-            <div
-              aria-hidden="true"
-              className="mx-4 md:mx-0 md:my-4 h-px w-16 md:h-32 md:w-px bg-gradient-to-r md:bg-gradient-to-b from-transparent via-gold-accent/60 to-transparent"
-            />
-            <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500 whitespace-nowrap">
-              → bytes →
-            </div>
-          </div>
-
-          <div className="relative border border-stone-800 bg-stone-900/30 backdrop-blur-sm p-8 md:p-10 md:border-l-0">
-            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-stone-400">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-stone-500" />
-              on your server
-            </div>
-
-            <div className="mt-10 space-y-1.5">
-              <div className="inline-flex border border-stone-700 px-4 py-2 font-mono text-sm text-stone-200 bg-stone-950/40">
-                ciphertext (bytes)
-              </div>
-              <div className="font-mono text-[11px] text-stone-500 pl-4 py-1">↓ stored as-is</div>
-              <div className="inline-flex border border-stone-700 px-4 py-2 font-mono text-sm text-stone-200 bg-stone-950/40">
-                Postgres 17
-              </div>
-              <div className="font-mono text-[11px] text-stone-500 pl-4 py-1">+</div>
-              <div className="inline-flex border border-stone-700 px-4 py-2 font-mono text-sm text-stone-200 bg-stone-950/40">
-                audit log
-              </div>
-              <div className="font-mono text-[11px] text-stone-500 pl-4 py-1">+</div>
-              <div className="inline-flex border border-stone-800 px-4 py-2 font-mono text-sm text-stone-500 bg-stone-950/40 line-through decoration-stone-700">
-                plaintext
-              </div>
-            </div>
-
-            <div className="mt-10 pt-6 border-t border-stone-800/80 font-mono text-[10px] uppercase tracking-[0.18em] text-stone-500 leading-relaxed">
-              no plaintext, ever
-              <br />
-              no recovery escape hatch
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-12 md:mt-20 grid grid-cols-1 md:grid-cols-3 gap-x-10 gap-y-12">
-          {STEPS.map((s) => (
-            <div key={s.n} className="space-y-4">
-              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-gold-accent">
-                step / {s.n}
-              </div>
-              <h3
-                className="font-serif text-xl md:text-2xl tracking-[-0.015em] text-stone-50 font-light leading-tight"
-                style={{ fontVariationSettings: '"opsz" 32, "SOFT" 50' }}
-              >
-                {s.title}
-              </h3>
-              <p className="text-sm leading-relaxed text-stone-400">{s.body}</p>
-              <div className="inline-flex font-mono text-[10px] uppercase tracking-[0.18em] text-stone-500 border border-stone-800 px-3 py-1.5 rounded-full">
-                {s.chip}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Tenets() {
-  return (
-    <section
-      id="tenets"
-      className="relative px-6 md:px-10 pt-10 pb-14 md:pt-14 md:pb-24 border-t border-stone-900/70"
-    >
-      <div className="max-w-7xl mx-auto">
-        <SectionLabel n="04" label="Tenets" />
-
-        <h2
-          className="mt-6 md:mt-10 font-serif text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl"
-          style={{ fontVariationSettings: '"opsz" 96, "SOFT" 50' }}
-        >
-          Four{" "}
-          <span
-            className="font-serif italic text-stone-300"
-            style={{ fontVariationSettings: '"opsz" 96, "SOFT" 100' }}
+          <h2
+            className="font-serif font-normal leading-[1.05] tracking-[-0.015em] mt-[14px]"
+            style={{ fontSize: "clamp(34px, 4.6vw, 54px)" }}
           >
-            non-negotiables.
-          </span>
-        </h2>
-
-        <div className="mt-10 md:mt-16 grid grid-cols-1 md:grid-cols-2 gap-px bg-stone-900/80 border border-stone-900/80">
-          {TENETS.map((t) => (
-            <div
-              key={t.n}
-              className="group relative bg-stone-950 p-8 md:p-12 transition-colors hover:bg-stone-900/40"
+            Built so we <em className="text-accent">couldn&rsquo;t peek</em> even if subpoenaed.
+          </h2>
+          <p className="mt-[18px] text-dim text-[15px] max-w-[40ch] leading-[1.65]">
+            Not a privacy policy. A key schedule. The math is public, the code is open, and the
+            server&rsquo;s ignorance is provable from both.
+          </p>
+          <div className="mt-[34px]">
+            <code
+              className="block font-mono text-[12.5px] text-accent border border-[rgba(127,196,198,.2)] rounded-[8px] px-[18px] py-[13px]"
+              style={{ background: "rgba(127,196,198,.06)" }}
             >
-              <div className="flex items-start justify-between gap-6">
-                <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-gold-accent">
-                  {t.n}
-                </div>
-                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-stone-500 text-right">
-                  {t.chip}
-                </div>
-              </div>
-
-              <h3
-                className="mt-6 md:mt-10 font-serif text-3xl md:text-4xl tracking-[-0.015em] text-stone-50 font-light"
-                style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
-              >
-                {t.title}
-              </h3>
-
-              <p className="mt-5 text-base leading-relaxed text-stone-400 max-w-md">{t.body}</p>
-
-              <div
-                aria-hidden="true"
-                className="absolute left-0 right-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gold-accent/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ThreatModel() {
-  return (
-    <section
-      id="threats"
-      className="relative px-6 md:px-10 pt-10 pb-14 md:pt-14 md:pb-24 border-t border-stone-900/70 bg-gradient-to-b from-transparent via-gold-950/10 to-transparent"
-    >
-      <div className="max-w-7xl mx-auto">
-        <SectionLabel n="05" label="Threat model" />
-
-        <h2
-          className="mt-6 md:mt-10 font-serif text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl"
-          style={{ fontVariationSettings: '"opsz" 96, "SOFT" 50' }}
-        >
-          What we protect{" "}
-          <span
-            className="font-serif italic text-stone-300"
-            style={{ fontVariationSettings: '"opsz" 96, "SOFT" 100' }}
-          >
-            against
-          </span>
-          , and what we don&rsquo;t.
-        </h2>
-
-        <div className="mt-10 md:mt-16 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-          <div className="relative border border-stone-800 bg-stone-900/30 p-8 md:p-10">
-            <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-gold-accent">
-              we protect against
-            </div>
-            <ul className="mt-6 md:mt-8 space-y-4 text-stone-300">
-              {[
-                "Server compromise. Database dumps yield ciphertext, not balances.",
-                "Subpoena of the operator. We cannot decrypt what we do not hold the key to.",
-                "Insider access. No staff key, no master, no backdoor.",
-                "Record tampering. Per-record AAD detects substitution.",
-                "Key versioning attacks. Parameter versions bind into the AAD.",
-              ].map((item) => (
-                <li key={item} className="flex gap-3 text-[15px] leading-relaxed">
-                  <span className="text-gold-accent font-mono mt-1 text-xs">+</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="relative border border-stone-800/60 bg-stone-900/10 p-8 md:p-10">
-            <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-400">
-              we don&rsquo;t protect against
-            </div>
-            <ul className="mt-6 md:mt-8 space-y-4 text-stone-400">
-              {[
-                "A compromised device. If your machine is keylogged, your password is gone.",
-                "A weak master password. Use the recovery phrase as the strong backup.",
-                "Losing both password and phrase. There is no recovery. Yes, really.",
-                "Traffic-pattern analysis at scale. We minimize but cannot eliminate metadata.",
-                "Bugs in the cryptographic libraries we audit and pin.",
-              ].map((item) => (
-                <li key={item} className="flex gap-3 text-[15px] leading-relaxed">
-                  <span className="text-stone-500 font-mono mt-1 text-xs">−</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
+              github.com/rahulkrishnan1/privance
+            </code>
+            <span className="block mt-[10px] font-mono text-[10px] tracking-[0.14em] uppercase text-faint">
+              audit it, fork it, run it
+            </span>
           </div>
         </div>
-      </div>
-    </section>
-  );
-}
-
-function FAQ() {
-  return (
-    <section
-      id="faq"
-      className="relative px-6 md:px-10 pt-10 pb-14 md:pt-14 md:pb-24 border-t border-stone-900/70"
-    >
-      <div className="max-w-7xl mx-auto">
-        <SectionLabel n="06" label="FAQ" />
-
-        <h2
-          className="mt-6 md:mt-10 font-serif text-[clamp(2rem,5vw,4rem)] leading-[1.05] tracking-[-0.025em] text-stone-50 font-light max-w-3xl"
-          style={{ fontVariationSettings: '"opsz" 96, "SOFT" 50' }}
-        >
-          The{" "}
-          <span
-            className="font-serif italic text-stone-300"
-            style={{ fontVariationSettings: '"opsz" 96, "SOFT" 100' }}
-          >
-            honest
-          </span>{" "}
-          answers.
-        </h2>
-
-        <dl className="mt-10 md:mt-16 grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-12 md:gap-y-14">
-          {FAQS.map((f) => (
-            <div key={f.q} className="group">
-              <dt
-                className="font-serif text-xl md:text-2xl text-stone-100 leading-snug"
-                style={{ fontVariationSettings: '"opsz" 32, "SOFT" 50' }}
-              >
-                {f.q}
-              </dt>
-              <dd className="mt-4 text-stone-400 leading-relaxed text-[15px]">{f.a}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-    </section>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="relative px-6 md:px-10 pt-14 md:pt-24 pb-12 border-t border-stone-900/70">
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-12 md:gap-24 items-end">
-          <div>
-            <h2
-              className="font-serif text-[clamp(2.5rem,8vw,7rem)] leading-[0.95] tracking-[-0.025em] text-stone-50 font-light"
-              style={{ fontVariationSettings: '"opsz" 144, "SOFT" 50' }}
+        <div className="relative">
+          {[
+            {
+              n: "i.",
+              title: "Stretch",
+              body: "Your master password runs through Argon2id, memory hard and GPU hostile, entirely in the browser.",
+            },
+            {
+              n: "ii.",
+              title: "Split",
+              body: "HKDF derives two independent keys: one to authenticate, one to encrypt. The server only ever meets the first.",
+            },
+            {
+              n: "iii.",
+              title: "Seal",
+              body: "AES‑256‑GCM seals every record, bound to its identity so nothing can be swapped, replayed, or downgraded.",
+            },
+          ].map((step, i, arr) => (
+            <div
+              key={step.n}
+              className="flex gap-5 px-6 py-[22px] border border-line rounded-[11px] bg-panel relative mb-[14px]"
             >
-              Personal finance,
-              <br />
-              <span
-                className="font-serif italic text-gold-accent"
-                style={{ fontVariationSettings: '"opsz" 96, "SOFT" 100' }}
-              >
-                kept personal.
+              {i < arr.length - 1 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute left-10 bottom-[-15px] w-px h-[15px] bg-accent-dim opacity-50"
+                />
+              )}
+              <span className="font-serif italic text-[26px] text-accent flex-none w-[34px] opacity-90">
+                {step.n}
               </span>
-            </h2>
-            <p className="mt-8 max-w-md text-stone-400 text-lg leading-relaxed">
-              Open source. Run it on your terms.
+              <div>
+                <h4 className="font-mono text-[11.5px] tracking-[0.18em] uppercase text-cream">
+                  {step.title}
+                </h4>
+                <p className="mt-[7px] text-[13.5px] text-dim leading-[1.6]">{step.body}</p>
+              </div>
+            </div>
+          ))}
+          <div className="grid grid-cols-2 gap-[14px] mt-[22px] max-[560px]:grid-cols-1">
+            <div className="rounded-[11px] px-[22px] py-5 border border-[rgba(127,196,198,.3)] bg-[rgba(127,196,198,.05)]">
+              <span className="font-mono text-[9px] tracking-[0.2em] uppercase text-accent">
+                Server holds
+              </span>
+              <p className="font-mono text-[12.5px] mt-[9px] text-cream-soft leading-[1.7]">
+                auth verifier
+                <br />
+                ciphertext blobs
+                <br />
+                timestamps
+              </p>
+            </div>
+            <div className="rounded-[11px] px-[22px] py-5 border border-line">
+              <span className="font-mono text-[9px] tracking-[0.2em] uppercase text-faint">
+                Server never holds
+              </span>
+              <p className="font-mono text-[12.5px] mt-[9px] text-cream-soft leading-[1.7]">
+                <s className="text-faint no-underline line-through">passwords</s>
+                <br />
+                <s className="text-faint no-underline line-through">encryption keys</s>
+                <br />
+                <s className="text-faint no-underline line-through">a single balance</s>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Deploy() {
+  return (
+    <section id="deploy" className="py-12 border-t border-line-soft">
+      <div className="max-w-[1160px] mx-auto px-8">
+        <div className="mb-9">
+          <p className="font-mono text-[10.5px] tracking-[0.26em] uppercase text-accent-dim">
+            Two ways in
+          </p>
+          <h2
+            className="font-serif font-normal leading-[1.03] tracking-[-0.015em] mt-[14px] max-w-[20ch]"
+            style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
+          >
+            Run it on our box, <em className="text-accent">or your own.</em>
+          </h2>
+        </div>
+        <div className="grid grid-cols-2 gap-4 max-[880px]:grid-cols-1">
+          <div className="border border-line rounded-[12px] px-[30px] py-[30px] bg-panel relative">
+            <span className="absolute top-5 right-[22px] font-mono text-[14px] tracking-[0.18em] text-accent">
+              RECOMMENDED
+            </span>
+            <h3 className="font-serif font-normal text-[26px] tracking-[-0.01em] mt-[26px]">
+              privance.app
+            </h3>
+            <p className="mt-3 text-[14px] text-dim max-w-[44ch] leading-[1.6]">
+              Sign up and go. We run the servers and keep the backups, and all we ever hold is
+              ciphertext. Zero knowledge means trusting the math, not us.
             </p>
-            <div className="mt-10 flex flex-wrap items-center gap-4">
-              <Link
-                href="/auth/signup"
-                className="group inline-flex items-center gap-3 bg-gold-accent hover:bg-gold-accent-hover text-stone-950 px-7 py-3.5 text-sm font-medium tracking-wide rounded-full transition-colors"
-              >
-                Sign up
-                <span aria-hidden="true" className="transition-transform group-hover:translate-x-1">
-                  →
-                </span>
-              </Link>
-            </div>
+            <a
+              href="/auth/signup/"
+              className="font-mono text-[12px] tracking-[0.14em] uppercase font-medium bg-accent text-vault no-underline px-[30px] py-[17px] rounded-[7px] hover:bg-cream transition-colors inline-block mt-[26px]"
+            >
+              Create your vault
+            </a>
           </div>
-
-          <div className="space-y-10 md:text-right">
-            <div className="flex md:justify-end items-center gap-2.5">
-              <Logo size={22} className="text-gold-accent" />
-              <span
-                className="font-serif text-base tracking-tight text-stone-100"
-                style={{ fontVariationSettings: '"opsz" 24, "SOFT" 80' }}
-              >
-                Privance
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-x-8 gap-y-3 font-mono text-[11px] uppercase tracking-[0.18em] text-stone-400 md:justify-items-end">
-              <a href="#features" className="hover:text-stone-100 transition-colors">
-                Features
-              </a>
-              <a href="#protocol" className="hover:text-stone-100 transition-colors">
-                Protocol
-              </a>
-              <a href="#tenets" className="hover:text-stone-100 transition-colors">
-                Tenets
-              </a>
-              <a href="#threats" className="hover:text-stone-100 transition-colors">
-                Threat model
-              </a>
-              <a href="#faq" className="hover:text-stone-100 transition-colors">
-                FAQ
-              </a>
-              <Link href="/auth/login" className="hover:text-stone-100 transition-colors">
-                Sign in
-              </Link>
-              <Link href="/auth/signup" className="hover:text-stone-100 transition-colors">
-                Sign up
-              </Link>
-            </div>
+          <div className="border border-line rounded-[12px] px-[30px] py-[30px] bg-panel relative">
+            <span className="absolute top-5 right-[22px] font-mono text-[14px] tracking-[0.18em] text-faint">
+              FULL CONTROL
+            </span>
+            <h3 className="font-serif font-normal text-[26px] tracking-[-0.01em] mt-[26px]">
+              Your own box
+            </h3>
+            <p className="mt-3 text-[14px] text-dim max-w-[44ch] leading-[1.6]">
+              One container, one Postgres. A Raspberry Pi will do. Bring a domain and you own the
+              whole data path, end to end.
+            </p>
+            <code
+              className="block font-mono text-[12.5px] text-accent border border-[rgba(127,196,198,.2)] rounded-[8px] px-[18px] py-[13px] mt-[26px]"
+              style={{ background: "rgba(127,196,198,.06)" }}
+            >
+              $ docker compose up -d
+            </code>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
 
-        <div className="mt-14 md:mt-24 pt-8 border-t border-stone-900 flex flex-wrap items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-[0.22em] text-stone-600">
-          <span>AGPL-3.0 · {YEAR} · Privance</span>
-          <span>privance.app</span>
+function Features() {
+  return (
+    <section id="features" className="py-12 border-t border-line-soft">
+      <div className="max-w-[1160px] mx-auto px-8">
+        <div className="mb-9">
+          <p className="font-mono text-[10.5px] tracking-[0.26em] uppercase text-accent-dim">
+            Inside the vault
+          </p>
+          <h2
+            className="font-serif font-normal leading-[1.03] tracking-[-0.015em] mt-[14px] max-w-[24ch]"
+            style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
+          >
+            What you own, what it earns, <em className="text-accent">where it&rsquo;s headed.</em>
+          </h2>
+        </div>
+        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(6, 1fr)" }}>
+          {[
+            {
+              cls: "col-span-4 max-[880px]:col-span-6",
+              tag: "Net worth",
+              title: "One number, honestly computed",
+              body: "Assets minus liabilities across every account, with a scrubbable trend. Exact decimal math, never floating point.",
+              art: (
+                <svg viewBox="0 0 520 84" aria-hidden="true" className="w-full">
+                  <path
+                    d="M0,70 C60,62 90,68 140,54 C190,40 230,48 280,34 C330,24 370,30 420,16 C460,8 490,12 520,4"
+                    fill="none"
+                    stroke="#7FC4C6"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M0,70 C60,62 90,68 140,54 C190,40 230,48 280,34 C330,24 370,30 420,16 C460,8 490,12 520,4 L520,84 L0,84 Z"
+                    fill="#7FC4C6"
+                    opacity=".07"
+                  />
+                </svg>
+              ),
+            },
+            {
+              cls: "col-span-2 max-[880px]:col-span-6",
+              tag: "The veil",
+              title: "Numbers off, shape on",
+              body: "One tap frosts every figure for shoulder surfers. Charts and weights stay readable.",
+              art: (
+                <div className="font-mono text-[19px] tracking-[0.14em] text-accent">
+                  $ &bull;&bull;&bull;,&bull;&bull;&bull;
+                </div>
+              ),
+            },
+            {
+              cls: "col-span-2 max-[880px]:col-span-6",
+              tag: "Insights",
+              title: "Allocation, sectors, concentration",
+              body: "By class, by sector, by single‑name weight, plus where every dollar lives by tax. Catch concentration before it bites.",
+              art: (
+                <svg viewBox="0 0 200 36" aria-hidden="true" className="w-full">
+                  <rect x="0" y="14" width="200" height="8" rx="4" fill="rgba(235,235,230,.08)" />
+                  <rect x="0" y="14" width="118" height="8" rx="4" fill="#7FC4C6" />
+                  <rect x="118" y="14" width="42" height="8" fill="#4F898C" />
+                  <rect x="160" y="14" width="20" height="8" fill="#C8551F" />
+                </svg>
+              ),
+            },
+            {
+              cls: "col-span-2 max-[880px]:col-span-6",
+              tag: "Spending",
+              title: "What you're committed to",
+              body: "Rent, utilities, insurance, subscriptions, logged by hand. No bank linking; the server never learns where the money went.",
+              art: (
+                <div className="font-mono text-[11.5px] text-faint tracking-[0.06em]">
+                  12 recurring &middot; $2,140 / mo
+                </div>
+              ),
+            },
+            {
+              cls: "col-span-2 max-[880px]:col-span-6",
+              tag: "Plan",
+              title: "Independence, simulated",
+              body: "Monte Carlo and historical replay run in a worker on your machine. Retirement math that never phones home.",
+              art: (
+                <svg viewBox="0 0 200 56" aria-hidden="true" className="w-full">
+                  <path d="M0,50 C50,44 90,32 200,2 L200,56 L0,56 Z" fill="#7FC4C6" opacity=".08" />
+                  <path
+                    d="M0,50 C50,46 90,38 200,16 L200,56 L0,56 Z"
+                    fill="#7FC4C6"
+                    opacity=".12"
+                  />
+                  <path
+                    d="M0,50 C50,47 100,42 200,30"
+                    fill="none"
+                    stroke="#7FC4C6"
+                    strokeWidth="1.8"
+                  />
+                  <circle cx="146" cy="37" r="3.2" fill="#C8551F" />
+                </svg>
+              ),
+            },
+            {
+              cls: "col-span-2 max-[880px]:col-span-6",
+              tag: "Holdings",
+              title: "Priced live, owned quietly",
+              body: "Stocks, funds, and crypto with fractional shares and your real cost basis. Price lookups go out anonymously, never tied to you.",
+              art: (
+                <div className="font-mono text-[11.5px] text-faint tracking-[0.06em]">
+                  VTI &middot; 1,482.214 sh &middot; <span className="text-up">+30.5%</span>
+                </div>
+              ),
+            },
+            {
+              cls: "col-span-2 max-[880px]:col-span-6",
+              tag: "Unlock",
+              title: "Face, fingerprint, phrase",
+              body: "Biometric unlock via passkeys on devices you trust. The recovery phrase stays on paper, where it belongs.",
+              art: (
+                <div className="font-mono text-[11.5px] text-faint tracking-[0.06em]">
+                  salt &middot; ember &middot; quiet &middot; harbor &middot; &hellip;
+                </div>
+              ),
+            },
+            {
+              cls: "col-span-2 max-[880px]:col-span-6",
+              tag: "Everywhere",
+              title: "Installs from the browser",
+              body: "A progressive web app that works offline on desktop and phone. No app store between you and your money.",
+              art: (
+                <svg viewBox="0 0 200 44" aria-hidden="true" className="w-full">
+                  <rect
+                    x="0"
+                    y="2"
+                    width="96"
+                    height="40"
+                    rx="4"
+                    fill="none"
+                    stroke="#4F898C"
+                    strokeWidth="1.5"
+                  />
+                  <rect
+                    x="172"
+                    y="0"
+                    width="24"
+                    height="44"
+                    rx="5"
+                    fill="none"
+                    stroke="#7FC4C6"
+                    strokeWidth="1.5"
+                  />
+                  <line
+                    x1="106"
+                    y1="22"
+                    x2="162"
+                    y2="22"
+                    stroke="#C8551F"
+                    strokeWidth="1.5"
+                    strokeDasharray="3 4"
+                  />
+                </svg>
+              ),
+            },
+          ].map((f) => (
+            <div
+              key={f.tag}
+              className={`${f.cls} border border-line rounded-[12px] p-[30px] bg-panel relative overflow-hidden transition-[transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-[rgba(127,196,198,.3)]`}
+            >
+              <span className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-accent">
+                {f.tag}
+              </span>
+              <h3 className="font-serif font-normal text-[24px] mt-[10px] tracking-[-0.01em]">
+                {f.title}
+              </h3>
+              <p className="mt-[10px] text-[13.5px] text-dim max-w-[46ch] leading-[1.6]">
+                {f.body}
+              </p>
+              <div className="mt-6">{f.art}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function LandingFooter() {
+  return (
+    <footer className="pt-20 pb-11 border-t border-line-soft relative overflow-hidden">
+      <div
+        aria-hidden="true"
+        className="absolute pointer-events-none"
+        style={{
+          left: "50%",
+          bottom: "-420px",
+          transform: "translateX(-50%)",
+          width: 900,
+          height: 700,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(127,196,198,.08), transparent 60%)",
+        }}
+      />
+      <div className="max-w-[1160px] mx-auto px-8 relative">
+        <p
+          className="font-serif font-normal tracking-[-0.02em] leading-[0.96] text-center"
+          style={{ fontSize: "clamp(52px, 9vw, 118px)" }}
+        >
+          Keep it <em className="text-accent">private.</em>
+        </p>
+        <div className="flex justify-center mt-7">
+          <a
+            href="/auth/signup/"
+            className="font-mono text-[12px] tracking-[0.14em] uppercase font-medium bg-accent text-vault no-underline px-[30px] py-[17px] rounded-[7px] hover:bg-cream transition-colors inline-block"
+          >
+            Start with Privance
+          </a>
+        </div>
+        <div className="flex justify-between items-center gap-7 flex-wrap mt-[52px] pt-6 border-t border-line-soft">
+          <span className="font-mono text-[10px] tracking-[0.08em] text-faint">
+            Privance &middot; zero&#8209;knowledge personal finance
+          </span>
+          <div className="flex gap-[26px] flex-wrap">
+            {[
+              { label: "Self‑host guide", href: "#deploy" },
+              { label: "Protocol", href: "#protocol" },
+              {
+                label: "Threat model",
+                href: "https://github.com/rahulkrishnan1/privance/blob/main/THREAT_MODEL.md",
+              },
+              { label: "Source", href: "https://github.com/rahulkrishnan1/privance" },
+            ].map((l) => (
+              <a
+                key={l.label}
+                href={l.href}
+                className="font-mono text-[10.5px] tracking-[0.14em] uppercase text-dim hover:text-accent transition-colors no-underline"
+              >
+                {l.label}
+              </a>
+            ))}
+          </div>
+          <span className="font-mono text-[10px] tracking-[0.08em] text-faint">
+            No analytics. No trackers. This page can&rsquo;t even tell anyone you read it.
+          </span>
         </div>
       </div>
     </footer>
@@ -766,7 +889,6 @@ function Footer() {
 }
 
 export default function LandingPage() {
-  const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { state } = useAuth();
 
@@ -774,37 +896,26 @@ export default function LandingPage() {
     setMounted(true);
   }, []);
 
-  // Fire the redirect before paint so signed-in users do not see the
-  // one-frame blank between `return null` and the navigation committing.
   useIsoLayoutEffect(() => {
     if (!mounted) return;
     if (state === "unlocked") window.location.replace("/app/");
     else if (state === "locked") window.location.replace("/unlock/");
   }, [mounted, state]);
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  // SSR and the first client render both render the landing (mounted=false),
-  // so hydration agrees. Once mounted, blank out for signed-in users while
-  // the redirect commits.
-  if (mounted && state !== "unauthenticated") return null;
+  if (!(mounted && state === "unauthenticated")) return null;
 
   return (
     <>
-      <NavBar scrolled={scrolled} />
-      <main className="relative pt-16">
+      <NavBar />
+      <main className="relative">
         <Hero />
-        <Features />
-        <Protocol />
+        <AppFrame />
+        <CipherBelt />
         <Tenets />
-        <ThreatModel />
-        <FAQ />
-        <Footer />
+        <Protocol />
+        <Deploy />
+        <Features />
+        <LandingFooter />
       </main>
     </>
   );

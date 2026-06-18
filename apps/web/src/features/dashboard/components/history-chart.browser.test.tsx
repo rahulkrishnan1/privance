@@ -60,13 +60,14 @@ test("draws the net worth line zoomed to the data range, not anchored at $0", as
     { timeout: 5_000 },
   );
 
-  const ticks = [...container.querySelectorAll(".recharts-cartesian-axis-tick-value")]
+  // The value scale is overlaid at the right edge (not a Recharts axis).
+  const ticks = [...container.querySelectorAll("[data-testid='history-y-scale'] span")]
     .map((n) => parseTick(n.textContent?.trim() ?? ""))
     .filter((n) => !Number.isNaN(n));
 
   expect(ticks.length).toBeGreaterThanOrEqual(2);
-  // The fix: the axis zooms to the data. The old [0, max] axis put the bottom
-  // tick at $0 and pinned the ~$1.06M line to the top as a flat bar.
+  // The fix: the scale zooms to the data. The old [0, max] axis put the bottom
+  // label at $0 and pinned the ~$1.06M line to the top as a flat bar.
   expect(Math.min(...ticks)).toBeGreaterThan(500_000);
 });
 
@@ -84,10 +85,10 @@ test("shows the empty-state copy instead of a broken chart for a single data poi
 });
 
 test("a range with too few points reports the range is short, not that history is missing", async () => {
-  // History exists (a week of snapshots) but none fall inside the 1D window.
-  // The copy must not claim there is no history yet (the misleading 1D
-  // behavior); it should say the range is too short.
-  const points = [pt(8, 1_061_000), pt(7, 1_061_500), pt(6, 1_062_000)];
+  // History exists (snapshots ~40 days ago) but none fall inside the 1M window.
+  // The copy must not claim there is no history yet; it should say the range is
+  // too short.
+  const points = [pt(42, 1_061_000), pt(40, 1_061_500), pt(38, 1_062_000)];
 
   const screen = await render(
     <div style={{ width: 760, height: 340 }}>
@@ -95,7 +96,7 @@ test("a range with too few points reports the range is short, not that history i
     </div>,
   );
 
-  await screen.getByRole("button", { name: "1D range" }).click();
+  await screen.getByRole("button", { name: "1M range" }).click();
 
   // The either/or copy lives in one node, so the range-short message being
   // visible proves the cold-start message is not shown.
@@ -130,9 +131,7 @@ test("dashboard chart carries no plan projection: no set-up prompt, no Projected
   // No "Projected" range button.
   expect(container.querySelector("[aria-label='Projected range']")).toBeNull();
 
-  // No filled band area path (the only Area has fill "none").
-  const filledAreas = [...container.querySelectorAll("path.recharts-area-area")].filter(
-    (p) => p.getAttribute("fill") !== "none" && p.getAttribute("fill") !== null,
-  );
-  expect(filledAreas).toHaveLength(0);
+  // Exactly one series is drawn (the net-worth line + its gradient). A plan
+  // projection would add a second area band; guard against that re-appearing.
+  expect(container.querySelectorAll("path.recharts-area-area")).toHaveLength(1);
 });

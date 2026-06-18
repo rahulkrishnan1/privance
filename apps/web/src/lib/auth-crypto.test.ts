@@ -1,4 +1,4 @@
-import type { KdfParamVersion, StretchedMasterKey } from "@privance/core";
+import type { KdfParamVersion, KEK, StretchedMasterKey } from "@privance/core";
 import {
   DecryptionError,
   generateItemsKey,
@@ -7,6 +7,7 @@ import {
   randomBytes,
   seedToPhrase,
 } from "@privance/core";
+import fc from "fast-check";
 import { describe, expect, it, vi } from "vitest";
 import {
   b64,
@@ -19,11 +20,9 @@ import {
   unwrapDek,
 } from "./auth-crypto";
 
-// ---------------------------------------------------------------------------
-// Deterministic fast stub for stretchMasterPassword, argon2id is too slow
-// for unit tests. The stub must return a stable 64-byte key given the same
-// (password, salt) pair so round-trip tests still verify the full crypto path.
-// ---------------------------------------------------------------------------
+// Wiring-only stub: Argon2id is too slow for unit runs; we substitute a
+// deterministic digest. These tests exercise wrap/unwrap/AAD wiring, not the
+// KDF itself. The real Argon2id path lives in auth-crypto.integration.test.ts.
 
 const FAST_KDF_RESULT_SIZE = 64;
 
@@ -81,7 +80,6 @@ describe("deriveSignupCrypto", () => {
     const login = await deriveLoginCrypto({
       password: "test-pass-123!",
       kdfSalt: signup.kdfSalt,
-      kdfParams: signup.kdfParams,
     });
     expect(login.authHash).toBe(signup.authHash);
   });
@@ -91,7 +89,6 @@ describe("deriveSignupCrypto", () => {
     const login = await deriveLoginCrypto({
       password: "test-pass-456!",
       kdfSalt: signup.kdfSalt,
-      kdfParams: signup.kdfParams,
     });
     const unwrapped = unwrapDek({
       wrappedDek: signup.wrappedDek,
@@ -107,7 +104,6 @@ describe("deriveSignupCrypto", () => {
     const recovered = await deriveRecoveryUnwrap({
       phrase: signup.phrase,
       recoverySalt: signup.recoverySalt,
-      recoveryKdfParams: signup.recoveryParams,
       wrappedDekRecovery: signup.wrappedDekRecovery,
       wrappedDekRecoveryIv: signup.wrappedDekRecoveryIv,
     });
@@ -118,7 +114,7 @@ describe("deriveSignupCrypto", () => {
 describe("unwrapDek", () => {
   it("throws DecryptionError on wrong KEK", async () => {
     const signup = await deriveSignupCrypto({ password: "correct-pass-123!" });
-    const wrongKek = randomBytes(32);
+    const wrongKek = randomBytes(32) as KEK;
     expect(() =>
       unwrapDek({
         wrappedDek: signup.wrappedDek,
@@ -138,7 +134,6 @@ describe("unwrapDek", () => {
     const login = await deriveLoginCrypto({
       password: "correct-pass-456!",
       kdfSalt: signup.kdfSalt,
-      kdfParams: signup.kdfParams,
     });
     expect(() =>
       unwrapDek({
@@ -146,6 +141,26 @@ describe("unwrapDek", () => {
         wrappedDekIv: signup.wrappedDekIv,
         kek: login.kek,
         kdfParamVersion: login.kdfParamVersion,
+      }),
+    ).toThrow(DecryptionError);
+  });
+
+  it("rejects a downgraded kdfParamVersion even with the correct KEK", async () => {
+    // kdfParamVersion is bound into the AEAD AAD. Unwrapping the DEK while
+    // claiming a different param version must fail, so a downgrade attack on
+    // the stored version cannot trick the client into accepting weaker KDF
+    // params. Cast simulates a future/forged version since only 1 exists today.
+    const signup = await deriveSignupCrypto({ password: "downgrade-pass-1!" });
+    const login = await deriveLoginCrypto({
+      password: "downgrade-pass-1!",
+      kdfSalt: signup.kdfSalt,
+    });
+    expect(() =>
+      unwrapDek({
+        wrappedDek: signup.wrappedDek,
+        wrappedDekIv: signup.wrappedDekIv,
+        kek: login.kek,
+        kdfParamVersion: (signup.kdfParamVersion + 1) as KdfParamVersion,
       }),
     ).toThrow(DecryptionError);
   });
@@ -159,7 +174,19 @@ describe("deriveRecoveryUnwrap", () => {
       deriveRecoveryUnwrap({
         phrase: wrongPhrase,
         recoverySalt: signup.recoverySalt,
-        recoveryKdfParams: signup.recoveryParams,
+        wrappedDekRecovery: signup.wrappedDekRecovery,
+        wrappedDekRecoveryIv: signup.wrappedDekRecoveryIv,
+      }),
+    ).rejects.toThrow(DecryptionError);
+  });
+
+  it("throws DecryptionError when the recovery salt does not match", async () => {
+    const signup = await deriveSignupCrypto({ password: "test-pass-001!" });
+    const wrongSalt = b64(randomBytes(16));
+    await expect(
+      deriveRecoveryUnwrap({
+        phrase: signup.phrase,
+        recoverySalt: wrongSalt,
         wrappedDekRecovery: signup.wrappedDekRecovery,
         wrappedDekRecoveryIv: signup.wrappedDekRecoveryIv,
       }),
@@ -173,9 +200,27 @@ describe("deriveRecoveryProof", () => {
     const proof = await deriveRecoveryProof({
       phrase: signup.phrase,
       recoverySalt: signup.recoverySalt,
-      recoveryKdfParams: signup.recoveryParams,
     });
     expect(proof).toBe(signup.recoveryBlob);
+  });
+
+  it("a wrong phrase yields a different proof", async () => {
+    const signup = await deriveSignupCrypto({ password: "test-proof-pass-2!" });
+    const wrongPhrase = seedToPhrase(randomBytes(16) as ReturnType<typeof phraseToSeed>);
+    const proof = await deriveRecoveryProof({
+      phrase: wrongPhrase,
+      recoverySalt: signup.recoverySalt,
+    });
+    expect(proof).not.toBe(signup.recoveryBlob);
+  });
+
+  it("a wrong salt yields a different proof", async () => {
+    const signup = await deriveSignupCrypto({ password: "test-proof-pass-3!" });
+    const proof = await deriveRecoveryProof({
+      phrase: signup.phrase,
+      recoverySalt: b64(randomBytes(16)),
+    });
+    expect(proof).not.toBe(signup.recoveryBlob);
   });
 });
 
@@ -199,7 +244,6 @@ describe("deriveNewCredsAfterRecovery", () => {
     const recoveredItemsKey = await deriveRecoveryUnwrap({
       phrase: signup.phrase,
       recoverySalt: signup.recoverySalt,
-      recoveryKdfParams: signup.recoveryParams,
       wrappedDekRecovery: signup.wrappedDekRecovery,
       wrappedDekRecoveryIv: signup.wrappedDekRecoveryIv,
     });
@@ -212,7 +256,6 @@ describe("deriveNewCredsAfterRecovery", () => {
     const newLogin = await deriveLoginCrypto({
       password: "new-pass-after-recovery!",
       kdfSalt: newCreds.newKdfSalt,
-      kdfParams: newCreds.newKdfParams,
     });
 
     const unwrapped = unwrapDek({
@@ -230,7 +273,6 @@ describe("deriveNewCredsAfterRecovery", () => {
     const recoveredItemsKey = await deriveRecoveryUnwrap({
       phrase: signup.phrase,
       recoverySalt: signup.recoverySalt,
-      recoveryKdfParams: signup.recoveryParams,
       wrappedDekRecovery: signup.wrappedDekRecovery,
       wrappedDekRecoveryIv: signup.wrappedDekRecoveryIv,
     });
@@ -243,11 +285,46 @@ describe("deriveNewCredsAfterRecovery", () => {
     const recoveredAgain = await deriveRecoveryUnwrap({
       phrase: newCreds.newPhrase,
       recoverySalt: newCreds.newRecoverySalt,
-      recoveryKdfParams: newCreds.newRecoveryParams,
       wrappedDekRecovery: newCreds.newWrappedDekRecovery,
       wrappedDekRecoveryIv: newCreds.newWrappedDekRecoveryIv,
     });
 
     expect(recoveredAgain).toEqual(signup.itemsKey);
+  });
+});
+
+describe("auth-crypto round-trip properties", () => {
+  it("login round-trip recovers the items key for any password", async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.string({ minLength: 1, maxLength: 64 }), async (password) => {
+        const signup = await deriveSignupCrypto({ password });
+        const login = await deriveLoginCrypto({ password, kdfSalt: signup.kdfSalt });
+        expect(login.authHash).toBe(signup.authHash);
+        const unwrapped = unwrapDek({
+          wrappedDek: signup.wrappedDek,
+          wrappedDekIv: signup.wrappedDekIv,
+          kek: login.kek,
+          kdfParamVersion: login.kdfParamVersion,
+        });
+        expect(unwrapped).toEqual(signup.itemsKey);
+      }),
+      { numRuns: 25 },
+    );
+  });
+
+  it("recovery round-trip recovers the items key for any password", async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.string({ minLength: 1, maxLength: 64 }), async (password) => {
+        const signup = await deriveSignupCrypto({ password });
+        const recovered = await deriveRecoveryUnwrap({
+          phrase: signup.phrase,
+          recoverySalt: signup.recoverySalt,
+          wrappedDekRecovery: signup.wrappedDekRecovery,
+          wrappedDekRecoveryIv: signup.wrappedDekRecoveryIv,
+        });
+        expect(recovered).toEqual(signup.itemsKey);
+      }),
+      { numRuns: 25 },
+    );
   });
 });

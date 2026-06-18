@@ -9,13 +9,14 @@ const DUMMY_HASH =
   "$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
 export class LoginService {
+  private readonly repo: AuthRepo;
+  private readonly enumerationSecret: Buffer;
   private readonly sessionService: SessionService;
 
-  constructor(
-    private readonly repo: AuthRepo,
-    private readonly enumerationSecret: Buffer,
-  ) {
-    this.sessionService = new SessionService(repo);
+  constructor(opts: { repo: AuthRepo; enumerationSecret: Buffer }) {
+    this.repo = opts.repo;
+    this.enumerationSecret = opts.enumerationSecret;
+    this.sessionService = new SessionService({ repo: opts.repo });
   }
 
   async getKdfParams(username: string): Promise<{

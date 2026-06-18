@@ -1,10 +1,6 @@
 import { PRESETS, type PresetId } from "@privance/core/projection";
 import { z } from "zod";
 
-// ---------------------------------------------------------------------------
-// Validation bounds (mirror PlanPayloadSchema in @privance/core, plus UI logic)
-// ---------------------------------------------------------------------------
-
 /** Minimum age allowed as currentAge. */
 const AGE_MIN = 16;
 /** Maximum allowed currentAge. */
@@ -28,10 +24,6 @@ const SIGMA_BPS_MAX = 4000;
 const STOCK_WEIGHT_BPS_MIN = 0;
 const STOCK_WEIGHT_BPS_MAX = 10000;
 
-// ---------------------------------------------------------------------------
-// Form schema
-// ---------------------------------------------------------------------------
-
 export const planFormSchema = z
   .object({
     currentAge: z
@@ -53,6 +45,8 @@ export const planFormSchema = z
     muPercent: z.number().optional(),
     sigmaPercent: z.number().optional(),
     stockWeightPercent: z.number().optional(),
+    // Manual starting portfolio in dollars. undefined = derive from accounts.
+    manualStartingDollars: z.number().nonnegative().optional(),
   })
   .refine((v) => v.planUntilAge > v.currentAge, {
     message: "Plan-until age must be greater than current age",
@@ -115,10 +109,6 @@ export const planFormSchema = z
 
 export type PlanFormValues = z.infer<typeof planFormSchema>;
 
-// ---------------------------------------------------------------------------
-// Working-value equality (dedupes the form's per-render onChange)
-// ---------------------------------------------------------------------------
-
 const FORM_KEYS: (keyof PlanFormValues)[] = [
   "currentAge",
   "planUntilAge",
@@ -129,6 +119,7 @@ const FORM_KEYS: (keyof PlanFormValues)[] = [
   "muPercent",
   "sigmaPercent",
   "stockWeightPercent",
+  "manualStartingDollars",
 ];
 
 /**
@@ -140,20 +131,15 @@ export function samePlanValues(a: PlanFormValues, b: PlanFormValues): boolean {
   return FORM_KEYS.every((k) => a[k] === b[k]);
 }
 
-// ---------------------------------------------------------------------------
-// Allocation helpers (shared by the Adjust slider, the lever, and the summary)
-// ---------------------------------------------------------------------------
-
-/** The three allocation anchors. `label` is the full name (Adjust slider); `short` the abbreviation (lever card). */
+/** The three allocation anchors; `label` is the full name shown on the snap buttons. */
 export const ALLOCATION_SNAPS: readonly {
   pct: number;
   preset: PresetId;
   label: string;
-  short: string;
 }[] = [
-  { pct: 30, preset: "conservative", label: "Conservative", short: "Cons" },
-  { pct: 60, preset: "balanced", label: "Balanced", short: "Bal" },
-  { pct: 90, preset: "aggressive", label: "Aggressive", short: "Aggr" },
+  { pct: 30, preset: "conservative", label: "Cautious" },
+  { pct: 60, preset: "balanced", label: "Balanced" },
+  { pct: 90, preset: "aggressive", label: "Aggressive" },
 ];
 
 /** Default stock allocation (balanced) used when an allocation cannot be resolved. */
@@ -177,10 +163,6 @@ export function resolveStockPct(values: PlanFormValues): number {
   return resolveStockPctOrNull(values) ?? DEFAULT_STOCK_PCT;
 }
 
-// ---------------------------------------------------------------------------
-// SWR warning (non-blocking; rendered alongside the success state)
-// ---------------------------------------------------------------------------
-
 export function swrWarning(swrPercent: number): string | null {
   const bps = Math.round(swrPercent * 100);
   if (bps < SWR_WARN_LOW_BPS)
@@ -189,10 +171,6 @@ export function swrWarning(swrPercent: number): string | null {
     return "SWR above 6% is aggressive; historical survival rates drop sharply.";
   return null;
 }
-
-// ---------------------------------------------------------------------------
-// Never-FI predicate (shared by the headline and the results panel)
-// ---------------------------------------------------------------------------
 
 // medianFireAge === planUntilAge is the never-reached sentinel; >= 0.5 covers the boundary.
 export function isNeverFiState(

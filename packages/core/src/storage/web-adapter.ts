@@ -18,10 +18,6 @@ import type {
 } from "./types.js";
 import { StorageNotInitializedError } from "./types.js";
 
-// ---------------------------------------------------------------------------
-// Minimal interface for the injected test database
-// ---------------------------------------------------------------------------
-
 /**
  * Synchronous subset of @sqlite.org/sqlite-wasm Database used only by the
  * test path. Typed here to avoid importing the sqlite-wasm package into
@@ -38,10 +34,6 @@ interface TestDb {
   transaction(fn: () => void): void;
   close(): void;
 }
-
-// ---------------------------------------------------------------------------
-// Row mapping helpers
-// ---------------------------------------------------------------------------
 
 function randomId(): string {
   const buf = new Uint8Array(16);
@@ -78,10 +70,6 @@ function rowToOutboundItem(row: Record<string, unknown>): OutboundItem {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Internal interface shared by both implementations
-// ---------------------------------------------------------------------------
-
 interface LocalStoreImpl {
   put(input: PutObjectInput): Promise<void>;
   get(input: { kind: string; objectId: string }): Promise<StoredObject | null>;
@@ -95,10 +83,6 @@ interface LocalStoreImpl {
   close(): Promise<void>;
   destroy(): Promise<void>;
 }
-
-// ---------------------------------------------------------------------------
-// Synchronous (test-path) implementation
-// ---------------------------------------------------------------------------
 
 function makeSyncImpl(db: TestDb): LocalStoreImpl {
   return {
@@ -258,10 +242,6 @@ function makeSyncImpl(db: TestDb): LocalStoreImpl {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Worker RPC types (browser path only)
-// ---------------------------------------------------------------------------
-
 interface WorkerRequest {
   id: string;
   method: string;
@@ -275,10 +255,6 @@ interface WorkerReply {
   result?: unknown;
   error?: string;
 }
-
-// ---------------------------------------------------------------------------
-// Worker-path implementation (browser only, not exercised in Node tests)
-// ---------------------------------------------------------------------------
 
 /* c8 ignore start, worker path requires a browser (OPFS/Worker API) */
 function makeWorkerImpl(
@@ -443,10 +419,6 @@ function makeWorkerImpl(
   return { init, impl };
 }
 /* c8 ignore stop */
-
-// ---------------------------------------------------------------------------
-// WebSqliteAdapter, public class, delegates to one of the two impls above
-// ---------------------------------------------------------------------------
 
 export class WebSqliteAdapter implements LocalStore {
   readonly #workerUrl: string;

@@ -9,13 +9,9 @@ import {
   type Nonce,
 } from "@privance/core";
 import { useCallback, useState } from "react";
-import { readItemsKey, useSync } from "@/providers/index";
+import { readItemsKey, useSync } from "@/providers";
 import { clearStaleProxyAnchor } from "./_helpers";
 import { KIND_GROUP, KIND_HOLDING } from "./types";
-
-// ---------------------------------------------------------------------------
-// Crypto helper
-// ---------------------------------------------------------------------------
 
 function encryptPayload(
   payload: unknown,
@@ -42,10 +38,6 @@ function newObjectId(): string {
   return crypto.randomUUID();
 }
 
-// ---------------------------------------------------------------------------
-// useHoldingMutations
-// ---------------------------------------------------------------------------
-
 export type CreateHoldingInput = {
   accountId: string;
   groupId: string | null;
@@ -70,7 +62,7 @@ export type HoldingMutationResult = {
   deleteHolding: (id: string) => Promise<void>;
 };
 
-export function useHoldingMutations(onSuccess?: () => void): HoldingMutationResult {
+export function useHoldingMutations(): HoldingMutationResult {
   const { store, client, decrypt, tick } = useSync();
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -104,13 +96,12 @@ export function useHoldingMutations(onSuccess?: () => void): HoldingMutationResu
         } as Parameters<typeof store.enqueue>[0]);
         tick();
         void client?.pushPending();
-        onSuccess?.();
         return id;
       } finally {
         setCreating(false);
       }
     },
-    [store, client, tick, onSuccess],
+    [store, client, tick],
   );
 
   const updateHolding = useCallback(
@@ -155,12 +146,11 @@ export function useHoldingMutations(onSuccess?: () => void): HoldingMutationResu
         } as Parameters<typeof store.enqueue>[0]);
         tick();
         void client?.pushPending();
-        onSuccess?.();
       } finally {
         setUpdating(false);
       }
     },
-    [store, client, decrypt, tick, onSuccess],
+    [store, client, decrypt, tick],
   );
 
   const deleteHolding = useCallback(
@@ -195,20 +185,15 @@ export function useHoldingMutations(onSuccess?: () => void): HoldingMutationResu
         } as Parameters<typeof store.enqueue>[0]);
         tick();
         void client?.pushPending();
-        onSuccess?.();
       } finally {
         setDeleting(false);
       }
     },
-    [store, client, tick, onSuccess],
+    [store, client, tick],
   );
 
   return { creating, updating, deleting, createHolding, updateHolding, deleteHolding };
 }
-
-// ---------------------------------------------------------------------------
-// useGroupMutations
-// ---------------------------------------------------------------------------
 
 export type CreateGroupInput = HoldingGroupPayload;
 export type UpdateGroupInput = HoldingGroupPayload & { id: string };
@@ -222,7 +207,7 @@ export type GroupMutationResult = {
   deleteGroup: (id: string) => Promise<void>;
 };
 
-export function useGroupMutations(onSuccess?: () => void): GroupMutationResult {
+export function useGroupMutations(): GroupMutationResult {
   const { store, client, tick } = useSync();
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -256,13 +241,12 @@ export function useGroupMutations(onSuccess?: () => void): GroupMutationResult {
         } as Parameters<typeof store.enqueue>[0]);
         tick();
         void client?.pushPending();
-        onSuccess?.();
         return id;
       } finally {
         setCreating(false);
       }
     },
-    [store, client, tick, onSuccess],
+    [store, client, tick],
   );
 
   const updateGroup = useCallback(
@@ -298,12 +282,11 @@ export function useGroupMutations(onSuccess?: () => void): GroupMutationResult {
         } as Parameters<typeof store.enqueue>[0]);
         tick();
         void client?.pushPending();
-        onSuccess?.();
       } finally {
         setUpdating(false);
       }
     },
-    [store, client, tick, onSuccess],
+    [store, client, tick],
   );
 
   const deleteGroup = useCallback(
@@ -338,12 +321,11 @@ export function useGroupMutations(onSuccess?: () => void): GroupMutationResult {
         } as Parameters<typeof store.enqueue>[0]);
         tick();
         void client?.pushPending();
-        onSuccess?.();
       } finally {
         setDeleting(false);
       }
     },
-    [store, client, tick, onSuccess],
+    [store, client, tick],
   );
 
   return { creating, updating, deleting, createGroup, updateGroup, deleteGroup };

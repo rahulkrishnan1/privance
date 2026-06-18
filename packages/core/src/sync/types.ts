@@ -15,16 +15,6 @@ export class SyncNetworkError extends SyncError {
   }
 }
 
-export class SyncConflictError extends SyncError {
-  constructor(
-    public readonly objectId: string,
-    public readonly currentVersion: bigint,
-  ) {
-    super(`Conflict on ${objectId}: server version is ${currentVersion}`);
-    this.name = "SyncConflictError";
-  }
-}
-
 export class SyncNotFoundError extends SyncError {
   constructor(public readonly objectId: string) {
     super(`Object not found: ${objectId}`);
@@ -103,7 +93,14 @@ export type ReconcileInput = {
   kind: string;
   choice: ConflictChoice;
   myPlaintext: Uint8Array;
-  theirPlaintext: Uint8Array;
+  /**
+   * The server's verbatim ciphertext and nonce for this object. keep-theirs and
+   * keep-both store these as-is so the local copy is byte-identical to the
+   * server's, matching handleConflict; re-encrypting the server's plaintext
+   * would mint bytes the server never produced.
+   */
+  theirCiphertext: Uint8Array;
+  theirNonce: Uint8Array;
   theirVersion: bigint;
   /**
    * The server_seq watermark for the server's copy of this object.

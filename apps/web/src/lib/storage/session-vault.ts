@@ -67,6 +67,32 @@ function withStore<T>(
   );
 }
 
+/** Atomic read-modify-write in one readwrite transaction. `decide` runs
+ *  synchronously between the get and the put, so a concurrent clear (auto-lock)
+ *  cannot interleave and get resurrected; returning null skips the write. */
+function updateRecord(decide: (current: unknown) => VaultRecord | null): Promise<void> {
+  return openDb().then(
+    (db) =>
+      new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE, "readwrite");
+        const store = tx.objectStore(STORE);
+        const get = store.get(RECORD_KEY);
+        get.onsuccess = () => {
+          const updated = decide(get.result);
+          if (updated !== null) store.put(updated, RECORD_KEY);
+        };
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => {
+          db.close();
+          reject(tx.error);
+        };
+      }),
+  );
+}
+
 // Persistence is a best-effort enhancement layered on memory-only auth: every
 // operation tolerates an unavailable or failing IndexedDB (locked-down hosts,
 // quota errors) by degrading rather than throwing, so a storage fault can never
@@ -109,15 +135,21 @@ export async function persistSession(itemsKey: ItemsKey, now: number): Promise<v
  *  Any failure (no record, expiry, decrypt error, unavailable IDB) returns null
  *  so the boot resolves to re-auth, fail-closed. */
 export async function loadSession(now: number): Promise<ItemsKey | null> {
+  let record: VaultRecord | undefined;
   try {
-    const record = (await withStore("readonly", (s) => s.get(RECORD_KEY))) as
-      | VaultRecord
-      | undefined;
-    if (record === undefined) return null;
-    if (!isSessionFresh({ lastActiveAt: record.lastActiveAt, now })) {
-      await clearSession();
-      return null;
-    }
+    record = (await withStore("readonly", (s) => s.get(RECORD_KEY))) as VaultRecord | undefined;
+  } catch (err) {
+    // Transient IDB fault: fail closed to re-auth, but keep the record so a
+    // later attempt can still restore the session instead of forcing re-login.
+    warnDev("load", err);
+    return null;
+  }
+  if (record === undefined) return null;
+  if (!isSessionFresh({ lastActiveAt: record.lastActiveAt, now })) {
+    await clearSession();
+    return null;
+  }
+  try {
     const bytes = await crypto.subtle.decrypt(
       { name: "AES-GCM", iv: record.iv },
       record.key,
@@ -125,6 +157,8 @@ export async function loadSession(now: number): Promise<ItemsKey | null> {
     );
     return new Uint8Array(bytes) as ItemsKey;
   } catch {
+    // Decrypt failed: the record is corrupt or tampered. Purge and re-auth.
+    // Stay quiet on this fail-closed path (no warnDev), per the module note.
     await clearSession();
     return null;
   }
@@ -133,12 +167,12 @@ export async function loadSession(now: number): Promise<ItemsKey | null> {
 /** Slide the window forward to `now`. No-op if no session is stored or IDB fails. */
 export async function touchSession(now: number): Promise<void> {
   try {
-    const record = (await withStore("readonly", (s) => s.get(RECORD_KEY))) as
-      | VaultRecord
-      | undefined;
-    if (record === undefined) return;
-    record.lastActiveAt = now;
-    await withStore("readwrite", (s) => s.put(record, RECORD_KEY));
+    await updateRecord((current) => {
+      const record = current as VaultRecord | undefined;
+      if (record === undefined) return null;
+      record.lastActiveAt = now;
+      return record;
+    });
   } catch (err) {
     warnDev("touch", err);
   }

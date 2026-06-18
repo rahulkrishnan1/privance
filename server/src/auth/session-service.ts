@@ -10,7 +10,11 @@ import { SESSION_LIFETIME_MS, SessionExpiredError, UnauthenticatedError } from "
 const SESSION_TOUCH_RATIO = 0.75;
 
 export class SessionService {
-  constructor(private readonly repo: AuthRepo) {}
+  private readonly repo: AuthRepo;
+
+  constructor(opts: { repo: AuthRepo }) {
+    this.repo = opts.repo;
+  }
 
   async createSession(userId: string): Promise<{ token: string; expiresAt: Date }> {
     const { token, raw } = generateSessionToken();
@@ -57,9 +61,19 @@ export class SessionService {
     logger.info({ event: "logout", userId }, "session revoked");
   }
 
-  async revokeAllSessions(userId: string): Promise<void> {
-    await this.repo.revokeAllUserSessions(userId);
-    await this.repo.logEvent({ userId, eventClass: "logout_all" });
-    logger.info({ event: "logout_all", userId }, "all sessions revoked");
+  // Best-effort logout: revoke the session the token points at if it's still
+  // valid; a stale or expired token is a no-op (the caller clears the cookie
+  // regardless). Never throws, so the route needs no error handling.
+  async revokeByToken(token: string): Promise<void> {
+    try {
+      const auth = await this.validateToken(token);
+      await this.revokeSession(auth.sessionId, auth.userId);
+    } catch (err) {
+      if (err instanceof UnauthenticatedError || err instanceof SessionExpiredError) {
+        logger.info({ event: "logout_stale_token" }, "logout with stale token");
+        return;
+      }
+      throw err;
+    }
   }
 }

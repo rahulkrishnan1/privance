@@ -80,6 +80,10 @@ export class PriceService {
     let upstream: Map<string, { price: string; previousPrice: string | null; fetchedAt: string }>;
     let upstreamFailed = false;
 
+    // An upstream call is being made now; start the cooldown regardless of the
+    // outcome so a failing or empty upstream can't be hammered every request.
+    rateLimit.recordRefresh(userId, this.#cooldownMs);
+
     try {
       upstream = USE_FAKE_UPSTREAM
         ? fetchFakePrices(needFetch)
@@ -95,9 +99,7 @@ export class PriceService {
       }
     }
 
-    const gotSomething = upstream.size > 0;
-
-    if (gotSomething) {
+    if (upstream.size > 0) {
       const newRows = [...upstream.entries()].map(([ticker, entry]) => ({
         source: dataSource,
         ticker,
@@ -106,7 +108,6 @@ export class PriceService {
         fetchedAt: new Date(entry.fetchedAt),
       }));
       await this.#pricesRepo.upsertMany(newRows);
-      rateLimit.recordRefresh(userId, this.#cooldownMs);
     }
 
     logger.info(

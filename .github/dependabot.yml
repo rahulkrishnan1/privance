@@ -1,0 +1,26 @@
+version: 2
+updates:
+  # pnpm-lock.yaml is consumed by dependabot's npm ecosystem.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      dev-tools:
+        patterns:
+          - "@biomejs/*"
+          - "lefthook"
+          - "turbo"
+          - "typescript"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5

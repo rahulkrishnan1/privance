@@ -32,7 +32,7 @@ async function loginMobile(page: import("@playwright/test").Page, user: Fixtures
 }
 
 test.describe("session mobile", () => {
-  test("survives a refresh, and Lock from Settings ends the session", async ({ page }) => {
+  test("survives a refresh, and the Lock button ends the session", async ({ page }) => {
     const { duplicateUser } = loadFixtures();
     await loginMobile(page, duplicateUser);
 
@@ -40,12 +40,8 @@ test.describe("session mobile", () => {
     await page.reload();
     await expect(page).toHaveURL(/\/app\/?$/, { timeout: 15_000 });
 
-    // Mobile lock lives in Settings (no top-bar Lock at this breakpoint).
-    // Dispatch the click straight to the link so the dev-server-only Next.js
-    // overlay pinned over the tab bar cannot intercept it (absent in prod).
-    const nav = page.getByRole("navigation", { name: "Main navigation" });
-    await nav.getByRole("link", { name: "Settings" }).dispatchEvent("click");
-    await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible({ timeout: 10_000 });
+    // The redesigned top bar keeps the Lock button at every breakpoint (only the
+    // desktop nav is hidden on mobile), so locking is a single tap there.
     await page.getByRole("button", { name: "Lock" }).click();
     await expect(page).toHaveURL(/\/unlock\/?$/, { timeout: 15_000 });
   });

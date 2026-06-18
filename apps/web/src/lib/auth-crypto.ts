@@ -20,39 +20,42 @@ import { stretchMasterPasswordInWorker as stretchMasterPassword } from "@/lib/cr
 export type { ItemsKey };
 
 export type SignupCryptoResult = {
-  authHash: string; // base64
-  kdfSalt: string; // base64
+  authHash: string;
+  kdfSalt: string;
   kdfParams: KdfParams;
   kdfParamVersion: KdfParamVersion;
-  recoveryBlob: string; // base64, proof of phrase knowledge for server
-  recoverySalt: string; // base64
+  /** Proof of phrase knowledge sent to the server to anchor recovery. */
+  recoveryBlob: string;
+  recoverySalt: string;
   recoveryParams: KdfParams;
-  wrappedDek: string; // base64
-  wrappedDekIv: string; // base64
-  wrappedDekRecovery: string; // base64
-  wrappedDekRecoveryIv: string; // base64
+  wrappedDek: string;
+  wrappedDekIv: string;
+  wrappedDekRecovery: string;
+  wrappedDekRecoveryIv: string;
   itemsKey: ItemsKey;
-  phrase: string; // 12-word BIP39, caller must display and then discard
+  /** 12-word BIP39 phrase; caller must display and then discard. */
+  phrase: string;
 };
 
 export type LoginCryptoResult = {
-  authHash: string; // base64
-  kek: Uint8Array;
+  authHash: string;
+  kek: KEK;
   kdfParamVersion: KdfParamVersion;
 };
 
 export type RecoveryNewCredsResult = {
-  newAuthHash: string; // base64
-  newKdfSalt: string; // base64
+  newAuthHash: string;
+  newKdfSalt: string;
   newKdfParams: KdfParams;
-  newRecoveryBlob: string; // base64
-  newRecoverySalt: string; // base64
+  newRecoveryBlob: string;
+  newRecoverySalt: string;
   newRecoveryParams: KdfParams;
-  newWrappedDek: string; // base64
-  newWrappedDekIv: string; // base64
-  newWrappedDekRecovery: string; // base64
-  newWrappedDekRecoveryIv: string; // base64
-  newPhrase: string; // caller must display; old phrase is now invalid
+  newWrappedDek: string;
+  newWrappedDekIv: string;
+  newWrappedDekRecovery: string;
+  newWrappedDekRecoveryIv: string;
+  /** Caller must display; the old phrase is now invalid. */
+  newPhrase: string;
 };
 
 export function b64(bytes: Uint8Array): string {
@@ -129,8 +132,7 @@ export async function deriveSignupCrypto(opts: { password: string }): Promise<Si
 
 export async function deriveLoginCrypto(opts: {
   password: string;
-  kdfSalt: string; // base64
-  kdfParams: KdfParams;
+  kdfSalt: string;
 }): Promise<LoginCryptoResult> {
   const saltBytes = b64ToBytes(opts.kdfSalt);
   const version = KDF_PARAM_VERSION;
@@ -151,9 +153,9 @@ export async function deriveLoginCrypto(opts: {
 }
 
 export function unwrapDek(opts: {
-  wrappedDek: string; // base64
-  wrappedDekIv: string; // base64
-  kek: Uint8Array;
+  wrappedDek: string;
+  wrappedDekIv: string;
+  kek: KEK;
   kdfParamVersion: KdfParamVersion;
 }): ItemsKey {
   const ciphertext = b64ToBytes(opts.wrappedDek);
@@ -161,7 +163,7 @@ export function unwrapDek(opts: {
   return unwrapItemsKey({
     ciphertext,
     nonce,
-    kek: opts.kek as KEK,
+    kek: opts.kek,
     labelVersion: LABEL_VERSION,
     kdfParamVersion: opts.kdfParamVersion,
   });
@@ -169,10 +171,9 @@ export function unwrapDek(opts: {
 
 export async function deriveRecoveryUnwrap(opts: {
   phrase: string;
-  recoverySalt: string; // base64
-  recoveryKdfParams: KdfParams;
-  wrappedDekRecovery: string; // base64
-  wrappedDekRecoveryIv: string; // base64
+  recoverySalt: string;
+  wrappedDekRecovery: string;
+  wrappedDekRecoveryIv: string;
 }): Promise<ItemsKey> {
   const seedBytes = phraseToSeed(opts.phrase);
   const seedString = String.fromCharCode(...seedBytes);
@@ -199,8 +200,7 @@ export async function deriveRecoveryUnwrap(opts: {
 
 export async function deriveRecoveryProof(opts: {
   phrase: string;
-  recoverySalt: string; // base64
-  recoveryKdfParams: KdfParams;
+  recoverySalt: string;
 }): Promise<string> {
   const seedBytes = phraseToSeed(opts.phrase);
   const seedString = String.fromCharCode(...seedBytes);

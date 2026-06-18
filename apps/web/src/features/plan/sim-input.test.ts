@@ -6,7 +6,7 @@
  */
 
 import { Decimal, SCALE_CENTS } from "@privance/core";
-import { PRESET_BALANCED } from "@privance/core/projection";
+import { getPreset, PRESET_BALANCED } from "@privance/core/projection";
 import { describe, expect, it } from "vitest";
 import { payloadToSimInput } from "./sim-input";
 
@@ -57,6 +57,53 @@ describe("payloadToSimInput", () => {
     expect(input.sigmaBps).toBe(1400);
     // stockWeight = stockWeightBps / 10000
     expect(input.stockWeight).toBe(0.75);
+  });
+
+  it("conservative and aggressive presets map to their preset params", () => {
+    for (const preset of ["conservative", "aggressive"] as const) {
+      const input = payloadToSimInput(
+        {
+          ...BASE_PAYLOAD,
+          preset,
+          monthlyContributionCents: "200000",
+          annualSpendCents: "4000000",
+        },
+        POT,
+      );
+      const expected = getPreset(preset);
+      expect(input.muBps).toBe(expected.muBps);
+      expect(input.sigmaBps).toBe(expected.sigmaBps);
+      expect(input.stockWeight).toBe(expected.stockWeight);
+    }
+  });
+
+  it("a manual starting pot overrides the live account-derived pot", () => {
+    const input = payloadToSimInput(
+      {
+        ...BASE_PAYLOAD,
+        preset: "balanced",
+        monthlyContributionCents: "200000",
+        annualSpendCents: "4000000",
+        manualStartingPotCents: "12345600", // $123,456
+      },
+      POT,
+    );
+    // The manual amount wins over POT ($500,000).
+    expect(input.startingPotCents.toMinorUnits()).toBe(12345600n);
+  });
+
+  it("falls back to the live pot when no manual starting amount is set", () => {
+    const input = payloadToSimInput(
+      {
+        ...BASE_PAYLOAD,
+        preset: "balanced",
+        monthlyContributionCents: "200000",
+        annualSpendCents: "4000000",
+        manualStartingPotCents: undefined,
+      },
+      POT,
+    );
+    expect(input.startingPotCents.toMinorUnits()).toBe(POT.toMinorUnits());
   });
 
   it("cents strings convert to the correct Decimal values", () => {

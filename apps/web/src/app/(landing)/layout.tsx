@@ -18,7 +18,7 @@ const GRAIN_SVG =
 
 export default function LandingLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="relative min-h-svh bg-stone-950 text-stone-100 antialiased selection:bg-gold-600/30 selection:text-stone-50">
+    <div className="relative min-h-svh bg-vault text-cream antialiased selection:bg-accent-dim/30 selection:text-cream">
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 z-0 opacity-[0.04] mix-blend-overlay"
@@ -27,7 +27,7 @@ export default function LandingLayout({ children }: { children: ReactNode }) {
 
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[60vh] bg-[radial-gradient(ellipse_at_top,_rgba(177,138,28,0.10),_transparent_60%)]"
+        className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[60vh] bg-[radial-gradient(ellipse_at_top,_rgba(127,196,198,0.10),_transparent_60%)]"
       />
 
       <div className="relative z-10">{children}</div>

@@ -19,6 +19,11 @@ function byKey(ms: ReturnType<typeof computeMilestones>) {
   return Object.fromEntries(ms.map((m) => [m.key, m]));
 }
 
+function nonNull<T>(value: T | null | undefined): T {
+  if (value == null) throw new Error("expected a non-null milestone field");
+  return value;
+}
+
 // A mid-career plan: $1,000,000 number, median pot grows from 200k past 1.5M.
 function baseInput(overrides: Partial<MilestonesInput> = {}): MilestonesInput {
   // Ages 40..60 (21 bands), median crossing 700k around index 8, 1M ~ index 12, 1.5M ~ index 18.
@@ -56,8 +61,8 @@ describe("computeMilestones", () => {
 
   it("amount ladder is strictly increasing lean < fire < fat", () => {
     const m = byKey(computeMilestones(baseInput()));
-    expect(m.lean.amountCents!.cmp(m.fire.amountCents!)).toBe(-1);
-    expect(m.fire.amountCents!.cmp(m.fat.amountCents!)).toBe(-1);
+    expect(nonNull(m.lean.amountCents).cmp(nonNull(m.fire.amountCents))).toBe(-1);
+    expect(nonNull(m.fire.amountCents).cmp(nonNull(m.fat.amountCents))).toBe(-1);
   });
 
   it("FIRE age is the MC median, and Lean is reached no later than FIRE", () => {
@@ -67,8 +72,8 @@ describe("computeMilestones", () => {
     // (band i is the pot at age currentAge + i + 1, matching the engine and chart).
     expect(m.lean.age).toBe(48);
     expect(m.fat.age).toBe(58);
-    expect(m.lean.age!).toBeLessThanOrEqual(m.fire.age!);
-    expect(m.fat.age!).toBeGreaterThanOrEqual(m.fire.age!);
+    expect(nonNull(m.lean.age)).toBeLessThanOrEqual(nonNull(m.fire.age));
+    expect(nonNull(m.fat.age)).toBeGreaterThanOrEqual(nonNull(m.fire.age));
   });
 
   it("band index i maps to age currentAge + i + 1 (end-of-year convention)", () => {
@@ -100,10 +105,10 @@ describe("computeMilestones", () => {
   it("Coast FIRE: reachable plan reports an age below FIRE and a smaller threshold", () => {
     const m = byKey(computeMilestones(baseInput()));
     expect(m.coast.age).not.toBeNull();
-    expect(m.coast.age!).toBeLessThan(m.fire.age ?? 999);
+    expect(nonNull(m.coast.age)).toBeLessThan(m.fire.age ?? 999);
     expect(m.coast.fromAge).toBe(true);
     // The coast threshold is below the full FIRE number (growth covers the rest).
-    expect(m.coast.amountCents!.cmp(m.fire.amountCents!)).toBe(-1);
+    expect(nonNull(m.coast.amountCents).cmp(nonNull(m.fire.amountCents))).toBe(-1);
   });
 
   it("Coast is null when growth alone can never reach the number by the target age", () => {

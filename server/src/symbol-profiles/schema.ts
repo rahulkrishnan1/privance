@@ -10,7 +10,11 @@ export const symbolProfiles = pgTable("symbol_profiles", {
   assetClass: text("asset_class"),
   assetSubClass: text("asset_sub_class"),
   sector: text("sector"),
+  // JSON array of { sector, weight } for funds; null for single-sector equities.
+  sectorWeightings: text("sector_weightings"),
   industry: text("industry"),
+  dividendYield: text("dividend_yield"),
+  fundCategory: text("fund_category"),
   country: text("country"),
   region: text("region"),
   currency: text("currency"),

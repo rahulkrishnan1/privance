@@ -15,7 +15,7 @@ import type {
 } from "@privance/core";
 import { asId, asIsoDate, asIsoDateTime, Decimal, SCALE_CENTS } from "@privance/core";
 import { describe, expect, it } from "vitest";
-import { formatCurrency, formatDate, formatPercent, formatTime } from "@/lib/format";
+import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
 import { computeDayChangeByHoldingId, deriveAggregateDeltas } from "./_math";
 import {
   buildSnapshotPayload,
@@ -25,10 +25,6 @@ import {
   snapshotObjectId,
   utcDateString,
 } from "./_snapshot";
-
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
 
 function makeCash(opts: { balanceCents?: string; currency?: string } = {}): CashAccount {
   return {
@@ -80,10 +76,6 @@ function makeSnapshot(
   } as NetWorthSnapshot;
 }
 
-// ---------------------------------------------------------------------------
-// formatCurrency
-// ---------------------------------------------------------------------------
-
 describe("formatCurrency", () => {
   it("formats a positive cent value", () => {
     const d = Decimal.fromMinorUnits(123456n, SCALE_CENTS);
@@ -118,10 +110,6 @@ describe("formatCurrency", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// formatPercent
-// ---------------------------------------------------------------------------
-
 describe("formatPercent", () => {
   it("formats a ratio as a percentage", () => {
     expect(formatPercent(0.12)).toBe("12.00%");
@@ -144,10 +132,6 @@ describe("formatPercent", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// formatDate
-// ---------------------------------------------------------------------------
-
 describe("formatDate", () => {
   it("formats a YYYY-MM-DD string to short date", () => {
     const result = formatDate("2024-05-16");
@@ -160,49 +144,13 @@ describe("formatDate", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// formatTime
-// ---------------------------------------------------------------------------
-
-describe("formatTime", () => {
-  it("formats epoch ms with am/pm", () => {
-    const d = new Date("2024-01-01T14:30:00Z");
-    const result = formatTime(d.getTime());
-    expect(result).toMatch(/^\d{1,2}:\d{2}\s?(AM|PM)$/i);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Snapshot shape
-// ---------------------------------------------------------------------------
-
 describe("snapshot fixture", () => {
   it("produces a valid net worth snapshot", () => {
     const snap = makeSnapshot(asIsoDate("2024-05-16"), "123456");
     expect(snap.payload.netWorthCents).toBe("123456");
     expect(snap.payload.snapshotAt).toBe("2024-05-16");
   });
-
-  it("sorts snapshots chronologically", () => {
-    const snaps = [
-      makeSnapshot(asIsoDate("2024-05-16"), "300"),
-      makeSnapshot(asIsoDate("2024-05-14"), "100"),
-      makeSnapshot(asIsoDate("2024-05-15"), "200"),
-    ];
-    const sorted = snaps
-      .slice()
-      .sort((a, b) => a.payload.snapshotAt.localeCompare(b.payload.snapshotAt));
-    expect(sorted.map((s) => s.payload.snapshotAt)).toEqual([
-      "2024-05-14",
-      "2024-05-15",
-      "2024-05-16",
-    ]);
-  });
 });
-
-// ---------------------------------------------------------------------------
-// Snapshot creation helpers (used by the dashboard's daily-write effect)
-// ---------------------------------------------------------------------------
 
 describe("utcDateString", () => {
   it("returns the UTC YYYY-MM-DD slice of the given Date", () => {
@@ -453,77 +401,6 @@ describe("buildSnapshotPayload", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// HoldingValuation sorting
-// ---------------------------------------------------------------------------
-
-describe("top holdings sort", () => {
-  it("sorts holdings by market value descending", () => {
-    const holdings: HoldingValuation[] = [
-      makeHoldingValuation("h-a", "5000", "4000"),
-      makeHoldingValuation("h-b", "20000", "15000"),
-      makeHoldingValuation("h-c", "1000", "800"),
-    ];
-    const sorted = [...holdings].sort((a, b) => b.marketValue.cmp(a.marketValue));
-    expect(sorted[0]?.holdingId).toBe("h-b");
-    expect(sorted[1]?.holdingId).toBe("h-a");
-    expect(sorted[2]?.holdingId).toBe("h-c");
-  });
-
-  it("excludes negative-value holdings", () => {
-    const holdings: HoldingValuation[] = [
-      makeHoldingValuation("h-pos", "5000", "4000"),
-      makeHoldingValuation("h-neg", "-1000", "2000"),
-    ];
-    const filtered = holdings.filter((h) => !h.marketValue.isNegative());
-    expect(filtered).toHaveLength(1);
-    expect(filtered[0]?.holdingId).toBe("h-pos");
-  });
-
-  it("slices to max 10 rows", () => {
-    const holdings: HoldingValuation[] = Array.from({ length: 15 }, (_, i) =>
-      makeHoldingValuation(`h-${i}`, String((15 - i) * 1000), "0"),
-    );
-    const top10 = [...holdings].sort((a, b) => b.marketValue.cmp(a.marketValue)).slice(0, 10);
-    expect(top10).toHaveLength(10);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Decimal money math
-// ---------------------------------------------------------------------------
-
-describe("Decimal arithmetic for delta computation", () => {
-  it("computes dollar delta using Decimal subtraction", () => {
-    const current = Decimal.fromMinorUnits(200000n, SCALE_CENTS);
-    const previous = Decimal.fromMinorUnits(190000n, SCALE_CENTS);
-    const dollar = current.sub(previous);
-    expect(dollar.toString()).toBe("100.00");
-  });
-
-  it("computes percent delta as a float ratio", () => {
-    const current = Decimal.fromMinorUnits(200000n, SCALE_CENTS);
-    const previous = Decimal.fromMinorUnits(190000n, SCALE_CENTS);
-    const dollar = current.sub(previous);
-    const pct = dollar.toFloat() / previous.toFloat();
-    const formatted = formatPercent(pct, { signed: true });
-    expect(formatted.startsWith("+")).toBe(true);
-    expect(formatted.endsWith("%")).toBe(true);
-  });
-
-  it("returns negative delta when net worth decreases", () => {
-    const current = Decimal.fromMinorUnits(90000n, SCALE_CENTS);
-    const previous = Decimal.fromMinorUnits(100000n, SCALE_CENTS);
-    const dollar = current.sub(previous);
-    expect(dollar.isNegative()).toBe(true);
-    expect(dollar.toString()).toBe("-100.00");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Account fixture sanity
-// ---------------------------------------------------------------------------
-
 describe("account fixtures", () => {
   it("cash account has correct balance", () => {
     const acct = makeCash({ balanceCents: "999999" });
@@ -534,10 +411,6 @@ describe("account fixtures", () => {
     }
   });
 });
-
-// ---------------------------------------------------------------------------
-// deriveAggregateDeltas: math the dashboard depends on
-// ---------------------------------------------------------------------------
 
 type BreakdownLike = Parameters<typeof deriveAggregateDeltas>[0];
 
@@ -632,7 +505,7 @@ describe("deriveAggregateDeltas", () => {
       byHolding: [{ id: "h1", marketValueCents: "10000" }],
       netWorthCents: "10000",
     });
-    const dc = dayChangeMap([["h1", "10000"]]); // mvCovered − dollar = 0
+    const dc = dayChangeMap([["h1", "10000"]]); // mvCovered - dollar = 0
     const { investments, netWorth } = deriveAggregateDeltas(breakdown, dc);
     expect(investments).toBeNull();
     expect(netWorth).toBeNull();
@@ -688,10 +561,6 @@ describe("deriveAggregateDeltas", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// computeDayChangeByHoldingId: verifies proxy + scaleFactor + missing prev
-// ---------------------------------------------------------------------------
-
 type HoldingMinPayload = {
   ticker: string;
   proxyTicker: string | null;
@@ -714,46 +583,8 @@ function makeStockHolding(id: string, p: HoldingMinPayload): Holding {
   } as unknown as Holding;
 }
 
-// ---------------------------------------------------------------------------
-// buildKindSlices negative-bucket exclusion
-// buildKindSlices is private to queries.ts (not exported to avoid leaking
-// hook internals). The filter it applies is:
-//   .filter((c) => !c.value.isZero() && !c.value.isNegative())
-// These tests verify the Decimal predicate so regressions surface here rather
-// than only in manual/e2e runs.
-// ---------------------------------------------------------------------------
-
-describe("buildKindSlices negative-filter predicate", () => {
-  it("retains a positive bucket", () => {
-    const pos = Decimal.fromMinorUnits(50000n, SCALE_CENTS);
-    expect(pos.isZero()).toBe(false);
-    expect(pos.isNegative()).toBe(false);
-  });
-
-  it("excludes a zero bucket", () => {
-    const zero = Decimal.zero(SCALE_CENTS);
-    expect(zero.isZero()).toBe(true);
-  });
-
-  it("excludes a negative bucket (liability / short position)", () => {
-    const neg = Decimal.fromMinorUnits(-30000n, SCALE_CENTS);
-    expect(neg.isNegative()).toBe(true);
-  });
-
-  it("filter keeps positives only, mirrors the filter in buildKindSlices", () => {
-    const candidates = [
-      { label: "Cash", value: Decimal.fromMinorUnits(100000n, SCALE_CENTS) },
-      { label: "Investments", value: Decimal.fromMinorUnits(200000n, SCALE_CENTS) },
-      { label: "Manual assets", value: Decimal.fromMinorUnits(-50000n, SCALE_CENTS) },
-      { label: "Empty", value: Decimal.zero(SCALE_CENTS) },
-    ];
-    const kept = candidates.filter((c) => !c.value.isZero() && !c.value.isNegative());
-    expect(kept.map((c) => c.label)).toEqual(["Cash", "Investments"]);
-  });
-});
-
 describe("computeDayChangeByHoldingId", () => {
-  it("non-proxy stock: shares × (cur − prev)", () => {
+  it("non-proxy stock: shares × (cur - prev)", () => {
     const h = makeStockHolding("h1", {
       ticker: "AAPL",
       proxyTicker: null,
@@ -764,7 +595,7 @@ describe("computeDayChangeByHoldingId", () => {
     const cur = new Map([["AAPL", Decimal.fromString("180.00", 8)]]);
     const prev = new Map([["AAPL", Decimal.fromString("178.50", 8)]]);
     const out = computeDayChangeByHoldingId([h], cur, prev);
-    // 10 × (180 − 178.50) = 15.00
+    // 10 × (180 - 178.50) = 15.00
     expect(out.get(asId<HoldingId>("h1"))?.toString()).toBe("15.00");
   });
 
@@ -780,7 +611,7 @@ describe("computeDayChangeByHoldingId", () => {
     const cur = new Map([["VOO", Decimal.fromString("689.20", 8)]]);
     const prev = new Map([["VOO", Decimal.fromString("689.99", 8)]]);
     const out = computeDayChangeByHoldingId([h], cur, prev);
-    // 100 × (689.20 − 689.99) × 0.07253775 = 100 × -0.79 × 0.07253775 = -5.7305
+    // 100 × (689.20 - 689.99) × 0.07253775 = 100 × -0.79 × 0.07253775 = -5.7305
     // Rounded to cents = -5.73
     expect(out.get(asId<HoldingId>("h2"))?.toString()).toBe("-5.73");
   });
@@ -810,7 +641,7 @@ describe("computeDayChangeByHoldingId", () => {
     const cur = new Map([["bitcoin", Decimal.fromString("72792.00", 8)]]);
     const prev = new Map([["bitcoin", Decimal.fromString("74972.16", 8)]]);
     const out = computeDayChangeByHoldingId([h], cur, prev);
-    // 0.5 × (72792 − 74972.16) = 0.5 × -2180.16 = -1090.08
+    // 0.5 × (72792 - 74972.16) = 0.5 × -2180.16 = -1090.08
     expect(out.get(asId<HoldingId>("h4"))?.toString()).toBe("-1090.08");
   });
 });

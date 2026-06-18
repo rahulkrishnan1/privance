@@ -1,17 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
-// ---------------------------------------------------------------------------
-// Unit tests for EnrichService, no network, no real DB.
-// ---------------------------------------------------------------------------
-
 import { EnrichService } from "./enrich-service.js";
 import * as rateLimit from "./rate-limit.js";
 import type { SymbolProfile } from "./types.js";
 import { RateLimitedError } from "./types.js";
-
-// ---------------------------------------------------------------------------
-// In-memory repo stub
-// ---------------------------------------------------------------------------
 
 class InMemoryRepo {
   readonly store = new Map<string, SymbolProfile>();
@@ -30,10 +22,6 @@ class InMemoryRepo {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 const TEST_COOLDOWN_MS = 100;
 
 function makeProfile(ticker: string): SymbolProfile {
@@ -45,6 +33,13 @@ function yahooOkFetcher(
 ): (url: string | URL | Request) => Promise<Response> {
   return async (url) => {
     const urlStr = String(url);
+    // Crumb + cookie handshake the provider performs before quoteSummary.
+    if (urlStr.includes("/v1/test/getcrumb")) {
+      return new Response("test-crumb", { status: 200 });
+    }
+    if (urlStr.includes("fc.yahoo.com")) {
+      return new Response("", { status: 404, headers: { "set-cookie": "A1=test; Path=/" } });
+    }
     for (const p of profiles) {
       if (urlStr.includes(encodeURIComponent(p.ticker))) {
         const body = {
@@ -76,10 +71,6 @@ beforeEach(() => {
 afterEach(() => {
   rateLimit.resetAll();
 });
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
 
 describe("EnrichService, happy path", () => {
   it("fetches profile from upstream and returns it", async () => {

@@ -10,7 +10,14 @@ const COINGECKO_PRICE_URL = (ids: string) =>
 
 const FETCH_TIMEOUT_MS = 15_000;
 
-type CoinGeckoResponse = Record<string, { usd?: number; usd_24h_change?: number }>;
+type CoinGeckoEntry = { usd?: number; usd_24h_change?: number };
+
+function entryFor(body: unknown, id: string): CoinGeckoEntry | null {
+  if (typeof body !== "object" || body === null) return null;
+  const entry = (body as Record<string, unknown>)[id];
+  if (typeof entry !== "object" || entry === null) return null;
+  return entry as CoinGeckoEntry;
+}
 
 /**
  * Fetches prices from CoinGecko simple/price endpoint for a list of coin IDs.
@@ -50,9 +57,9 @@ export async function fetchCoinGeckoPrices(
     return new Map();
   }
 
-  let body: CoinGeckoResponse;
+  let body: unknown;
   try {
-    body = (await res.json()) as CoinGeckoResponse;
+    body = await res.json();
   } catch {
     throw new UpstreamUnavailableError("malformed JSON from upstream");
   }
@@ -61,7 +68,7 @@ export async function fetchCoinGeckoPrices(
   const out = new Map<string, UpstreamPrice>();
 
   for (const id of ids) {
-    const entry = body[id];
+    const entry = entryFor(body, id);
     if (!entry) continue;
     const price = entry.usd;
     if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) continue;
@@ -70,6 +77,8 @@ export async function fetchCoinGeckoPrices(
 
     // CoinGecko gives 24h % change (rolling, not session-based, since crypto
     // trades 24/7). Derive the 24h-ago price as `current / (1 + change/100)`.
+    // This float division is a display-only approximation, fixed to an 8-dp
+    // string at this boundary; no money math consumes the float downstream.
     // -100% would imply zero prior; reject sub-cent priors too so the rounded
     // string can't be "0.00000000" (downstream divide-by-zero hazard).
     const changePct = entry.usd_24h_change;

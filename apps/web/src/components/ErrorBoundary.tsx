@@ -11,10 +11,7 @@ type Props = {
 
 type State = { error: Error | null };
 
-/**
- * Class component that catches React render errors and displays a recovery UI.
- * Class component is required by the React error boundary API.
- */
+// Class component is required by the React error boundary API.
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
@@ -44,9 +41,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
       return (
         <div className="flex min-h-svh flex-1 items-center justify-center px-6">
-          <div className="w-full max-w-sm rounded-xl border border-app-red/40 bg-app-red/10 p-6">
-            <h2 className="text-lg font-semibold text-app-red mb-2">Something went wrong</h2>
-            <p className="text-sm text-app-muted mb-4">{error.message}</p>
+          <div className="w-full max-w-sm rounded-xl border border-down/40 bg-down/10 p-6">
+            <h2 className="text-lg font-semibold text-down mb-2">Something went wrong</h2>
+            <p className="text-sm text-cream-soft mb-4">{error.message}</p>
             <Button variant="primary" className="w-full" onClick={this.reset}>
               Try again
             </Button>

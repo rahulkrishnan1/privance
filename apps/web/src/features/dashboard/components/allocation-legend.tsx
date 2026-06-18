@@ -1,48 +1,41 @@
 "use client";
 
 import type { AllocationSlice } from "@privance/core";
-import { formatCurrency, formatPercent } from "@/lib/format";
-import { allocationPalette, PALETTE_FALLBACK_GRAY } from "../palette";
+import { formatPercent } from "@/lib/format";
+import { assignColors } from "../palette";
 
 type AllocationLegendProps = {
   slices: AllocationSlice[];
   hoveredIndex: number | null;
 };
 
-/**
- * Row-based legend for an allocation pie chart.
- * Highlights the row corresponding to the hovered slice.
- */
 export function AllocationLegend({ slices, hoveredIndex }: AllocationLegendProps) {
+  const colors = assignColors(slices.map((s) => s.label));
   return (
-    <ul className="mt-3 flex flex-col gap-1.5 list-none p-0 m-0" aria-label="Allocation legend">
+    <ul className="flex-1 min-w-[200px] list-none p-0 m-0" aria-label="Allocation legend">
       {slices.map((slice, i) => {
-        const color = allocationPalette[i % allocationPalette.length] ?? PALETTE_FALLBACK_GRAY;
-        const isHovered = hoveredIndex === i;
+        const color = colors[i];
+        const isLast = i === slices.length - 1;
         return (
           <li
             key={slice.label}
             className={[
-              "flex items-center justify-between py-1 px-2 rounded-lg",
-              isHovered ? "bg-white/[0.03]" : "",
-            ].join(" ")}
+              "flex items-center gap-2.5 py-2 text-[14px]",
+              isLast ? "" : "border-b border-line-soft",
+              hoveredIndex !== null && hoveredIndex !== i ? "opacity-50" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
           >
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div
-                className="w-3 h-3 rounded-sm shrink-0"
-                style={{ backgroundColor: color }}
-                aria-hidden="true"
-              />
-              <span className="text-sm text-app-text truncate">{slice.label}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-app-muted tabular-nums">
-                {formatPercent(slice.share)}
-              </span>
-              <span className="text-sm font-medium text-app-text tabular-nums">
-                {formatCurrency(slice.value)}
-              </span>
-            </div>
+            <span
+              className="w-[9px] h-[9px] rounded-[2px] flex-none"
+              style={{ backgroundColor: color }}
+              aria-hidden="true"
+            />
+            <span className="flex-1 text-cream">{slice.label}</span>
+            <span className="font-mono text-[12.5px] text-cream-soft tabular-nums">
+              {formatPercent(slice.share)}
+            </span>
           </li>
         );
       })}

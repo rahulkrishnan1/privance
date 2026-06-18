@@ -11,14 +11,4 @@ export interface HistoryPoint {
 }
 
 /** Range options for the history chart segmented control. */
-export type ChartRange = "1D" | "1W" | "1M" | "3M" | "6M" | "1Y" | "All";
-
-/** A processed slice for the allocation pie legend. */
-export interface LegendSlice {
-  label: string;
-  color: string;
-  formattedValue: string;
-  formattedPercent: string;
-  /** Index among the pie slices (used for hover state). */
-  index: number;
-}
+export type ChartRange = "1M" | "3M" | "1Y" | "5Y" | "All";

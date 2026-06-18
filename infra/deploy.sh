@@ -1,6 +1,6 @@
 #!/bin/bash
 # Deploy a tagged release to the production host.
-# Usage: ./infra/deploy.sh <version>   e.g. ./infra/deploy.sh v0.2.0
+# Usage: ./infra/deploy.sh <version>   e.g. ./infra/deploy.sh vX.Y.Z
 # Run from the repo root.
 #
 # Requires: gh >= 2.20 (older versions report tag-triggered runs with a null
@@ -15,7 +15,7 @@ set -euo pipefail
 
 VERSION="${1:-}"
 if [ -z "$VERSION" ]; then
-  echo "Usage: $0 <version>  (e.g. v0.2.0)" >&2
+  echo "Usage: $0 <version>  (e.g. vX.Y.Z)" >&2
   exit 1
 fi
 

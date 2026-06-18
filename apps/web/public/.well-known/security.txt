@@ -1,0 +1,6 @@
+Contact: mailto:security@privance.app
+Contact: https://github.com/rahulkrishnan1/privance/security/advisories/new
+Policy: https://github.com/rahulkrishnan1/privance/blob/main/SECURITY.md
+Canonical: https://privance.app/.well-known/security.txt
+Preferred-Languages: en
+Expires: 2027-06-16T00:00:00.000Z

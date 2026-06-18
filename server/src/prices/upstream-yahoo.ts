@@ -13,19 +13,29 @@ const YAHOO_CHART_PATH = (ticker: string) =>
 
 const FETCH_TIMEOUT_MS = 15_000;
 
-type YahooChartResponse = {
-  chart: {
-    result: Array<{
-      meta?: {
-        regularMarketPrice?: number;
-        previousClose?: number;
-        chartPreviousClose?: number;
-        currency?: string;
-      };
-    }> | null;
-    error?: { description?: string } | null;
-  };
+// Cap simultaneous outbound calls. Yahoo allows one ticker per request, so a
+// large batch would otherwise open one socket per ticker at once; 6 keeps the
+// fan-out polite to the free tier while still parallelising.
+const FETCH_CONCURRENCY = 6;
+
+type YahooMeta = {
+  regularMarketPrice?: number;
+  previousClose?: number;
+  chartPreviousClose?: number;
 };
+
+function parseChartMeta(body: unknown): YahooMeta | null {
+  if (typeof body !== "object" || body === null) return null;
+  const chart = (body as { chart?: unknown }).chart;
+  if (typeof chart !== "object" || chart === null) return null;
+  const result = (chart as { result?: unknown }).result;
+  if (!Array.isArray(result) || result.length === 0) return null;
+  const first = result[0];
+  if (typeof first !== "object" || first === null) return null;
+  const meta = (first as { meta?: unknown }).meta;
+  if (typeof meta !== "object" || meta === null) return null;
+  return meta as YahooMeta;
+}
 
 async function fetchOneTicker(ticker: string, fetcher: FetchLike): Promise<UpstreamPrice | null> {
   const controller = new AbortController();
@@ -59,23 +69,23 @@ async function fetchOneTicker(ticker: string, fetcher: FetchLike): Promise<Upstr
     return null;
   }
 
-  let body: YahooChartResponse;
+  let body: unknown;
   try {
-    body = (await res.json()) as YahooChartResponse;
+    body = await res.json();
   } catch {
     throw new UpstreamUnavailableError("malformed upstream response");
   }
 
-  const result = body?.chart?.result;
-  if (!Array.isArray(result) || result.length === 0 || result[0] == null) return null;
+  const meta = parseChartMeta(body);
+  if (meta === null) return null;
 
-  const price = result[0].meta?.regularMarketPrice;
+  const price = meta.regularMarketPrice;
   if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) return null;
 
   // Represent prices as fixed-8 decimal strings (no floating-point arithmetic on the value).
   const decimal = price.toFixed(8);
 
-  const prev = result[0].meta?.previousClose ?? result[0].meta?.chartPreviousClose;
+  const prev = meta.previousClose ?? meta.chartPreviousClose;
   // Reject sub-cent priors (1e-8) to avoid `"0.00000000"` slipping through as
   // a divide-by-zero hazard for downstream day-change math.
   const previousPrice =
@@ -99,25 +109,24 @@ export async function fetchYahooPrices(
 ): Promise<Map<string, UpstreamPrice>> {
   if (tickers.length === 0) return new Map();
 
-  const entries = await Promise.all(
-    tickers.map(async (ticker) => {
+  const out = new Map<string, UpstreamPrice>();
+  let next = 0;
+  async function worker(): Promise<void> {
+    while (next < tickers.length) {
+      const ticker = tickers[next++];
+      if (ticker === undefined) return;
       try {
         const result = await fetchOneTicker(ticker, fetcher);
-        return [ticker, result] as const;
+        if (result !== null) out.set(ticker, result);
       } catch (err) {
-        if (err instanceof UpstreamUnavailableError) {
-          // Per-ticker upstream failure isolated to "unknown" — one bad
-          // ticker shouldn't fail the whole batch.
-          return [ticker, null] as const;
-        }
-        throw err;
+        // Per-ticker upstream failure isolated to "unknown": one bad ticker
+        // shouldn't fail the whole batch.
+        if (!(err instanceof UpstreamUnavailableError)) throw err;
       }
-    }),
-  );
-
-  const out = new Map<string, UpstreamPrice>();
-  for (const [ticker, entry] of entries) {
-    if (entry !== null) out.set(ticker, entry);
+    }
   }
+
+  const workers = Array.from({ length: Math.min(FETCH_CONCURRENCY, tickers.length) }, worker);
+  await Promise.all(workers);
   return out;
 }

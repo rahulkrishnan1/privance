@@ -1,11 +1,47 @@
-import { Decimal, HoldingPayloadSchema, SCALE_CRYPTO } from "@privance/core";
+import { Decimal, SCALE_CENTS, SCALE_CRYPTO } from "@privance/core";
 import type { RefreshPricesResponse } from "@/lib/api/prices";
 import { getMarketValue } from "@/lib/market-value";
 import type { FilterState, LocalHolding, SortState } from "./types";
 
 type PriceEntry = { ticker: string; price: string };
 
-export { getMarketValue };
+export function computeEffectivePrice(priceStr: string, scaleFactor?: string): Decimal | null {
+  try {
+    const p = Decimal.fromString(priceStr, SCALE_CRYPTO);
+    if (scaleFactor === undefined) return p;
+    const sf = Decimal.fromString(scaleFactor, SCALE_CRYPTO);
+    return p.mul(sf, { resultScale: SCALE_CRYPTO });
+  } catch {
+    return null;
+  }
+}
+
+export function computeMarketValue(
+  sharesMajor: string,
+  sharesScale: number,
+  priceStr: string,
+  scaleFactor?: string,
+): Decimal | null {
+  try {
+    const shares = Decimal.fromString(sharesMajor, sharesScale);
+    const price = Decimal.fromString(priceStr, SCALE_CRYPTO);
+    const scale = scaleFactor ? Decimal.fromString(scaleFactor, SCALE_CRYPTO) : null;
+    const effectivePrice = scale !== null ? price.mul(scale, { resultScale: SCALE_CRYPTO }) : price;
+    return shares.mul(effectivePrice, { resultScale: SCALE_CENTS });
+  } catch {
+    return null;
+  }
+}
+
+// Crypto holdings store the lowercase CoinGecko id as their ticker and have no
+// upstream profile; title-case it ("avalanche-2" -> "Avalanche 2") so the row
+// still has a readable name beneath the ticker.
+export function humanizeCryptoId(id: string): string {
+  return id
+    .split("-")
+    .map((word) => (word.length > 0 ? word[0].toUpperCase() + word.slice(1) : word))
+    .join(" ");
+}
 
 export function filterHoldings(holdings: LocalHolding[], filter: FilterState): LocalHolding[] {
   switch (filter.kind) {
@@ -18,17 +54,9 @@ export function filterHoldings(holdings: LocalHolding[], filter: FilterState): L
   }
 }
 
-function getShares(h: LocalHolding): Decimal {
-  try {
-    return Decimal.fromString(h.sharesMajor, h.sharesScale);
-  } catch {
-    return Decimal.zero(h.sharesScale);
-  }
-}
-
-// Integer cents ("150000" = $1,500.00) — current write path.
+// Integer cents ("150000" = $1,500.00), current write path.
 const INT_CENTS_RE = /^-?(0|[1-9][0-9]*)$/;
-// Dollar-decimal with exactly two places ("1500.00" = $1,500.00) — legacy
+// Dollar-decimal with exactly two places ("1500.00" = $1,500.00), legacy
 // records still on disk in some local DBs.
 const DOLLAR_DECIMAL_RE = /^-?(0|[1-9][0-9]*)\.[0-9]{2}$/;
 
@@ -95,17 +123,6 @@ function getCostBasis(h: LocalHolding): Decimal {
   return parseCostBasisCents(h.costBasisCents);
 }
 
-function getAvgCost(h: LocalHolding): Decimal {
-  try {
-    const cost = getCostBasis(h);
-    const shares = Decimal.fromString(h.sharesMajor, h.sharesScale);
-    if (shares.isZero()) return Decimal.zero(2);
-    return cost.div(shares);
-  } catch {
-    return Decimal.zero(2);
-  }
-}
-
 function getPrice(h: LocalHolding, prices: Map<string, PriceEntry>): Decimal {
   const priceTicker = h.proxyTicker ?? h.ticker;
   const entry = prices.get(priceTicker);
@@ -136,7 +153,7 @@ export function sortHoldings(
   holdings: LocalHolding[],
   sort: SortState,
   prices: Map<string, PriceEntry>,
-  accountNames: Map<string, string> = new Map(),
+  dayChangeByHoldingId: ReadonlyMap<string, Decimal> = new Map(),
 ): LocalHolding[] {
   const dir = sort.direction === "asc" ? 1 : -1;
 
@@ -144,18 +161,19 @@ export function sortHoldings(
     switch (sort.column) {
       case "ticker":
         return dir * a.ticker.localeCompare(b.ticker);
-      case "account": {
-        const nameA = accountNames.get(a.accountId) ?? a.accountId;
-        const nameB = accountNames.get(b.accountId) ?? b.accountId;
-        return dir * nameA.localeCompare(nameB);
-      }
-      case "shares":
-        return dir * getShares(a).cmp(getShares(b));
-      case "avgCost":
-        return dir * getAvgCost(a).cmp(getAvgCost(b));
       case "currentPrice":
         return dir * getPrice(a, prices).cmp(getPrice(b, prices));
+      case "dayPct": {
+        // Sort by absolute day-change amount; null (no price) sorts last.
+        const da = dayChangeByHoldingId.get(a.id) ?? null;
+        const db = dayChangeByHoldingId.get(b.id) ?? null;
+        if (da === null && db === null) return 0;
+        if (da === null) return 1;
+        if (db === null) return -1;
+        return dir * da.cmp(db);
+      }
       case "marketValue":
+      case "weight":
         return dir * getMarketValue(a, prices).cmp(getMarketValue(b, prices));
       case "gainDollar":
         return dir * getGainDollar(a, prices).cmp(getGainDollar(b, prices));
@@ -168,23 +186,4 @@ export function sortHoldings(
         return 0;
     }
   });
-}
-
-export function parseStoredHolding(objectId: string, bytes: Uint8Array, updatedAt: number) {
-  const p = HoldingPayloadSchema.parse(JSON.parse(new TextDecoder().decode(bytes)));
-  return {
-    id: objectId,
-    accountId: p.accountId,
-    groupId: p.groupId,
-    ticker: p.ticker,
-    assetType: p.assetType,
-    proxyTicker: p.proxyTicker,
-    sharesMajor: p.sharesMajor,
-    sharesScale: p.sharesScale,
-    costBasisCents: p.costBasisCents,
-    scaleFactor: p.scaleFactor,
-    proxyAnchoredAt: p.proxyAnchoredAt,
-    name: p.name,
-    updatedAt,
-  };
 }

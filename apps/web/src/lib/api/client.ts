@@ -1,3 +1,5 @@
+import type { ZodType } from "zod";
+
 const CSRF_HEADER = "X-Requested-With";
 const CSRF_VALUE = "privance-web";
 const MUTATING_METHODS = new Set(["POST", "PUT", "DELETE", "PATCH"]);
@@ -59,4 +61,20 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   }
 
   return response;
+}
+
+// Validates a successful JSON response against its wire schema, so a server
+// shape drift surfaces here instead of silently flowing in as `unknown`.
+export async function parseJson<T>(res: Response, schema: ZodType<T>): Promise<T> {
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    throw new ApiError(res.status, "parse_error", "failed to parse response body");
+  }
+  const result = schema.safeParse(body);
+  if (!result.success) {
+    throw new ApiError(res.status, "schema_error", "unexpected response shape");
+  }
+  return result.data;
 }

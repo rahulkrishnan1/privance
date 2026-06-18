@@ -42,20 +42,6 @@ export class InvalidInviteError extends AuthError {
   }
 }
 
-export class WeakPasswordError extends AuthError {
-  constructor(message = "password found in breach database") {
-    super("weak_password", message);
-    this.name = "WeakPasswordError";
-  }
-}
-
-export class HibpUnavailableError extends AuthError {
-  constructor(message = "password breach check unavailable") {
-    super("hibp_unavailable", message);
-    this.name = "HibpUnavailableError";
-  }
-}
-
 export class RateLimitedError extends AuthError {
   constructor(message = "too many attempts") {
     super("rate_limited", message);

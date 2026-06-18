@@ -1,22 +1,17 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { Hono } from "hono";
-import { HTTPException } from "hono/http-exception";
-import type { MiddlewareHandler } from "hono/types";
-
-// ---------------------------------------------------------------------------
-// Wire-level tests, in-process, no real DB, no live network.
-//
 // Strategy: inject a mock fetcher into PriceService at construction time,
 // then wire the router against a mock session middleware. No module mocking
 // needed, the service is instantiated inline below.
-// ---------------------------------------------------------------------------
-
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { secureHeaders } from "hono/secure-headers";
+import type { MiddlewareHandler } from "hono/types";
 import { requireCsrfHeader } from "../core/middleware.js";
 import { PriceService } from "./price-service.js";
 import * as rateLimit from "./rate-limit.js";
 import type { CachedPriceRow } from "./repo.js";
 import type { FetchLike } from "./types.js";
+import { UpstreamUnavailableError } from "./types.js";
 import { createFeatureRouter } from "./wire.js";
 
 type StubRepo = {
@@ -40,10 +35,6 @@ function createStubRepo(initial: CachedPriceRow[] = []): StubRepo {
     },
   };
 }
-
-// ---------------------------------------------------------------------------
-// Shared helpers
-// ---------------------------------------------------------------------------
 
 const BASE = "http://localhost";
 const TEST_COOLDOWN_MS = 80;
@@ -126,10 +117,6 @@ afterEach(() => {
   rateLimit.resetAll();
 });
 
-// ---------------------------------------------------------------------------
-// CSRF guard
-// ---------------------------------------------------------------------------
-
 describe("CSRF guard", () => {
   it("POST /refresh without X-Requested-With → 403", async () => {
     const server = buildTestApp(yahooOkFetcher({ AAPL: 182.5 }));
@@ -157,10 +144,6 @@ describe("CSRF guard", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Auth guard
-// ---------------------------------------------------------------------------
-
 describe("Auth guard", () => {
   it("POST /refresh without session → 401", async () => {
     const server = buildTestApp(yahooOkFetcher({ AAPL: 182.5 }));
@@ -174,10 +157,6 @@ describe("Auth guard", () => {
     expect(res.status).toBe(401);
   });
 });
-
-// ---------------------------------------------------------------------------
-// POST /refresh, happy path
-// ---------------------------------------------------------------------------
 
 describe("POST /refresh, happy path", () => {
   it("returns prices and empty unknown array for known tickers", async () => {
@@ -214,10 +193,6 @@ describe("POST /refresh, happy path", () => {
     expect(body.unknown).toEqual(["NOPE"]);
   });
 });
-
-// ---------------------------------------------------------------------------
-// POST /refresh, error paths
-// ---------------------------------------------------------------------------
 
 describe("POST /refresh, invalid input", () => {
   it("returns 400 for missing tickers field", async () => {
@@ -267,7 +242,6 @@ describe("POST /refresh, invalid input", () => {
       fetcher: trackingFetcher,
       cooldownMs: TEST_COOLDOWN_MS,
     });
-    // Patch recordRefresh detection via msUntilNextRefresh: if > 0, cooldown was burned.
     const { router } = createFeatureRouter(mockSessionMiddleware(), service);
     const app = new Hono();
     app.use("*", secureHeaders());
@@ -320,14 +294,39 @@ describe("POST /refresh, upstream errors (per-ticker isolation)", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Per-user rate-limit
-// ---------------------------------------------------------------------------
+describe("POST /refresh, UpstreamUnavailableError maps to 503", () => {
+  it("propagated UpstreamUnavailableError → 503 with Retry-After", async () => {
+    const throwing = {
+      refresh: async () => {
+        throw new UpstreamUnavailableError("upstream returned non-2xx");
+      },
+      msUntilNextRefresh: () => 0,
+    };
+    const { router } = createFeatureRouter(
+      mockSessionMiddleware(),
+      throwing as unknown as PriceService,
+    );
+    const app = new Hono();
+    app.use("*", secureHeaders());
+    app.use("/api/*", requireCsrfHeader);
+    app.route("/api/prices", router);
+
+    const res = await app.fetch(
+      new Request(`${BASE}/api/prices/refresh`, {
+        method: "POST",
+        headers: headers("POST"),
+        body: JSON.stringify({ tickers: ["AAPL"], source: "yahoo" }),
+      }),
+    );
+    expect(res.status).toBe(503);
+    expect(res.headers.get("retry-after")).toBe("30");
+  });
+});
 
 describe("POST /refresh, per-user rate-limit", () => {
   it("second request within cooldown → 429 with Retry-After", async () => {
-    // First request fetches AAPL and populates the cache. Second request uses
-    // MSFT (not cached) so it must hit upstream and triggers the rate-limit gate.
+    // First request fetches AAPL and populates the cache. Second request uses MSFT
+    // (not cached) so it must go to upstream and hits the rate-limit gate.
     const server = buildTestApp(yahooOkFetcher({ AAPL: 182.5, MSFT: 420 }));
 
     const first = await server.fetch(
@@ -371,10 +370,6 @@ describe("POST /refresh, per-user rate-limit", () => {
     expect(res.status).toBe(200);
   });
 });
-
-// ---------------------------------------------------------------------------
-// GET /cooldown
-// ---------------------------------------------------------------------------
 
 describe("GET /cooldown", () => {
   it("returns 0 before any refresh", async () => {

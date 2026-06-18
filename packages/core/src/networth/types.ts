@@ -9,21 +9,6 @@ import type {
   SymbolProfile,
 } from "../domain/index.js";
 
-// ---------------------------------------------------------------------------
-// Errors
-// ---------------------------------------------------------------------------
-
-export class NetWorthError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "NetWorthError";
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Input
-// ---------------------------------------------------------------------------
-
 export interface NetWorthInput {
   /** All user accounts (cash / investment / liability / manual_asset). */
   accounts: Account[];
@@ -39,11 +24,10 @@ export interface NetWorthInput {
   symbolProfiles?: Map<string, SymbolProfile> | undefined;
   /** Optional user-defined groups, needed for by-group rollup. */
   groups?: HoldingGroup[] | undefined;
+  /** Epoch ms stamped onto the breakdown; supplied by the caller so the
+   *  function stays pure. */
+  asOf: number;
 }
-
-// ---------------------------------------------------------------------------
-// Breakdown
-// ---------------------------------------------------------------------------
 
 export interface HoldingValuation {
   readonly holdingId: HoldingId;
@@ -51,7 +35,7 @@ export interface HoldingValuation {
   readonly marketValue: Decimal;
   /** Cost basis in cents. */
   readonly costBasis: Decimal;
-  /** marketValue − costBasis (can be negative). */
+  /** marketValue - costBasis (can be negative). */
   readonly unrealizedPnl: Decimal;
 }
 
@@ -67,7 +51,7 @@ export interface NetWorthBreakdown {
   readonly totalAssets: Decimal;
   /** Sum of liability account balances. */
   readonly totalLiabilities: Decimal;
-  /** totalAssets − totalLiabilities. */
+  /** totalAssets - totalLiabilities. */
   readonly netWorth: Decimal;
   readonly byAccountKind: {
     readonly cash: Decimal;
@@ -87,10 +71,6 @@ export interface NetWorthBreakdown {
   /** ms epoch when the breakdown was computed. */
   readonly asOf: number;
 }
-
-// ---------------------------------------------------------------------------
-// Allocation
-// ---------------------------------------------------------------------------
 
 export interface AllocationSlice {
   /** Human-readable label (asset class, sector, country, region, or group name). */

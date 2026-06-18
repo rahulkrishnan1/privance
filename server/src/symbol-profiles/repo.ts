@@ -3,11 +3,17 @@ import type { Db } from "../core/db.js";
 import { symbolProfiles } from "./schema.js";
 import type { SymbolProfile } from "./types.js";
 
-// ---------------------------------------------------------------------------
-// Row ↔ domain conversion
-// ---------------------------------------------------------------------------
-
 type Row = typeof symbolProfiles.$inferSelect;
+
+function parseSectorWeightings(raw: string | null): SymbolProfile["sectorWeightings"] {
+  if (raw === null) return undefined;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 function rowToProfile(row: Row): SymbolProfile {
   return {
@@ -21,7 +27,10 @@ function rowToProfile(row: Row): SymbolProfile {
     assetClass: row.assetClass ?? undefined,
     assetSubClass: row.assetSubClass ?? undefined,
     sector: row.sector ?? undefined,
+    sectorWeightings: parseSectorWeightings(row.sectorWeightings),
     industry: row.industry ?? undefined,
+    dividendYield: row.dividendYield ?? undefined,
+    fundCategory: row.fundCategory ?? undefined,
     country: row.country ?? undefined,
     region: row.region ?? undefined,
     currency: row.currency ?? undefined,
@@ -67,7 +76,13 @@ export class SymbolProfileRepo {
       assetClass: p.assetClass ?? null,
       assetSubClass: p.assetSubClass ?? null,
       sector: p.sector ?? null,
+      sectorWeightings:
+        p.sectorWeightings && p.sectorWeightings.length > 0
+          ? JSON.stringify(p.sectorWeightings)
+          : null,
       industry: p.industry ?? null,
+      dividendYield: p.dividendYield ?? null,
+      fundCategory: p.fundCategory ?? null,
       country: p.country ?? null,
       region: p.region ?? null,
       currency: p.currency ?? null,
@@ -88,7 +103,12 @@ export class SymbolProfileRepo {
           assetClass: sql`excluded.asset_class`,
           assetSubClass: sql`excluded.asset_sub_class`,
           sector: sql`excluded.sector`,
+          // Supplementary fields come from a secondary upstream fetch that is
+          // often rate-limited; keep a stored value when this refresh omits it.
+          sectorWeightings: sql`COALESCE(excluded.sector_weightings, ${symbolProfiles.sectorWeightings})`,
           industry: sql`excluded.industry`,
+          dividendYield: sql`COALESCE(excluded.dividend_yield, ${symbolProfiles.dividendYield})`,
+          fundCategory: sql`COALESCE(excluded.fund_category, ${symbolProfiles.fundCategory})`,
           country: sql`excluded.country`,
           region: sql`excluded.region`,
           currency: sql`excluded.currency`,

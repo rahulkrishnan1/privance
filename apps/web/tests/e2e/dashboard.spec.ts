@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 import type { Fixtures } from "../../playwright/global-setup";
 import { BASE_URL } from "../../playwright/ports";
 import type { SessionSnapshot } from "./helpers/auth";
-import { loginAndCapture, restoreSession } from "./helpers/auth";
+import { loginAndCapture, restoreSession, waitForSynced } from "./helpers/auth";
 
 function loadFixtures(): Fixtures {
   const p = path.join(__dirname, "../../.playwright-fixtures.json");
@@ -13,15 +13,11 @@ function loadFixtures(): Fixtures {
 
 const RUN = Date.now().toString(36);
 
-// ---------------------------------------------------------------------------
-// Dashboard — empty state
 // Uses recoveryUser (from globalSetup fixtures) which never has accounts added
-// in any E2E test, so it always shows the empty dashboard state.
-// This avoids burning a signup slot, which can be unreliable when the rate
-// limit (3 signups / 60 s / IP) is already close to the edge.
-// ---------------------------------------------------------------------------
-
-test.describe("dashboard — empty state", () => {
+// in any E2E test, so it always shows the empty dashboard state. This avoids
+// burning a signup slot, which can be unreliable when the rate limit
+// (3 signups / 60 s / IP) is already close to the edge.
+test.describe("dashboard - empty state", () => {
   test("with no data shows the empty state", async ({ browser }) => {
     const { recoveryUser } = loadFixtures();
     const session = await loginAndCapture(browser, {
@@ -36,21 +32,18 @@ test.describe("dashboard — empty state", () => {
     await page.goto("/app/");
     await expect(page).toHaveURL("/app/", { timeout: 15_000 });
 
-    // recoveryUser has no accounts → empty dashboard state
-    await expect(page.getByRole("heading", { name: /Track your net worth/ })).toBeVisible({
+    // recoveryUser has no accounts → the invest empty state ("Your vault is
+    // empty, and sealed.") with an "Add first account" button.
+    await expect(page.getByRole("heading", { name: /vault is empty/i })).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.getByRole("link", { name: /Add your first account/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Add first account/i })).toBeVisible();
     await ctx.close();
   });
 });
 
-// ---------------------------------------------------------------------------
-// Dashboard — with data
 // Login once in beforeAll and inject DEK + cookies in beforeEach so we only
 // burn one login attempt per test run (avoids the 5/min per-username limit).
-// ---------------------------------------------------------------------------
-
 let savedSession: SessionSnapshot;
 let dataSetupDone = false;
 
@@ -63,20 +56,18 @@ async function ensureDataSetup(browser: import("@playwright/test").Browser): Pro
     password: sharedUser.password,
   });
 
-  // Add a cash account via a page that has the DEK injected
   const ctx = await browser.newContext({ baseURL: BASE_URL });
   const page = await ctx.newPage();
   await restoreSession(page, savedSession);
 
   await page.goto("/app/accounts/");
+  await expect(page).toHaveURL("/app/accounts/", { timeout: 15_000 });
   await expect(
     page
-      .getByRole("heading", { name: "Accounts" })
-      .or(page.getByRole("heading", { name: "Add your first account" })),
+      .getByRole("heading", { name: /vault is empty/i })
+      .or(page.getByRole("navigation", { name: "Invest sub-navigation" })),
   ).toBeVisible({ timeout: 15_000 });
-  // Settle the initial sync + prices before filling, so a late re-render can't
-  // revert the controlled input mid-fill.
-  await page.waitForLoadState("networkidle");
+  await waitForSynced(page);
 
   await page
     .getByRole("button", { name: /Add.*account/i })
@@ -84,52 +75,50 @@ async function ensureDataSetup(browser: import("@playwright/test").Browser): Pro
     .click();
   const d = page.getByRole("dialog", { name: /Add account/i });
   await expect(d).toBeVisible();
-  await d.getByLabel("Account name").fill(`Dashboard-Cash-${RUN}`);
-  await d.getByLabel("Balance").fill("25000.00");
-  await d.getByRole("button", { name: "Save" }).click();
+  await d.getByLabel("Name").fill(`Dashboard-Cash-${RUN}`);
+  await d.getByRole("button", { name: "Cash" }).click();
+  await d.getByLabel("Account type").selectOption("checking");
+  await d.getByLabel("Current balance").fill("25000.00");
+  await d.getByRole("button", { name: "Create account" }).click();
   await expect(d).not.toBeVisible({ timeout: 10_000 });
 
   dataSetupDone = true;
   await ctx.close();
 }
 
-test.describe("dashboard — with data", () => {
+test.describe("dashboard - with data", () => {
   test.beforeAll(async ({ browser }) => {
     await ensureDataSetup(browser);
   });
 
   test.beforeEach(async ({ page }) => {
-    // Inject DEK + session cookie before any navigation so AuthProvider
-    // initialises as "unlocked" on first render.
     await restoreSession(page, savedSession);
 
-    // Navigate to the dashboard
     await page.goto("/app/");
     await expect(page).toHaveURL("/app/", { timeout: 15_000 });
-    // Settle the initial sync drain + prices/snapshot so the dashboard reads a
-    // fully-computed state, not a mid-load frame.
-    await page.waitForLoadState("networkidle");
+    // OPFS resolves locally so networkidle fires too early; wait for the hero or subnav.
+    await expect(
+      page
+        .getByTestId("invest-net-worth")
+        .or(page.getByRole("navigation", { name: "Invest sub-navigation" })),
+    ).toBeVisible({ timeout: 15_000 });
+    await waitForSynced(page);
   });
 
   test("net worth tile renders a real computed value, not $0 or NaN", async ({ page }) => {
-    // The shared user has accounts, so net worth must render as a well-formed,
-    // non-zero currency value. (Asserting only that the tile is "visible" passed
-    // even when the value was wrong, which is the fluff this replaces.)
-    const value = page.getByTestId("net-worth-value");
+    const value = page.getByTestId("invest-net-worth");
     await expect(value).toBeVisible({ timeout: 15_000 });
-    await expect(value).toHaveText(/\$[\d,]+\.\d{2}/, { timeout: 15_000 });
+    await expect(value).toHaveText(/\$[\d,]+/, { timeout: 15_000 });
     const text = (await value.textContent()) ?? "";
     expect(text).not.toContain("NaN");
-    expect(text).not.toBe("$0.00");
+    expect(text).not.toBe("$0");
   });
 
   test("net worth history chart shows the empty-state copy with only one day of data", async ({
     page,
   }) => {
     // The setup account is one day old, so the chart cannot draw a line yet and
-    // must show the friendly empty-state, not a blank/broken plot. (The
-    // multi-day rendered line + zoomed axis is covered by the Vitest Browser
-    // Mode test history-chart.browser.test.tsx.)
+    // must show the friendly empty-state, not a blank/broken plot.
     const card = page.getByRole("img", { name: "Net worth history chart" });
     await expect(card).toBeVisible({ timeout: 15_000 });
     await expect(card.getByText(/Net worth history will appear after a few days/i)).toBeVisible();

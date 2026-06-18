@@ -18,16 +18,8 @@ import {
   readRawBiometricIdb,
 } from "./biometric-store.test-helpers";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 beforeEach(() => purgeEnrollment());
 afterEach(() => purgeEnrollment());
-
-// ---------------------------------------------------------------------------
-// Round-trip
-// ---------------------------------------------------------------------------
 
 describe("save/load round trip", () => {
   it("preserves all fields exactly", async () => {
@@ -52,10 +44,6 @@ describe("save/load round trip", () => {
     expect(result).toBeNull();
   });
 });
-
-// ---------------------------------------------------------------------------
-// Cadence expiry purges on load
-// ---------------------------------------------------------------------------
 
 describe("load past expiry", () => {
   it("destroys the wrapped items key but keeps the enrollment bookkeeping (R9)", async () => {
@@ -86,10 +74,6 @@ describe("load past expiry", () => {
     expect(restored.lastPasswordUnlockAt).toBe(expiredNow);
   });
 });
-
-// ---------------------------------------------------------------------------
-// reArm
-// ---------------------------------------------------------------------------
 
 describe("reArm", () => {
   it("replaces the wrapped blob bytes and updates lastPasswordUnlockAt", async () => {
@@ -123,10 +107,6 @@ describe("reArm", () => {
     expect(raw).toBeUndefined();
   });
 });
-
-// ---------------------------------------------------------------------------
-// Full crypto round-trip
-// ---------------------------------------------------------------------------
 
 describe("full crypto round trip", () => {
   it("generateProtectorKeypair -> seal -> save -> load -> openProtectorKey -> unwrapItemsKeyRsa recovers the original items key", async () => {
@@ -199,10 +179,6 @@ describe("full crypto round trip", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// purgeEnrollment
-// ---------------------------------------------------------------------------
-
 describe("purgeEnrollment", () => {
   it("removes the stored record", async () => {
     const e = await buildEnrollment();
@@ -212,10 +188,6 @@ describe("purgeEnrollment", () => {
     expect(raw).toBeUndefined();
   });
 });
-
-// ---------------------------------------------------------------------------
-// Cross-user guard
-// ---------------------------------------------------------------------------
 
 describe("cross-user guard", () => {
   it("purges and returns null when userId does not match", async () => {
@@ -228,10 +200,6 @@ describe("cross-user guard", () => {
     expect(raw).toBeUndefined();
   });
 });
-
-// ---------------------------------------------------------------------------
-// Structural tamper guard
-// ---------------------------------------------------------------------------
 
 describe("structural tamper guard", () => {
   it("purges and returns null when a required field is missing", async () => {
@@ -276,10 +244,6 @@ describe("structural tamper guard", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// At-rest posture
-// ---------------------------------------------------------------------------
-
 describe("at-rest posture", () => {
   it("raw IDB record contains no plaintext items-key bytes and private key appears only as ciphertext", async () => {
     const e = await buildEnrollment();
@@ -310,10 +274,6 @@ describe("at-rest posture", () => {
     expect(sealed.ciphertext.length).toBeGreaterThan(0);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Storage fault degrades to null
-// ---------------------------------------------------------------------------
 
 describe("storage fault tolerance", () => {
   it("loadEnrollment returns null instead of throwing when IDB open fails", async () => {

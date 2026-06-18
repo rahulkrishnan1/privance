@@ -1,123 +1,96 @@
-# Privance, zero-knowledge encryption personal finance app
+<p align="center">
+  <img src="apps/web/public/icon.svg" alt="Privance" width="76" height="76" />
+</p>
 
-## What this is
+<h1 align="center">Privance</h1>
 
-Privance is a personal finance application built around a single principle: the server should be structurally incapable of reading your financial data. All encryption and decryption runs in your browser. The server stores opaque ciphertext blobs, account balances, holdings, and transactions are never decrypted outside the device that owns them.
+<p align="center">
+  <em>Personal finance, kept personal.</em>
+</p>
 
-The app is self-hostable. There are no required cloud dependencies, no telemetry, and no third-party analytics. You run the stack on your own hardware and the data stays there.
+<p align="center">
+  <a href="LICENSE"><img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-7FC4C6"></a>
+  <img alt="Zero-knowledge" src="https://img.shields.io/badge/encryption-zero--knowledge-7FC4C6">
+  <img alt="PWA installable" src="https://img.shields.io/badge/PWA-installable-7FC4C6">
+</p>
 
-Privance ships as a static-export Progressive Web App (Next.js) that can be installed from the browser on any platform. The same static export is wrapped by Capacitor for native iOS and Android distribution; iOS and Android projects live under `apps/web/ios/` and `apps/web/android/` and share the exact same build artefact as the web app.
+<p align="center">
+  <img src="docs/screenshots/hero.png" alt="Privance: net worth, trend, and accounts at a glance" width="840">
+</p>
 
-The threat model in one sentence: a fully compromised server reveals nothing about your financial data beyond your username and session metadata, because the server never holds a decryption key.
+Privance is a command center for your money: net worth, holdings, spending, and a financial independence planner. Everything is encrypted in your browser before it leaves. The server, ours or yours, stores that encrypted data but never the keys to unlock it. Even if it were breached, all anyone would find is your username and some timestamps. Not your balances, not your investments, not a single dollar.
 
----
+> [!WARNING]
+> **No backdoor, by design.** There are no resets, no recovery email, no master key in a drawer. Lose both your master password and your 12-word recovery phrase and the data is gone for good, even to a hosted-instance operator. Keep the phrase on paper, offline.
 
-## Quickstart for developers
+## Inside the vault
 
-### Prerequisites
+- **Net worth, honestly computed.** Assets minus liabilities across cash, brokerage, retirement, property, and crypto, tracked on a daily trend and calculated to the exact cent.
+- **Holdings, priced live.** Stocks, funds, and crypto with fractional shares and your real cost basis. Price lookups go out anonymously, never tied to you.
+- **Allocation and insights.** Your mix by asset class and sector, how much rides on any single holding, and where every dollar sits by tax treatment.
+- **Spending you're committed to.** Bills and subscriptions, essentials and discretionary, logged by hand. No bank linking; the server never learns where the money went.
+- **Independence, simulated.** Project your path to financial independence with thousands of Monte Carlo runs and real historical-market replays, all on your own device.
+- **Face, fingerprint, phrase.** Unlock with a passkey on the devices you trust. After a stretch of inactivity the app locks itself and clears your keys from memory.
+- **The veil.** One tap frosts every figure on screen. Charts stay readable, numbers don't.
+- **Installs from the browser.** A progressive web app that works offline on desktop and phone. No app store in the way.
 
-- **Bun** ≥ 1.3.14 (server runtime)
-- **Node.js** ≥ 22.0.0 (Next.js build)
-- **pnpm** ≥ 11.0.0
-- **PostgreSQL** 17, run locally or via Docker (dev-only credentials; production generates a random secret, see `infra/README.md`):
+## How the server stays blind
+
+Your privacy isn't a setting or a promise; it's built into how the encryption works, and all of it happens in your browser:
+
+1. **Stretch.** Your master password is put through Argon2id, a deliberately slow step that makes it impractical to guess.
+2. **Split.** From it, two separate keys are created: one proves who you are to the server, the other encrypts your data and never leaves your device.
+3. **Seal.** Every record is locked with AES-256-GCM and bound to its place, so nothing can be swapped out or tampered with.
+
+| The server holds | The server never holds |
+| --- | --- |
+| login proof | your password |
+| encrypted data | your encryption keys |
+| timestamps | a single balance |
+
+The code is open and the cryptography is standard, so you never have to take our word for it. Audit it, fork it, run it.
+
+## Try it
+
+- **Hosted.** Sign up at [privance.app](https://privance.app). We run the servers and keep the backups; everything we store is encrypted, and we hold no key to read it.
+- **Local, one command.** Build and run the whole stack on your machine:
   ```sh
-  docker run -d --name privance-pg \
-    -e POSTGRES_USER=privance \
-    -e POSTGRES_PASSWORD=privance \
-    -e POSTGRES_DB=privance \
-    -p 5432:5432 \
-    postgres:17-alpine
+  git clone https://github.com/rahulkrishnan1/privance.git
+  cd privance
+  docker compose -f infra/compose.local.yaml up --build
   ```
-
-### Install and boot
-
-```sh
-git clone <repo-url> privance
-cd privance
-pnpm install
-
-# Copy env files
-cp server/.env.example server/.env
-# Edit server/.env: DATABASE_URL works as-is with the Docker command above;
-# ENUMERATION_SECRET is required (the server refuses to start without it):
-#   openssl rand -base64 48   # paste the output after ENUMERATION_SECRET=
-
-# Point the web app at the local server in dev (production builds default to
-# same-origin and need no env var; Caddy proxies /api/* on the same host).
-echo "NEXT_PUBLIC_SERVER_URL=http://localhost:3000" > apps/web/.env.development.local
-
-# Run database migrations
-pnpm --filter @privance/server db:migrate
-
-# Start everything in parallel (server + web)
-pnpm dev
-```
-
-The web app will be available at `http://localhost:8081` and the API server at `http://localhost:3000`.
-
-### Required environment variables
-
-| Variable | Where | Purpose |
-|---|---|---|
-| `DATABASE_URL` | `server/.env` | PostgreSQL connection string |
-| `ENUMERATION_SECRET` | `server/.env` | Base64-encoded secret (≥ 32 bytes) for HMAC-keyed username-enumeration prevention |
-| `NODE_ENV` | `server/.env` | Set to `production` in prod; controls secure cookie flag |
-| `NEXT_PUBLIC_SERVER_URL` | `apps/web/.env.development.local` (dev) or build-time env (Capacitor) | Where the browser sends API requests. Unset in production web builds: the bundle calls relative paths and Caddy proxies them on the same origin. Required in dev (web :8081 and server :3000 are different origins) and Capacitor (custom scheme cannot use relative URLs). |
-| `SIGNUP_ALLOWLIST` | `server/.env` | Optional comma-separated list of usernames allowed to sign up; empty = open |
-| `INVITE_REQUIRED` | `server/.env` | Set to `"true"` to require invite tokens on signup. Empty / unset = open registration (subject to `SIGNUP_ALLOWLIST`). Mint tokens via the bun script in `server/scripts/mint-invite.ts` (see `infra/README.md` for the in-container command). |
-| `ALLOWED_ORIGINS` | `server/.env` | Comma-separated allow-list of CORS origins for the API. CORS rejects all origins when unset. Production example: `https://privance.app`. |
-
----
-
-## How it's structured
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the full architecture overview, module map, data-flow traces, and diagrams.
-
-```
-privance/
-├── apps/
-│   └── web/          # Next.js 16 static PWA
-├── packages/
-│   └── core/         # Pure TypeScript: crypto, decimal math, sync, storage
-├── server/           # Bun + Hono + Drizzle + Postgres
-├── infra/            # Docker Compose stack, deploy script, env templates
-├── docs/             # Architecture decision records (docs/adr/)
-├── ARCHITECTURE.md
-├── SECURITY.md
-├── THREAT_MODEL.md
-└── CONTRIBUTING.md
-```
-
----
-
-## Security model
-
-Privance implements a zero-knowledge architecture. See [SECURITY.md](SECURITY.md) for the security policy and guaranteed properties, and [THREAT_MODEL.md](THREAT_MODEL.md) for the full STRIDE-style threat analysis.
-
----
+  Open `http://localhost:8080` and create an account. This runs over plain HTTP with a throwaway password and a fixed dev secret, for evaluation only, so never expose it to a network. Tear it down with `docker compose -f infra/compose.local.yaml down -v`.
 
 ## Self-host
 
-Privance is designed to be self-hosted. The reference deployment at `https://privance.app` runs on a single small VPS with a Docker Compose stack (server + Postgres + Caddy + encrypted nightly backups to Backblaze B2). The architecture rationale is in [`docs/adr/0002-deployment.md`](docs/adr/0002-deployment.md); the step-by-step bring-up procedure is in [`infra/README.md`](infra/README.md).
+One server container, one Postgres, one Caddy for automatic TLS. A small VPS or even a Raspberry Pi will do. Public images ship from GHCR (`ghcr.io/rahulkrishnan1/privance-{server,web,restic-runner}`), so there is nothing to build; bring a Linux host with Docker and a domain with A + AAAA records.
 
-What you need:
+The full procedure (TLS, secrets, encrypted offsite backups, invite-only signup) is in [`infra/README.md`](infra/README.md); the rationale is in [`docs/adr/0002-deployment.md`](docs/adr/0002-deployment.md).
 
-- A Linux host with Docker Engine and the Compose plugin (any provider; 2 vCPU / 4 GB minimum). A Hetzner-specific provisioning and hardening guide (SSH, UFW, Docker install, deploy user, sizing) is in [`infra/hetzner-vps.md`](infra/hetzner-vps.md). Note that Docker bypasses host firewall rules for published ports; the provided compose file publishes only 80/443 and keeps Postgres loopback-bound.
-- A domain you control, with DNS that supports A + AAAA records (Cloudflare DNS-only mode works; proxy/orange-cloud mode does not, as it breaks Let's Encrypt HTTP-01).
-- A Backblaze B2 account for encrypted offsite backups (optional but strongly recommended; any region works).
+## Development
 
-Images are pulled from GHCR (`ghcr.io/<owner>/privance-{server,web,restic-runner}`). While the repository is private, self-hosting requires a GitHub personal access token with `read:packages` scope to authenticate with GHCR before bringing the stack up.
+```sh
+git clone https://github.com/rahulkrishnan1/privance.git
+cd privance
+pnpm install
+cp server/.env.example server/.env   # set ENUMERATION_SECRET: openssl rand -base64 48
+pnpm --filter @privance/server db:migrate
+pnpm dev                             # web on :8081, server on :3000
+```
 
-For the full bring-up procedure (GHCR login, env files, TLS, backups, invite-only signup, deploys), see [`infra/README.md`](infra/README.md).
+Needs Bun >= 1.3.14, Node.js >= 22, pnpm >= 11, and Postgres 17. The full setup, test, and lint workflow is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
----
+```
+apps/web/      Next.js 16 PWA (React, Tailwind, static export)
+packages/core/ Pure TypeScript: crypto, decimal math, sync, storage
+server/        Bun + Hono + Drizzle + Postgres
+infra/         Compose stack, deploy procedure, env templates
+```
 
-## Contributing
+## Architecture and security
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
-
----
+[ARCHITECTURE.md](ARCHITECTURE.md) maps the modules and data flow. [SECURITY.md](SECURITY.md) lists the guaranteed properties and [THREAT_MODEL.md](THREAT_MODEL.md) the full STRIDE analysis. Found a vulnerability? Email security@privance.app, and please do not open a public issue.
 
 ## License
 
-AGPL-3.0. See [LICENSE](LICENSE).
+[AGPL-3.0](LICENSE). Built in the open. No analytics, no trackers.

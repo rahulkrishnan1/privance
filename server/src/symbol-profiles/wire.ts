@@ -8,10 +8,6 @@ import { LookupService } from "./lookup-service.js";
 import { SymbolProfileRepo } from "./repo.js";
 import { RateLimitedError, UpstreamUnavailableError } from "./types.js";
 
-// ---------------------------------------------------------------------------
-// Error mapper, one per module, at the wire boundary.
-// ---------------------------------------------------------------------------
-
 function errorToHttp(err: unknown): never {
   if (err instanceof RateLimitedError) {
     const retryAfterSec = Math.ceil(err.msRemaining / 1000);
@@ -39,23 +35,32 @@ function errorToHttp(err: unknown): never {
   throw err;
 }
 
-// ---------------------------------------------------------------------------
-// Input validation helpers
-// ---------------------------------------------------------------------------
+// A real portfolio has at most a few dozen distinct tickers; the cap stops an
+// authenticated client turning one request into thousands of outbound upstream
+// fetches (egress amplification / provider ban).
+const MAX_TICKERS = 100;
+// Mirror the client ticker regex (apps/web .../holdings/types.ts): alphanumerics
+// plus dot and dash (BRK.B, BRK-B). The server is the trust boundary, so it
+// re-validates rather than trusting the client; keep the two in sync.
+const TICKER_RE = /^[A-Za-z0-9.-]{1,15}$/;
 
-function requireStringArray(value: unknown, field: string): string[] {
+function requireTickers(value: unknown): string[] {
   if (!Array.isArray(value) || value.some((v) => typeof v !== "string")) {
-    throw new HTTPException(400, { message: `missing_or_invalid_field: ${field}` });
+    throw new HTTPException(400, { message: "missing_or_invalid_field: tickers" });
   }
   if (value.length === 0) {
-    throw new HTTPException(400, { message: `empty_array: ${field}` });
+    throw new HTTPException(400, { message: "empty_array: tickers" });
+  }
+  if (value.length > MAX_TICKERS) {
+    throw new HTTPException(400, { message: `too_many_tickers: max ${MAX_TICKERS}` });
+  }
+  for (const t of value as string[]) {
+    if (!TICKER_RE.test(t)) {
+      throw new HTTPException(400, { message: "invalid_ticker_format" });
+    }
   }
   return value as string[];
 }
-
-// ---------------------------------------------------------------------------
-// Router factory, sessionMiddleware injected for testability.
-// ---------------------------------------------------------------------------
 
 function buildRouter(
   sessionMiddleware: MiddlewareHandler,
@@ -65,11 +70,9 @@ function buildRouter(
   const router = new Hono();
   router.use("*", sessionMiddleware);
 
-  // POST /api/symbol-profiles/lookup
-  // CSRF required, triggers upstream fetch + DB write on cache miss.
   router.post("/lookup", async (c) => {
     const body = await c.req.json<Record<string, unknown>>();
-    const tickers = requireStringArray(body.tickers, "tickers");
+    const tickers = requireTickers(body.tickers);
 
     try {
       const result = await lookupService.lookup({ tickers });
@@ -79,12 +82,10 @@ function buildRouter(
     }
   });
 
-  // POST /api/symbol-profiles/refresh
-  // CSRF required, force-refresh from upstream, subject to per-user cooldown.
   router.post("/refresh", async (c) => {
     const userId = c.get("userId");
     const body = await c.req.json<Record<string, unknown>>();
-    const tickers = requireStringArray(body.tickers, "tickers");
+    const tickers = requireTickers(body.tickers);
 
     try {
       const result = await enrichService.refresh({ userId, tickers });

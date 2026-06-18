@@ -10,7 +10,7 @@ User's device  (browser or Capacitor WKWebView / Android WebView)
 │   ├─ /          landing page  (auth-aware: redirects signed-in users to /app/)
 │   ├─ /auth/*    unauthenticated flows  (signup, login, recovery)
 │   ├─ /unlock    locked: session exists but DEK not in memory
-│   └─ /app/*     auth-gated  (dashboard, accounts, holdings, plan, settings)
+│   └─ /app/*     auth-gated  (investments overview at /app, plus accounts, holdings, plan, spend, settings)
 │
 ├─ providers/  ── React-context wiring
 │   ├─ AuthProvider    auth state machine + DEK store
@@ -29,8 +29,11 @@ User's device  (browser or Capacitor WKWebView / Android WebView)
 ├─ Web Worker  (/sqlite/privance-worker.mjs)
 │   └─ @sqlite.org/sqlite-wasm: SAH Pool VFS (OPFS-backed) with in-memory fallback
 │
-└─ Web Worker  (/sim/sim-worker.mjs)
-    └─ core projection engine bundled at build time; plaintext sim inputs, no DEK
+├─ Web Worker  (/sim/sim-worker.mjs)
+│   └─ core projection engine bundled at build time; plaintext sim inputs, no DEK
+│
+└─ Web Worker  (/kdf/kdf-worker.js)
+    └─ Argon2id off the main thread for login/signup; main-thread hash-wasm fallback
 
          ↕  HTTPS + CSRF (X-Requested-With)
             only encrypted blobs + session cookie cross this line
@@ -39,6 +42,7 @@ Bun + Hono server  (server/)
 ├─ /health                     liveness probe
 ├─ /api/auth/*                 signup, login, logout, recovery, session, password
 ├─ /api/sync/*                 ciphertext blob CRUD + change feed
+├─ /api/account/*              vault destruction (password-gated)
 ├─ /api/prices/*               market-price proxy
 ├─ /api/symbol-profiles/*      symbol metadata proxy
 └─ middleware                  CORS, secureHeaders, requireCsrfHeader
@@ -70,19 +74,25 @@ apps/web/src/
 │   ├── layout.tsx      # Root layout: QueryProvider > AuthProvider > SyncProvider
 │   ├── (app)/          # Auth-gated route group
 │   │   ├── layout.tsx  # Sidebar + bottom tab bar; redirects if not unlocked
-│   │   ├── page.tsx    # Dashboard
+│   │   ├── page.tsx    # Investments overview (net worth, allocation, holdings)
 │   │   ├── accounts/   # Account list + create/edit
 │   │   ├── holdings/   # Holdings list
+│   │   ├── plan/       # FIRE projections
+│   │   ├── spend/      # Spending
 │   │   └── settings/   # User settings
 │   ├── auth/           # Unauthenticated flows
 │   │   ├── login/
 │   │   ├── signup/
 │   │   └── recovery/
 │   └── unlock/         # Session exists but DEK not in memory (cookie-only state)
-├── features/           # Feature modules (accounts, holdings, dashboard)
+├── features/           # Feature modules (accounts, holdings, invest, plan, spend, settings; dashboard is an Invest sub-module, not a route)
 │   └── accounts/       # Reference module: queries.ts, mutations.ts, types.ts, components/
 ├── lib/
-│   ├── api/            # Raw fetch wrappers (auth.ts, sync.ts, client.ts)
+│   ├── api/            # Raw fetch wrappers (auth, account, prices, symbol-profiles, client)
+│   ├── crypto/         # KDF worker client, WebAuthn PRF
+│   ├── storage/        # session-vault, biometric-store, per-user-store
+│   ├── sim/            # Sim worker client + wire types
+│   ├── queries/        # TanStack Query hooks (prices, profiles)
 │   └── auth-crypto.ts  # Browser-side crypto helpers for login/signup flows
 └── providers/
     ├── auth-context.tsx # DEK store, auth state machine, auto-lock idle timer
@@ -106,6 +116,7 @@ server/src/
 │   └── logger.ts       # pino logger
 ├── auth/               # Signup, login, recovery, password-change, sessions
 │   ├── wire.ts         # Hono routes; single error mapper
+│   ├── middleware.ts   # requireSession session gate (used by all protected routers)
 │   ├── login-service.ts
 │   ├── signup-service.ts
 │   ├── recovery-service.ts
@@ -114,12 +125,14 @@ server/src/
 │   ├── invite-service.ts  # Invite-token mint + atomic single-use claim
 │   ├── repo.ts         # Only layer that queries auth tables
 │   ├── rate-limit.ts   # Sliding-window + progressive backoff (in-memory)
-│   ├── hibp.ts         # HIBP k-anonymity check
 │   └── kdf.ts          # Server-side argon2id for auth-hash storage
-└── sync/               # Encrypted blob CRUD + change feed
-    ├── wire.ts
-    ├── sync-service.ts
-    └── repo.ts
+├── sync/               # Encrypted blob CRUD + change feed
+│   ├── wire.ts
+│   ├── sync-service.ts
+│   └── repo.ts
+├── account/            # Password-gated vault destruction (cascade delete)
+├── prices/             # Market-price refresh proxy + Postgres cache (Yahoo, CoinGecko)
+└── symbol-profiles/    # Symbol metadata + sector weightings (Yahoo upstream, cached)
 ```
 
 **Dependencies on:** `packages/core` (domain types, audit event constants only , no crypto).
@@ -219,7 +232,7 @@ User enters password
 10. AES-GCM-encrypt(DEK, recoveryKEK)  → wrapped_dek_recovery + wrapped_dek_recovery_iv
 11. POST /api/auth/signup {
       auth_hash, kdf_salt, kdf_params,
-      recovery_blob (HMAC authenticator for recovery proof),
+      recovery_blob (auth hash of the Argon2id-stretched recovery phrase),
       recovery_salt, recovery_params,
       wrapped_dek, wrapped_dek_iv,
       wrapped_dek_recovery, wrapped_dek_recovery_iv
@@ -317,14 +330,16 @@ The schema is identical in structure to the server's `sync_objects` table, enabl
 app/
 ├── layout.tsx                  # Root: providers (Query, Auth, Sync)
 ├── (landing)/                  # Public landing page group
-│   ├── layout.tsx              # Dark-forced layout with Fraunces display font
+│   ├── layout.tsx              # Dark-forced public layout (stone base)
 │   └── page.tsx                # Landing page (/), redirects signed-in users to /app/
 ├── (app)/                      # Auth-gated group
 │   ├── layout.tsx              # Redirects to /auth/login or /unlock if not unlocked
 │   └── app/
-│       ├── page.tsx            # Dashboard (/app)
+│       ├── page.tsx            # Investments overview (/app)
 │       ├── accounts/page.tsx   # Account list (/app/accounts)
 │       ├── holdings/page.tsx   # Holdings (/app/holdings)
+│       ├── plan/page.tsx       # FIRE projections (/app/plan)
+│       ├── spend/page.tsx      # Spending (/app/spend)
 │       └── settings/page.tsx   # Settings (/app/settings)
 ├── auth/
 │   ├── layout.tsx              # Auth shell layout

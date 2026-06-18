@@ -1,12 +1,4 @@
-/**
- * types.ts -- shared types for the projection module.
- */
-
-import type { Decimal } from "../decimal/decimal.js";
-
-// ---------------------------------------------------------------------------
-// Branded types
-// ---------------------------------------------------------------------------
+import type { Decimal } from "../decimal/index.js";
 
 /** A seed string used to initialise the PRNG. Branded to prevent accidental
  *  substitution of arbitrary strings. */
@@ -16,10 +8,6 @@ export function asSimSeed(s: string): SimSeed {
   return s as SimSeed;
 }
 
-// ---------------------------------------------------------------------------
-// PRNG state
-// ---------------------------------------------------------------------------
-
 /** Four 32-bit unsigned integers representing the sfc32 PRNG state. */
 export interface Sfc32State {
   readonly a: number;
@@ -27,10 +15,6 @@ export interface Sfc32State {
   readonly c: number;
   readonly d: number;
 }
-
-// ---------------------------------------------------------------------------
-// Engine inputs
-// ---------------------------------------------------------------------------
 
 /** Per-year fan chart percentile snapshot. All values are Decimal cents. */
 export interface YearBand {
@@ -48,10 +32,6 @@ export interface WorstCohort {
   /** The age at which the pot was depleted in this cohort. */
   readonly depletionAge: number;
 }
-
-// ---------------------------------------------------------------------------
-// Engine outputs
-// ---------------------------------------------------------------------------
 
 /** Monte Carlo simulation results. */
 export interface McResult {

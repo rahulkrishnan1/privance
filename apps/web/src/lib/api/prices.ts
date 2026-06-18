@@ -1,34 +1,32 @@
-import { apiFetch } from "./client";
+import { z } from "zod";
+import { apiFetch, parseJson } from "./client";
 
-// ---------------------------------------------------------------------------
-// Wire types, mirror server/src/prices/wire.ts exactly
-// ---------------------------------------------------------------------------
+// Wire schemas -- mirror server/src/prices/wire.ts exactly.
 
-export type PriceEntry = {
-  ticker: string;
-  price: string; // decimal string
+const PriceEntrySchema = z.object({
+  ticker: z.string(),
+  price: z.string(),
   /** Prior session close as decimal string, or null when upstream didn't provide it. */
-  previousPrice: string | null;
-  fetchedAt: string; // ISO-8601
-};
+  previousPrice: z.string().nullable(),
+  fetchedAt: z.string(),
+});
+export type PriceEntry = z.infer<typeof PriceEntrySchema>;
 
 export type RefreshPricesRequest = {
   tickers: string[];
   source: "yahoo" | "coingecko";
 };
 
-export type RefreshPricesResponse = {
-  prices: PriceEntry[];
-  unknown: string[];
-};
+const RefreshPricesResponseSchema = z.object({
+  prices: z.array(PriceEntrySchema),
+  unknown: z.array(z.string()),
+});
+export type RefreshPricesResponse = z.infer<typeof RefreshPricesResponseSchema>;
 
-export type CooldownResponse = {
-  msUntilNextRefresh: number;
-};
-
-// ---------------------------------------------------------------------------
-// Typed wrappers
-// ---------------------------------------------------------------------------
+const CooldownResponseSchema = z.object({
+  msUntilNextRefresh: z.number(),
+});
+export type CooldownResponse = z.infer<typeof CooldownResponseSchema>;
 
 export async function refreshPrices(
   tickers: string[],
@@ -38,10 +36,10 @@ export async function refreshPrices(
     method: "POST",
     body: JSON.stringify({ tickers, source } satisfies RefreshPricesRequest),
   });
-  return res.json() as Promise<RefreshPricesResponse>;
+  return parseJson(res, RefreshPricesResponseSchema);
 }
 
 export async function getCooldown(): Promise<CooldownResponse> {
   const res = await apiFetch("/api/prices/cooldown");
-  return res.json() as Promise<CooldownResponse>;
+  return parseJson(res, CooldownResponseSchema);
 }

@@ -1,27 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
+import { isCapacitor } from "./capacitor";
 
-/**
- * Registers /sw.js in production builds.
- *
- * Skipped when:
- *  - NODE_ENV !== "production" (dev HMR conflicts with SW caching)
- *  - Running inside a Capacitor WebView (Capacitor manages asset caching itself)
- */
+// Registers /sw.js in production. Skipped in dev (HMR conflicts with SW caching)
+// and inside Capacitor (it manages asset caching itself).
 export function ServiceWorkerRegistration() {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") return;
     if (!("serviceWorker" in navigator)) return;
+    if (isCapacitor()) return;
 
-    // Capacitor injects window.Capacitor; also guard via UA string for older wrappers.
-    const isCapacitor =
-      typeof window !== "undefined" &&
-      (("Capacitor" in window && window.Capacitor !== undefined) ||
-        navigator.userAgent.includes("Capacitor"));
-    if (isCapacitor) return;
-
-    // Registration failure is non-fatal; the app works without offline shell.
+    // Registration failure is non-fatal; the app works without the offline shell.
     navigator.serviceWorker.register("/sw.js").catch(() => undefined);
   }, []);
 

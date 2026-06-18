@@ -28,3 +28,16 @@ export function validatePhrase(phrase: string): boolean {
     return false;
   }
 }
+
+const wordlistSet = new Set(wordlist);
+
+/** Count how many whitespace-separated tokens are BIP39 english words. Advisory
+ *  UI only; the authoritative check stays {@link validatePhrase}. */
+export function countRecognizedWords(phrase: string): number {
+  const tokens = phrase.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  let n = 0;
+  for (const token of tokens) {
+    if (wordlistSet.has(token)) n += 1;
+  }
+  return n;
+}

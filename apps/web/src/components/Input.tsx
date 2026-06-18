@@ -17,10 +17,7 @@ export function Input({ label, error, mono, className, id: propId, ...rest }: In
 
   return (
     <div className="flex flex-col gap-2">
-      <label
-        htmlFor={id}
-        className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim"
-      >
+      <label htmlFor={id} className="font-mono text-[10px] tracking-[0.22em] uppercase text-dim">
         {label}
       </label>
       <input
@@ -29,21 +26,19 @@ export function Input({ label, error, mono, className, id: propId, ...rest }: In
         aria-invalid={hasError}
         aria-describedby={hasError ? errorId : undefined}
         className={[
-          "min-h-11 bg-transparent border-b px-1 py-2.5 text-app-text",
+          "min-h-11 bg-transparent border-b px-1 py-2.5 text-cream",
           mono ? "font-mono text-sm" : "text-[15px]",
-          "placeholder:text-app-dim/70",
+          "placeholder:text-dim/70",
           "transition-colors duration-150",
           "focus:outline-none",
-          hasError
-            ? "border-app-red focus:border-app-red"
-            : "border-app-line focus:border-gold-accent",
+          hasError ? "border-down focus:border-down" : "border-line focus:border-accent",
           className,
         ]
           .filter(Boolean)
           .join(" ")}
       />
       {hasError && (
-        <p id={errorId} role="alert" className="text-[13px] text-app-red">
+        <p id={errorId} role="alert" className="text-[13px] text-down">
           {error}
         </p>
       )}

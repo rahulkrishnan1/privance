@@ -1,7 +1,7 @@
 "use client";
 
-import { HoldingsScreen } from "@/features/holdings";
+import { InvestScreen } from "@/features/invest";
 
 export default function HoldingsPage() {
-  return <HoldingsScreen />;
+  return <InvestScreen view="holdings" />;
 }

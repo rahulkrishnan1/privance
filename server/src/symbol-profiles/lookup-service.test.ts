@@ -1,17 +1,8 @@
 import { describe, expect, it } from "bun:test";
 
-// ---------------------------------------------------------------------------
-// Unit tests for LookupService, no network, no real DB.
-// SymbolProfileRepo and the upstream fetcher are both injectable.
-// ---------------------------------------------------------------------------
-
 import { LookupService } from "./lookup-service.js";
 import type { SymbolProfile } from "./types.js";
 import { UpstreamUnavailableError } from "./types.js";
-
-// ---------------------------------------------------------------------------
-// Minimal in-memory repo stub
-// ---------------------------------------------------------------------------
 
 class InMemoryRepo {
   private store = new Map<string, SymbolProfile>();
@@ -34,10 +25,6 @@ class InMemoryRepo {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function makeProfile(ticker: string): SymbolProfile {
   return {
     ticker,
@@ -54,6 +41,13 @@ function yahooProfileFetcher(
 ): (url: string | URL | Request) => Promise<Response> {
   return async (url) => {
     const urlStr = String(url);
+    // Crumb + cookie handshake the provider performs before quoteSummary.
+    if (urlStr.includes("/v1/test/getcrumb")) {
+      return new Response("test-crumb", { status: 200 });
+    }
+    if (urlStr.includes("fc.yahoo.com")) {
+      return new Response("", { status: 404, headers: { "set-cookie": "A1=test; Path=/" } });
+    }
     for (const p of profiles) {
       if (urlStr.includes(encodeURIComponent(p.ticker))) {
         if (opts.status !== undefined && opts.status !== 200) {
@@ -86,10 +80,6 @@ function yahooProfileFetcher(
     return new Response("not found", { status: 404 });
   };
 }
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
 
 describe("LookupService, DB hit (no upstream call)", () => {
   it("returns cached profile without calling upstream fetcher", async () => {
@@ -147,6 +137,39 @@ describe("LookupService, unknown ticker", () => {
 
     expect(result.profiles).toEqual([]);
     expect(result.unknown).toEqual(["FAKE_TICK"]);
+  });
+});
+
+describe("LookupService, fund classification + dividend yield", () => {
+  it("bond-category fund is classified fixed_income with yield parsed from {raw}", async () => {
+    const repo = new InMemoryRepo();
+    const fetcher: (url: string | URL | Request) => Promise<Response> = async () => {
+      const body = {
+        quoteSummary: {
+          result: [
+            {
+              assetProfile: {},
+              summaryDetail: { yield: { raw: 0.037 } },
+              quoteType: { longName: "Total Bond Market ETF", quoteType: "ETF", exchange: "XNAS" },
+              fundProfile: { categoryName: "Intermediate-Term Bond" },
+            },
+          ],
+          error: null,
+        },
+      };
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+
+    const service = new LookupService({ repo: repo as never, fetcher });
+    const result = await service.lookup({ tickers: ["BND"] });
+
+    expect(result.profiles).toHaveLength(1);
+    expect(result.profiles[0]?.assetClass).toBe("fixed_income");
+    expect(result.profiles[0]?.fundCategory).toBe("Intermediate-Term Bond");
+    expect(result.profiles[0]?.dividendYield).toBe("0.037000");
   });
 });
 

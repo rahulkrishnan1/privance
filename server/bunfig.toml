@@ -1,4 +1,5 @@
 [test]
+preload = ["./test-setup.ts"]
 coverage = true
 # Bun's numeric threshold is applied per-file, not overall. We keep the bar
 # permissive here (DB-connection infra is hard to unit-test in isolation, and
