@@ -2,10 +2,6 @@ export type DataSource = "yahoo" | "coingecko";
 
 export type { FetchLike } from "../core/fetch.js";
 
-// ---------------------------------------------------------------------------
-// Errors
-// ---------------------------------------------------------------------------
-
 export class PriceError extends Error {
   readonly code: string;
   constructor(code: string, message: string) {
@@ -33,17 +29,12 @@ export class RateLimitedError extends PriceError {
   }
 }
 
-/** Source string not recognised. */
 export class InvalidSourceError extends PriceError {
   constructor(source: string) {
     super("invalid_source", `unknown price source: ${source}`);
     this.name = "InvalidSourceError";
   }
 }
-
-// ---------------------------------------------------------------------------
-// Result types
-// ---------------------------------------------------------------------------
 
 export type PriceEntry = {
   ticker: string;
@@ -61,7 +52,7 @@ export type RefreshResult = {
 };
 
 export type UpstreamPrice = {
-  price: string; // decimal string
+  price: string;
   previousPrice: string | null;
   fetchedAt: string; // ISO-8601
 };

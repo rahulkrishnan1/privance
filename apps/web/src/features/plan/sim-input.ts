@@ -1,30 +1,24 @@
 /**
- * Converts a saved PlanPayload + liquid pot into a SimWorkerInput.
- *
- * Shared by plan-screen.tsx (initial run from saved payload) and the dashboard
- * projection hook, so both surfaces derive identical inputs and the worker-
- * client memo key matches -- a single computation serves both.
+ * Converts a saved PlanPayload + liquid pot into a SimWorkerInput for the
+ * initial simulation run from a saved plan.
  */
 
 import type { PlanPayload } from "@privance/core";
 import { Decimal, SCALE_CENTS } from "@privance/core";
-import { getPreset, PRESET_BALANCED } from "@privance/core/projection";
+import { getPreset } from "@privance/core/projection";
 import type { SimWorkerInput } from "@/lib/sim/worker-client";
 
 export function payloadToSimInput(payload: PlanPayload, potCents: Decimal): SimWorkerInput {
-  const preset = payload.preset === "custom" ? null : getPreset(payload.preset);
-
-  // getPreset always resolves a named preset, so the ?? guards are unreachable;
-  // they exist only to satisfy the nullable type and derive from the balanced
-  // preset so they can never drift from the source constants.
-  const muBps =
-    payload.preset === "custom" ? payload.muBps : (preset?.muBps ?? PRESET_BALANCED.muBps);
-  const sigmaBps =
-    payload.preset === "custom" ? payload.sigmaBps : (preset?.sigmaBps ?? PRESET_BALANCED.sigmaBps);
-  const stockWeight =
+  const params =
     payload.preset === "custom"
-      ? payload.stockWeightBps / 10000
-      : (preset?.stockWeight ?? PRESET_BALANCED.stockWeight);
+      ? {
+          muBps: payload.muBps,
+          sigmaBps: payload.sigmaBps,
+          stockWeight: payload.stockWeightBps / 10000,
+        }
+      : getPreset(payload.preset);
+
+  const { muBps, sigmaBps, stockWeight } = params;
 
   const monthlyContributionCents = Decimal.fromMinorUnits(
     BigInt(payload.monthlyContributionCents),
@@ -32,8 +26,15 @@ export function payloadToSimInput(payload: PlanPayload, potCents: Decimal): SimW
   );
   const annualSpendCents = Decimal.fromMinorUnits(BigInt(payload.annualSpendCents), SCALE_CENTS);
 
+  // A manual starting amount (v2) overrides the live account-derived pot, so the
+  // dashboard projection and the Plan tab agree on what "today" is.
+  const startingPotCents =
+    payload.manualStartingPotCents !== undefined
+      ? Decimal.fromMinorUnits(BigInt(payload.manualStartingPotCents), SCALE_CENTS)
+      : potCents;
+
   return {
-    startingPotCents: potCents,
+    startingPotCents,
     monthlyContributionCents,
     annualSpendCents,
     swrBps: payload.swrBps,

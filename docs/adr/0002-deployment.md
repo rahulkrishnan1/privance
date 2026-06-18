@@ -49,7 +49,7 @@ Constraints that shaped the deployment:
 - Operator-typed deploys still carry fat-finger risk. Mitigation: `infra/deploy.sh` wraps the whole sequence (tag check, release-workflow check, pull, recreate, health check) in one command; the bring-up runbook in `infra/README.md` covers the rest.
 - Single VPS has no failover. A Hetzner host outage means downtime until Hetzner recovers or the operator stands up a replacement from backups. Acceptable at current scale; revisit if uptime SLA changes.
 - Vertical-only scale ceiling. The small-VPS sizing handles low-hundreds of users; growth past that requires either a bigger box or a small architectural change (separate Postgres, CDN for the static export). Both reversible.
-- The PWA + Capacitor distribution path means the operator must keep two ship surfaces in sync (web at privance.app + app-store binaries from the same static export). Mitigation: same build artefact, so divergence is bounded to native shells only.
+- Today only the PWA ships (web at privance.app). If the scaffolded Capacitor native builds are ever published, the operator would keep two ship surfaces in sync. Mitigation: both come from the same static-export build artefact, so divergence is bounded to native shells only.
 
 **Locked out of (until reversed):**
 

@@ -1,3 +1,4 @@
+import { createFeatureRouter as createAccountRouter } from "./account/index.js";
 import {
   featureRouter as authFeatureRouter,
   getAuthRepo,
@@ -17,18 +18,16 @@ initAuthServices();
 const syncFeatureRouter = createSyncRouter(requireSession);
 const pricesFeatureRouter = createPricesRouter(requireSession);
 const symbolProfilesFeatureRouter = createSymbolProfilesRouter(requireSession);
+const accountFeatureRouter = createAccountRouter(requireSession);
 const app = createApp([
   authFeatureRouter,
   syncFeatureRouter,
   pricesFeatureRouter,
   symbolProfilesFeatureRouter,
+  accountFeatureRouter,
 ]);
 
 const port = Number(process.env.PORT ?? 3000);
-
-// ---------------------------------------------------------------------------
-// Background maintenance: rate-limit eviction + audit-event prune.
-// ---------------------------------------------------------------------------
 
 // Re-use the singleton repo initialised at startup, avoids a second connection pool.
 const authRepo = getAuthRepo();

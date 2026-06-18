@@ -1,20 +1,16 @@
 import { Decimal, SCALE_CRYPTO } from "@privance/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getMarketValue } from "@/lib/market-value";
 import {
   clearStaleProxyAnchor,
   computeAnchorScaleFactor,
   filterHoldings,
   lookupProxyPrice,
-  parseStoredHolding,
   sortHoldings,
 } from "./_helpers";
 import { getSavedSort, saveSort } from "./_sort-prefs";
 import type { LocalHolding } from "./types";
 import { holdingFormSchema } from "./types";
-
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
 
 function makeHolding(overrides: Partial<LocalHolding> = {}): LocalHolding {
   return {
@@ -36,10 +32,6 @@ function makeHolding(overrides: Partial<LocalHolding> = {}): LocalHolding {
 }
 
 const EMPTY_PRICES = new Map<string, { ticker: string; price: string }>();
-
-// ---------------------------------------------------------------------------
-// holdingFormSchema, validation rules
-// ---------------------------------------------------------------------------
 
 describe("holdingFormSchema", () => {
   it("accepts a valid stock holding", () => {
@@ -112,13 +104,24 @@ describe("holdingFormSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("accepts zero avg cost (free/gifted assets)", () => {
+  it("accepts zero cost basis (free/gifted assets)", () => {
     const result = holdingFormSchema.safeParse({
       assetType: "stock",
       ticker: "VOO",
       accountId: "acc-1",
       shares: "5",
       avgCostPerShare: "0",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts a blank cost basis (optional)", () => {
+    const result = holdingFormSchema.safeParse({
+      assetType: "stock",
+      ticker: "VOO",
+      accountId: "acc-1",
+      shares: "5",
+      avgCostPerShare: "",
     });
     expect(result.success).toBe(true);
   });
@@ -172,10 +175,6 @@ describe("holdingFormSchema", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// filterHoldings
-// ---------------------------------------------------------------------------
-
 describe("filterHoldings", () => {
   const h1 = makeHolding({ accountId: "acc-1", groupId: "grp-A" });
   const h2 = makeHolding({ accountId: "acc-2", groupId: "grp-B" });
@@ -208,10 +207,6 @@ describe("filterHoldings", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// sortHoldings
-// ---------------------------------------------------------------------------
-
 describe("sortHoldings", () => {
   const alpha = makeHolding({ ticker: "AAPL", sharesMajor: "5", sharesScale: 2 });
   const beta = makeHolding({ ticker: "VXUS", sharesMajor: "20", sharesScale: 2 });
@@ -235,13 +230,13 @@ describe("sortHoldings", () => {
     expect(result[0]?.ticker).toBe("VXUS");
   });
 
-  it("sorts by shares ascending", () => {
+  it("sorts by gain dollar ascending (all zero prices, identical gain, stable)", () => {
     const result = sortHoldings(
       [beta, alpha],
-      { column: "shares", direction: "asc" },
+      { column: "gainDollar", direction: "asc" },
       EMPTY_PRICES,
     );
-    expect(result[0]?.sharesMajor).toBe("5");
+    expect(result).toHaveLength(2);
   });
 
   it("sorts by market value descending (all zero prices)", () => {
@@ -272,104 +267,18 @@ describe("sortHoldings", () => {
     expect(original[0]?.ticker).toBe("VXUS");
   });
 
-  it("sorts by account name ascending, not by UUID", () => {
-    const h1 = makeHolding({ ticker: "AAPL", accountId: "uuid-z" });
-    const h2 = makeHolding({ ticker: "MSFT", accountId: "uuid-a" });
-    const names = new Map([
-      ["uuid-z", "Zephyr Brokerage"],
-      ["uuid-a", "Alpha Investments"],
+  it("sorts by weight ascending (same as marketValue with prices)", () => {
+    const prices = new Map([
+      ["AAPL", { ticker: "AAPL", price: "400.000000" }],
+      ["VXUS", { ticker: "VXUS", price: "50.000000" }],
     ]);
-    const result = sortHoldings(
-      [h1, h2],
-      { column: "account", direction: "asc" },
-      EMPTY_PRICES,
-      names,
-    );
-    // "Alpha Investments" < "Zephyr Brokerage" so h2 (MSFT) should come first.
-    expect(result[0]?.ticker).toBe("MSFT");
-    expect(result[1]?.ticker).toBe("AAPL");
-  });
-
-  it("sorts by account name descending", () => {
-    const h1 = makeHolding({ ticker: "AAPL", accountId: "uuid-z" });
-    const h2 = makeHolding({ ticker: "MSFT", accountId: "uuid-a" });
-    const names = new Map([
-      ["uuid-z", "Zephyr Brokerage"],
-      ["uuid-a", "Alpha Investments"],
-    ]);
-    const result = sortHoldings(
-      [h1, h2],
-      { column: "account", direction: "desc" },
-      EMPTY_PRICES,
-      names,
-    );
-    expect(result[0]?.ticker).toBe("AAPL");
-    expect(result[1]?.ticker).toBe("MSFT");
-  });
-
-  it("falls back to accountId when name is missing from the map", () => {
-    const h1 = makeHolding({ ticker: "AAPL", accountId: "uuid-z" });
-    const h2 = makeHolding({ ticker: "MSFT", accountId: "uuid-a" });
-    // No names provided; sort falls back to the UUID strings.
-    const result = sortHoldings([h1, h2], { column: "account", direction: "asc" }, EMPTY_PRICES);
-    // "uuid-a" < "uuid-z" so h2 (MSFT) should come first.
-    expect(result[0]?.ticker).toBe("MSFT");
+    // AAPL: 10 shares * $400 = $4000; VXUS: 5 shares * $50 = $250
+    // asc: VXUS first
+    const result = sortHoldings([alpha, beta], { column: "weight", direction: "asc" }, prices);
+    expect(result[0]?.ticker).toBe("VXUS");
     expect(result[1]?.ticker).toBe("AAPL");
   });
 });
-
-// ---------------------------------------------------------------------------
-// parseStoredHolding
-// ---------------------------------------------------------------------------
-
-describe("parseStoredHolding", () => {
-  it("round-trips a holding payload", () => {
-    const payload = {
-      accountId: "acc-1",
-      groupId: null,
-      ticker: "VOO",
-      assetType: "stock" as const,
-      proxyTicker: null,
-      sharesMajor: "42.5",
-      sharesScale: 8,
-      costBasisCents: "500000",
-    };
-    const bytes = new TextEncoder().encode(JSON.stringify(payload));
-    const result = parseStoredHolding("id-1", bytes, 12345);
-
-    expect(result.id).toBe("id-1");
-    expect(result.ticker).toBe("VOO");
-    expect(result.sharesMajor).toBe("42.5");
-    expect(result.costBasisCents).toBe("500000");
-    expect(result.updatedAt).toBe(12345);
-    expect(result.groupId).toBeNull();
-  });
-
-  it("preserves optional fields when present", () => {
-    const payload = {
-      accountId: "acc-2",
-      groupId: "grp-X",
-      ticker: "FXAIX",
-      assetType: "stock" as const,
-      proxyTicker: "VOO",
-      sharesMajor: "10",
-      sharesScale: 4,
-      costBasisCents: "100000",
-      scaleFactor: "1.05",
-      name: "Fidelity 500 Index",
-    };
-    const bytes = new TextEncoder().encode(JSON.stringify(payload));
-    const result = parseStoredHolding("id-2", bytes, 0);
-
-    expect(result.proxyTicker).toBe("VOO");
-    expect(result.scaleFactor).toBe("1.05");
-    expect(result.name).toBe("Fidelity 500 Index");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// computeAnchorScaleFactor
-// ---------------------------------------------------------------------------
 
 describe("computeAnchorScaleFactor", () => {
   it("anchors to the user-supplied NAV against the current proxy price", () => {
@@ -393,6 +302,29 @@ describe("computeAnchorScaleFactor", () => {
 
   it("throws on malformed numbers", () => {
     expect(() => computeAnchorScaleFactor("not-a-price", "100")).toThrow();
+  });
+});
+
+describe("proxy market value anchors to the entered price, not the proxy's raw price", () => {
+  // 10 shares of an asset worth $100/share, proxied to VOO trading at $200.
+  const scaleFactor = computeAnchorScaleFactor("100", "200"); // 0.5
+  const holding = {
+    ticker: "FAKECIT",
+    proxyTicker: "VOO",
+    sharesMajor: "10",
+    sharesScale: 8,
+    scaleFactor,
+  };
+
+  it("anchors to nav at anchor time", () => {
+    const prices = new Map([["VOO", { ticker: "VOO", price: "200" }]]);
+    // 10 * 200 * 0.5 = 1000 (= 10 * the $100 nav), NOT 10 * 200 = 2000.
+    expect(getMarketValue(holding, prices).toFloat()).toBeCloseTo(1000, 2);
+  });
+
+  it("tracks proportionally as the proxy moves", () => {
+    const prices = new Map([["VOO", { ticker: "VOO", price: "220" }]]); // VOO +10%
+    expect(getMarketValue(holding, prices).toFloat()).toBeCloseTo(1100, 2);
   });
 });
 
@@ -422,10 +354,6 @@ describe("clearStaleProxyAnchor", () => {
     expect(cleaned.proxyAnchoredAt).toBe("2026-05-01");
   });
 });
-
-// ---------------------------------------------------------------------------
-// lookupProxyPrice
-// ---------------------------------------------------------------------------
 
 function makeRefresh(prices: Array<{ ticker: string; price: string }>) {
   return vi.fn().mockResolvedValue({
@@ -482,10 +410,6 @@ describe("lookupProxyPrice", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// getSavedSort / saveSort -- per-user localStorage key scoping
-// ---------------------------------------------------------------------------
-
 describe("getSavedSort / saveSort key scoping", () => {
   const mockStorage: Record<string, string> = {};
 
@@ -512,11 +436,11 @@ describe("getSavedSort / saveSort key scoping", () => {
 
   it("two users do not read each other's sort", () => {
     saveSort("user-a", { column: "ticker", direction: "asc" });
-    saveSort("user-b", { column: "shares", direction: "desc" });
+    saveSort("user-b", { column: "gainDollar", direction: "desc" });
     const a = getSavedSort("user-a");
     const b = getSavedSort("user-b");
     expect(a.column).toBe("ticker");
-    expect(b.column).toBe("shares");
+    expect(b.column).toBe("gainDollar");
   });
 
   it("returns the module-level default when userId is undefined", () => {

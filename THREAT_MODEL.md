@@ -35,6 +35,7 @@ This document covers the assets Privance protects, the actors that might threate
 | **KDF parameters and salt** | Argon2id parameters and per-user salt | Postgres, required for login |
 | **Object metadata** | Record kind, UUID, version, tombstone flag | Postgres `sync_objects`, server sees kind and count, not contents |
 | **Invite token hash** | SHA-256 of plaintext mint token; consumed atomically on signup | Postgres `invite_tokens.token_hash` |
+| **Market data cache** | Public prices and symbol/sector metadata, keyed by ticker, not by user | Postgres `prices` / `symbol_profiles`; a global cache shared across all users that reveals nothing about any user's holdings |
 
 ---
 
@@ -45,7 +46,7 @@ This document covers the assets Privance protects, the actors that might threate
 | Threat | Vector | Mitigation | Residual risk |
 |---|---|---|---|
 | Password guessing (online) | Repeated login attempts | Rate limiting: 5 attempts per username per 60 s, 20 per IP per 60 s; progressive backoff up to 4 s per attempt (`server/src/auth/rate-limit.ts`) | Offline attack if attacker obtains KDF salt |
-| Password compromise via data breach | Credential stuffing | HIBP k-anonymity check on signup rejects known-breached passwords | Passwords breached after signup |
+| Weak master password | User picks a guessable password | Local-only enforcement: a client-side strength meter plus a minimum-length rule (`apps/web/src/lib/validation.ts`); no third-party breach-database lookup is performed | A determined user can still choose a weak-but-valid password |
 | Keylogger / screen capture | Device compromise | Outside scope; requires a clean device | Any device-level malware |
 | Phishing | Fake login page | User education; self-hosted instances have user-chosen domains | Social engineering |
 
@@ -54,7 +55,7 @@ This document covers the assets Privance protects, the actors that might threate
 | Threat | Vector | Mitigation | Residual risk |
 |---|---|---|---|
 | Extraction from server | Server breach | Server never holds the DEK; it only stores the KEK-wrapped form | None: the server cannot unwrap without the KEK |
-| Extraction from browser memory | Malicious extension, XSS | DEK stored in a Symbol-keyed slot; no script can enumerate Symbols from another origin; CSP restricts inline scripts | A malicious extension with full page access can read `globalThis` |
+| Extraction from browser memory | Malicious extension, XSS | DEK stored in a Symbol-keyed slot; no script can enumerate Symbols from another origin; CSP restricts script and connect sources to self (no third-party origins) | A malicious extension with full page access can read `globalThis` |
 | DEK persistence to disk | Browser storage APIs | The raw DEK is never written to disk; only a copy wrapped under a non-extractable AES-GCM key (its bytes unexportable by script or devtools) is held in IndexedDB, and it is purged on window expiry, lock, and logout | A wrapped copy is at rest for at most 15 minutes, usable only as an unwrap oracle on the live origin; not encryption-at-rest against OS-level disk access during that window |
 | Loss of DEK on page reload | Tab close | A reload (`navigation.type === "reload"`) within the window unwraps the persisted copy locally and resumes with no master password, username, or server round-trip. An installed PWA treats any cold launch (not a reload) as a close and requires the master password immediately; a browser tab locks instantly in private browsing and within 15 minutes in normal browsing | In a browser tab, a reopen within 15 minutes of last activity unlocks without the master password (bounded by the single 15-minute window); the installed PWA re-locks on any cold launch |
 | Durable biometric wrapped copy of the DEK | Disk access to `privance.biometric` IndexedDB | When biometric unlock is enrolled, a second durable wrapped copy of the items key exists in `privance.biometric` IndexedDB for up to 14 days after the last password-derived unlock. An attacker with disk access to that store obtains: the RSA-OAEP ciphertext of the items key (wrapped under the protector public key), and the AEAD ciphertext of the protector private key (sealed under a KEK derived from the passkey's PRF output). The PRF output never leaves the platform authenticator; recovering the items key from the stored blobs requires the authenticator to perform biometric user verification. A same-origin script compromise is already accepted as full session compromise (see 3.9); biometric enrollment adds the ability to delay the cadence purge by overwriting the script-writable `lastPasswordUnlockAt` timestamp, but this cannot bypass the PRF gate. The wrapped items-key copy is destroyed on cadence expiry (14 days; the enrollment bookkeeping, which holds no user key material, survives so a password unlock can re-arm without re-enrollment), and the full record is purged on logout, user mismatch (a different userId in the record triggers purge on next load), and tamper-detected unwrap failure (AES-GCM tag mismatch throws `DecryptionError` and triggers purge). | The durable biometric blob extends the at-rest window from 15 minutes to 14 days; within that window the items key is recoverable only via the platform authenticator's hardware-gated PRF output. Biometric unlock is opt-in and absent unless the user enrolls. Private browsing wipes the store on session end. |
@@ -64,7 +65,7 @@ This document covers the assets Privance protects, the actors that might threate
 | Threat | Vector | Mitigation | Residual risk |
 |---|---|---|---|
 | Phrase exfiltration by server | Server logging | Phrase is generated entirely in the browser from a client-side random seed; never transmitted | None: server never sees the phrase |
-| Phrase guessing by server | Brute force on `recovery_blob` | Recovery blob is an HMAC authenticator derived from the KEK, not from the phrase directly; guessing requires knowing the KEK | None beyond theoretical preimage attack |
+| Phrase guessing by server | Brute force on `recovery_blob` | The recovery blob is an HKDF auth hash of the Argon2id-stretched recovery phrase (re-hashed with Argon2id server-side before storage); guessing requires brute-forcing memory-hard Argon2id over the 128-bit BIP39 phrase space | None: brute force over 128-bit entropy behind Argon2id is infeasible |
 | Loss of phrase | User loses it | Acknowledged: loss of password + phrase = permanent data loss by design | User must back up the phrase externally |
 | Recovery abuse | Attacker attempts recovery | Rate limited: 5 attempts per username per hour, 10 per IP per hour; progressive backoff up to 8 s | Offline if attacker clones the DB |
 
@@ -99,7 +100,7 @@ This document covers the assets Privance protects, the actors that might threate
 
 | Threat | Vector | Mitigation | Residual risk |
 |---|---|---|---|
-| Username enumeration | Probe `/api/auth/kdf-params` for different usernames | Unknown usernames receive deterministic fake KDF params derived via HMAC-SHA256 keyed on `ENUMERATION_SECRET`; response timing is matched by running the fake derivation (`server/src/auth/login-service.ts:deriveFakeKdfSalt`) | Timing differences from OS scheduling are not fully eliminated |
+| Username enumeration | Probe `/api/auth/kdf-params` for different usernames | Unknown usernames receive deterministic fake KDF params derived via HKDF-SHA256 keyed on `ENUMERATION_SECRET` (label `finance/kdf-params/v1`); response timing is matched by running the fake derivation (`server/src/auth/kdf.ts:deriveFakeKdfSalt`) | Timing differences from OS scheduling are not fully eliminated |
 | Username brute-force | Enumerate usernames in the Postgres DB | Requires DB access; once attacker has DB access, username confidentiality is already lost | Inherent to storing usernames |
 
 ### 3.8 Supply chain
@@ -112,7 +113,7 @@ This document covers the assets Privance protects, the actors that might threate
 
 ### 3.9 Operational bound
 
-The zero-knowledge guarantee protects data **at rest**. Server-side records are ciphertext only and a database or filesystem grab reveals only ciphertext, salts, hashed session and invite tokens, and audit-event metadata. The guarantee does NOT extend to a user's NEXT interaction with a compromised host: the browser executes whatever JS the host serves, so an attacker with control of the served bundle can exfiltrate the master password on the next login. Native Capacitor builds reduce this risk because the JS is bundled into the signed app-store binary instead of fetched per session.
+The zero-knowledge guarantee protects data **at rest**. Server-side records are ciphertext only and a database or filesystem grab reveals only ciphertext, salts, hashed session and invite tokens, and audit-event metadata. The guarantee does NOT extend to a user's NEXT interaction with a compromised host: the browser executes whatever JS the host serves, so an attacker with control of the served bundle can exfiltrate the master password on the next login. A packaged Capacitor build reduces this risk because the JS is bundled into the app binary instead of fetched per session.
 
 ### 3.10 Plan record and sim worker
 
@@ -141,9 +142,10 @@ The zero-knowledge guarantee protects data **at rest**. Server-side records are 
 Labels are frozen constants in `packages/core/src/crypto/labels.ts`:
 
 ```
-finance/auth-v1     , derives the auth hash sent to the server
-finance/kek-v1      , derives the Key Encryption Key
-finance/recovery-v1 , derives the recovery seed (entropy for BIP39 phrase)
+finance/auth-v1      , derives the auth hash sent to the server
+finance/kek-v1       , derives the Key Encryption Key
+finance/recovery-v1  , derives the recovery seed (entropy for BIP39 phrase)
+finance/biometric-v1 , derives the KEK that seals the biometric protector key
 ```
 
 Bumping any label is a migration requiring coordinated key re-wrap across all existing user records. It is not a code change.
@@ -172,9 +174,9 @@ Implemented in `server/src/auth/rate-limit.ts` using sliding-window counters and
 
 `X-Requested-With` header enforced globally on all non-safe methods via `server/src/core/middleware.ts:requireCsrfHeader`. Applied to the `/api/*` prefix.
 
-### HIBP
+### Password quality
 
-The server-side check (`server/src/auth/hibp.ts`) uses the k-anonymity range API: only the first 5 hex characters of the SHA-1 hash of the auth hash are transmitted. Fail-closed: if HIBP is unreachable the server returns an error and blocks signup with a clear message. It does not silently allow the password through.
+Password quality is enforced entirely on the client: an advisory strength meter (`apps/web/src/components/auth/PasswordStrength.tsx`) plus a minimum-length rule at signup, password change, and recovery (`apps/web/src/lib/validation.ts`). Privance performs no third-party breach-database lookup, consistent with making no unnecessary calls to external services; the password never leaves the device in any form.
 
 ---
 

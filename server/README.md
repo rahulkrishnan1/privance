@@ -15,8 +15,9 @@ See [ARCHITECTURE.md](../ARCHITECTURE.md) for the full server design and
 | `src/core/middleware.ts` | `requireCsrfHeader`: blocks non-safe methods without `X-Requested-With` |
 | `src/auth/` | Signup, login, recovery, password-change, sessions, rate limiting |
 | `src/auth/rate-limit.ts` | Sliding-window + progressive backoff counters (in-memory) |
-| `src/auth/hibp.ts` | HIBP k-anonymity check on signup |
+| `src/account/` | Account destruction: verified cascade-delete of all per-user data |
 | `src/prices/` | Public market-price refresh with Postgres cache (Yahoo + CoinGecko) |
+| `src/symbol-profiles/` | Symbol metadata + sector weightings (Yahoo upstream, Postgres cache) |
 | `src/sync/` | Encrypted blob CRUD + change-feed endpoint |
 | `drizzle/` | Migration SQL files |
 
@@ -44,6 +45,7 @@ bun run typecheck
 |---|---|---|
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
 | `ENUMERATION_SECRET` | Yes | Base64-encoded secret >= 32 bytes; used for fake KDF salt derivation and IP hashing |
+| `TRUSTED_PROXY_HOPS` | No | Number of trusted reverse-proxy hops in front of the server, used to pick the real client IP from `X-Forwarded-For` for rate limiting. Default `1` (a single self-hosted reverse proxy like nginx/Caddy/Traefik). Set to the actual hop count if you chain more proxies, or `0` if the app is internet-facing with no proxy. SECURITY: the server must sit behind exactly this many trusted proxies; a wrong value lets a client forge its rate-limit identity via a spoofed `X-Forwarded-For`. |
 | `NODE_ENV` | No | `production` enables Secure cookie flag |
 | `PORT` | No | Defaults to 3000 |
 | `SIGNUP_ALLOWLIST` | No | Comma-separated usernames allowed to sign up; empty = open registration |

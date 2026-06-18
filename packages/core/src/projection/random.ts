@@ -16,17 +16,11 @@
 
 import type { Sfc32State, SimSeed } from "./types.js";
 
-// ---------------------------------------------------------------------------
-// xmur3: string -> 4 x uint32 seed state
-// ---------------------------------------------------------------------------
-
 /**
  * Hashes a seed string into four 32-bit unsigned integers using xmur3.
  * Pure integer arithmetic only.
  */
 export function xmur3Seed(seed: SimSeed): Sfc32State {
-  // xmur3: each character mixed into a running uint32 hash, then the hash
-  // is "churned" four times to produce four independent state words.
   let h = 1779033703 ^ seed.length;
   for (let i = 0; i < seed.length; i++) {
     h = Math.imul(h ^ seed.charCodeAt(i), 3432918353) >>> 0;
@@ -47,10 +41,6 @@ export function xmur3Seed(seed: SimSeed): Sfc32State {
     d: next(),
   };
 }
-
-// ---------------------------------------------------------------------------
-// sfc32: state + generator
-// ---------------------------------------------------------------------------
 
 /**
  * Mutable sfc32 state container. Pure 32-bit integer arithmetic.
@@ -73,7 +63,6 @@ export function makeSfc32(state: Sfc32State): Sfc32 {
   return {
     next() {
       const t = (a + b) >>> 0;
-      // sfc32 mix
       a = b ^ (b >>> 9);
       b = (c + (c << 3)) >>> 0;
       c = ((c << 21) | (c >>> 11)) >>> 0;

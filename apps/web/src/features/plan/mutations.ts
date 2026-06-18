@@ -7,13 +7,10 @@ import {
   KIND_PLAN,
   LABEL_VERSION,
   PLAN_OBJECT_ID,
+  PlanPayloadSchema,
 } from "@privance/core";
 import { useCallback, useState } from "react";
 import { readItemsKey, useSync } from "@/providers/index";
-
-// ---------------------------------------------------------------------------
-// Encryption helper
-// ---------------------------------------------------------------------------
 
 function encryptPlanPayload(opts: { payload: PlanPayload }): {
   ciphertext: Uint8Array;
@@ -35,15 +32,7 @@ function encryptPlanPayload(opts: { payload: PlanPayload }): {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Mutation state
-// ---------------------------------------------------------------------------
-
 type MutationState = "idle" | "pending" | "error";
-
-// ---------------------------------------------------------------------------
-// useSavePlan
-// ---------------------------------------------------------------------------
 
 export function useSavePlan(): {
   savePlan: (payload: PlanPayload) => Promise<void>;
@@ -60,6 +49,9 @@ export function useSavePlan(): {
       setState("pending");
       setError(null);
       try {
+        // Fail closed: never persist a payload the read path can't validate back,
+        // which would brick the plan with an unrecoverable load error.
+        PlanPayloadSchema.parse(payload);
         const objectId = PLAN_OBJECT_ID;
         const existing = await store.get({ kind: KIND_PLAN, objectId });
         const prevVersion = existing?.version ?? undefined;

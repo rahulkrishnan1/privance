@@ -2,8 +2,17 @@
 
 import type { ItemsKey } from "@privance/core";
 import type { ReactNode } from "react";
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { resetPricesCache } from "@/lib/queries/prices";
+import { resetProfilesCache } from "@/lib/queries/profiles";
 import { purgeEnrollment, reArm } from "@/lib/storage/biometric-store";
 import {
   clearSession,
@@ -12,10 +21,7 @@ import {
   SESSION_TTL_MS,
   touchSession,
 } from "@/lib/storage/session-vault";
-
-// ---------------------------------------------------------------------------
-// DEK store, lives outside React state, never logged
-// ---------------------------------------------------------------------------
+import { applyStartVeilOnAuth } from "@/lib/veil";
 
 const DEK_STORE_SYMBOL = Symbol.for("privance.dekStore.v1");
 
@@ -37,10 +43,6 @@ function clearDekStore(): void {
   Reflect.deleteProperty(globalThis as GlobalWithDek, DEK_STORE_SYMBOL);
 }
 
-// ---------------------------------------------------------------------------
-// State machine types
-// ---------------------------------------------------------------------------
-
 /** `loading` is the transient boot state while the session vault is read
  *  asynchronously; the app shell holds (no redirect) until it resolves to
  *  `unlocked` or `locked`. */
@@ -49,7 +51,7 @@ export type AuthState = "loading" | "unauthenticated" | "locked" | "unlocked";
 export type PersistenceLevel = "memory" | "session" | "biometric";
 
 export type AuthUser = {
-  /** Absent when the auth state was rehydrated in `locked` state — only the
+  /** Absent when the auth state was rehydrated in `locked` state; only the
    *  username is needed to render the unlock screen. login()/unlock() and a
    *  fresh-vault rehydrate populate this. */
   userId?: string;
@@ -69,16 +71,12 @@ export type AuthContextValue = {
   login: (payload: AuthPayload) => Promise<void>;
   unlock: (payload: AuthPayload) => Promise<void>;
   lock: () => Promise<void>;
-  logout: () => Promise<void>;
+  logout: (opts?: { keepEnrollment?: boolean }) => Promise<void>;
   /** Register a cleanup callback to run on logout, before the auth state
    *  transitions to "unauthenticated". Returns an unregister function. Used by
    *  SyncProvider to unlink the per-user OPFS file on logout (but not lock). */
   registerLogoutCleanup: (cb: () => void | Promise<void>) => () => void;
 };
-
-// ---------------------------------------------------------------------------
-// Auto-lock idle timer
-// ---------------------------------------------------------------------------
 
 /** Idle auto-lock shares the session window: the same elapsed-time budget
  *  governs going idle while open and reopening after a close. */
@@ -92,7 +90,7 @@ const VAULT_TOUCH_THROTTLE_MS = 60 * 1000;
  *  account" marker that decides locked vs unauthenticated on boot, and pre-fills
  *  the unlock screen. localStorage (not sessionStorage) so it survives a real
  *  close, which is what lets lock-on-close land on /unlock rather than login. */
-const USERNAME_KEY = "privance.username";
+export const USERNAME_KEY = "privance.username";
 
 /** Non-secret account id in localStorage, so the locked-screen sign-out can
  *  derive the per-user OPFS filename and erase local ciphertext after a close
@@ -103,10 +101,6 @@ export const USER_ID_KEY = "privance.userId";
  *  `storage` event fires only in the tabs that did not make the change). Carries
  *  a changing timestamp, never key material. */
 const LOCK_BROADCAST_KEY = "privance.lockBroadcast";
-
-// ---------------------------------------------------------------------------
-// Cold-launch detection (lock-on-close)
-// ---------------------------------------------------------------------------
 
 /** True when the current document load was a reload (F5 / pull-to-refresh)
  *  rather than a fresh navigation or cold app launch. Survive-refresh restores
@@ -124,10 +118,6 @@ function isStandalonePwa(): boolean {
   const iosStandalone = (navigator as Navigator & { standalone?: boolean }).standalone === true;
   return iosStandalone || window.matchMedia("(display-mode: standalone)").matches;
 }
-
-// ---------------------------------------------------------------------------
-// Context
-// ---------------------------------------------------------------------------
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -335,6 +325,8 @@ export function AuthProvider({
     setUser(payload.user);
     setPersistence(payload.persistence);
     resetPricesCache();
+    resetProfilesCache();
+    applyStartVeilOnAuth();
     setState("unlocked");
   }, []);
 
@@ -352,6 +344,7 @@ export function AuthProvider({
     }
     setUser(payload.user);
     setPersistence(payload.persistence);
+    applyStartVeilOnAuth();
     setState("unlocked");
   }, []);
 
@@ -385,6 +378,7 @@ export function AuthProvider({
     clearDekStore();
     clearIdleTimer();
     resetPricesCache();
+    resetProfilesCache();
     localStorage.removeItem(USERNAME_KEY);
     localStorage.removeItem(USER_ID_KEY);
     setUser(null);
@@ -394,32 +388,38 @@ export function AuthProvider({
   // Awaitable so callers that hard-navigate (settings / navbar sign-out) can let
   // the registered store.destroy() finish first, otherwise the page unloads
   // mid-destroy and the per-user OPFS ciphertext is orphaned.
-  const logout = useCallback(async () => {
-    await runLogoutCleanups();
-    await clearSession();
-    // Purge before finishLogout removes USERNAME_KEY and broadcasts to sibling
-    // tabs, so they reload into an already-purged state. Any future DEK-rotation
-    // flow must also purge here.
-    await purgeEnrollment();
-    finishLogout();
-  }, [runLogoutCleanups, finishLogout]);
-
-  return (
-    <AuthContext.Provider
-      value={{
-        state,
-        user,
-        persistence,
-        login,
-        unlock,
-        lock,
-        logout,
-        registerLogoutCleanup,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  //
+  // keepEnrollment leaves the biometric record intact: a lapsed server session
+  // is orthogonal to local key custody, so an expiry-driven scrub must not force
+  // the user to re-enroll. Explicit sign-out keeps the default (purge).
+  const logout = useCallback(
+    async ({ keepEnrollment = false }: { keepEnrollment?: boolean } = {}) => {
+      await runLogoutCleanups();
+      await clearSession();
+      // Purge before finishLogout removes USERNAME_KEY and broadcasts to sibling
+      // tabs, so they reload into an already-purged state. Any future DEK-rotation
+      // flow must also purge here.
+      if (!keepEnrollment) await purgeEnrollment();
+      finishLogout();
+    },
+    [runLogoutCleanups, finishLogout],
   );
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      state,
+      user,
+      persistence,
+      login,
+      unlock,
+      lock,
+      logout,
+      registerLogoutCleanup,
+    }),
+    [state, user, persistence, login, unlock, lock, logout, registerLogoutCleanup],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {

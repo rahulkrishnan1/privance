@@ -6,12 +6,8 @@ import { asSimSeed } from "./types.js";
 
 const SEED = asSimSeed("privance-fire-v1");
 
-// ---------------------------------------------------------------------------
-// Golden vectors
-// These exact values are also asserted in browser mode in U4 to verify
+// These exact values are also asserted in browser mode to verify
 // cross-engine determinism (bit-identical across V8/JSC).
-// ---------------------------------------------------------------------------
-
 describe("normal sampler golden vectors", () => {
   it("produces the expected sequence for seed 'privance-fire-v1'", () => {
     const rng = seededRng(SEED);
@@ -25,10 +21,6 @@ describe("normal sampler golden vectors", () => {
     expect(normalSample(rng)).toBe(0.7487356386905338);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Statistical properties (fast-check)
-// ---------------------------------------------------------------------------
 
 describe("normal sampler statistical properties", () => {
   it("mean is within 0.05 of 0 and variance is within 0.05 of 1 over many draws", () => {
@@ -48,32 +40,39 @@ describe("normal sampler statistical properties", () => {
     expect(Math.abs(variance - 1)).toBeLessThan(0.05);
   });
 
-  it("mean and variance within tolerance over many different seeds (fast-check)", () => {
+  it("mean, variance, and the median quantile hold over many different seeds (fast-check)", () => {
     fc.assert(
       fc.property(fc.string({ minLength: 1, maxLength: 32 }), (s) => {
         const rng = seededRng(asSimSeed(s));
-        const n = 2000;
+        const n = 20_000;
+        const samples: number[] = [];
         let sum = 0;
         let sumSq = 0;
         for (let i = 0; i < n; i++) {
           const z = normalSample(rng);
+          samples.push(z);
           sum += z;
           sumSq += z * z;
         }
         const mean = sum / n;
         const variance = sumSq / n - mean * mean;
-        // Loose tolerance: 2000 samples have ~3-sigma bounds of ~0.14 for mean
-        return Math.abs(mean) < 0.15 && Math.abs(variance - 1) < 0.15;
+        samples.sort((a, b) => a - b);
+        const median = samples[Math.floor(n / 2)] ?? 0;
+        const q975 = samples[Math.floor(n * 0.975)] ?? 0;
+        // With n=20k the sampling error is ~5x tighter than the n=2k version.
+        // The median must sit near 0 and the 97.5th quantile near +1.96, which a
+        // shifted or clipped sampler cannot satisfy.
+        return (
+          Math.abs(mean) < 0.05 &&
+          Math.abs(variance - 1) < 0.05 &&
+          Math.abs(median) < 0.06 &&
+          Math.abs(q975 - 1.96) < 0.12
+        );
       }),
-      { numRuns: 50 },
+      { numRuns: 30 },
     );
   });
 });
-
-// ---------------------------------------------------------------------------
-// Tail mass: no-clipping regression tests
-// Draws beyond 2-sigma and beyond 3-sigma must occur at plausible frequencies.
-// ---------------------------------------------------------------------------
 
 describe("normal sampler tail coverage (no-clipping regression)", () => {
   it("draws beyond 2 sigma occur at approximately 4.55% frequency", () => {
@@ -116,11 +115,6 @@ describe("normal sampler tail coverage (no-clipping regression)", () => {
     expect(beyond4).toBeGreaterThan(0);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Clamping: u at exact boundary values must not produce NaN or Infinity.
-// These test the u < U_MIN and u > U_MAX defensive clamps.
-// ---------------------------------------------------------------------------
 
 describe("normal sampler clamping", () => {
   it("u = 0 clamps to U_MIN, returns finite value (exercises u < U_MIN branch)", () => {

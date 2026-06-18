@@ -19,15 +19,8 @@ import { Decimal } from "@privance/core/decimal";
 import type { SimulatePlanOptions } from "@privance/core/projection";
 import { asSimSeed, simulatePlan } from "@privance/core/projection";
 
-// ---------------------------------------------------------------------------
 // Wire types (JSON-safe; shared with worker-client.ts via wire-types.ts)
-// ---------------------------------------------------------------------------
-
 import type { WireSimulateArgs, WireSimulateResult, WorkerRequest } from "./wire-types.js";
-
-// ---------------------------------------------------------------------------
-// Simulation handler
-// ---------------------------------------------------------------------------
 
 function handleSimulate(args: WireSimulateArgs): WireSimulateResult {
   const opts: SimulatePlanOptions = {
@@ -37,7 +30,7 @@ function handleSimulate(args: WireSimulateArgs): WireSimulateResult {
     swrBps: args.swrBps,
     currentAge: args.currentAge,
     planUntilAge: args.planUntilAge,
-    stockWeightForYear: (_yearIndex: number) => args.stockWeight,
+    stockWeight: args.stockWeight,
     seed: asSimSeed(args.seed),
     muBps: args.muBps,
     sigmaBps: args.sigmaBps,
@@ -72,10 +65,6 @@ function handleSimulate(args: WireSimulateArgs): WireSimulateResult {
     },
   };
 }
-
-// ---------------------------------------------------------------------------
-// RPC handler
-// ---------------------------------------------------------------------------
 
 self.addEventListener("message", (event: MessageEvent) => {
   const req = event.data as WorkerRequest;

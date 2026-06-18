@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { isCapacitor } from "./capacitor";
 
 export function SwUpdateBanner() {
   const [waiting, setWaiting] = useState<ServiceWorker | null>(null);
@@ -9,30 +10,28 @@ export function SwUpdateBanner() {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") return;
     if (!("serviceWorker" in navigator)) return;
+    if (isCapacitor()) return;
 
-    const isCapacitor =
-      typeof window !== "undefined" &&
-      (("Capacitor" in window && window.Capacitor !== undefined) ||
-        navigator.userAgent.includes("Capacitor"));
-    if (isCapacitor) return;
+    navigator.serviceWorker
+      .getRegistration()
+      .then((reg) => {
+        if (!reg) return;
 
-    navigator.serviceWorker.getRegistration().then((reg) => {
-      if (!reg) return;
+        const trackInstalling = (sw: ServiceWorker) => {
+          sw.addEventListener("statechange", () => {
+            if (sw.state === "installed" && navigator.serviceWorker.controller !== null) {
+              setWaiting(sw);
+            }
+          });
+        };
 
-      const trackInstalling = (sw: ServiceWorker) => {
-        sw.addEventListener("statechange", () => {
-          if (sw.state === "installed" && navigator.serviceWorker.controller !== null) {
-            setWaiting(sw);
-          }
-        });
-      };
-
-      if (reg.installing) trackInstalling(reg.installing);
-
-      reg.addEventListener("updatefound", () => {
         if (reg.installing) trackInstalling(reg.installing);
-      });
-    });
+
+        reg.addEventListener("updatefound", () => {
+          if (reg.installing) trackInstalling(reg.installing);
+        });
+      })
+      .catch(() => undefined);
   }, []);
 
   if (!waiting) return null;
@@ -49,13 +48,13 @@ export function SwUpdateBanner() {
   return (
     <div
       role="status"
-      className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl border border-app-line bg-app-panel px-4 py-3 shadow-lg"
+      className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl border border-line bg-panel px-4 py-3 shadow-lg"
     >
-      <span className="text-[13px] text-app-text">Update available</span>
+      <span className="text-[13px] text-cream">Update available</span>
       <button
         type="button"
         onClick={handleUpdate}
-        className="text-[13px] font-medium text-gold-accent hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-accent cursor-pointer"
+        className="text-[13px] font-medium text-accent hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
       >
         Reload
       </button>
@@ -63,7 +62,7 @@ export function SwUpdateBanner() {
         type="button"
         onClick={() => setWaiting(null)}
         aria-label="Dismiss"
-        className="text-app-dim hover:text-app-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-accent cursor-pointer"
+        className="text-dim hover:text-cream transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
       >
         <X size={14} />
       </button>

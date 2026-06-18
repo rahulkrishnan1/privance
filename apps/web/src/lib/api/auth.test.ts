@@ -161,6 +161,8 @@ describe("recoveryDeriveParams", () => {
       recovery_blob: "blob",
       recovery_salt: "rsalt",
       recovery_params: MOCK_KDF_PARAMS,
+      wrapped_dek_recovery: "wdr",
+      wrapped_dek_recovery_iv: "wdriv",
     };
     mockFetch.mockResolvedValueOnce(ok(expected));
     const result = await recoveryDeriveParams("alice");
@@ -198,6 +200,7 @@ describe("recoveryReset", () => {
 
 describe("passwordChange", () => {
   const payload = {
+    current_auth_hash: "current",
     new_auth_hash: "hash",
     new_kdf_salt: "salt",
     new_kdf_params: MOCK_KDF_PARAMS,
@@ -213,5 +216,12 @@ describe("passwordChange", () => {
   it("happy path, resolves without error", async () => {
     mockFetch.mockResolvedValueOnce(ok({}));
     await expect(passwordChange(payload)).resolves.toBeUndefined();
+  });
+
+  it("sends the current auth hash so the server can verify it", async () => {
+    mockFetch.mockResolvedValueOnce(ok({}));
+    await passwordChange(payload);
+    const [, init] = mockFetch.mock.calls.at(-1) as [string, RequestInit];
+    expect(JSON.parse(init.body as string).current_auth_hash).toBe("current");
   });
 });

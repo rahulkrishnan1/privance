@@ -1,16 +1,8 @@
 /**
- * Client wrapper for the simulation Web Worker.
- *
- * Mirrors apps/web/src/lib/crypto/kdf.ts: ready handshake, pending map keyed
- * by request id, per-request timeout, in-thread fallback that latches once
- * triggered.
- *
- * Memoization: results are cached in-memory keyed by a stable serialisation of
- * all wire inputs plus a dataset-version discriminator (DATASET_END_YEAR), so
- * the Plan tab and dashboard share one computation and a dataset bump
- * invalidates stale entries.
- *
- * No DEK, no ciphertext: inputs are plain numbers/strings.
+ * Client wrapper for the simulation Web Worker: ready handshake, pending map
+ * keyed by request id, per-request timeout, and an in-thread fallback that
+ * latches once triggered. Results are memoised by a stable serialisation of
+ * the inputs plus DATASET_END_YEAR so a dataset bump invalidates stale entries.
  */
 
 import { Decimal } from "@privance/core/decimal";
@@ -29,9 +21,7 @@ const WORKER_URL = "/sim/sim-worker.mjs";
 // first run on a low-end device.
 const WORKER_TIMEOUT_MS = 5_000;
 
-// ---------------------------------------------------------------------------
 // Wire shapes (JSON-safe; shared with sim-worker-entry.ts via wire-types.ts)
-// ---------------------------------------------------------------------------
 
 import type {
   WireSimulateArgs,
@@ -40,11 +30,6 @@ import type {
   WorkerResponse,
 } from "./wire-types.js";
 
-// ---------------------------------------------------------------------------
-// Public input type (client speaks core types; stockWeightForYear is a
-// constant number in v1 because functions cannot cross the RPC boundary)
-// ---------------------------------------------------------------------------
-
 export interface SimWorkerInput {
   startingPotCents: Decimal;
   monthlyContributionCents: Decimal;
@@ -52,17 +37,13 @@ export interface SimWorkerInput {
   swrBps: number;
   currentAge: number;
   planUntilAge: number;
-  /** Constant stock weight (0..1). */
+  /** Stock weight (0..1). */
   stockWeight: number;
   seed: string;
   muBps: number;
   sigmaBps: number;
   paths?: number;
 }
-
-// ---------------------------------------------------------------------------
-// Module-level state (single worker instance, lazy-init)
-// ---------------------------------------------------------------------------
 
 let worker: Worker | null = null;
 let workerReady: Promise<void> | null = null;
@@ -76,10 +57,6 @@ const pending = new Map<
 // In-memory memo keyed by wire input hash + dataset version.
 const memo = new Map<string, SimulateResult>();
 const MEMO_MAX = 20;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function randomId(): string {
   const buf = new Uint8Array(8);
@@ -158,17 +135,13 @@ function runInThread(input: SimWorkerInput): SimulateResult {
     swrBps: input.swrBps,
     currentAge: input.currentAge,
     planUntilAge: input.planUntilAge,
-    stockWeightForYear: (_y: number) => input.stockWeight,
+    stockWeight: input.stockWeight,
     seed: asSimSeed(input.seed),
     muBps: input.muBps,
     sigmaBps: input.sigmaBps,
     paths: input.paths,
   });
 }
-
-// ---------------------------------------------------------------------------
-// Worker lifecycle
-// ---------------------------------------------------------------------------
 
 function initWorker(): Promise<void> {
   if (workerReady !== null) return workerReady;
@@ -273,10 +246,6 @@ async function simulateViaWorker(args: WireSimulateArgs): Promise<WireSimulateRe
     w.postMessage(request);
   });
 }
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
 
 /**
  * Run a FIRE simulation. Results are memoized per session so repeated calls

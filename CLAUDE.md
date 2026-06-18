@@ -52,7 +52,7 @@ packages/core/src/<module>/
 apps/web/src/features/<feature>/   # reference: apps/web/src/features/accounts/
 ├── index.ts
 ├── types.ts
-├── queries.ts          # TanStack Query hooks
+├── queries.ts          # read hooks (local store)
 ├── mutations.ts
 └── components/
 ```
@@ -100,12 +100,12 @@ apps/web/src/features/<feature>/   # reference: apps/web/src/features/accounts/
 
 ## Security contracts (never drift)
 
-- HKDF labels are **frozen**: `finance/auth-v1`, `finance/kek-v1`, `finance/recovery-v1`. Bumping = migration, not a code change.
+- HKDF labels are **frozen**: `finance/auth-v1`, `finance/kek-v1`, `finance/recovery-v1`, `finance/biometric-v1`. Bumping = migration, not a code change.
 - Argon2id params are versioned in stored hashes. Param bumps follow expand/contract.
 - AEAD AAD = `{recordUuid, kind, labelVersion, kdfParamVersion}`, prevents record-swap, cross-kind, and downgrade. `biometric_protector` records additionally carry `pubKeyDigest` (SHA-256 of the stored protector public key) in the AAD; no other kind uses it.
-- DEK lives in JS memory only via `globalThis[Symbol.for("privance.dekStore.v1")]`. Cleared on tab close and on auto-lock; refresh = re-auth. This is the zero-knowledge tradeoff; don't try to "fix" it by persisting the DEK.
+- DEK lives in JS memory via `globalThis[Symbol.for("privance.dekStore.v1")]`. The survive-refresh vault (`session-vault.ts`, ADR-0004) can restore it after a reload within a 15-min TTL by storing only a non-extractable-key-wrapped copy, never the raw bytes. Cleared on auto-lock and once the TTL lapses. Never persist the raw DEK.
 - Constant-time compare via `equalBytes` (`@noble/ciphers/utils`).
-- HIBP check on signup, fail-closed on timeout: surface a clear error rather than silently allowing a potentially breached password.
+- Password quality is enforced client-side only (strength meter + minimum length); Privance makes no third-party breach-database call, in keeping with no unnecessary external requests.
 - Username enumeration prevention via deterministic fake KDF params at matched latency.
 - Never log secrets, passwords, DEKs, recovery phrases, or any decrypted user data.
 

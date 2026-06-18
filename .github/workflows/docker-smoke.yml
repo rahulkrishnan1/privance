@@ -22,10 +22,6 @@ permissions:
   contents: read
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # 1. Build all three images for the runner's native arch. No push; this only
-  #    proves the Dockerfiles and build contexts are intact.
-  # ---------------------------------------------------------------------------
   build:
     name: Build ${{ matrix.name }}
     runs-on: ubuntu-latest
@@ -59,10 +55,7 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
 
-  # ---------------------------------------------------------------------------
-  # 2. Validate compose.prod.yaml resolves with both default and registry-style
-  #    variables. Stub env files satisfy the env_file directives.
-  # ---------------------------------------------------------------------------
+  # Validate compose.prod.yaml resolves with both default and registry-style variables.
   compose-config:
     name: Validate compose config
     runs-on: ubuntu-latest

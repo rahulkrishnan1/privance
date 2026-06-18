@@ -1,4 +1,4 @@
-import { type EncryptedBlob, InvalidLengthError } from "@privance/core";
+import { type EncryptedBlob, InvalidLengthError, type ItemsKey } from "@privance/core";
 
 // Durable enrollment record for biometric unlock. Separate from privance.session
 // because this store is exempt from the 15-minute TTL and the cold-launch purge:
@@ -37,7 +37,7 @@ export type EnrollmentRecord = {
   sealedPrivateKey: EncryptedBlob;
   // null after a cadence-expiry purge: the at-rest items-key copy is destroyed
   // but the enrollment bookkeeping (no user key material) survives so the next
-  // password-derived unlock can re-arm without re-enrollment (R9).
+  // password-derived unlock can re-arm without re-enrollment.
   wrappedItemsKey: Uint8Array | null;
   lastPasswordUnlockAt: number;
   enrolledAt: number;
@@ -144,12 +144,8 @@ function isValidRecord(r: unknown): r is EnrollmentRecord {
   );
 }
 
-// ---------------------------------------------------------------------------
-// RSA helpers (exported so U5/U6 share one encoding)
-// ---------------------------------------------------------------------------
-
 /** Generates a protector keypair. Returns raw bytes so callers can seal pkcs8
- *  via U1 and store publicKeyBytes plaintext without holding CryptoKey handles. */
+ *  and store publicKeyBytes plaintext without holding CryptoKey handles. */
 export async function generateProtectorKeypair(): Promise<{
   publicKeyBytes: Uint8Array;
   pkcs8: Uint8Array;
@@ -195,7 +191,7 @@ export async function unwrapItemsKeyRsa(opts: {
   wrappedItemsKey: Uint8Array;
   pkcs8: Uint8Array;
   expectedRecordUuid: string;
-}): Promise<Uint8Array> {
+}): Promise<ItemsKey> {
   // Copy into plain ArrayBuffer-backed views; see wrapItemsKeyRsa comment.
   const pkcs8Buf = new Uint8Array(opts.pkcs8);
   const privKey = await crypto.subtle.importKey("pkcs8", pkcs8Buf, RSA_ALGORITHM, false, [
@@ -209,14 +205,10 @@ export async function unwrapItemsKeyRsa(opts: {
   const embeddedUuid = new TextDecoder().decode(uuidBytes);
   plain.fill(0);
   if (embeddedUuid !== opts.expectedRecordUuid) {
-    throw new Error(`unwrapItemsKeyRsa: recordUuid mismatch (expected ${opts.expectedRecordUuid})`);
+    throw new Error("unwrapItemsKeyRsa: recordUuid mismatch");
   }
-  return itemsKey;
+  return itemsKey as ItemsKey;
 }
-
-// ---------------------------------------------------------------------------
-// Persistence API
-// ---------------------------------------------------------------------------
 
 /** Writes the enrollment record, replacing any prior one. The caller must
  *  pre-generate the recordUuid so that sealProtectorKey can bind it as AAD
@@ -258,8 +250,8 @@ export async function saveEnrollment(opts: {
  *  holding a wrapped items key. UserId mismatch and structural invalidity purge
  *  the whole record. Cadence expiry destroys only the wrapped items key (the
  *  sole field holding user key material); the bookkeeping survives so the next
- *  password-derived unlock re-arms without re-enrollment (R9). Storage faults
- *  degrade to null. Cryptographic tamper detection happens at unwrap time (U5),
+ *  password-derived unlock re-arms without re-enrollment. Storage faults
+ *  degrade to null. Cryptographic tamper detection happens at unwrap time,
  *  not here. */
 export async function loadEnrollment(opts: {
   now: number;

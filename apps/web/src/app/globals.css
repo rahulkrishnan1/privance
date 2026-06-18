@@ -4,48 +4,74 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #0e0f11;
+  --foreground: #eceae3;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-serif: var(--font-fraunces);
-  --font-editorial: var(--font-spectral);
 
-  /* Privance brand. App shell uses the pale champagne accent. Landing
-     surface uses two warmer gold tones: gold-600 for text selection,
-     gold-950 for atmospheric gradients. */
-  --color-gold-600: #b18a1c;
-  --color-gold-950: #2a2009;
-  --color-gold-accent: #e6d39a;
-  --color-gold-accent-hover: #f0e3b0;
+  /* Type. Instrument Serif for headers, Schibsted Grotesk for body/labels,
+     Spline Sans Mono for data and inputs. */
+  --font-sans: var(--font-schibsted);
+  --font-mono: var(--font-spline-mono);
+  --font-serif: var(--font-instrument-serif);
+  --font-editorial: var(--font-instrument-serif);
 
-  /* In-app surface palette. Obsidian; subtle cool undertone. */
-  --color-app-bg: #08090c;
-  --color-app-panel: #11131a;
-  --color-app-panel-2: #181b24;
-  --color-app-text: #eef0f5;
-  --color-app-muted: #9fa3b0;
-  --color-app-dim: #696c79;
-  --color-app-line: rgba(255, 255, 255, 0.07);
-  --color-app-line-soft: rgba(255, 255, 255, 0.04);
-  --color-app-green: #6cc46a;
-  --color-app-red: #d97766;
+  /* Privance 2026 palette. Graphite vault + Tide teal accent. These names
+     mirror the design mocks one-to-one. */
+  --color-vault: #0e0f11;
+  --color-panel: #15161a;
+  --color-panel-2: #1b1c21;
+  --color-cream: #eceae3;
+  --color-cream-soft: #c7c5bc;
+  --color-dim: #8e8e88;
+  --color-faint: #5e5e5a;
+  --color-line: rgba(235, 235, 230, 0.08);
+  --color-line-soft: rgba(235, 235, 230, 0.045);
+  --color-accent: #7fc4c6;
+  --color-accent-dim: #4f898c;
+  --color-accent-hover: #9bd2d4;
+  --color-up: #7cc08d;
+  --color-down: #d08562;
+  --color-signal: #c8551f;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-vault);
+}
+
+/* Film-grain signature: a fixed, non-interactive fractal-noise wash that gives
+   the graphite surface its texture. Pointer-events none so it never intercepts
+   input; sits above content but below modals (z-index 40). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+  opacity: 0.45;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .03 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    display: none;
+  }
 }
 
 /* Native dialog modal backdrop */
 dialog::backdrop {
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(4, 6, 5, 0.72);
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
 }
 
 /* Hide the native number-input spinner so number fields keep the same clean
@@ -61,9 +87,9 @@ input[type="number"] {
 }
 
 /* Plan lever slider: an 18px-tall hit area with a thin 5px track painted as a
-   centered background strip, so JS can fill it gold up to the value. The
+   centered background strip, so JS can fill it teal up to the value. The
    background-color MUST stay transparent or the input's default field shows
-   through as a white pill. The gold fill is applied inline per value. */
+   through as a white pill. The teal fill is applied inline per value. */
 input[type="range"].plan-range {
   -webkit-appearance: none;
   appearance: none;
@@ -79,8 +105,8 @@ input[type="range"].plan-range {
   background-position: 0 center;
   background-image: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.1) 100%
+    rgba(235, 235, 230, 0.1) 0%,
+    rgba(235, 235, 230, 0.1) 100%
   );
 }
 input[type="range"].plan-range::-webkit-slider-runnable-track {
@@ -92,9 +118,9 @@ input[type="range"].plan-range::-webkit-slider-thumb {
   width: 18px;
   height: 18px;
   border-radius: 99px;
-  background: var(--color-gold-accent);
-  border: 3px solid var(--color-app-bg);
-  box-shadow: 0 0 0 1px rgba(230, 211, 154, 0.9);
+  background: var(--color-cream);
+  border: 3px solid var(--color-vault);
+  box-shadow: 0 0 0 1px var(--color-accent);
   cursor: grab;
 }
 input[type="range"].plan-range::-webkit-slider-thumb:active {
@@ -109,9 +135,9 @@ input[type="range"].plan-range::-moz-range-thumb {
   width: 15px;
   height: 15px;
   border-radius: 99px;
-  background: var(--color-gold-accent);
-  border: 3px solid var(--color-app-bg);
-  box-shadow: 0 0 0 1px rgba(230, 211, 154, 0.9);
+  background: var(--color-cream);
+  border: 3px solid var(--color-vault);
+  box-shadow: 0 0 0 1px var(--color-accent);
   cursor: grab;
 }
 /* Keyboard focus on the slider is a soft glow on the thumb, not a hard ring
@@ -122,13 +148,13 @@ input[type="range"].plan-range:focus-visible {
 }
 input[type="range"].plan-range:focus-visible::-webkit-slider-thumb {
   box-shadow:
-    0 0 0 5px rgba(230, 211, 154, 0.22),
-    0 0 0 1px rgba(230, 211, 154, 0.9);
+    0 0 0 5px rgba(127, 196, 198, 0.22),
+    0 0 0 1px var(--color-accent);
 }
 input[type="range"].plan-range:focus-visible::-moz-range-thumb {
   box-shadow:
-    0 0 0 5px rgba(230, 211, 154, 0.22),
-    0 0 0 1px rgba(230, 211, 154, 0.9);
+    0 0 0 5px rgba(127, 196, 198, 0.22),
+    0 0 0 1px var(--color-accent);
 }
 
 /* No tap-flash on mobile, and no focus ring on the chart surface (Recharts
@@ -137,8 +163,6 @@ input[type="range"].plan-range:focus-visible::-moz-range-thumb {
 html {
   -webkit-tap-highlight-color: transparent;
 }
-.recharts-wrapper:focus,
-.recharts-wrapper :focus,
 .recharts-surface:focus {
   outline: none;
 }
@@ -152,11 +176,30 @@ dialog:not([open]) {
   display: none !important;
 }
 
+/* The Veil: frost every figure on the surface. Toggled by adding `veil-on` to a
+   container; each masked value carries the `vfig` class. */
+.veil-on .vfig {
+  filter: blur(7px);
+  opacity: 0.7;
+  transition: filter 0.45s, opacity 0.45s;
+}
+.vfig {
+  transition: filter 0.45s, opacity 0.45s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .veil-on .vfig,
+  .vfig {
+    transition: none;
+  }
+}
+
 /* Landing reveal animations. Lives in globals.css (not an inline <style>)
    so the rules apply on first SSR paint without a hydration round-trip. */
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 4rem;
+  /* Clears the 66px sticky landing header, plus a little breathing room. Sections
+     must NOT also set scroll-mt or the offsets stack and anchor jumps overshoot. */
+  scroll-padding-top: 67px;
 }
 @keyframes reveal-up {
   from {
@@ -182,6 +225,19 @@ html {
 .reveal-fade {
   animation: reveal-fade 1.2s ease-out both;
 }
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1300;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.trendline {
+  stroke-dasharray: 1300;
+  animation: draw 2s cubic-bezier(0.4, 0, 0.2, 1) 0.4s both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -190,5 +246,59 @@ html {
   .reveal-fade {
     animation: none;
     opacity: 1;
+  }
+  .trendline {
+    animation: none;
+  }
+}
+
+/* Auth card error shake. Plays once per error occurrence (the React side
+   re-triggers it by toggling the class). Guarded so it is inert under
+   reduced-motion, unlike the unguarded mock. */
+@keyframes shake {
+  0%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(5px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+.auth-shake {
+  animation: shake 0.4s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-shake {
+    animation: none;
+  }
+}
+
+/* The auth/unlock card entrance. Shared so the keyframe lives in one place, and
+   guarded so it is inert under reduced-motion. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.auth-rise {
+  animation: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-rise {
+    animation: none;
   }
 }

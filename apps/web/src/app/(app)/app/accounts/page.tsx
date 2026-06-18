@@ -1,7 +1,7 @@
 "use client";
 
-import { AccountsScreen } from "@/features/accounts";
+import { InvestScreen } from "@/features/invest";
 
 export default function AccountsPage() {
-  return <AccountsScreen />;
+  return <InvestScreen view="accounts" />;
 }

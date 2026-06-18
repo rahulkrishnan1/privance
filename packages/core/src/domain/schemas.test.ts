@@ -8,11 +8,8 @@ import {
   LiabilityAccountPayloadSchema,
   ManualAssetAccountPayloadSchema,
   NetWorthSnapshotPayloadSchema,
+  SpendItemPayloadSchema,
 } from "./schemas.js";
-
-// ---------------------------------------------------------------------------
-// CashAccountPayloadSchema
-// ---------------------------------------------------------------------------
 
 describe("CashAccountPayloadSchema", () => {
   const valid = {
@@ -38,11 +35,19 @@ describe("CashAccountPayloadSchema", () => {
       false,
     );
   });
-});
 
-// ---------------------------------------------------------------------------
-// InvestmentAccountPayloadSchema
-// ---------------------------------------------------------------------------
+  it("accepts a valid apy decimal fraction", () => {
+    expect(CashAccountPayloadSchema.safeParse({ ...valid, apy: "0.041" }).success).toBe(true);
+  });
+
+  it("accepts without apy (field is optional)", () => {
+    expect(CashAccountPayloadSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("rejects non-decimal apy", () => {
+    expect(CashAccountPayloadSchema.safeParse({ ...valid, apy: "not-a-rate" }).success).toBe(false);
+  });
+});
 
 describe("InvestmentAccountPayloadSchema", () => {
   const valid = {
@@ -62,11 +67,16 @@ describe("InvestmentAccountPayloadSchema", () => {
     const { cashBalanceCents: _, ...rest } = valid;
     expect(InvestmentAccountPayloadSchema.safeParse(rest).success).toBe(false);
   });
-});
 
-// ---------------------------------------------------------------------------
-// LiabilityAccountPayloadSchema
-// ---------------------------------------------------------------------------
+  it("accepts the mega-backdoor and SEP/solo sub-kinds", () => {
+    expect(
+      InvestmentAccountPayloadSchema.safeParse({ ...valid, subKind: "after_tax_401k" }).success,
+    ).toBe(true);
+    expect(
+      InvestmentAccountPayloadSchema.safeParse({ ...valid, subKind: "sep_solo_401k" }).success,
+    ).toBe(true);
+  });
+});
 
 describe("LiabilityAccountPayloadSchema", () => {
   const valid = {
@@ -88,10 +98,6 @@ describe("LiabilityAccountPayloadSchema", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// ManualAssetAccountPayloadSchema
-// ---------------------------------------------------------------------------
-
 describe("ManualAssetAccountPayloadSchema", () => {
   const valid = {
     kind: "manual_asset",
@@ -110,11 +116,17 @@ describe("ManualAssetAccountPayloadSchema", () => {
       false,
     );
   });
-});
 
-// ---------------------------------------------------------------------------
-// AccountPayloadSchema (discriminated union)
-// ---------------------------------------------------------------------------
+  it("accepts a valuedAt date string", () => {
+    expect(
+      ManualAssetAccountPayloadSchema.safeParse({ ...valid, valuedAt: "2026-03-01" }).success,
+    ).toBe(true);
+  });
+
+  it("accepts without valuedAt (field is optional)", () => {
+    expect(ManualAssetAccountPayloadSchema.safeParse(valid).success).toBe(true);
+  });
+});
 
 describe("AccountPayloadSchema", () => {
   it("routes cash kind correctly", () => {
@@ -132,10 +144,6 @@ describe("AccountPayloadSchema", () => {
     expect(AccountPayloadSchema.safeParse({ kind: "unknown" }).success).toBe(false);
   });
 });
-
-// ---------------------------------------------------------------------------
-// HoldingPayloadSchema
-// ---------------------------------------------------------------------------
 
 describe("HoldingPayloadSchema", () => {
   const valid = {
@@ -158,10 +166,6 @@ describe("HoldingPayloadSchema", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// HoldingGroupPayloadSchema
-// ---------------------------------------------------------------------------
-
 describe("HoldingGroupPayloadSchema", () => {
   it("accepts a valid group payload", () => {
     expect(HoldingGroupPayloadSchema.safeParse({ name: "US Equities" }).success).toBe(true);
@@ -171,10 +175,6 @@ describe("HoldingGroupPayloadSchema", () => {
     expect(HoldingGroupPayloadSchema.safeParse({}).success).toBe(false);
   });
 });
-
-// ---------------------------------------------------------------------------
-// NetWorthSnapshotPayloadSchema
-// ---------------------------------------------------------------------------
 
 describe("NetWorthSnapshotPayloadSchema", () => {
   const valid = {
@@ -192,5 +192,94 @@ describe("NetWorthSnapshotPayloadSchema", () => {
     expect(
       NetWorthSnapshotPayloadSchema.safeParse({ ...valid, netWorthCents: "NaN" }).success,
     ).toBe(false);
+  });
+});
+
+describe("SpendItemPayloadSchema", () => {
+  const valid = {
+    name: "Rent",
+    amountCents: "145000",
+    intervalCount: 1,
+    intervalUnit: "month",
+    category: "housing",
+    group: "essentials",
+    nextRenewalAt: "2026-07-01",
+    status: "active",
+  };
+
+  it("accepts a valid payload with all fields", () => {
+    expect(SpendItemPayloadSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("accepts a valid payload with optional fields absent", () => {
+    const { nextRenewalAt, ...rest } = valid;
+    expect(SpendItemPayloadSchema.safeParse(rest).success).toBe(true);
+  });
+
+  it("accepts a multi-unit interval (every two years)", () => {
+    expect(
+      SpendItemPayloadSchema.safeParse({ ...valid, intervalCount: 2, intervalUnit: "year" })
+        .success,
+    ).toBe(true);
+  });
+
+  it("rejects an empty name", () => {
+    expect(SpendItemPayloadSchema.safeParse({ ...valid, name: "" }).success).toBe(false);
+  });
+
+  it("rejects a name longer than 64 chars", () => {
+    expect(SpendItemPayloadSchema.safeParse({ ...valid, name: "x".repeat(65) }).success).toBe(
+      false,
+    );
+  });
+
+  it("rejects amountCents with a decimal point", () => {
+    expect(SpendItemPayloadSchema.safeParse({ ...valid, amountCents: "1450.00" }).success).toBe(
+      false,
+    );
+  });
+
+  it("rejects amountCents of zero", () => {
+    expect(SpendItemPayloadSchema.safeParse({ ...valid, amountCents: "0" }).success).toBe(false);
+  });
+
+  it("rejects a negative amountCents", () => {
+    expect(SpendItemPayloadSchema.safeParse({ ...valid, amountCents: "-100" }).success).toBe(false);
+  });
+
+  it("rejects intervalCount below 1", () => {
+    expect(SpendItemPayloadSchema.safeParse({ ...valid, intervalCount: 0 }).success).toBe(false);
+  });
+
+  it("rejects intervalCount above 99", () => {
+    expect(SpendItemPayloadSchema.safeParse({ ...valid, intervalCount: 100 }).success).toBe(false);
+  });
+
+  it("rejects a non-integer intervalCount", () => {
+    expect(SpendItemPayloadSchema.safeParse({ ...valid, intervalCount: 1.5 }).success).toBe(false);
+  });
+
+  it("rejects an unknown intervalUnit", () => {
+    expect(SpendItemPayloadSchema.safeParse({ ...valid, intervalUnit: "fortnight" }).success).toBe(
+      false,
+    );
+  });
+
+  it("rejects a malformed nextRenewalAt", () => {
+    expect(
+      SpendItemPayloadSchema.safeParse({ ...valid, nextRenewalAt: "07/01/2026" }).success,
+    ).toBe(false);
+  });
+
+  it("rejects an unknown group", () => {
+    expect(SpendItemPayloadSchema.safeParse({ ...valid, group: "luxuries" }).success).toBe(false);
+  });
+
+  it("rejects an unknown category", () => {
+    expect(SpendItemPayloadSchema.safeParse({ ...valid, category: "yacht" }).success).toBe(false);
+  });
+
+  it("rejects an unknown status", () => {
+    expect(SpendItemPayloadSchema.safeParse({ ...valid, status: "archived" }).success).toBe(false);
   });
 });

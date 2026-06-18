@@ -1,9 +1,8 @@
 "use client";
 
-import type { InvestmentAccount } from "@privance/core";
+import type { Decimal } from "@privance/core";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { useCallback, useState } from "react";
-import type { LocalGroup, LocalHolding, SortColumn, SortState } from "../types";
+import type { LocalHolding, SortColumn, SortState } from "../types";
 import { EmptyState } from "./empty-state";
 import { HoldingRow } from "./holding-row";
 import { SkeletonRows } from "./skeleton-row";
@@ -15,26 +14,14 @@ type PriceEntry = {
 
 type HoldingsTableProps = {
   holdings: LocalHolding[];
-  groups: LocalGroup[];
-  accounts: InvestmentAccount[];
   prices: Map<string, PriceEntry>;
   sort: SortState;
   loading: boolean;
   onSortChange: (column: SortColumn) => void;
-  onEdit: (holding: LocalHolding) => void;
-  onDelete: (holding: LocalHolding) => void;
+  onRowClick: (holding: LocalHolding) => void;
   onAdd: () => void;
-};
-
-const COLUMN_LABELS: Record<SortColumn, string> = {
-  ticker: "Ticker",
-  account: "Account",
-  shares: "Shares",
-  avgCost: "Avg Cost",
-  currentPrice: "Price",
-  marketValue: "Value",
-  gainDollar: "Total G/L $",
-  gainPct: "Total G/L %",
+  dayChangeByHoldingId: ReadonlyMap<string, Decimal>;
+  totalInvestmentsCents: Decimal | null;
 };
 
 type SortableHeaderProps = {
@@ -56,57 +43,42 @@ function SortableHeader({ column, label, sort, onPress, align = "left" }: Sortab
       aria-label={`Sort by ${label}`}
       aria-pressed={active}
       className={[
-        "flex items-center gap-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] rounded cursor-pointer w-full min-h-[44px] md:min-h-0",
+        "flex items-center gap-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent focus-visible:rounded-[inherit] rounded cursor-pointer w-full min-h-[44px] md:min-h-0",
         isRight ? "justify-end" : "justify-start",
       ].join(" ")}
     >
       <span
         className={[
-          "font-mono text-[10px] tracking-[0.22em] uppercase whitespace-nowrap",
-          active ? "text-gold-accent" : "text-app-dim",
+          "font-mono text-[9.5px] tracking-[.16em] uppercase whitespace-nowrap font-normal",
+          active ? "text-accent" : "text-faint",
         ].join(" ")}
       >
         {label}
       </span>
       {active && sort.direction === "asc" ? (
-        <ChevronUp size={10} className="text-gold-accent" />
+        <ChevronUp size={10} className="text-accent" />
       ) : active ? (
-        <ChevronDown size={10} className="text-gold-accent" />
+        <ChevronDown size={10} className="text-accent" />
       ) : null}
     </button>
   );
 }
 
-function accountName(accounts: InvestmentAccount[], accountId: string): string {
-  return accounts.find((a) => a.id === accountId)?.payload.name ?? "Unknown";
-}
-
 export function HoldingsTable({
   holdings,
-  groups,
-  accounts,
   prices,
   sort,
   loading,
   onSortChange,
-  onEdit,
-  onDelete,
+  onRowClick,
   onAdd,
+  dayChangeByHoldingId,
+  totalInvestmentsCents,
 }: HoldingsTableProps) {
-  // Single row expanded at a time on mobile. Desktop ignores this state
-  // (the expanded sub-row is hidden via md:hidden) since every column is
-  // already visible there.
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  // Stable across renders so HoldingRow does not see a fresh closure each tick.
-  const handleToggle = useCallback((id: string) => {
-    setExpandedId((prev) => (prev === id ? null : id));
-  }, []);
-
   if (loading) {
     return (
       <div className="overflow-x-auto">
-        <table aria-label="Holdings" className="w-full md:min-w-[960px]">
+        <table aria-label="Holdings" className="w-full">
           <tbody>
             <SkeletonRows count={5} />
           </tbody>
@@ -119,93 +91,59 @@ export function HoldingsTable({
     return <EmptyState onAdd={onAdd} />;
   }
 
-  // Mobile shows three columns (Ticker, Value, G/L %); the rest collapse
-  // behind a row tap that reveals the detail sub-row. Desktop sees every
-  // column directly. tabular-nums on numeric cells keeps digits column-aligned.
-  //
-  // Note: don't use a <colgroup> here. JSX whitespace between <col> tags
-  // becomes hydrated text nodes that React rejects inside colgroup.
   return (
     <div className="overflow-x-auto">
-      <table aria-label="Holdings" className="w-full md:min-w-[960px]">
+      <table aria-label="Holdings" className="w-full">
         <thead>
-          <tr className="border-b border-app-line">
-            <th scope="col" className="px-3 py-2 text-left">
-              <SortableHeader
-                column="ticker"
-                label={COLUMN_LABELS.ticker}
-                sort={sort}
-                onPress={onSortChange}
-              />
+          <tr>
+            <th scope="col" className="text-left pb-3">
+              <SortableHeader column="ticker" label="Holding" sort={sort} onPress={onSortChange} />
             </th>
-            <th scope="col" className="hidden md:table-cell px-3 py-2 text-left">
-              <SortableHeader
-                column="account"
-                label={COLUMN_LABELS.account}
-                sort={sort}
-                onPress={onSortChange}
-              />
-            </th>
-            <th scope="col" className="hidden md:table-cell px-3 py-2 text-right">
-              <SortableHeader
-                column="shares"
-                label={COLUMN_LABELS.shares}
-                sort={sort}
-                onPress={onSortChange}
-                align="right"
-              />
-            </th>
-            <th scope="col" className="hidden md:table-cell px-3 py-2 text-right">
+            <th scope="col" className="hidden md:table-cell text-right pb-3">
               <SortableHeader
                 column="currentPrice"
-                label={COLUMN_LABELS.currentPrice}
+                label="Price"
                 sort={sort}
                 onPress={onSortChange}
                 align="right"
               />
             </th>
-            <th scope="col" className="hidden md:table-cell px-3 py-2 text-right">
+            <th scope="col" className="hidden md:table-cell text-right pb-3">
               <SortableHeader
-                column="avgCost"
-                label={COLUMN_LABELS.avgCost}
+                column="dayPct"
+                label="Day"
                 sort={sort}
                 onPress={onSortChange}
                 align="right"
               />
             </th>
-            <th scope="col" className="px-3 py-2 text-right">
-              <SortableHeader
-                column="marketValue"
-                label={COLUMN_LABELS.marketValue}
-                sort={sort}
-                onPress={onSortChange}
-                align="right"
-              />
-            </th>
-            <th scope="col" className="hidden md:table-cell px-3 py-2 text-right">
+            <th scope="col" className="text-right pb-3">
               <SortableHeader
                 column="gainDollar"
-                label={COLUMN_LABELS.gainDollar}
+                label="G/L"
                 sort={sort}
                 onPress={onSortChange}
                 align="right"
               />
             </th>
-            <th scope="col" className="px-3 py-2 text-right">
+            <th scope="col" className="hidden md:table-cell text-right pb-3">
               <SortableHeader
-                column="gainPct"
-                label={COLUMN_LABELS.gainPct}
+                column="weight"
+                label="Weight"
                 sort={sort}
                 onPress={onSortChange}
                 align="right"
               />
             </th>
-            <th scope="col" className="hidden md:table-cell px-3 py-2 text-left">
-              <span className="flex items-center font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim whitespace-nowrap">
-                Groups
-              </span>
+            <th scope="col" className="text-right pb-3">
+              <SortableHeader
+                column="marketValue"
+                label="Value"
+                sort={sort}
+                onPress={onSortChange}
+                align="right"
+              />
             </th>
-            <th scope="col" className="hidden md:table-cell px-3 py-2" />
           </tr>
         </thead>
         <tbody>
@@ -213,13 +151,10 @@ export function HoldingsTable({
             <HoldingRow
               key={holding.id}
               holding={holding}
-              accountName={accountName(accounts, holding.accountId)}
-              groups={groups}
               prices={prices}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              isExpanded={expandedId === holding.id}
-              onToggle={handleToggle}
+              dayChangeCents={dayChangeByHoldingId.get(holding.id) ?? null}
+              totalInvestmentsCents={totalInvestmentsCents}
+              onRowClick={onRowClick}
             />
           ))}
         </tbody>

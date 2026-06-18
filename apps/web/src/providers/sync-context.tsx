@@ -10,7 +10,15 @@ import {
 import type { LocalStore } from "@privance/core/storage";
 import type { SyncClient } from "@privance/core/sync";
 import type { ReactNode } from "react";
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { serverUrl } from "@/lib/api/client";
 import { perUserDbFilename } from "@/lib/storage/per-user-store";
 import { readItemsKey, useAuth } from "./auth-context";
@@ -189,7 +197,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           onAuthError: () => {
             // Background sync got a 401/403. The session is gone server-side;
             // lock so the user can re-authenticate instead of seeing a stuck UI.
-            lock();
+            void lock().catch((err) => {
+              // A failed auto-lock would leave the app unlocked after the session
+              // is gone; surface it rather than swallow so it is not invisible.
+              // biome-ignore lint/suspicious/noConsole: surface a failed auto-lock
+              console.error("[sync] auto-lock after auth error failed", err);
+            });
           },
           onDecryptError: (objectId, err) => {
             // Don't crash the sync loop; surface so the failure isn't invisible.
@@ -293,11 +306,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     // namespace. State alone does not change on hot user switches.
   }, [state, user?.userId]);
 
-  const syncValue: SyncContextValue = {
-    ...storeState,
-    storeClock,
-    tick,
-  };
+  const syncValue = useMemo<SyncContextValue>(
+    () => ({ ...storeState, storeClock, tick }),
+    [storeState, storeClock, tick],
+  );
 
   return <SyncContext.Provider value={syncValue}>{children}</SyncContext.Provider>;
 }

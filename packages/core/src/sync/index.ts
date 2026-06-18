@@ -16,7 +16,6 @@ export type {
   SyncClientConfig,
 } from "./types.js";
 export {
-  SyncConflictError,
   SyncError,
   SyncNetworkError,
   SyncNotFoundError,

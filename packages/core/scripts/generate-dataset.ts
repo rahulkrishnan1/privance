@@ -147,13 +147,10 @@ function computeAnnualReturns(jans: Map<number, JanuaryData>): AnnualReturn[] {
     // curr is guaranteed to exist (we iterate over jans keys), but be explicit.
     if (!curr || !next) continue; // need both Jan values for the return
 
-    // -----------------------------------------------------------------------
     // Stocks: real total return
     //   (realPrice[y+1] + annualRealDividend[y]) / realPrice[y] - 1
-    // -----------------------------------------------------------------------
     const stockReturn = (next.realPrice + curr.annualRealDividend) / curr.realPrice - 1;
 
-    // -----------------------------------------------------------------------
     // Bonds: nominal coupon + price change (constant-maturity), then real
     //   coupon_yield = longRate / 100
     //   delta_yield  = next.longRate/100 - curr.longRate/100
@@ -161,7 +158,6 @@ function computeAnnualReturns(jans: Map<number, JanuaryData>): AnnualReturn[] {
     //   nominal_return = coupon_yield - duration * delta_yield
     //   inflation    = next.cpi / curr.cpi - 1
     //   real_return  = (1 + nominal_return) / (1 + inflation) - 1
-    // -----------------------------------------------------------------------
     const couponYield = curr.longRate / 100;
     const deltaYield = next.longRate / 100 - couponYield;
     const duration = bondDuration(couponYield);

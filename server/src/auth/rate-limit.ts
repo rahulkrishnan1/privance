@@ -85,6 +85,14 @@ const recoveryPerIp = new SlidingWindow(3_600_000, 10);
 const loginBackoff = new ProgressiveBackoff(250, 4_000);
 const recoveryBackoff = new ProgressiveBackoff(500, 8_000);
 
+// Guards the two authenticated endpoints that re-verify the master password
+// (account destroy, password change). Keyed on userId rather than username
+// since the caller is already authenticated. Overridable so the E2E suite,
+// which exercises these flows from a single IP, is not throttled.
+const passwordVerifyMax = Number(process.env.RATE_LIMIT_PASSWORD_VERIFY) || 5;
+const passwordVerifyPerUser = new SlidingWindow(60_000, passwordVerifyMax);
+const passwordVerifyBackoff = new ProgressiveBackoff(250, 4_000);
+
 export function gateSignup(hashedIp: string): void {
   if (!signupPerIp.hit(hashedIp)) throw new RateLimitedError("too many signups");
 }
@@ -107,6 +115,22 @@ export async function gateRecovery(username: string, hashedIp: string): Promise<
   if (delay > 0) await Bun.sleep(delay);
 }
 
+export async function gatePasswordVerify(userId: string): Promise<void> {
+  if (!passwordVerifyPerUser.hit(`pw:${userId}`)) {
+    throw new RateLimitedError("too many password attempts");
+  }
+  const delay = passwordVerifyBackoff.delayMs(`pw:${userId}`);
+  if (delay > 0) await Bun.sleep(delay);
+}
+
+export function recordPasswordVerifyFailure(userId: string): void {
+  passwordVerifyBackoff.recordFailure(`pw:${userId}`);
+}
+
+export function recordPasswordVerifySuccess(userId: string): void {
+  passwordVerifyBackoff.recordSuccess(`pw:${userId}`);
+}
+
 export function recordLoginFailure(username: string): void {
   loginBackoff.recordFailure(`u:${username.toLowerCase()}`);
 }
@@ -123,20 +147,13 @@ export function recordRecoverySuccess(username: string): void {
   recoveryBackoff.recordSuccess(`u:${username.toLowerCase()}`);
 }
 
-export function getLoginBackoffDelayMs(username: string): number {
-  return loginBackoff.delayMs(`u:${username.toLowerCase()}`);
-}
-
-export function getRecoveryBackoffDelayMs(username: string): number {
-  return recoveryBackoff.delayMs(`u:${username.toLowerCase()}`);
-}
-
 export function evictInactive(): void {
   loginPerUsername.evictEmpty();
   loginPerIp.evictEmpty();
   signupPerIp.evictEmpty();
   recoveryPerUsername.evictEmpty();
   recoveryPerIp.evictEmpty();
+  passwordVerifyPerUser.evictEmpty();
 }
 
 export function resetAll(): void {
@@ -145,6 +162,8 @@ export function resetAll(): void {
   signupPerIp.reset();
   recoveryPerUsername.reset();
   recoveryPerIp.reset();
+  passwordVerifyPerUser.reset();
   loginBackoff.reset();
   recoveryBackoff.reset();
+  passwordVerifyBackoff.reset();
 }

@@ -5,12 +5,7 @@ import { asSimSeed } from "./types.js";
 
 const SEED = asSimSeed("privance-fire-v1");
 
-// ---------------------------------------------------------------------------
-// Golden vectors (bit-identical assertions)
-// These exact values are also asserted in browser mode in U4 to verify
-// cross-engine determinism.
-// ---------------------------------------------------------------------------
-
+// These exact values are also asserted in browser mode to verify cross-engine determinism.
 describe("sfc32 golden vectors", () => {
   it("produces the expected sequence for seed 'privance-fire-v1'", () => {
     const rng = seededRng(SEED);
@@ -32,10 +27,6 @@ describe("sfc32 golden vectors", () => {
     expect(state.d).toBe(1894533770);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Determinism
-// ---------------------------------------------------------------------------
 
 describe("sfc32 determinism", () => {
   it("produces identical output for identical seeds (two independent instances)", () => {
@@ -65,10 +56,6 @@ describe("sfc32 determinism", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Output range
-// ---------------------------------------------------------------------------
-
 describe("sfc32 output range", () => {
   it("all outputs are in [0, 1)", () => {
     const rng = seededRng(SEED);
@@ -79,10 +66,6 @@ describe("sfc32 output range", () => {
     }
   });
 });
-
-// ---------------------------------------------------------------------------
-// Property tests (fast-check)
-// ---------------------------------------------------------------------------
 
 describe("sfc32 properties", () => {
   it("output is in [0, 1) for any seed string (fast-check)", () => {
@@ -112,5 +95,29 @@ describe("sfc32 properties", () => {
       }),
       { numRuns: 500 },
     );
+  });
+});
+
+// A range-only check passes even for a constant generator; chi-square catches biased or clumped distributions.
+describe("sfc32 uniformity", () => {
+  it("draws are evenly distributed across 10 buckets (chi-square within bound)", () => {
+    const rng = seededRng(asSimSeed("uniformity-seed"));
+    const buckets = 10;
+    const n = 50_000;
+    const counts = new Array<number>(buckets).fill(0);
+    for (let i = 0; i < n; i++) {
+      const b = Math.min(buckets - 1, Math.floor(rng.next() * buckets));
+      counts[b] = (counts[b] ?? 0) + 1;
+    }
+    const expected = n / buckets;
+    let chiSq = 0;
+    for (const c of counts) {
+      chiSq += (c - expected) ** 2 / expected;
+    }
+    // 9 degrees of freedom: the 99.9th-percentile critical value is ~27.88.
+    // A uniform RNG clears this comfortably; a clumped one blows past it.
+    expect(chiSq).toBeLessThan(27.88);
+    // Every bucket must receive draws (a constant generator would empty 9 of 10).
+    expect(counts.every((c) => c > 0)).toBe(true);
   });
 });

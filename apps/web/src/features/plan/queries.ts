@@ -1,13 +1,9 @@
 "use client";
 
 import type { Plan, PlanId, UserId } from "@privance/core";
-import { asId, asIsoDateTime, PLAN_OBJECT_ID, PlanPayloadSchema } from "@privance/core";
+import { asId, asIsoDateTime, KIND_PLAN, PLAN_OBJECT_ID, PlanPayloadSchema } from "@privance/core";
 import { useCallback, useEffect, useState } from "react";
-import { useSync } from "@/providers/sync-context";
-
-// ---------------------------------------------------------------------------
-// Parse helper
-// ---------------------------------------------------------------------------
+import { useSync } from "@/providers";
 
 function parsePlan(raw: unknown, objectId: string): Plan {
   const payload = PlanPayloadSchema.parse(raw);
@@ -20,10 +16,6 @@ function parsePlan(raw: unknown, objectId: string): Plan {
     payload,
   } as Plan;
 }
-
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
 
 export type PlanQueryState =
   | { status: "initialising" }
@@ -47,7 +39,7 @@ export function usePlanRecord(): PlanQueryState {
     }
 
     try {
-      const row = await store.get({ kind: "plan", objectId: PLAN_OBJECT_ID });
+      const row = await store.get({ kind: KIND_PLAN, objectId: PLAN_OBJECT_ID });
       if (row === null || row.tombstone) {
         setState({ status: "none" });
         return;
@@ -57,7 +49,7 @@ export function usePlanRecord(): PlanQueryState {
         ciphertext: row.ciphertext,
         nonce: row.nonce,
         objectId: row.objectId,
-        kind: "plan",
+        kind: KIND_PLAN,
       });
       const raw = JSON.parse(new TextDecoder().decode(plaintext)) as unknown;
       const plan = parsePlan(raw, row.objectId);

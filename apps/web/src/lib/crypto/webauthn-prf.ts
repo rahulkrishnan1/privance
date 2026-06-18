@@ -1,19 +1,13 @@
 /**
  * WebAuthn PRF ceremony module. All navigator.credentials interactions live
  * here so the rest of the app sees a simple typed API with an honest error
- * taxonomy. The ceremony parameters come from the verified spike in
- * scratch/prf-spike/index.html (tested on iPhone Safari 26.5 and Chromium
- * virtual authenticator).
+ * taxonomy.
  *
  * NEVER consult PublicKeyCredential.getClientCapabilities() for PRF support
  * detection: iOS omits "extension:prf" from that list while actually
  * supporting PRF. Gate on isUserVerifyingPlatformAuthenticatorAvailable()
  * only and confirm PRF support from the create result.
  */
-
-// ---------------------------------------------------------------------------
-// Error taxonomy
-// ---------------------------------------------------------------------------
 
 /** The user dismissed the OS prompt or denied biometric/UV. */
 export class BiometricCancelledError extends Error {
@@ -24,7 +18,7 @@ export class BiometricCancelledError extends Error {
 }
 
 /** No platform authenticator, or PRF extension returned no output after both
- *  the create and the fallback assertion (origin R16). */
+ *  the create and the fallback assertion. */
 export class BiometricUnsupportedError extends Error {
   constructor(message = "Biometric unlock not supported on this device") {
     super(message);
@@ -33,7 +27,7 @@ export class BiometricUnsupportedError extends Error {
 }
 
 /** Ceremony completed but the assertion returned no PRF output. Signals that
- *  the stored credential is unusable (R17 purge path). */
+ *  the stored credential is unusable and should be purged. */
 export class BiometricFailureError extends Error {
   constructor(message = "PRF assertion returned no output") {
     super(message);
@@ -41,19 +35,11 @@ export class BiometricFailureError extends Error {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Exported types
-// ---------------------------------------------------------------------------
-
 export type EnrollResult = {
   credentialId: Uint8Array;
   prfOutput: Uint8Array;
   salt: Uint8Array;
 };
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
 
 /**
  * Returns true when the device can plausibly support biometric unlock via
@@ -92,8 +78,7 @@ export async function enrollCredential(opts: { username: string }): Promise<Enro
         timeout: 60_000,
         rp: { name: "Privance", id: location.hostname },
         // username labels the passkey in the OS credential manager so entries
-        // stay distinguishable across accounts (the OS passkey outlives
-        // disablement, R14).
+        // stay distinguishable across accounts (the OS passkey outlives disablement).
         user: { id: userId, name: opts.username, displayName: opts.username },
         challenge,
         pubKeyCredParams: [
@@ -132,7 +117,6 @@ export async function enrollCredential(opts: { username: string }): Promise<Enro
     return { credentialId, prfOutput, salt };
   }
 
-  // PRF not supported on this device (R16).
   throw new BiometricUnsupportedError();
 }
 

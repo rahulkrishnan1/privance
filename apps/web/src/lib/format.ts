@@ -33,35 +33,14 @@ export function formatCurrencyWhole(d: Decimal, currency = "USD"): string {
  */
 export function formatCurrencyCompact(d: Decimal): string {
   const dollars = Number(d.toString());
+  const sign = dollars < 0 ? "-" : "";
   const abs = Math.abs(dollars);
   if (abs >= 1_000_000) {
-    const m = dollars / 1_000_000;
-    return `$${m % 1 === 0 ? m.toFixed(0) : m.toFixed(1)}M`;
+    const m = abs / 1_000_000;
+    return `${sign}$${m % 1 === 0 ? m.toFixed(0) : m.toFixed(1)}M`;
   }
-  if (abs >= 1_000) return `$${Math.round(dollars / 1_000)}k`;
-  return `$${Math.round(dollars)}`;
-}
-
-/**
- * Whole-percent display for simulation probabilities: avoids false precision
- * and never rounds a nonzero share to an absolute 0% or 100%.
- */
-export function formatPercentWhole(ratio: number): string {
-  if (ratio > 0 && ratio < 0.01) return "<1%";
-  if (ratio > 0.99 && ratio < 1) return ">99%";
-  return `${Math.round(ratio * 100)}%`;
-}
-
-// en-US Intl currency output always uses "." as the decimal mark, so split on
-// the last "." to peel off the cents segment.
-export function formatCurrencyParts(
-  d: Decimal,
-  currency = "USD",
-): { whole: string; cents: string } {
-  const full = formatCurrency(d, currency);
-  const idx = full.lastIndexOf(".");
-  if (idx === -1) return { whole: full, cents: "" };
-  return { whole: full.slice(0, idx), cents: full.slice(idx) };
+  if (abs >= 1_000) return `${sign}$${Math.round(abs / 1_000)}k`;
+  return `${sign}$${Math.round(abs)}`;
 }
 
 /**
@@ -84,12 +63,4 @@ export function formatDate(isoDate: string): string {
   if (year === undefined || month === undefined || day === undefined) return isoDate;
   const d = new Date(Number(year), Number(month) - 1, Number(day));
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-/** Epoch ms → "h:mm AM/PM" in the user's local timezone. */
-export function formatTime(epochMs: number): string {
-  return new Date(epochMs).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }

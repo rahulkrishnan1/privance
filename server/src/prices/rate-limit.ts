@@ -3,7 +3,6 @@ import { RateLimitedError } from "./types.js";
 
 const DEFAULT_COOLDOWN_MS = 30_000;
 
-// Module-level state, one process, one map. Trivially replaceable with Redis.
 const bucket = createRateLimitBucket();
 
 /** Records a successful refresh for userId. Call after the upstream fetch succeeds. */

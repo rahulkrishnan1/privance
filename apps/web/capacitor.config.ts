@@ -22,9 +22,6 @@ const config: CapacitorConfig = {
   // Suppress verbose Capacitor debug logs in production builds.
   // Set to "debug" locally by exporting CAPACITOR_LOG_LEVEL=debug.
   loggingBehavior: "production",
-
-  // Platform plugins — none required yet.
-  // @capacitor-community/biometric-auth will be wired up in a separate task.
   plugins: {},
 };
 

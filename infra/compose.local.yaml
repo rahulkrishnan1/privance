@@ -1,0 +1,96 @@
+# Local trial stack: `docker compose -f infra/compose.local.yaml up --build`, then
+# open http://localhost:8080. Builds the images from this checkout and runs the
+# whole app over plain HTTP on localhost, with no domain, TLS, or host secrets.
+#
+# This is for evaluation and local development only. It uses a throwaway password
+# and a fixed dev ENUMERATION_SECRET; never expose it to a network or use it in
+# production. For a real deployment see infra/README.md (TLS, secrets, backups).
+
+name: privance-local
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: privance
+      POSTGRES_PASSWORD: privance
+      POSTGRES_DB: privance
+    volumes:
+      - postgres_local_data:/var/lib/postgresql/data
+    networks: [privance_net]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U privance -d privance -q"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  server-migrate:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    image: privance-server:local
+    command: ["bun", "run", "db:migrate"]
+    restart: "no"
+    environment:
+      DATABASE_URL: postgres://privance:privance@postgres:5432/privance
+      NODE_ENV: production
+      ENUMERATION_SECRET: cHJpdmFuY2UtbG9jYWwtZGV2LW9ubHktY2hhbmdlLW1lLW5vdC1hLXNlY3JldCEh
+    networks: [privance_net]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  server:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    image: privance-server:local
+    environment:
+      DATABASE_URL: postgres://privance:privance@postgres:5432/privance
+      NODE_ENV: production
+      # Dev-only secret. Generate your own for anything beyond a local trial.
+      ENUMERATION_SECRET: cHJpdmFuY2UtbG9jYWwtZGV2LW9ubHktY2hhbmdlLW1lLW5vdC1hLXNlY3JldCEh
+      ALLOWED_ORIGINS: http://localhost:8080
+      # Open signup so you can create an account immediately. PRICE_PROVIDER
+      # defaults to Yahoo (real quotes, needs internet); set PRICE_PROVIDER=fake
+      # for deterministic offline prices.
+    networks: [privance_net]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      server-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  caddy:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    image: privance-web:local
+    environment:
+      # http:// scheme binds Caddy to plain HTTP on :80 (a bare hostname would
+      # default to the HTTPS port). Never serve like this on a public host.
+      DOMAIN: http://localhost
+      WWW_DOMAIN: http://www.localhost
+      ACME_EMAIL: dev@localhost
+      LOCAL_HTTP_ONLY: auto_https off
+    ports:
+      - "8080:80"
+    networks: [privance_net]
+    restart: unless-stopped
+    depends_on:
+      - server
+
+volumes:
+  postgres_local_data:
+
+networks:
+  privance_net:

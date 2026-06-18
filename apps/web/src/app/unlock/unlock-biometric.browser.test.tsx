@@ -5,13 +5,9 @@
  * core crypto run against real IndexedDB so unwrap assertions are meaningful.
  */
 
-import { deriveBiometricKek, type ItemsKey } from "@privance/core";
+import type { ItemsKey } from "@privance/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
-
-// ---------------------------------------------------------------------------
-// Hoist spy handles before any import so vi.mock factories can reference them
-// ---------------------------------------------------------------------------
 
 const ceremony = vi.hoisted(() => ({
   isBiometricSupported: vi.fn(),
@@ -78,10 +74,8 @@ vi.mock("@/lib/storage/per-user-store", () => ({
   destroyUserStore: vi.fn(() => Promise.resolve()),
 }));
 
-// ---------------------------------------------------------------------------
-// Imports after mocks
-// ---------------------------------------------------------------------------
-
+import * as authApi from "@/lib/api/auth";
+import { ApiError } from "@/lib/api/client";
 import { loadEnrollment, purgeEnrollment } from "@/lib/storage/biometric-store";
 import {
   BIOMETRIC_DB,
@@ -91,7 +85,7 @@ import {
   seedEnrollment,
 } from "@/lib/storage/biometric-store.test-helpers";
 import { clearSession } from "@/lib/storage/session-vault";
-import { AuthProvider, USER_ID_KEY } from "@/providers/auth-context";
+import { AuthProvider, USER_ID_KEY, USERNAME_KEY } from "@/providers/auth-context";
 import UnlockPage from "./page";
 
 // Symbol for the DEK store; must be cleared between tests so AuthProvider does
@@ -102,21 +96,13 @@ function clearDekStore() {
   Reflect.deleteProperty(globalThis as GlobalWithDek, DEK_STORE_SYMBOL);
 }
 
-// ---------------------------------------------------------------------------
-// IDB helpers
-// ---------------------------------------------------------------------------
-
 function makeItemsKey(): ItemsKey {
   return crypto.getRandomValues(new Uint8Array(32)) as unknown as ItemsKey;
 }
 
-// ---------------------------------------------------------------------------
-// Render helper: wraps UnlockPage in AuthProvider. Seeding localStorage causes
-// the provider to start in "loading" then settle to "locked" (no vault entry).
-// ---------------------------------------------------------------------------
-
+// Seeding localStorage causes the provider to start in "loading" then settle to "locked" (no vault entry).
 async function renderUnlockPage(opts: { userId: string; username: string }) {
-  localStorage.setItem("privance.username", opts.username);
+  localStorage.setItem(USERNAME_KEY, opts.username);
   localStorage.setItem(USER_ID_KEY, opts.userId);
   const screen = await render(
     <AuthProvider>
@@ -125,10 +111,6 @@ async function renderUnlockPage(opts: { userId: string; username: string }) {
   );
   return screen;
 }
-
-// ---------------------------------------------------------------------------
-// Cleanup
-// ---------------------------------------------------------------------------
 
 beforeEach(async () => {
   loadEnrollmentSpy.mockClear();
@@ -148,10 +130,6 @@ afterEach(async () => {
   localStorage.clear();
 });
 
-// ---------------------------------------------------------------------------
-// Helpers for tests
-// ---------------------------------------------------------------------------
-
 /** Wait until the state-gate effect has settled: isBiometricSupported was called. */
 async function waitForEnrollmentCheck() {
   await vi.waitFor(() => expect(ceremony.isBiometricSupported).toHaveBeenCalled(), {
@@ -160,10 +138,6 @@ async function waitForEnrollmentCheck() {
   // Brief yield so the loadEnrollment promise and setState calls complete.
   await new Promise((r) => setTimeout(r, 100));
 }
-
-// ---------------------------------------------------------------------------
-// Tests: biometric action visibility
-// ---------------------------------------------------------------------------
 
 describe("biometric action visibility", () => {
   it("renders the biometric action button when enrolled and supported", async () => {
@@ -269,10 +243,6 @@ describe("biometric action visibility", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Tests: successful biometric unlock path
-// ---------------------------------------------------------------------------
-
 describe("successful biometric unlock path", () => {
   it("router.replace('/app/') is called and record is not purged after success", async () => {
     const userId = "u-success";
@@ -302,56 +272,14 @@ describe("successful biometric unlock path", () => {
     expect(raw).not.toBeUndefined();
   });
 
-  it("the unwrapped items key bytes equal the originally seeded key", async () => {
-    // This test runs the full crypto pipeline outside the page to verify
-    // deriveBiometricKek -> openProtectorKey -> unwrapItemsKeyRsa correctness.
-    const userId = "u-key-bytes";
-    const username = "frank";
-    const itemsKey = makeItemsKey();
-    const originalBytes = Array.from(itemsKey as Uint8Array);
-
-    await seedEnrollment({ userId, username, itemsKey });
-
-    const { openProtectorKey } = await import("@privance/core");
-    const { unwrapItemsKeyRsa } = await import("@/lib/storage/biometric-store");
-
-    const record = await loadEnrollment({ now: Date.now(), userId });
-    if (!record) throw new Error("expected a loaded record");
-
-    // Re-derive using the stored salt (same value as the PRF eval input).
-    // We can't re-derive without the real PRF output; instead use what seedEnrollment
-    // used. Seed returns prfOutput -- but we already called seedEnrollment above.
-    // Re-seed fresh so we have the prfOutput in scope.
-    await purgeEnrollment();
-    const { prfOutput: seededPrf } = await seedEnrollment({ userId, username, itemsKey });
-
-    const record2 = await loadEnrollment({ now: Date.now(), userId });
-    if (!record2) throw new Error("expected second record");
-
-    const kek = deriveBiometricKek({ prfOutput: new Uint8Array(seededPrf), salt: record2.salt });
-    const pkcs8 = openProtectorKey({
-      sealed: record2.sealedPrivateKey,
-      kek,
-      pubKeyBytes: record2.publicKeyBytes,
-      recordUuid: record2.recordUuid,
-    });
-    const recovered = await unwrapItemsKeyRsa({
-      wrappedItemsKey: record2.wrappedItemsKey,
-      pkcs8,
-      expectedRecordUuid: record2.recordUuid,
-    });
-    pkcs8.fill(0);
-
-    expect(Array.from(recovered)).toEqual(originalBytes);
-  });
+  // The deriveBiometricKek -> openProtectorKey -> unwrapItemsKeyRsa byte-equality
+  // round-trip is covered as a dedicated crypto test in
+  // lib/storage/biometric-store.browser.test.ts ("full crypto round trip"); it is
+  // not re-run here so this page spec stays about unlock-page behavior.
 });
 
-// ---------------------------------------------------------------------------
-// Tests: cancel path (BiometricCancelledError, covers AE4)
-// ---------------------------------------------------------------------------
-
 describe("cancel path (BiometricCancelledError, covers AE4)", () => {
-  it("screen stays usable and enrollment stays in IDB after user cancels", async () => {
+  it("shows the soft-fail bar, hides the biometric primary, keeps enrollment after cancel", async () => {
     const userId = "u-cancel";
     const username = "grace";
     const itemsKey = makeItemsKey();
@@ -369,25 +297,62 @@ describe("cancel path (BiometricCancelledError, covers AE4)", () => {
 
     await biometricBtn.click();
 
-    // After cancel: biometric button returns to idle, no error banner, and the
-    // password path stays one tap away behind the reveal link.
-    await vi.waitFor(() =>
-      expect.element(screen.getByRole("button", { name: "Unlock with biometrics" })).toBeVisible(),
-    );
+    // Soft fail: the err-bio bar appears, the biometric primary is hidden, and
+    // the password path stays reachable via the highlighted alt button.
+    await vi.waitFor(() => {
+      const alert = screen.baseElement.querySelector('[role="alert"]');
+      expect(alert?.textContent).toContain("Biometric unlock didn");
+    });
+    await vi.waitFor(() => {
+      const btns = [...screen.baseElement.querySelectorAll("button")];
+      const biometricBtnGone = btns.find((b) => b.textContent?.trim() === "Unlock with biometrics");
+      expect(biometricBtnGone).toBeUndefined();
+    });
     await expect
       .element(screen.getByRole("button", { name: "Use master password instead" }))
       .toBeVisible();
-    expect(screen.baseElement.querySelector('[role="alert"]')).toBeNull();
 
-    // Enrollment must still be in IDB
+    // Enrollment must still be in IDB (soft fail does not purge).
     const raw = await readRawBiometricIdb();
     expect(raw).not.toBeUndefined();
   });
 });
 
-// ---------------------------------------------------------------------------
-// Tests: unwrap failure path (R17)
-// ---------------------------------------------------------------------------
+describe("no-PRF failure path (BiometricFailureError)", () => {
+  it("soft-fails and keeps the enrollment when the ceremony returns no PRF output", async () => {
+    // A completed ceremony with no PRF output is recoverable (e.g. UV not
+    // satisfied), so it must NOT purge the enrollment; only genuine integrity
+    // failures (R17, below) do.
+    const userId = "u-noprf";
+    const username = "judy";
+    const itemsKey = makeItemsKey();
+
+    ceremony.isBiometricSupported.mockResolvedValue(true);
+    await seedEnrollment({ userId, username, itemsKey });
+
+    const { BiometricFailureError } = await import("@/lib/crypto/webauthn-prf");
+    ceremony.assertPrf.mockRejectedValue(new BiometricFailureError());
+
+    const screen = await renderUnlockPage({ userId, username });
+
+    const biometricBtn = screen.getByRole("button", { name: "Unlock with biometrics" });
+    await expect.element(biometricBtn).toBeVisible();
+    await biometricBtn.click();
+
+    // Soft-fail bar appears (not the purge/re-enroll banner).
+    await vi.waitFor(() => {
+      const alert = screen.baseElement.querySelector('[role="alert"]');
+      expect(alert?.textContent).toContain("Biometric unlock didn");
+    });
+    await expect
+      .element(screen.getByRole("button", { name: "Use master password instead" }))
+      .toBeVisible();
+
+    // Enrollment record survives a recoverable no-PRF result.
+    const raw = await readRawBiometricIdb();
+    expect(raw).not.toBeUndefined();
+  });
+});
 
 describe("unwrap failure path (R17)", () => {
   it("purges IDB record and shows re-enroll banner when wrappedItemsKey is tampered", async () => {
@@ -449,7 +414,8 @@ describe("unwrap failure path (R17)", () => {
 
     // Banner text directs to re-enroll
     const alert = screen.baseElement.querySelector('[role="alert"]');
-    expect(alert?.textContent).toContain("re-enable biometrics");
+    expect(alert?.textContent).toContain("Biometric unlock failed.");
+    expect(alert?.textContent).toContain("enable biometrics in Settings");
 
     // IDB record must be gone
     const afterPurge = await readRawBiometricIdb();
@@ -508,10 +474,6 @@ describe("unwrap failure path (R17)", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Tests: auth state gate
-// ---------------------------------------------------------------------------
-
 describe("auth state gate", () => {
   it("loadEnrollment is not called while auth state is 'loading', only after 'locked'", async () => {
     const userId = "u-gate";
@@ -543,5 +505,29 @@ describe("auth state gate", () => {
     expect(loadEnrollmentSpy).toHaveBeenCalledTimes(1);
     const [[firstArg]] = loadEnrollmentSpy.mock.calls as [[{ userId: string; now: number }]];
     expect(firstArg.userId).toBe(userId);
+  });
+});
+
+describe("session expiry preserves biometric enrollment", () => {
+  it("a 401 from session() shows the expired scene but does not purge the enrollment", async () => {
+    const userId = "u-expiry";
+    const username = "expiry-user";
+    const itemsKey = makeItemsKey();
+    await seedEnrollment({ userId, username, itemsKey });
+
+    // The background session probe finds the server session gone.
+    vi.mocked(authApi.session).mockRejectedValueOnce(
+      new ApiError(401, "session_expired", "expired"),
+    );
+
+    const screen = await renderUnlockPage({ userId, username });
+
+    // The re-sealed (session-expired) scene appears.
+    await expect.element(screen.getByRole("heading", { name: /sealed itself/i })).toBeVisible();
+
+    // But local biometric custody survives a routine server-session expiry: the
+    // record is still loadable, so the user keeps biometric unlock after re-auth.
+    const record = await loadEnrollment({ now: Date.now(), userId });
+    expect(record).not.toBeNull();
   });
 });

@@ -1,4 +1,5 @@
 export { requireSession } from "./middleware.js";
+export { purgeUserData } from "./repo.js";
 export type {
   AuthenticatedSession,
   KdfParamsJson,
@@ -10,7 +11,6 @@ export type {
 export {
   AllowlistDeniedError,
   AuthError,
-  HibpUnavailableError,
   InvalidCredentialsError,
   InvalidInviteError,
   RateLimitedError,
@@ -19,6 +19,5 @@ export {
   SessionExpiredError,
   UnauthenticatedError,
   UsernameTakenError,
-  WeakPasswordError,
 } from "./types.js";
 export { featureRouter, getAuthRepo, initAuthServices } from "./wire.js";

@@ -47,7 +47,7 @@ describe("sim worker integration (real worker in Chromium)", () => {
       swrBps: FIXTURE.swrBps,
       currentAge: FIXTURE.currentAge,
       planUntilAge: FIXTURE.planUntilAge,
-      stockWeightForYear: () => FIXTURE.stockWeight,
+      stockWeight: FIXTURE.stockWeight,
       seed: asSimSeed(FIXTURE.seed),
       muBps: FIXTURE.muBps,
       sigmaBps: FIXTURE.sigmaBps,
@@ -66,8 +66,25 @@ describe("sim worker integration (real worker in Chromium)", () => {
     const expBands = expected.mc.yearlyBands;
     expect(bands).toHaveLength(expBands.length);
     for (let i = 0; i < bands.length; i++) {
+      // Compare every percentile, not just the median: a worker that garbles the
+      // tail bands while keeping p50 right would otherwise slip through.
       // biome-ignore lint/style/noNonNullAssertion: index is in [0, length-1]
-      expect(bands[i]!.p50.toString()).toBe(expBands[i]!.p50.toString());
+      const got = bands[i]!;
+      // biome-ignore lint/style/noNonNullAssertion: lengths asserted equal above
+      const want = expBands[i]!;
+      expect({
+        p10: got.p10.toString(),
+        p25: got.p25.toString(),
+        p50: got.p50.toString(),
+        p75: got.p75.toString(),
+        p90: got.p90.toString(),
+      }).toEqual({
+        p10: want.p10.toString(),
+        p25: want.p25.toString(),
+        p50: want.p50.toString(),
+        p75: want.p75.toString(),
+        p90: want.p90.toString(),
+      });
     }
 
     expect(result.replay.survivalShare).toBe(expected.replay.survivalShare);

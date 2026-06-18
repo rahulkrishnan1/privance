@@ -15,18 +15,17 @@ For a from-scratch hardened Hetzner VPS (SSH hardening, UFW, unattended-upgrades
 
 WARNING: Docker bypasses UFW for published container ports (the `DOCKER` iptables chain precedes UFW). Bind non-public services to `127.0.0.1` in compose (e.g. `127.0.0.1:5432:5432`); only the reverse proxy binds `0.0.0.0:80`/`0.0.0.0:443`. The `compose.prod.yaml` in this repo already follows this convention.
 
-### Step 1: Authenticate with GHCR
+### Step 1: Authenticate with GHCR (only for private forks)
 
-Images are currently private. You need a GitHub **classic** personal access token (Settings > Developer settings > Personal access tokens > Tokens (classic)) with `read:packages` scope; fine-grained PATs do not work for GHCR authentication.
+The official Privance images are published as **public** packages on GHCR, so no GitHub authentication is needed to pull them; skip to Step 2.
 
-On the host as the deploy user:
+If you are self-hosting from a **private fork** (your own private GHCR packages), authenticate first with a GitHub **classic** personal access token (Settings > Developer settings > Personal access tokens > Tokens (classic)) with `read:packages` scope; fine-grained PATs do not work for GHCR authentication:
 
 ```sh
 # --password-stdin keeps the token out of shell history and process listings.
 echo '<personal-access-token-with-read:packages>' | docker login ghcr.io -u <your-github-username> --password-stdin
+# Expected: Login Succeeded
 ```
-
-Expected: `Login Succeeded`.
 
 ### Step 2: Create the deploy directory and .env file
 
@@ -35,7 +34,7 @@ mkdir -p ~/privance
 cd ~/privance
 ```
 
-Fetch the compose file from the release tag you intend to run. While the repository is private, raw GitHub URLs require a token; copying from a local checkout (`scp infra/compose.prod.yaml <host>:~/privance/`) is simpler.
+Fetch the compose file from the release tag you intend to run. The repository is public, so the raw URL works without a token; alternatively copy from a local checkout (`scp infra/compose.prod.yaml <host>:~/privance/`).
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/<version>/infra/compose.prod.yaml \
@@ -223,17 +222,17 @@ If a cert chain or stapling problem appears: `docker compose -f compose.prod.yam
 
 ## Updating a deployment
 
-Releases are built by GitHub Actions when a `v*` tag is pushed. The workflow builds and pushes `ghcr.io/<owner>/privance-{server,web,restic-runner}` images tagged with the semver version and `latest`.
+Releases are built by GitHub Actions when a `v*` tag is pushed. The workflow builds and pushes `ghcr.io/<owner>/privance-{server,web,restic-runner}` images tagged with the full semver version (`vX.Y.Z`) and the major.minor version (`vX.Y`).
 
 To deploy a new version from your workstation:
 
 ```sh
 export PRIVANCE_DEPLOY_HOST=<ssh-alias-or-user@host>
 export PRIVANCE_DOMAIN=<your-domain>   # health-check target; defaults to privance.app
-./infra/deploy.sh v0.2.0
+./infra/deploy.sh vX.Y.Z
 ```
 
-The host must hold a valid GHCR login for the pull step (quickstart Step 1); `docker login` credentials persist until revoked, so this is one-time per host.
+Public images pull without authentication. From a private fork, the host must hold a valid GHCR login for the pull step (quickstart Step 1); `docker login` credentials persist until revoked, so this is one-time per host.
 
 `deploy.sh` verifies the tag exists on origin, checks that the release workflow completed successfully, copies `compose.prod.yaml` to the remote deploy directory, pulls the new images (with the target version as a transient override, so a failed pull leaves `.env` pointing at the running version), then updates `PRIVANCE_VERSION` in `.env`, runs `docker compose up -d`, and health-checks the result.
 
@@ -382,7 +381,7 @@ docker compose -f compose.prod.yaml exec server bun dist/mint-invite.js --create
 
 Duration suffix: `d`, `h`, `m`. The log line includes `"expiresAt":"<iso-timestamp>"`.
 
-Note: if signup fails AFTER an invite token is claimed (rare: HIBP outage, unique-username race, Argon2id failure), the token is permanently consumed and the inviter must mint a fresh one.
+Note: if signup fails AFTER an invite token is claimed (rare: unique-username race, Argon2id failure), the token is permanently consumed and the inviter must mint a fresh one.
 
 ### Step 3: Safe handoff to the invitee
 

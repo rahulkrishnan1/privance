@@ -1,5 +1,8 @@
 import type { IsoDate, IsoDateTime, NetWorthSnapshotId, UserId } from "./types.js";
 
+// Frozen: part of the AEAD AAD, so renaming breaks decryption of existing records.
+export const KIND_SNAPSHOT = "net_worth_snapshot" as const;
+
 /** Sync-row metadata, only fields the server stores in plaintext. */
 export interface NetWorthSnapshotMeta {
   readonly id: NetWorthSnapshotId;

@@ -1,10 +1,6 @@
 import type { Account, Holding } from "@privance/core";
 import { CURRENCY_MISMATCH_PREFIX, computeNetWorth, Decimal, SCALE_CENTS } from "@privance/core";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 /** Summary of a non-primary-currency account excluded from the pot. */
 export interface ExcludedAccount {
   readonly name: string;
@@ -29,10 +25,6 @@ export interface PotResult {
   readonly primaryCurrency: string | null;
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
 /**
  * Derive the liquid pot for FIRE projection inputs.
  *
@@ -54,7 +46,7 @@ export function deriveLiquidPot(opts: {
   prices: Map<string, Decimal>;
 }): PotResult {
   const { accounts, holdings, prices } = opts;
-  const breakdown = computeNetWorth({ accounts, holdings, prices });
+  const breakdown = computeNetWorth({ accounts, holdings, prices, asOf: Date.now() });
 
   const mismatchIds = new Set(
     breakdown.unknownTickers

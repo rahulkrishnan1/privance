@@ -25,13 +25,20 @@ export type PlanPreset = "conservative" | "balanced" | "aggressive" | "custom";
 
 /** Base payload fields present for every preset. */
 interface PlanPayloadBase {
-  readonly schemaVersion: 1;
+  // v1: no manualStartingPotCents. v2 adds it; both parse, so old records load.
+  readonly schemaVersion: 1 | 2;
   readonly currentAge: number;
   readonly planUntilAge: number;
   /** Monthly contribution in cents as a decimal string. */
   readonly monthlyContributionCents: string;
   /** Annual retirement spend in cents as a decimal string. */
   readonly annualSpendCents: string;
+  /**
+   * Manual starting portfolio in cents as a decimal string. Present (v2) when
+   * the user enters a starting amount by hand instead of deriving it from
+   * accounts; absent means "use the live balance from accounts".
+   */
+  readonly manualStartingPotCents?: string;
   /** Safe withdrawal rate in basis points (e.g. 400 = 4%). */
   readonly swrBps: number;
   /** PRNG seed for the Monte Carlo run, stored as a hex string (16 random bytes, 32 hex chars). Any non-empty string is accepted for forward compatibility with other seed encodings. */

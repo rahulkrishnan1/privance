@@ -7,9 +7,9 @@ import type {
   UserId,
 } from "./types.js";
 
-// ---------------------------------------------------------------------------
-// HoldingGroup, user-defined categorisation (e.g. "US Equities", "Crypto")
-// ---------------------------------------------------------------------------
+// Frozen: part of the AEAD AAD, so renaming breaks decryption of existing records.
+export const KIND_HOLDING = "holding" as const;
+export const KIND_HOLDING_GROUP = "holding_group" as const;
 
 /** Server-side metadata for a holding group. */
 export interface HoldingGroupMeta {
@@ -28,10 +28,6 @@ export interface HoldingGroupPayload {
 export interface HoldingGroup extends HoldingGroupMeta {
   readonly payload: HoldingGroupPayload;
 }
-
-// ---------------------------------------------------------------------------
-// Holding
-// ---------------------------------------------------------------------------
 
 /** Sync-row metadata, only fields the server stores in plaintext. */
 export interface HoldingMeta {

@@ -14,11 +14,6 @@ import type { Price } from "./price.js";
 import type { AccountId, HoldingId, UserId } from "./types.js";
 import { asId, asIsoDate, asIsoDateTime } from "./types.js";
 
-// ---------------------------------------------------------------------------
-// Type-level checks, these validate at compile time that interfaces are
-// structurally correct. Runtime assertions confirm casting helpers.
-// ---------------------------------------------------------------------------
-
 describe("id casting helpers", () => {
   it("asId casts string to branded AccountId", () => {
     const id = asId<AccountId>("abc-123");
@@ -35,10 +30,6 @@ describe("id casting helpers", () => {
     expect(dt).toBe("2026-05-16T12:00:00Z");
   });
 });
-
-// ---------------------------------------------------------------------------
-// ActivityKind, verify the full 14-type taxonomy is present
-// ---------------------------------------------------------------------------
 
 describe("ACTIVITY_KINDS", () => {
   it("contains exactly 14 kinds", () => {
@@ -74,10 +65,6 @@ describe("ACTIVITY_KINDS", () => {
     }
   });
 });
-
-// ---------------------------------------------------------------------------
-// Runtime constructor tests, build representative records and check shapes
-// ---------------------------------------------------------------------------
 
 describe("CashAccount shape", () => {
   it("constructs a valid CashAccount record", () => {

@@ -4,7 +4,7 @@
  *
  * Covers:
  *   F1 mobile   Full plan flow at a phone viewport: signup, account, Plan via
- *               bottom-tab, assumptions, results, save (dashboard stays
+ *               bottom-tab, assumptions, results, save (Invest screen stays
  *               projection-free).
  *   AE6         Perf budget: time-to-results < 15 s; inputs remain interactive
  *               during recompute.
@@ -27,8 +27,8 @@
 import { expect, test } from "@playwright/test";
 import { BASE_URL } from "../../playwright/ports";
 import type { SessionSnapshot } from "./helpers/auth";
-import { restoreSession, signupAndLogin } from "./helpers/auth";
-import { ensureAssumptionsExpanded } from "./helpers/plan";
+import { restoreSession, signupAndLogin, waitForSynced } from "./helpers/auth";
+import { setSlider } from "./helpers/forms";
 
 const RUN = Date.now().toString(36);
 const PASS = "Privance-e2e-passphrase-2026!";
@@ -47,11 +47,9 @@ async function createCashAccountMobile(
 ): Promise<void> {
   await page.goto("/app/accounts/");
   await expect(
-    page
-      .getByRole("heading", { name: "Accounts" })
-      .or(page.getByRole("heading", { name: "Add your first account" })),
+    page.getByTestId("invest-net-worth").or(page.getByRole("heading", { name: /vault is empty/i })),
   ).toBeVisible({ timeout: 15_000 });
-  await page.waitForLoadState("networkidle");
+  await waitForSynced(page);
 
   await page
     .getByRole("button", { name: /Add.*account/i })
@@ -60,18 +58,15 @@ async function createCashAccountMobile(
 
   const dialog = page.getByRole("dialog", { name: /Add account/i });
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel("Account name").fill(name);
-  await dialog.getByLabel("Balance").fill(balance);
-  await dialog.getByRole("button", { name: "Save" }).click();
+  // The form opens on Investment; pick Cash so the "Current balance" field shows.
+  await dialog.getByRole("button", { name: "Cash" }).click();
+  await dialog.getByLabel("Account type").selectOption("checking");
+  await dialog.getByLabel("Name").fill(name);
+  await dialog.getByLabel("Current balance").fill(balance);
+  await dialog.getByRole("button", { name: "Create account" }).click();
   await expect(dialog).not.toBeVisible({ timeout: SAVE_TIMEOUT });
   await expect(page.getByText(name)).toBeVisible({ timeout: SAVE_TIMEOUT });
 }
-
-// ---------------------------------------------------------------------------
-// Shared user: lisa-RUN
-// Both F1+AE6 and AE6 interactivity tests share this session to avoid burning
-// a second signup slot.
-// ---------------------------------------------------------------------------
 
 let mobileSession: SessionSnapshot;
 
@@ -90,12 +85,6 @@ test.beforeAll(async ({ browser }) => {
   mobileSession = session;
 });
 
-// ---------------------------------------------------------------------------
-// F1 mobile + AE6 perf budget
-// The perf measurement captures wall-clock time from after the last field fill
-// to results visible.
-// ---------------------------------------------------------------------------
-
 test.describe("plan mobile: F1 + AE6", () => {
   test("full plan flow at mobile viewport, results within perf budget", async ({ browser }) => {
     test.setTimeout(180_000);
@@ -110,20 +99,21 @@ test.describe("plan mobile: F1 + AE6", () => {
     // 1. Navigate to Plan via the bottom tab bar
     await page.goto("/app/");
     await expect(page).toHaveURL("/app/", { timeout: 15_000 });
-    const nav = page.getByRole("navigation", { name: "Main navigation" });
+    const nav = page.getByRole("navigation", { name: "Mobile navigation" });
     await expect(nav).toBeVisible({ timeout: 15_000 });
-    await page.waitForLoadState("networkidle");
+    await waitForSynced(page);
 
     await tap(nav.getByRole("link", { name: "Plan" }));
     await expect(page).toHaveURL(/\/app\/plan\/?$/, { timeout: 10_000 });
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible({
       timeout: 10_000,
     });
-    await page.waitForLoadState("networkidle");
 
-    // 2. Fill assumptions (new user: bar starts expanded; guard handles returning user too)
-    await ensureAssumptionsExpanded(page);
+    // 2. Fill assumptions. The Adjust panel renders inline at the mobile
+    // viewport (no sheet). Age fields are text NumberFields (commit on blur);
+    // contribution, spend, and SWR are range sliders.
     const ageInput = page.getByLabel("Current age");
+    await expect(ageInput).toBeVisible({ timeout: 15_000 });
     await ageInput.fill("35");
     await ageInput.press("Tab");
 
@@ -132,23 +122,15 @@ test.describe("plan mobile: F1 + AE6", () => {
     await planUntilInput.press("Tab");
 
     const contribInput = page.getByLabel("Monthly contribution");
-    await contribInput.fill("1000");
-    await contribInput.press("Tab");
+    await setSlider(contribInput, 1000);
 
     // AE6: start timing just before the last field that triggers simulation.
-    // Mobile edits in a full-screen sheet, so the sim runs (and the result
-    // attaches to the DOM) behind it; measure attachment, not visibility.
     const perfStart = Date.now();
 
-    const spendInput = page.getByLabel("Target annual spend");
-    await spendInput.fill("40000");
-    await spendInput.press("Tab");
+    await setSlider(page.getByLabel("Target annual spend"), 40000);
+    await setSlider(page.getByLabel("Withdrawal rate"), 4);
 
-    const swrInput = page.getByLabel("Withdrawal rate");
-    await swrInput.fill("4");
-    await swrInput.press("Tab");
-
-    // 3. Results computed within budget (attached behind the sheet)
+    // 3. Results computed within budget
     await expect(page.getByTestId("fire-age-value")).toBeAttached({ timeout: PERF_THRESHOLD_MS });
     const elapsed = Date.now() - perfStart;
 
@@ -163,18 +145,18 @@ test.describe("plan mobile: F1 + AE6", () => {
     ).toBeLessThan(PERF_THRESHOLD_MS);
 
     // 4. AE6: inputs remain interactive while the sim recomputes
-    await contribInput.fill("2000");
+    await setSlider(contribInput, 2000);
     await expect(contribInput).toHaveValue("2000");
     await expect(page.getByTestId("fire-age-value")).toBeAttached({ timeout: 5_000 });
 
-    // 5. Save the plan: the sheet closes and the results become visible. The
-    // Adjust button replacing the sheet signals completion.
+    // 5. Save the plan. The panel stays visible; the save control flipping to
+    // "Plan saved" signals completion.
     await page.getByRole("button", { name: "Save plan" }).click();
-    await expect(page.getByRole("button", { name: "Adjust plan" })).toBeVisible({
+    await expect(page.getByRole("button", { name: "Plan saved" })).toBeVisible({
       timeout: SAVE_TIMEOUT,
     });
 
-    // 6. Results visible: FIRE age, success rates, fan chart, replay summary
+    // 6. Results visible: FIRE age, confidence rate, fan chart
     await expect(page.getByTestId("fire-age-value")).toBeVisible({ timeout: 20_000 });
 
     const fireAgeText = await page.getByTestId("fire-age-value").textContent();
@@ -182,8 +164,14 @@ test.describe("plan mobile: F1 + AE6", () => {
     expect(fireAge).toBeGreaterThanOrEqual(35);
     expect(fireAge).toBeLessThanOrEqual(95);
 
-    await expect(page.getByTestId("mc-success-rate")).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByTestId("replay-success-rate")).toBeVisible({ timeout: 20_000 });
+    // Confidence is a single toggle; read both methods' rates via `confidence-rate`.
+    const method = page.getByRole("group", { name: "Projection method" });
+    await method.getByRole("button", { name: "Monte Carlo" }).click();
+    const confidence = page.getByTestId("confidence-rate");
+    await expect(confidence).toBeVisible({ timeout: 20_000 });
+    expect((await confidence.textContent())?.trim()).toMatch(/%/);
+    await method.getByRole("button", { name: "Historical replay" }).click();
+    expect((await confidence.textContent())?.trim()).toMatch(/%/);
 
     // Fan chart present; Recharts SVG is not in the ARIA tree so we assert the
     // container is visible and does not show the fallback message.
@@ -191,22 +179,18 @@ test.describe("plan mobile: F1 + AE6", () => {
     await expect(fanChart).toBeVisible({ timeout: 20_000 });
     await expect(fanChart.getByText("Not enough data to render the chart.")).not.toBeVisible();
 
-    // Milestones and levers render at the mobile viewport, with the lever
-    // readout matching the headline FIRE age at rest.
-    await expect(page.getByRole("region", { name: "Your FIRE milestones" })).toBeVisible({
+    // Milestones render at the mobile viewport.
+    await expect(page.getByRole("heading", { name: "Milestones" })).toBeVisible({
       timeout: 20_000,
     });
-    await expect(page.getByRole("region", { name: "What moves your FIRE age" })).toBeVisible();
-    const headlineAge = Number((await page.getByTestId("fire-age-value").textContent())?.trim());
-    expect(Number((await page.getByTestId("lever-fire-age").textContent())?.trim())).toBe(
-      headlineAge,
-    );
+    await expect(page.getByText(/Coast FI/)).toBeVisible();
+    await expect(page.getByText(/Fat FI/)).toBeVisible();
 
-    // 7. Navigate to dashboard via bottom tab; projections must NOT appear here
-    // (they live in the Plan section only).
-    await tap(nav.getByRole("link", { name: "Dashboard" }));
+    // 7. Navigate to the Invest screen via bottom tab; projections must NOT appear
+    // here (they live in the Plan section only).
+    await tap(nav.getByRole("link", { name: "Invest" }));
     await expect(page).toHaveURL(/\/app\/?$/, { timeout: 10_000 });
-    await page.waitForLoadState("networkidle");
+    await waitForSynced(page);
 
     // History chart renders, with no plan projection on it.
     await expect(page.getByRole("img", { name: "Net worth history chart" })).toBeVisible({
@@ -219,11 +203,6 @@ test.describe("plan mobile: F1 + AE6", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// AE6 (isolated interactivity check): verify inputs stay interactive during
-// recompute. Uses the same shared session (no additional signup needed).
-// ---------------------------------------------------------------------------
-
 test.describe("plan mobile: AE6 interactivity during recompute", () => {
   test("field accepts keystrokes while updating indicator may be visible", async ({ browser }) => {
     test.setTimeout(120_000);
@@ -234,29 +213,26 @@ test.describe("plan mobile: AE6 interactivity during recompute", () => {
 
     // Navigate to Plan
     await page.goto("/app/plan/");
+    await waitForSynced(page);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible({
       timeout: 15_000,
     });
-    await page.waitForLoadState("networkidle");
 
-    // The plan from F1+AE6 test may be auto-loaded; wait for either the form
-    // to load a saved plan (and show results) or show the empty form state.
-    // Fill assumptions regardless to trigger a fresh computation.
-    await ensureAssumptionsExpanded(page);
+    // The plan from F1+AE6 test may be auto-loaded; the Adjust panel is always
+    // visible. Fill assumptions regardless to trigger a fresh computation.
     const ageInput = page.getByLabel("Current age");
+    await expect(ageInput).toBeVisible({ timeout: 15_000 });
     await ageInput.fill("38");
     await ageInput.press("Tab");
 
     await page.getByLabel("Plan until age").fill("95");
     await page.getByLabel("Plan until age").press("Tab");
 
-    await page.getByLabel("Monthly contribution").fill("1000");
-    await page.getByLabel("Target annual spend").fill("45000");
-    await page.getByLabel("Target annual spend").press("Tab");
-    await page.getByLabel("Withdrawal rate").fill("4");
-    await page.getByLabel("Withdrawal rate").press("Tab");
+    await setSlider(page.getByLabel("Monthly contribution"), 1000);
+    await setSlider(page.getByLabel("Target annual spend"), 45000);
+    await setSlider(page.getByLabel("Withdrawal rate"), 4);
 
-    // Wait for first results to compute (attached behind the open sheet)
+    // Wait for first results to compute
     await expect(page.getByTestId("fire-age-value")).toBeAttached({ timeout: 20_000 });
 
     // Now change a field to trigger recompute: the field must accept the change immediately

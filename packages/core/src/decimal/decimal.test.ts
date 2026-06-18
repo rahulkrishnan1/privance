@@ -3,10 +3,6 @@ import { describe, expect, it } from "vitest";
 import { Decimal } from "./decimal.js";
 import { DivisionByZeroError, ParseError, SCALE_CENTS, SCALE_CRYPTO } from "./types.js";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function d(s: string, scale?: number): Decimal {
   return Decimal.fromString(s, scale);
 }
@@ -16,9 +12,22 @@ function arb(scale = SCALE_CENTS): fc.Arbitrary<Decimal> {
   return fc.bigInt({ min: -max, max }).map((n) => Decimal.fromMinorUnits(n, scale));
 }
 
-// ---------------------------------------------------------------------------
-// fromString
-// ---------------------------------------------------------------------------
+/**
+ * Independent banker (round-half-to-even) integer division oracle.
+ * Written from the mathematical definition, NOT from Decimal's internals, so
+ * it can falsify a regression in Decimal.div's rounding rather than mirror it.
+ */
+function bankerDivide(num: bigint, den: bigint): bigint {
+  const q = num / den;
+  const r = num % den;
+  if (r === 0n) return q;
+  const absR2 = (r < 0n ? -r : r) * 2n;
+  const absDen = den < 0n ? -den : den;
+  const positive = r > 0n === den > 0n;
+  if (absR2 < absDen) return q;
+  if (absR2 > absDen) return positive ? q + 1n : q - 1n;
+  return q % 2n === 0n ? q : positive ? q + 1n : q - 1n;
+}
 
 describe("Decimal.fromString", () => {
   it("parses integer string", () => {
@@ -62,10 +71,6 @@ describe("Decimal.fromString", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// toString / toJSON round-trip
-// ---------------------------------------------------------------------------
-
 describe("Decimal.toString", () => {
   it("round-trips scale-2", () => {
     expect(d("12.34").toString()).toBe("12.34");
@@ -89,10 +94,6 @@ describe("Decimal.toString", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// add / sub
-// ---------------------------------------------------------------------------
-
 describe("add / sub", () => {
   it("adds two values at same scale", () => {
     expect(d("1.25").add(d("2.75")).toString()).toBe("4.00");
@@ -115,10 +116,6 @@ describe("add / sub", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// mul
-// ---------------------------------------------------------------------------
-
 describe("mul", () => {
   it("multiplies two scale-2 values and returns scale-2 result", () => {
     // 10.00 * 2.00 = 20.00
@@ -139,10 +136,6 @@ describe("mul", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// div
-// ---------------------------------------------------------------------------
-
 describe("div", () => {
   it("divides evenly", () => {
     expect(d("10.00").div(d("2.00")).toString()).toBe("5.00");
@@ -157,10 +150,6 @@ describe("div", () => {
     expect(() => d("1.00").div(d("0.00"))).toThrow(DivisionByZeroError);
   });
 });
-
-// ---------------------------------------------------------------------------
-// neg / abs
-// ---------------------------------------------------------------------------
 
 describe("neg / abs", () => {
   it("negates positive", () => {
@@ -179,10 +168,6 @@ describe("neg / abs", () => {
     expect(d("7.50").abs().toString()).toBe("7.50");
   });
 });
-
-// ---------------------------------------------------------------------------
-// cmp / eq / isZero / isNegative
-// ---------------------------------------------------------------------------
 
 describe("cmp / eq / isZero / isNegative", () => {
   it("returns 0 for equal values", () => {
@@ -222,10 +207,6 @@ describe("cmp / eq / isZero / isNegative", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// fromMinorUnits
-// ---------------------------------------------------------------------------
-
 describe("fromMinorUnits", () => {
   it("constructs from bigint cents", () => {
     const dec = Decimal.fromMinorUnits(1234n, SCALE_CENTS);
@@ -243,14 +224,6 @@ describe("fromMinorUnits", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Rounding modes
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// toFloat, precision-loss boundary method
-// ---------------------------------------------------------------------------
-
 describe("toFloat, JS Number conversion (precision loss possible for large values)", () => {
   it("converts a typical decimal value exactly", () => {
     expect(Decimal.fromString("1234.56").toFloat()).toBe(1234.56);
@@ -260,10 +233,6 @@ describe("toFloat, JS Number conversion (precision loss possible for large value
     expect(Decimal.fromString("0").toFloat()).toBe(0);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Rounding modes
-// ---------------------------------------------------------------------------
 
 describe("rounding modes in div", () => {
   it("truncate rounds toward zero for positive result", () => {
@@ -296,21 +265,25 @@ describe("rounding modes in div", () => {
     expect(d("-7.00").div(d("3.00"), "ceil").toString()).toBe("-2.33");
   });
 
-  it("banker rounds 0.5 to even (round down when quotient is even)", () => {
-    // 0.5 / 1.0 = 0.50 exactly, quotient at scale 2 is 50 (even) → stays 50 = 0.50
-    // Use a case where the half is below the scale boundary:
-    // 2.5 with scale 0: floor(2.5) = 2, 2 is even → banker rounds to 2
-    const two = Decimal.fromMinorUnits(250n, 2); // 2.50
-    const one = Decimal.fromMinorUnits(100n, 2); // 1.00
-    // 2.50 / 1.00 = 2.50, not a banker case at scale 2
-    // Test: 1.5 ÷ 1 at scale 0: 150/100 = 1.5 → at scale 0 result → 2 (half rounds to even: 2 is even)
-    const a = Decimal.fromMinorUnits(150n, 2); // 1.50
-    const b = Decimal.fromMinorUnits(100n, 2); // 1.00
-    // 1.50 / 1.00 = 1.50 at scale 2, result is 1.50 (exact)
-    expect(a.div(b).toString()).toBe("1.50");
-    // For a true banker half case: 0.025 / 0.1 = 0.25 → scale 2 = 25, half not reachable at int level
-    // Use at-scale-0 test instead: this is covered by the property tests
-    expect(two.div(one).toString()).toBe("2.50");
+  it("banker rounds an exact half down to even and the next half up to even", () => {
+    // scale-0 division reaches genuine half boundaries.
+    // 5 / 2 = 2.5 exactly: round half to even -> 2.
+    const five = Decimal.fromMinorUnits(5n, 0);
+    const seven = Decimal.fromMinorUnits(7n, 0);
+    const two = Decimal.fromMinorUnits(2n, 0);
+    expect(five.div(two).toString()).toBe("2");
+    // 7 / 2 = 3.5 exactly: round half to even -> 4.
+    expect(seven.div(two).toString()).toBe("4");
+  });
+
+  it("banker rounds exact halves toward even for negatives too", () => {
+    // -5 / 2 = -2.5: nearest even is -2.
+    const negFive = Decimal.fromMinorUnits(-5n, 0);
+    const negSeven = Decimal.fromMinorUnits(-7n, 0);
+    const two = Decimal.fromMinorUnits(2n, 0);
+    expect(negFive.div(two).toString()).toBe("-2");
+    // -7 / 2 = -3.5: nearest even is -4.
+    expect(negSeven.div(two).toString()).toBe("-4");
   });
 });
 
@@ -397,10 +370,6 @@ describe("#rescale: this.scale < other.scale", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Property tests (fast-check)
-// ---------------------------------------------------------------------------
-
 describe("property: add commutativity", () => {
   it("a + b === b + a", () => {
     fc.assert(
@@ -469,6 +438,96 @@ describe("property: sub is add of negation", () => {
       fc.property(arb(), arb(), (a, b) => {
         expect(a.sub(b).toMinorUnits()).toBe(a.add(b.neg()).toMinorUnits());
       }),
+    );
+  });
+});
+
+describe("property: mul commutativity", () => {
+  it("a * b === b * a at scale 0 (exact, no rounding loss)", () => {
+    fc.assert(
+      fc.property(arb(0), arb(0), (a, b) => {
+        expect(a.mul(b, { resultScale: 0 }).toMinorUnits()).toBe(
+          b.mul(a, { resultScale: 0 }).toMinorUnits(),
+        );
+      }),
+    );
+  });
+});
+
+describe("property: mul identity", () => {
+  it("a * 1 === a", () => {
+    fc.assert(
+      fc.property(arb(), (a) => {
+        const one = Decimal.fromString("1.00");
+        expect(a.mul(one).toMinorUnits()).toBe(a.toMinorUnits());
+      }),
+    );
+  });
+});
+
+describe("property: mul oracle against exact bigint product", () => {
+  it("scale-0 product equals the raw bigint product", () => {
+    fc.assert(
+      fc.property(
+        fc.bigInt({ min: -1_000_000n, max: 1_000_000n }),
+        fc.bigInt({ min: -1_000_000n, max: 1_000_000n }),
+        (an, bn) => {
+          const a = Decimal.fromMinorUnits(an, 0);
+          const b = Decimal.fromMinorUnits(bn, 0);
+          expect(a.mul(b, { resultScale: 0 }).toMinorUnits()).toBe(an * bn);
+        },
+      ),
+    );
+  });
+});
+
+describe("property: div is the inverse of mul up to one rounding step", () => {
+  it("(a / b) * b is within b of a (truncating division remainder bound)", () => {
+    fc.assert(
+      fc.property(
+        fc.bigInt({ min: -1_000_000n, max: 1_000_000n }),
+        fc.bigInt({ min: 1n, max: 1_000_000n }),
+        (an, bn) => {
+          const a = Decimal.fromMinorUnits(an, 0);
+          const b = Decimal.fromMinorUnits(bn, 0);
+          const q = a.div(b, "truncate"); // scale 0: integer quotient toward zero
+          const reconstructed = q.mul(b, { resultScale: 0 }).toMinorUnits();
+          // |a - q*b| < |b| for truncating integer division.
+          const diff = an - reconstructed;
+          const absDiff = diff < 0n ? -diff : diff;
+          expect(absDiff < bn).toBe(true);
+        },
+      ),
+    );
+  });
+});
+
+describe("property: div by self is one (when nonzero)", () => {
+  it("a / a === 1.00 for nonzero a", () => {
+    fc.assert(
+      fc.property(arb(), (a) => {
+        fc.pre(!a.isZero());
+        expect(a.div(a).toString()).toBe("1.00");
+      }),
+    );
+  });
+});
+
+describe("property: div oracle against banker-rounded exact quotient", () => {
+  it("matches an independent bigint banker-rounding computation at scale 2", () => {
+    fc.assert(
+      fc.property(
+        fc.bigInt({ min: -1_000_000n, max: 1_000_000n }),
+        fc.bigInt({ min: -1_000_000n, max: 1_000_000n }).filter((n) => n !== 0n),
+        (an, bn) => {
+          const a = Decimal.fromMinorUnits(an, 2);
+          const b = Decimal.fromMinorUnits(bn, 2);
+          // Engine computes (an * 10^2) / bn at scale 2 with banker rounding.
+          const num = an * 100n;
+          const expected = bankerDivide(num, bn);
+          expect(a.div(b).toMinorUnits()).toBe(expected);
+        },
+      ),
     );
   });
 });

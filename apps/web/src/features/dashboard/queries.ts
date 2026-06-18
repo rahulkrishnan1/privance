@@ -4,7 +4,6 @@ import {
   type Account,
   type AccountId,
   AccountPayloadSchema,
-  type AllocationSlice,
   asId,
   asIsoDateTime,
   computeNetWorth,
@@ -15,6 +14,9 @@ import {
   HoldingPayloadSchema,
   type IsoDateTime,
   KDF_PARAM_VERSION,
+  KIND_ACCOUNT,
+  KIND_HOLDING,
+  KIND_SNAPSHOT,
   LABEL_VERSION,
   type NetWorthSnapshot,
   type NetWorthSnapshotId,
@@ -23,11 +25,13 @@ import {
   StorageError,
   type UserId,
 } from "@privance/core";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { SymbolProfileEntry } from "@/lib/api/symbol-profiles";
 import { usePricesQuery } from "@/lib/queries/prices";
+import { useSymbolProfilesQuery } from "@/lib/queries/profiles";
 import { readItemsKey } from "@/providers/auth-context";
 import { useSync } from "@/providers/sync-context";
-import { computeDayChangeByHoldingId, splitCashAndInvestments } from "./_math";
+import { computeDayChangeByHoldingId, isAwaitingInitialPrices } from "./_math";
 import {
   buildSnapshotPayload,
   existingSnapshotLooksUnpriced,
@@ -37,18 +41,6 @@ import {
   utcDateString,
 } from "./_snapshot";
 import type { HistoryPoint } from "./types";
-
-// ---------------------------------------------------------------------------
-// Kind constants
-// ---------------------------------------------------------------------------
-
-const KIND_ACCOUNT = "account" as const;
-const KIND_HOLDING = "holding" as const;
-const KIND_SNAPSHOT = "net_worth_snapshot" as const;
-
-// ---------------------------------------------------------------------------
-// Parse helpers
-// ---------------------------------------------------------------------------
 
 function parseJson(bytes: Uint8Array): unknown {
   return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
@@ -91,10 +83,6 @@ function parseSnapshot(raw: unknown, objectId: string): NetWorthSnapshot {
   } as NetWorthSnapshot;
 }
 
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
-
 export type DashboardData =
   | { status: "loading" }
   | { status: "error"; error: Error }
@@ -103,17 +91,14 @@ export type DashboardData =
       status: "ready";
       breakdown: ReturnType<typeof computeNetWorth>;
       holdings: Holding[];
-      allocationByKind: AllocationSlice[];
       historyPoints: HistoryPoint[];
       snapshots: NetWorthSnapshot[];
       lastRefreshedMs: number;
       /** Per-holding day change in cents; absent when prior price isn't available. */
       dayChangeByHoldingId: Map<HoldingId, Decimal>;
+      /** Symbol profiles keyed by display ticker; non-critical, may still be loading. */
+      profilesByTicker: Map<string, SymbolProfileEntry>;
     };
-
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
 
 type DecryptedData = {
   accounts: Account[];
@@ -130,14 +115,28 @@ export function useDashboardData(): DashboardData {
   const [yahooTickers, setYahooTickers] = useState<string[]>([]);
   const [coingeckoTickers, setCoingeckoTickers] = useState<string[]>([]);
 
-  const { prices, previousPrices } = usePricesQuery({ yahooTickers, coingeckoTickers });
+  const {
+    prices,
+    previousPrices,
+    isLoading: pricesLoading,
+  } = usePricesQuery({
+    yahooTickers,
+    coingeckoTickers,
+  });
 
-  // ---------------------------------------------------------------------------
+  // Display tickers (each holding's own ticker, not its proxy) drive the
+  // symbol-profile lookup. Profiles are non-critical, so this never gates the
+  // "ready" status below.
+  const displayTickers = useMemo(
+    () => (decryptedData?.holdings ?? []).map((h) => h.payload.ticker),
+    [decryptedData],
+  );
+  const { profilesByTicker } = useSymbolProfilesQuery(displayTickers);
+
   // Decrypt-only effect: re-runs ONLY when the local store changes (add/edit/
   // delete via storeClock, or initialising/store identity). Crucially does NOT
   // depend on prices, so a price tick won't re-decrypt every account/holding.
   // storeClock is a tick signal, not read in the body.
-  // ---------------------------------------------------------------------------
   // biome-ignore lint/correctness/useExhaustiveDependencies: storeClock is a tick signal, not read in the effect body
   useEffect(() => {
     if (initialising || store === null) {
@@ -255,29 +254,19 @@ export function useDashboardData(): DashboardData {
     };
   }, [initialising, store, decrypt, storeClock]);
 
-  // ---------------------------------------------------------------------------
   // Compute effect: re-runs on price ticks WITHOUT re-decrypting. Reads the
   // already-decrypted snapshot from state and rebuilds breakdown + day change.
-  // ---------------------------------------------------------------------------
   useEffect(() => {
     if (decryptedData === null) return;
     const { accounts, holdings, snapshots } = decryptedData;
 
-    // Hold `loading` while any priced holding is still without a price.
-    // Computing aggregates with a missing entry renders holdings as $0 and
-    // skews KPI deltas; the race covers both cold start and a refetch
-    // triggered by adding a holding.
-    const someHoldingsMissingPrices =
-      holdings.length > 0 &&
-      holdings.some((h) => prices.get(h.payload.proxyTicker ?? h.payload.ticker) === undefined);
-    if (someHoldingsMissingPrices) {
+    if (isAwaitingInitialPrices(holdings, prices, pricesLoading)) {
       setData({ status: "loading" });
       return;
     }
 
     try {
-      const breakdown = computeNetWorth({ accounts, holdings, prices });
-      const byKind: AllocationSlice[] = buildKindSlices(breakdown);
+      const breakdown = computeNetWorth({ accounts, holdings, prices, asOf: Date.now() });
 
       const historyPoints: HistoryPoint[] = snapshots
         .slice()
@@ -298,11 +287,11 @@ export function useDashboardData(): DashboardData {
         status: "ready",
         breakdown,
         holdings,
-        allocationByKind: byKind,
         historyPoints,
         snapshots,
         lastRefreshedMs: breakdown.asOf,
         dayChangeByHoldingId,
+        profilesByTicker,
       });
     } catch (err) {
       setData({
@@ -310,7 +299,7 @@ export function useDashboardData(): DashboardData {
         error: err instanceof Error ? err : new Error(String(err)),
       });
     }
-  }, [decryptedData, prices, previousPrices]);
+  }, [decryptedData, prices, previousPrices, pricesLoading, profilesByTicker]);
 
   // Primitive signals for the snapshot effect: a fresh `data` object on every
   // price tick must not re-run the effect when net worth in cents and the
@@ -326,7 +315,6 @@ export function useDashboardData(): DashboardData {
           .join("|")
       : null;
 
-  // ---------------------------------------------------------------------------
   // Snapshot effect: writes one net_worth_snapshot per UTC day so the history
   // chart has data to plot. Heals a row that was sealed before prices loaded
   // by overwriting it once per session. After a successful write, tick()
@@ -337,7 +325,6 @@ export function useDashboardData(): DashboardData {
   // only catches the persistent case once decryptedData reflects the new
   // row). snapshotRewroteRef caps self-heal to once per session so intraday
   // price drift does not churn the snapshot on every effect re-run.
-  // ---------------------------------------------------------------------------
   // biome-ignore lint/correctness/useExhaustiveDependencies: data + decryptedData read but stability comes from the primitive *Trigger deps; including the objects would re-fire on every price tick
   useEffect(() => {
     if (data.status !== "ready" || decryptedData === null || store === null) return;
@@ -449,34 +436,5 @@ export function useDashboardData(): DashboardData {
   return data;
 }
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
 export type { Delta } from "./_math";
 export { deriveAggregateDeltas, splitCashAndInvestments } from "./_math";
-
-// Assets-only allocation: liabilities are excluded so the pie shows parts of
-// a positive whole (gross assets). This matches every personal-finance app's
-// convention; mixing in negative liabilities would make "% of total" lie.
-function buildKindSlices(breakdown: ReturnType<typeof computeNetWorth>): AllocationSlice[] {
-  const { cash, investments } = splitCashAndInvestments(breakdown);
-  const manualAsset = breakdown.byAccountKind.manualAsset;
-
-  const total = cash.add(investments).add(manualAsset);
-
-  const candidates: Array<{ label: string; value: Decimal }> = [
-    { label: "Cash", value: cash },
-    { label: "Investments", value: investments },
-    { label: "Manual assets", value: manualAsset },
-  ];
-
-  return candidates
-    .filter((c) => !c.value.isZero() && !c.value.isNegative())
-    .map((c) => ({
-      label: c.label,
-      value: c.value,
-      share: total.isZero() ? 0 : c.value.toFloat() / total.toFloat(),
-    }))
-    .sort((a, b) => b.value.cmp(a.value));
-}

@@ -1,53 +1,35 @@
-import { useId } from "react";
-
 type LogoProps = {
   size?: number;
   className?: string;
+  /** When true the SVG is decorative; caller provides the accessible label. */
+  "aria-hidden"?: boolean;
 };
 
-export function Logo({ size = 32, className }: LogoProps) {
-  const reactId = useId();
-  const clipId = `privance-mark-${reactId}`;
+/**
+ * Keyhole P mark. The P stroke takes `currentColor` so callers set it via text
+ * color; the keyhole (circle + dropped triangle) stays Tide teal as the fixed
+ * brand accent.
+ */
+export function Logo({ size = 32, className, "aria-hidden": ariaHidden }: LogoProps) {
   return (
     <svg
-      viewBox="0 0 160 160"
+      viewBox="0 0 64 64"
       width={size}
       height={size}
-      role="img"
-      aria-label="Privance"
+      role={ariaHidden ? undefined : "img"}
+      aria-label={ariaHidden ? undefined : "Privance"}
+      aria-hidden={ariaHidden}
       className={className}
     >
-      <defs>
-        <clipPath id={clipId}>
-          <circle cx="80" cy="80" r="58" />
-        </clipPath>
-      </defs>
-      <circle cx="80" cy="80" r="58" fill="none" stroke="currentColor" strokeWidth="3" />
-      <g stroke="currentColor" strokeWidth="4" strokeLinecap="round">
-        <line x1="80" y1="6" x2="80" y2="18" />
-        <line x1="154" y1="80" x2="142" y2="80" />
-        <line x1="80" y1="154" x2="80" y2="142" />
-        <line x1="6" y1="80" x2="18" y2="80" />
-      </g>
-      <g
-        stroke="currentColor"
-        strokeWidth="2.8"
+      <path
+        d="M20 58 V8 H38 a16 16 0 0 1 0 32 H28"
         fill="none"
-        strokeLinecap="square"
-        clipPath={`url(#${clipId})`}
-      >
-        <path d="M 40 48 L 105 48" />
-        <path d="M 105 48 L 105 65" />
-        <path d="M 55 65 L 120 65" />
-        <path d="M 55 65 L 55 90" />
-        <path d="M 55 90 L 105 90" />
-        <path d="M 35 82 L 35 108" />
-        <path d="M 80 90 L 80 108" />
-        <path d="M 105 90 L 105 115" />
-        <path d="M 55 108 L 105 108" />
-      </g>
-      <circle cx="70" cy="78" r="6.25" fill="none" stroke="currentColor" strokeWidth="3.5" />
-      <circle cx="70" cy="78" r="1.8" fill="currentColor" />
+        stroke="currentColor"
+        strokeWidth="6"
+        strokeLinecap="round"
+      />
+      <circle cx="38" cy="22" r="4.6" fill="#7FC4C6" />
+      <path d="M38 24 l-3.4 9.5 h6.8 Z" fill="#7FC4C6" />
     </svg>
   );
 }

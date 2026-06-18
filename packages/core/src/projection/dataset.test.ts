@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ANNUAL_RETURNS, DATASET_END_YEAR, DATASET_START_YEAR } from "./dataset.js";
 
-// ---------------------------------------------------------------------------
-// Basic structure
-// ---------------------------------------------------------------------------
-
 describe("ANNUAL_RETURNS structure", () => {
   it("covers the expected year span from 1871 to 2022", () => {
     expect(DATASET_START_YEAR).toBe(1871);
@@ -29,11 +25,6 @@ describe("ANNUAL_RETURNS structure", () => {
     }
   });
 });
-
-// ---------------------------------------------------------------------------
-// Spot-checks against published Shiller values
-// These verify the sign and rough magnitude of known historical episodes.
-// ---------------------------------------------------------------------------
 
 describe("ANNUAL_RETURNS spot-checks against published Shiller values", () => {
   function getYear(year: number) {
@@ -85,14 +76,12 @@ describe("ANNUAL_RETURNS spot-checks against published Shiller values", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Damodaran cross-check: stock returns 1928+ within a few hundred bps
+// Damodaran cross-check: stock returns 1928+ within a few hundred bps.
 // Damodaran uses Dec-to-Dec nominal returns; we use Jan-to-Jan real returns.
 // Documented comparison values from Damodaran's historical file (accessed 2026-06):
 //   https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/histretSP.html
 // Our values differ due to: (1) Jan vs Dec convention, (2) real vs nominal.
 // The cross-check verifies we are in the right ballpark, not exact agreement.
-// ---------------------------------------------------------------------------
 
 describe("Damodaran cross-check (1928+, sign and rough magnitude)", () => {
   function getYear(year: number) {
@@ -129,14 +118,11 @@ describe("Damodaran cross-check (1928+, sign and rough magnitude)", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Long-run statistics cross-check
-// Per-year numeric comparison against Damodaran is meaningless under the
-// Jan-to-Jan real convention, but long-horizon means cancel the convention
-// difference. The full-period US real equity geometric mean (~6.5-7%,
+// Long-run statistics cross-check: per-year comparison against Damodaran is
+// meaningless under the Jan-to-Jan real convention, but long-horizon means cancel
+// the convention difference. The full-period US real equity geometric mean (~6.5-7%,
 // Shiller/Siegel/Damodaran all agree) is the strongest single anchor that the
 // transformation pipeline is correct end to end.
-// ---------------------------------------------------------------------------
 
 describe("ANNUAL_RETURNS long-run statistics", () => {
   function means(select: (r: (typeof ANNUAL_RETURNS)[number]) => number) {
@@ -168,10 +154,6 @@ describe("ANNUAL_RETURNS long-run statistics", () => {
     expect(geometricBps).toBeLessThan(400);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Basis points range sanity checks
-// ---------------------------------------------------------------------------
 
 describe("ANNUAL_RETURNS value ranges", () => {
   it("stock returns are within plausible range (-10000 to +20000 bps)", () => {

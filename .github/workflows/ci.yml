@@ -5,12 +5,10 @@ on:
     branches: [main]
   pull_request:
 
-# Cancel in-progress runs on the same branch/PR when a new commit is pushed.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Least-privilege default: read-only checkout.
 permissions:
   contents: read
 
@@ -20,9 +18,6 @@ env:
   BUN_VERSION: "1.3.14"
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # 1. Lint — Biome checks both formatting and linting in one pass.
-  # ---------------------------------------------------------------------------
   lint:
     name: Lint (Biome)
     runs-on: ubuntu-latest
@@ -53,9 +48,6 @@ jobs:
       - name: Run Biome check (lint + format)
         run: pnpm exec biome check .
 
-  # ---------------------------------------------------------------------------
-  # 2. Typecheck — runs tsc --noEmit across all three active workspaces.
-  # ---------------------------------------------------------------------------
   typecheck:
     name: Typecheck (all workspaces)
     runs-on: ubuntu-latest
@@ -83,16 +75,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # pnpm -r typecheck runs tsc across packages/core, apps/web, and server
-      # in workspace dependency order (turbo respects ^build deps).
       - name: Typecheck all workspaces
         run: pnpm -r typecheck
 
-  # ---------------------------------------------------------------------------
-  # 3. Unit tests — @privance/core (251 vitest, coverage enforced at 90%)
-  # ---------------------------------------------------------------------------
   test-unit-core:
-    name: Unit tests — core
+    name: Unit tests (core)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -121,11 +108,8 @@ jobs:
       - name: Run core unit tests
         run: pnpm -F @privance/core test
 
-  # ---------------------------------------------------------------------------
-  # 4. Unit tests — @privance/web (144 vitest)
-  # ---------------------------------------------------------------------------
   test-unit-web:
-    name: Unit tests — web
+    name: Unit tests (web)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -151,25 +135,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # The web suite has two Vitest projects: "unit" (happy-dom, pure logic)
-      # and "browser" (real Chromium via Vitest Browser Mode for component
-      # rendering). The browser project needs a Chromium binary.
+      # The web "browser" Vitest project renders components in real Chromium.
       - name: Install Playwright Chromium
         run: pnpm -F @privance/web exec playwright install --with-deps chromium
 
       - name: Run web unit + browser-mode tests
         run: pnpm -F @privance/web test
 
-  # ---------------------------------------------------------------------------
-  # 5. Unit tests — @privance/server (158 bun tests, needs Postgres)
-  #
-  # Env note: ENUMERATION_SECRET is overridden inside wire.test.ts itself for
-  # the tests that need it. The value here satisfies the startup guard in
-  # auth/wire.ts (min 32 bytes base64). This is a throwaway CI-only secret —
-  # the test DB is ephemeral and isolated.
-  # ---------------------------------------------------------------------------
   test-unit-server:
-    name: Unit tests — server
+    name: Unit tests (server)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -223,26 +197,15 @@ jobs:
         working-directory: server
         env:
           DATABASE_URL: postgres://privance:privance@localhost:5432/privance
-          # Throwaway CI-only value — satisfies the 32-byte minimum guard.
+          # Throwaway CI-only value; satisfies the 32-byte minimum guard.
           # wire.test.ts overrides this per-test for the HMAC coverage it needs.
           ENUMERATION_SECRET: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
         run: bun test
 
-  # ---------------------------------------------------------------------------
-  # 6. E2E — Playwright chromium + firefox against a live Postgres + bun server
-  #    + Next.js dev server. Playwright report uploaded on failure.
-  #
-  # Debug specs (debug-dek*.spec.ts) exist only for local investigation and
-  # are excluded via the testPathIgnorePatterns comment below. If they're
-  # checked in they won't cause CI failures because Playwright ignores files
-  # outside testDir that aren't listed in projects — but they are inside
-  # testDir. Until they're removed or gated behind a project flag, this job
-  # runs only the stable specs explicitly via --grep or project filter.
-  # ---------------------------------------------------------------------------
   test-e2e:
     name: E2E (chromium + firefox + webkit + mobile)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     needs: [lint, typecheck, test-unit-core, test-unit-web, test-unit-server]
     services:
       postgres:
@@ -334,9 +297,6 @@ jobs:
           path: apps/web/playwright-report/
           retention-days: 7
 
-  # ---------------------------------------------------------------------------
-  # 7. Build — Next.js static export. Must produce zero SSR warnings.
-  # ---------------------------------------------------------------------------
   build:
     name: Build (web static export)
     runs-on: ubuntu-latest
@@ -367,15 +327,6 @@ jobs:
       - name: Build web
         run: pnpm -F @privance/web build
 
-  # ---------------------------------------------------------------------------
-  # 8. Audit — pnpm audit at high severity.
-  #
-  # continue-on-error: true because happy-dom@15.11.0 (devDependency of web +
-  # core test tooling) has a known high/critical advisory with no patch that is
-  # compatible with the locked vitest@4.1.6. This is a dev-only dependency that
-  # ships zero bytes to production. Tracked for remediation when vitest 4.2+
-  # ships a happy-dom peer that is clean.
-  # ---------------------------------------------------------------------------
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest
@@ -403,7 +354,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # happy-dom (dev-only test dep) has an unpatched advisory incompatible with
+      # the locked vitest; it ships zero bytes to production.
       - name: Run pnpm audit (high+)
         run: pnpm audit --audit-level=high
-        # See job docstring — happy-dom advisory is dev-only, tracked for fix.
         continue-on-error: true

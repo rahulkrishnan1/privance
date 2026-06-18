@@ -123,14 +123,13 @@ async function deriveViaWorker(opts: {
   });
 }
 
+// Off-thread derivation, bounded by a timeout. Any failure (worker unavailable,
+// errored, or wedged) latches it off and derives in-thread, so auth never hangs.
 export async function stretchMasterPasswordInWorker(opts: {
   password: string;
   salt: Uint8Array;
   version?: KdfParamVersion;
 }): Promise<KdfResult> {
-  // Off-thread derivation, bounded by a timeout. Any failure (worker
-  // unavailable, errored, or wedged) latches it off and derives in-thread, so
-  // auth never hangs or hard-breaks.
   if (!workerUnavailable) {
     try {
       return await withTimeout(deriveViaWorker(opts), WORKER_TIMEOUT_MS);

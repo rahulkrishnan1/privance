@@ -26,7 +26,7 @@ const USER_ID = "user-uuid-test";
 function makeService() {
   // biome-ignore lint/suspicious/noExplicitAny: test-only require after mock
   const { AuthRepo } = require("./repo.js") as any;
-  return new InviteService(new AuthRepo());
+  return new InviteService({ repo: new AuthRepo() });
 }
 
 function resetMocks(): void {

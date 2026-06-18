@@ -1,5 +1,5 @@
 import type { LocalStore, OutboundItem } from "../storage/types.js";
-import { fromBase64, parseBigIntField, parseStringField, toBase64 } from "./envelope.js";
+import { parseBigIntField, parseStringField, toBase64 } from "./envelope.js";
 import { handleConflict } from "./reconcile.js";
 import type {
   ConflictResolutionCallback,
@@ -11,8 +11,7 @@ import { SyncNetworkError, SyncProtocolError } from "./types.js";
 
 const CSRF_HEADER = "X-Requested-With";
 
-// Hoisted BigInt constants so @vercel/nft's static analyzer doesn't trip on
-// inline `1n` literals in expressions like `version - 1n` during build traces.
+// Hoisted so the bundler's static analyzer does not trip on an inline 1n literal.
 const BIGINT_ONE = BigInt(1);
 
 type PushDeps = {
@@ -164,17 +163,16 @@ export async function pushPending(deps: PushDeps): Promise<PushResult> {
     const item = items.find((i) => i.objectId === result.id);
 
     if (result.ok) {
-      await store.put({
-        kind: item?.kind ?? "",
-        objectId: result.id,
-        ciphertext: item?.ciphertext ?? new Uint8Array(0),
-        nonce: item?.nonce ?? new Uint8Array(0),
-        version: result.version,
-        serverSeq: result.serverSeq,
-        tombstone: item?.tombstone ?? false,
-      });
-
       if (item !== undefined) {
+        await store.put({
+          kind: item.kind,
+          objectId: result.id,
+          ciphertext: item.ciphertext,
+          nonce: item.nonce,
+          version: result.version,
+          serverSeq: result.serverSeq,
+          tombstone: item.tombstone,
+        });
         await store.ackQueueItem(item.id);
       }
 
@@ -211,5 +209,3 @@ export async function pushPending(deps: PushDeps): Promise<PushResult> {
 
   return { results: finalResults };
 }
-
-export { fromBase64 };

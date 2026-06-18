@@ -21,6 +21,9 @@ export default defineConfig({
   // Dedupe React so component deps (e.g. react-hook-form) share the single React
   // instance the test renderer uses; otherwise hooks see a null dispatcher.
   resolve: { alias, dedupe: ["react", "react-dom"] },
+  // Next inlines NEXT_PUBLIC_* at build time; the browser test bundle has no
+  // process, so inline a stand-in version the way Next would in production.
+  define: { "process.env.NEXT_PUBLIC_APP_VERSION": JSON.stringify("0.0.0-test") },
   plugins: [react()],
   test: {
     projects: [

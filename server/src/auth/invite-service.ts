@@ -3,7 +3,11 @@ import type { AuthRepo } from "./repo.js";
 import { InvalidInviteError } from "./types.js";
 
 export class InviteService {
-  constructor(private readonly repo: AuthRepo) {}
+  private readonly repo: AuthRepo;
+
+  constructor(opts: { repo: AuthRepo }) {
+    this.repo = opts.repo;
+  }
 
   async validateAndClaim(opts: {
     token: string | undefined;

@@ -1,7 +1,7 @@
 # @privance/web
 
 Next.js 16 static-export PWA for Privance. The same build artifact is wrapped by
-Capacitor for native iOS and Android distribution.
+Capacitor for native iOS and Android builds.
 
 All crypto runs in the browser. This workspace has no server-side rendering; the
 `output: "export"` Next.js config produces a static `/out` directory.
@@ -55,7 +55,7 @@ pnpm test         # vitest unit tests
 
 - **Xcode** (latest stable) from the Mac App Store
 - **An Apple Developer signing identity**, a free Apple ID is sufficient for
-  Simulator builds; a paid membership is required for on-device distribution
+  Simulator builds; a paid membership is required for installing on a physical device
 - Capacitor 8 uses Swift Package Manager, so CocoaPods is not required
 
 ### Environment
@@ -164,7 +164,7 @@ pnpm -F @privance/web exec cap open android
 ### Running
 
 ```sh
-# Run all specs on chromium + firefox (boots servers automatically)
+# Run all five projects: chromium, firefox, webkit, mobile-safari, mobile-chrome (boots servers automatically)
 pnpm -F @privance/web e2e
 
 # Chromium only (faster)

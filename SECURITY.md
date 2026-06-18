@@ -6,8 +6,6 @@
 
 You may also open a GitHub Security Advisory on this repository using the "Report a vulnerability" button. Do not open a public issue for security findings.
 
-PGP encryption of reports is optional but welcome. A PGP public key may be published at `https://privance.app/.well-known/security.txt`.
-
 **Response SLA expectations:**
 - Acknowledgement: within 3 business days of receipt
 - Initial triage and severity assessment: within 7 days
@@ -54,40 +52,38 @@ The following properties are enforced by the design and verified in code:
    encrypted blobs. No plaintext financial data is ever written to Postgres.
 
 2. **DEK never leaves the browser.** The Data Encryption Key (items key) lives in a
-   `globalThis` Symbol map (`Symbol.for("privance.dekStore.v1")`) and is lost on tab close or page reload. The server never receives it. Re-authentication is required to recover the key after a reload.
+   `globalThis` Symbol map (`Symbol.for("privance.dekStore.v1")`) and never reaches the server. It is cleared on tab close, on auto-lock, and once a 15-minute idle TTL lapses. Within that window a page reload can restore it from a non-extractable-key-wrapped copy held in IndexedDB (the session vault, see [ADR-0004](docs/adr/0004-session-persistence.md)); the raw key is never persisted. After the TTL elapses or the vault locks, re-authentication is required.
 
-3. **HKDF labels are frozen.** The three labels, `finance/auth-v1`, `finance/kek-v1`,
-   `finance/recovery-v1`, are defined in `packages/core/src/crypto/labels.ts` and must not change. Changing a label is a migration requiring a coordinated key re-wrap, not a code edit.
+3. **HKDF labels are frozen.** The four labels, `finance/auth-v1`, `finance/kek-v1`,
+   `finance/recovery-v1`, and `finance/biometric-v1`, are defined in `packages/core/src/crypto/labels.ts` and must not change. Changing a label is a migration requiring a coordinated key re-wrap, not a code edit.
 
 4. **AES-GCM AAD binds record identity, kind, and version.** Every encrypted record
-   includes `{recordUuid, kind, labelVersion, kdfParamVersion}` as Additional Authenticated Data, preventing record-swap, cross-kind swap, and downgrade attacks without key compromise.
+   includes `{recordUuid, kind, labelVersion, kdfParamVersion}` as Additional Authenticated Data, preventing record-swap, cross-kind swap, and downgrade attacks without key compromise. Biometric protector records additionally bind `pubKeyDigest` (SHA-256 of the stored protector public key) to prevent key-swap.
 
 5. **Constant-time comparisons.** Byte-level secret comparisons use `equalBytes` from
    `@noble/ciphers/utils` (`packages/core/src/crypto/compare.ts`), a timing-safe implementation. The server does not compare raw secrets in non-constant time.
 
-6. **HIBP password check on signup.** Passwords known to be breached (per the
-   HaveIBeenPwned k-anonymity API) are rejected. The check is fail-closed on timeout: the server returns an error and blocks signup rather than silently allowing a potentially compromised password through (`server/src/auth/hibp.ts`).
+6. **Password quality enforced on the client.** A strength meter plus a minimum-length rule
+   (`apps/web/src/lib/validation.ts`) guard password choice at signup, password change, and recovery. Privance performs no third-party breach-database lookup, consistent with making no unnecessary external calls; the password never leaves the device.
 
 7. **Username-enumeration prevention.** The `/api/auth/kdf-params` endpoint returns
-   deterministic fake KDF parameters for unknown usernames, derived via HMAC-SHA256 keyed on `ENUMERATION_SECRET`, at the same timing as a real response (`server/src/auth/login-service.ts`).
+   deterministic fake KDF parameters for unknown usernames, derived via HKDF-SHA256 keyed on `ENUMERATION_SECRET` (label `finance/kdf-params/v1`), at the same timing as a real response (`server/src/auth/kdf.ts`).
 
 8. **CSRF protection on all state-changing routes.** The server requires the
    `X-Requested-With` header on every non-safe HTTP method (`server/src/core/middleware.ts`). The browser client sends this header on all mutations (`apps/web/src/lib/api/client.ts`).
 
 9. **Rate limiting on auth endpoints.** Login, signup, and recovery are rate-limited
-   by username and by IP (hashed). Login and recovery additionally apply progressive backoff after failures (`server/src/auth/rate-limit.ts`).
+   by username and by IP (hashed); password change and vault destruction are rate-limited per user. Login, recovery, and the password-verifying step-up endpoints additionally apply progressive backoff after failures (`server/src/auth/rate-limit.ts`).
 
 10. **Session cookies are HttpOnly, Secure (in production), and SameSite=Lax.**
     Session tokens are not readable by JavaScript.
 
-11. **Invite-only signup gate.** When `INVITE_REQUIRED=true`, signup requires a 256-bit random base64url token; tokens are SHA-256-hashed at rest, single-use via atomic UPDATE, and validated BEFORE HIBP and Argon2id so an attacker without a valid invite cannot consume server CPU.
+11. **Invite-only signup gate.** When `INVITE_REQUIRED=true`, signup requires a 256-bit random base64url token; tokens are SHA-256-hashed at rest, single-use via atomic UPDATE, and validated BEFORE Argon2id so an attacker without a valid invite cannot consume server CPU.
 
 ---
 
 ## Hardening choices
 
-- **HIBP password check on signup.** The signup service calls the HaveIBeenPwned
-  k-anonymity API (`server/src/auth/hibp.ts`) and rejects any password known to be breached. The check is fail-closed on timeout, if HIBP is unreachable the server returns a 503 and blocks signup with a clear error message rather than silently allowing a potentially compromised password through.
 - **Exact-pinned dependencies.** Every direct dependency is pinned to a precise
   version in the lockfile, with `bun audit` and `pnpm audit` enforced in pre-commit and weekly CI cron.
 - **Renderer reload on auto-lock.** When the idle timer fires, the app issues a

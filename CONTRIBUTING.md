@@ -25,7 +25,7 @@ cp server/.env.example server/.env
 # Edit server/.env:
 #   DATABASE_URL      , postgres connection string
 #   ENUMERATION_SECRET, base64-encoded random secret >= 32 bytes
-#     generate: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+#     generate: openssl rand -base64 48
 
 # Web app
 echo "NEXT_PUBLIC_SERVER_URL=http://localhost:3000" > apps/web/.env.development.local
@@ -51,7 +51,7 @@ pnpm --filter @privance/server db:migrate
 pnpm dev        # starts server (port 3000) + web app (port 8081) in parallel via Turborepo
 ```
 
-Open `http://localhost:8081` and run through the signup flow to verify the full stack is wired. A successful signup ends on the dashboard.
+Open `http://localhost:8081` and run through the signup flow to verify the full stack is wired. A successful signup ends on the Investments overview.
 
 To run workspaces individually:
 
@@ -67,9 +67,7 @@ pnpm --filter @privance/web dev      # Next.js dev server (webpack mode)
 ### Unit tests, `packages/core`
 
 ```sh
-pnpm --filter @privance/core test
-# with coverage (gate: >= 90%)
-pnpm --filter @privance/core test -- --coverage
+pnpm --filter @privance/core test   # coverage runs automatically; gate is >= 90%
 ```
 
 Tests use Vitest. Property tests use `fast-check` for crypto, decimal math, and sync conflict logic.
@@ -150,8 +148,7 @@ pnpm --filter @privance/web typecheck
 
 Lefthook is installed automatically by `pnpm install` (via the `prepare` script).
 
-- **pre-commit:** `biome check --write` on staged `.js/.ts/.tsx/.jsx/.json` files;
-  auto-stages fixes.
+- **pre-commit:** `biome check --write` on staged `.js/.ts/.tsx/.jsx/.json` files; auto-stages fixes.
 - **pre-push:** `pnpm -r run typecheck` + `pnpm -r run test` + `pnpm audit --audit-level=high`.
 
 Do not skip hooks without an explicit reason. If a hook fails, fix the underlying issue rather than bypassing it.
@@ -160,16 +157,9 @@ Do not skip hooks without an explicit reason. If a hook fails, fix the underlyin
 
 ## Commit conventions
 
-- Use **Conventional Commits**: `feat`, `fix`, `refactor`, `chore`, `test`, `docs`, `ci`.
-  Scope is optional: `feat(auth): add recovery phrase UI`.
-- **Never add a `Co-Authored-By` trailer.** Verify with `git log -1 --format=%B`
-  before pushing.
-- Commit identity must be the configured GitHub noreply email. Do not override with
-  `--author` or introduce a personal email.
-- Feature branches off `main`; squash-merge back when work is complete.
-- Do not rewrite `main` history once anything has been pushed.
-- No personal information in tracked files, no real names, personal emails, or
-  absolute local paths in committed content.
+- Use **Conventional Commits**: `feat`, `fix`, `refactor`, `chore`, `test`, `docs`, `ci`. Scope is optional: `feat(auth): add recovery phrase UI`.
+- Keep each branch focused; the maintainer squash-merges PRs, so a clean Conventional Commits subject is what lands on `main`.
+- No personal information in tracked files: no real names, personal emails, or absolute local paths in committed content. Treat anything tracked as public-facing.
 
 ---
 
@@ -178,8 +168,7 @@ Do not skip hooks without an explicit reason. If a hook fails, fix the underlyin
 1. Read an existing feature module as the template.
    - **Server:** `server/src/auth/` is the richest example.
    - **Web feature module:** `apps/web/src/features/accounts/` is the reference.
-2. Mirror the file structure exactly. If a new pattern is genuinely needed, justify
-   it in the PR description.
+2. Mirror the file structure exactly. If a new pattern is genuinely needed, justify it in the PR description.
 3. Server module template:
    ```
    server/src/<feature>/
@@ -199,8 +188,7 @@ Do not skip hooks without an explicit reason. If a hook fails, fix the underlyin
    ├── mutations.ts
    └── components/
    ```
-5. Money values must use `Decimal` (BigInt minor-unit arithmetic from
-   `@privance/core/decimal`). Never coerce to `Number` or use floating-point arithmetic on amounts.
+5. Money values must use `Decimal` (BigInt minor-unit arithmetic from `@privance/core/decimal`). Never coerce to `Number` or use floating-point arithmetic on amounts.
 6. Tests must go through the public API only, do not reach into `_private` names.
 
 ---
@@ -214,12 +202,13 @@ Before opening a PR:
 3. `pnpm test` passes with no regressions, and new or changed behavior ships with a test that fails without the change, at the right layer (unit / `browser` / E2E)
 4. E2E tests pass on chromium, firefox, webkit, and mobile
 5. If you changed the server API: document the change
-6. If you changed auth or crypto: manually verify a signup → recovery → login
-   cycle in a real browser
-7. Rebase the branch to one commit with a clean Conventional Commits message;
-   fill in `.github/pull_request_template.md` for the PR title and body. The
-   maintainer local-tests the pushed branch after CI passes, then merges with
-   `gh pr merge --squash --delete-branch` (no-op squash since the branch is
-   already one commit).
+6. If you changed auth or crypto: manually verify a signup, recovery, and login cycle in a real browser
+7. Fill in `.github/pull_request_template.md` for the PR title and body. The maintainer reviews and squash-merges once CI passes.
 
 For non-obvious design decisions, write an ADR under `docs/adr/`.
+
+---
+
+## License and contributions
+
+Privance is licensed under [AGPL-3.0](LICENSE). By contributing, you agree that your contributions are licensed under the same AGPL-3.0 license (inbound = outbound). You retain copyright to your contributions.

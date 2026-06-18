@@ -8,10 +8,6 @@ import {
   isBiometricSupported,
 } from "./webauthn-prf.js";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function makeCredential(opts: {
   rawId?: Uint8Array;
   prfEnabled?: boolean;
@@ -62,10 +58,6 @@ function setupWebAuthnStubs(): void {
   });
 }
 
-// ---------------------------------------------------------------------------
-// isBiometricSupported
-// ---------------------------------------------------------------------------
-
 describe("isBiometricSupported", () => {
   beforeEach(() => {
     setupWebAuthnStubs();
@@ -106,10 +98,6 @@ describe("isBiometricSupported", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// enrollCredential
-// ---------------------------------------------------------------------------
-
 describe("enrollCredential", () => {
   beforeEach(() => {
     setupWebAuthnStubs();
@@ -137,6 +125,45 @@ describe("enrollCredential", () => {
     expect(result.prfOutput).toHaveLength(32);
     expect(result.credentialId).toBeInstanceOf(Uint8Array);
     expect(result.salt).toHaveLength(32);
+  });
+
+  it("requests a platform resident key with required user verification and a fresh PRF salt", async () => {
+    const cred = makeCredential({ prfFirst: makePrfOutput(), prfEnabled: true });
+    vi.mocked(navigator.credentials.create).mockResolvedValue(cred);
+
+    const result = await enrollCredential({ username: "alice" });
+
+    const pk = (
+      vi.mocked(navigator.credentials.create).mock.calls[0]?.[0] as CredentialCreationOptions
+    ).publicKey;
+    if (pk === undefined) throw new Error("missing publicKey options");
+    expect(pk.authenticatorSelection?.authenticatorAttachment).toBe("platform");
+    expect(pk.authenticatorSelection?.residentKey).toBe("required");
+    expect(pk.authenticatorSelection?.userVerification).toBe("required");
+    // The PRF salt evaluated at create time is the one returned to the caller,
+    // and it is a fresh 32-byte random value.
+    const evalSalt = new Uint8Array(
+      (pk.extensions as { prf: { eval: { first: BufferSource } } }).prf.eval.first as ArrayBuffer,
+    );
+    expect(Array.from(evalSalt)).toEqual(Array.from(result.salt));
+    expect(result.salt).toHaveLength(32);
+  });
+
+  it("draws a fresh salt and challenge on each enrollment", async () => {
+    const cred = makeCredential({ prfFirst: makePrfOutput(), prfEnabled: true });
+    vi.mocked(navigator.credentials.create).mockResolvedValue(cred);
+
+    const first = await enrollCredential({ username: "alice" });
+    const second = await enrollCredential({ username: "alice" });
+    expect(Array.from(first.salt)).not.toEqual(Array.from(second.salt));
+
+    const challengeOf = (i: number) => {
+      const pk = (
+        vi.mocked(navigator.credentials.create).mock.calls[i]?.[0] as CredentialCreationOptions
+      ).publicKey;
+      return Array.from(new Uint8Array(pk?.challenge as ArrayBuffer));
+    };
+    expect(challengeOf(0)).not.toEqual(challengeOf(1));
   });
 
   it("falls back to exactly one assertion when create returns enabled-without-output", async () => {
@@ -183,10 +210,6 @@ describe("enrollCredential", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// assertPrf
-// ---------------------------------------------------------------------------
-
 describe("assertPrf", () => {
   const credentialId = new Uint8Array([10, 20, 30]);
   const salt = crypto.getRandomValues(new Uint8Array(32));
@@ -210,6 +233,27 @@ describe("assertPrf", () => {
     expect(output).toBeInstanceOf(Uint8Array);
     expect(output).toHaveLength(32);
     expect(output).toEqual(new Uint8Array(prfFirst));
+  });
+
+  it("asserts the stored credential with required user verification and the given PRF salt", async () => {
+    const cred = makeCredential({ prfFirst: makePrfOutput() });
+    vi.mocked(navigator.credentials.get).mockResolvedValue(cred);
+
+    await assertPrf({ credentialId, salt });
+
+    const pk = (vi.mocked(navigator.credentials.get).mock.calls[0]?.[0] as CredentialRequestOptions)
+      .publicKey;
+    if (pk === undefined) throw new Error("missing publicKey options");
+    expect(pk.userVerification).toBe("required");
+    const allowed = pk.allowCredentials?.[0];
+    expect(allowed?.type).toBe("public-key");
+    expect(Array.from(new Uint8Array(allowed?.id as ArrayBuffer))).toEqual(
+      Array.from(credentialId),
+    );
+    const evalSalt = new Uint8Array(
+      (pk.extensions as { prf: { eval: { first: BufferSource } } }).prf.eval.first as ArrayBuffer,
+    );
+    expect(Array.from(evalSalt)).toEqual(Array.from(salt));
   });
 
   it("throws BiometricCancelledError on NotAllowedError from get", async () => {

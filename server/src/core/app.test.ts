@@ -39,3 +39,37 @@ describe("POST /api/health (CSRF gate)", () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe("Content-Security-Policy", () => {
+  it("locks down to no-default-src, self-only connect, no framing", async () => {
+    const res = await app.request("/health");
+    const csp = res.headers.get("content-security-policy") ?? "";
+    expect(csp).toContain("default-src 'none'");
+    expect(csp).toContain("connect-src 'self'");
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).toContain("base-uri 'none'");
+  });
+});
+
+describe("CORS origin allowlist", () => {
+  it("reflects an allowed origin and sets credentials", async () => {
+    process.env.ALLOWED_ORIGINS = "https://privance.app,http://localhost:8081";
+    const corsApp = createApp();
+    const res = await corsApp.request("/health", {
+      headers: { Origin: "https://privance.app" },
+    });
+    process.env.ALLOWED_ORIGINS = "";
+    expect(res.headers.get("access-control-allow-origin")).toBe("https://privance.app");
+    expect(res.headers.get("access-control-allow-credentials")).toBe("true");
+  });
+
+  it("does not reflect a disallowed origin", async () => {
+    process.env.ALLOWED_ORIGINS = "https://privance.app";
+    const corsApp = createApp();
+    const res = await corsApp.request("/health", {
+      headers: { Origin: "https://evil.example" },
+    });
+    process.env.ALLOWED_ORIGINS = "";
+    expect(res.headers.get("access-control-allow-origin")).not.toBe("https://evil.example");
+  });
+});

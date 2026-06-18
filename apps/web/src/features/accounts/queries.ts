@@ -1,16 +1,12 @@
 "use client";
 
 import type { Account, AccountId, UserId } from "@privance/core";
-import { AccountPayloadSchema, asId, asIsoDateTime } from "@privance/core";
+import { AccountPayloadSchema, asId, asIsoDateTime, KIND_ACCOUNT } from "@privance/core";
 import { useCallback, useEffect, useState } from "react";
-import { useSync } from "@/providers/sync-context";
-import { centsToDecimal, getBalanceCents, sumBalances } from "./balance";
+import { useSync } from "@/providers";
+import { centsToDecimal, getBalanceCents } from "./balance";
 
-export { centsToDecimal, getBalanceCents, sumBalances };
-
-// ---------------------------------------------------------------------------
-// Parse helpers
-// ---------------------------------------------------------------------------
+export { centsToDecimal, getBalanceCents };
 
 function parseAccount(
   raw: unknown,
@@ -25,10 +21,6 @@ function parseAccount(
     payload,
   } as Account;
 }
-
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
 
 export type AccountsQueryState =
   | { status: "initialising" }
@@ -45,39 +37,43 @@ export function useAccountsQuery(): AccountsQueryState {
   const { store, initialising, decrypt, storeClock } = useSync();
   const [state, setState] = useState<AccountsQueryState>({ status: "initialising" });
 
-  const load = useCallback(async () => {
-    if (store === null) {
-      setState({ status: "initialising" });
-      return;
-    }
+  const load = useCallback(
+    async (isActive: () => boolean) => {
+      if (store === null) {
+        if (isActive()) setState({ status: "initialising" });
+        return;
+      }
 
-    try {
-      const rows = await store.list({ kind: "account" });
-      const live = rows.filter((r) => !r.tombstone);
-      const accounts = await Promise.all(
-        live.map(async (row) => {
-          const plaintext = decrypt({
-            ciphertext: row.ciphertext,
-            nonce: row.nonce,
-            objectId: row.objectId,
-            kind: "account",
+      try {
+        const rows = await store.list({ kind: KIND_ACCOUNT });
+        const live = rows.filter((r) => !r.tombstone);
+        const accounts = await Promise.all(
+          live.map(async (row) => {
+            const plaintext = decrypt({
+              ciphertext: row.ciphertext,
+              nonce: row.nonce,
+              objectId: row.objectId,
+              kind: KIND_ACCOUNT,
+            });
+            const raw = JSON.parse(new TextDecoder().decode(plaintext)) as unknown;
+            return parseAccount(raw, {
+              id: row.objectId,
+              createdAt: new Date(row.updatedAt).toISOString(),
+              lastUpdatedAt: new Date(row.updatedAt).toISOString(),
+            });
+          }),
+        );
+        if (isActive()) setState({ status: "success", data: accounts });
+      } catch (err) {
+        if (isActive())
+          setState({
+            status: "error",
+            error: err instanceof Error ? err : new Error(String(err)),
           });
-          const raw = JSON.parse(new TextDecoder().decode(plaintext)) as unknown;
-          return parseAccount(raw, {
-            id: row.objectId,
-            createdAt: new Date(row.updatedAt).toISOString(),
-            lastUpdatedAt: new Date(row.updatedAt).toISOString(),
-          });
-        }),
-      );
-      setState({ status: "success", data: accounts });
-    } catch (err) {
-      setState({
-        status: "error",
-        error: err instanceof Error ? err : new Error(String(err)),
-      });
-    }
-  }, [store, decrypt]);
+      }
+    },
+    [store, decrypt],
+  );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: storeClock is an external invalidation signal, mutations call tick() to trigger a re-run
   useEffect(() => {
@@ -85,7 +81,13 @@ export function useAccountsQuery(): AccountsQueryState {
       setState({ status: "initialising" });
       return;
     }
-    void load();
+    // Guard against a slower earlier load resolving after a newer one and
+    // clobbering it with stale accounts (mirrors useSpendItemsQuery).
+    let cancelled = false;
+    void load(() => !cancelled);
+    return () => {
+      cancelled = true;
+    };
   }, [initialising, load, storeClock]);
 
   return state;

@@ -18,7 +18,7 @@
  * are never persisted nor fed back into money math.
  */
 
-import { Decimal } from "../decimal/decimal.js";
+import { Decimal } from "../decimal/index.js";
 import type { YearBand } from "./types.js";
 
 export type MilestoneKey = "coast" | "lean" | "fire" | "fat";
@@ -61,10 +61,10 @@ function medianCrossingAge(
   currentAge: number,
   threshold: Decimal,
 ): number | null {
-  for (let i = 0; i < bands.length; i++) {
+  for (const [i, band] of bands.entries()) {
     // band i holds the pot at the end of simulated year i, i.e. age currentAge + i + 1
     // (the same mapping the engine uses for fireAge and the fan chart for its x-axis).
-    if (bands[i]!.p50.cmp(threshold) >= 0) return currentAge + i + 1;
+    if (band.p50.cmp(threshold) >= 0) return currentAge + i + 1;
   }
   return null;
 }

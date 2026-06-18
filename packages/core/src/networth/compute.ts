@@ -14,13 +14,9 @@ import type {
  */
 export const CURRENCY_MISMATCH_PREFIX = "currency_mismatch:";
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-// Integer cents ("2500000" = $25,000.00) — account balances.
+// Integer cents ("2500000" = $25,000.00), account balances.
 const INT_CENTS_RE = /^-?(0|[1-9][0-9]*)$/;
-// Dollar-decimal with exactly two places ("1500.00" = $1,500.00) — holding cost basis.
+// Dollar-decimal with exactly two places ("1500.00" = $1,500.00), holding cost basis.
 const DOLLAR_DECIMAL_RE = /^-?(0|[1-9][0-9]*)\.[0-9]{2}$/;
 
 function parseCents(s: string): Decimal {
@@ -81,20 +77,15 @@ function holdingMarketValue(
   return { value: centsValue, unknownTicker: null };
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
 /**
  * Compute a full net-worth breakdown from decrypted in-memory objects.
  * Pure function, no I/O, no side effects.
  */
 export function computeNetWorth(input: NetWorthInput): NetWorthBreakdown {
-  const { accounts, holdings, prices } = input;
+  const { accounts, holdings, prices, asOf } = input;
 
   const unknownTickersSet = new Set<string>();
 
-  // ---- Accumulate per-account values ----------------------------------------
   let cashTotal = Decimal.zero(SCALE_CENTS);
   let investmentTotal = Decimal.zero(SCALE_CENTS);
   let liabilityTotal = Decimal.zero(SCALE_CENTS);
@@ -138,7 +129,6 @@ export function computeNetWorth(input: NetWorthInput): NetWorthBreakdown {
     }
   }
 
-  // ---- Process holdings, accumulate market value per investment account ----
   // accountId → byAccount index for O(1) lookups when attaching holding values.
   const investmentAccountIndexByAccountId = new Map<string, number>();
   for (let i = 0; i < byAccount.length; i++) {
@@ -177,7 +167,6 @@ export function computeNetWorth(input: NetWorthInput): NetWorthBreakdown {
     investmentTotal = investmentTotal.add(marketValue);
   }
 
-  // ---- Determine primary currency: mode across all accounts with a currency.
   // Runs after valuation because ties break on money, not letters: the
   // currency holding more ASSET value wins (a 1 USD + 1 EUR split must not
   // exclude the bigger account; liabilities don't vote). Equal value falls
@@ -214,7 +203,6 @@ export function computeNetWorth(input: NetWorthInput): NetWorthBreakdown {
     }
   }
 
-  // ---- Flag accounts whose currency differs from primary --------------------
   if (primaryCurrency !== null) {
     for (const [accountId, currency] of currencyByAccountId) {
       if (currency !== primaryCurrency) {
@@ -239,9 +227,8 @@ export function computeNetWorth(input: NetWorthInput): NetWorthBreakdown {
     byAccount,
     byHolding,
     unknownTickers: [...unknownTickersSet],
-    asOf: Date.now(),
+    asOf,
   };
 }
 
-// Exported for use by allocation.ts
-export { holdingMarketValue, parseCents };
+export { holdingMarketValue };

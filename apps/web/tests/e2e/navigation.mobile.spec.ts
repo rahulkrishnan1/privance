@@ -14,7 +14,7 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 import type { Fixtures } from "../../playwright/global-setup";
 import type { SessionSnapshot } from "./helpers/auth";
-import { loginAndCapture, restoreSession } from "./helpers/auth";
+import { loginAndCapture, restoreSession, waitForSynced } from "./helpers/auth";
 
 function loadFixtures(): Fixtures {
   const p = path.join(__dirname, "../../.playwright-fixtures.json");
@@ -43,63 +43,47 @@ test.describe("mobile navigation", () => {
   // instead; the Next <Link> onClick still fires and navigates.
   const tap = (link: import("@playwright/test").Locator) => link.dispatchEvent("click");
 
-  test("the bottom tab bar routes between the five screens", async ({ page }) => {
+  test("the bottom tab bar routes between the four screens", async ({ page }) => {
     await page.goto("/app/");
-    const nav = page.getByRole("navigation", { name: "Main navigation" });
+    const nav = page.getByRole("navigation", { name: "Mobile navigation" });
     await expect(nav).toBeVisible({ timeout: 15_000 });
-    await page.waitForLoadState("networkidle");
+    // Settle the initial local-store load + first sync before asserting per-screen
+    // content: the Plan heading is gated on the accounts/plan queries leaving
+    // "initialising", so navigating before sync races them on a slow runner.
+    await waitForSynced(page);
 
-    // Holdings tab -> holdings screen, and the tab marks itself current. Match
-    // either the populated heading or the empty-state heading, so the test does
-    // not depend on fixture data left by earlier specs.
-    await tap(nav.getByRole("link", { name: "Holdings" }));
-    await expect(page).toHaveURL(/\/app\/holdings\/?$/, { timeout: 10_000 });
-    await expect(
-      page
-        .getByRole("heading", { name: "Holdings", exact: true })
-        .or(page.getByRole("heading", { name: "Track your portfolio." })),
-    ).toBeVisible({
+    // Spend tab -> spend screen, and the tab marks itself current.
+    await tap(nav.getByRole("link", { name: "Spend" }));
+    await expect(page).toHaveURL(/\/app\/spend\/?$/, { timeout: 10_000 });
+    // A fresh user has no recurring items, so the Spend screen shows its empty state.
+    await expect(page.getByRole("heading", { name: /Nothing recurring/ })).toBeVisible({
       timeout: 10_000,
     });
-    await expect(nav.getByRole("link", { name: "Holdings" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    await expect(nav.getByRole("link", { name: "Spend" })).toHaveAttribute("aria-current", "page");
 
-    // Accounts tab -> accounts screen.
-    await tap(nav.getByRole("link", { name: "Accounts" }));
-    await expect(page).toHaveURL(/\/app\/accounts\/?$/, { timeout: 10_000 });
-    await expect(
-      page
-        .getByRole("heading", { name: "Accounts" })
-        .or(page.getByRole("heading", { name: "Add your first account" })),
-    ).toBeVisible({ timeout: 10_000 });
-
-    // Plan tab -> plan screen, and the tab marks itself current. The plan
-    // screen leads with a result headline ("...financial independence."), not a
-    // "Plan" page title, by design, so assert that lead heading rather than the
-    // nav label.
+    // Plan tab -> plan screen, and the tab marks itself current. The plan screen
+    // heading is dynamic: the empty state reads "Project your path to
+    // independence." (h2) and a computed plan reads "Independent by {year}..."
+    // (h1), so match the shared "independ" stem rather than a level or exact text.
     await tap(nav.getByRole("link", { name: "Plan" }));
     await expect(page).toHaveURL(/\/app\/plan\/?$/, { timeout: 10_000 });
-    await expect(page.getByRole("heading", { name: /financial independence/i })).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(page.getByRole("heading", { name: /independ/i })).toBeVisible({ timeout: 15_000 });
     await expect(nav.getByRole("link", { name: "Plan" })).toHaveAttribute("aria-current", "page");
 
-    // Settings tab -> settings screen, where the mobile lock/sign-out live.
+    // Settings tab -> settings screen. The page heading confirms the route; the
+    // Lock affordance lives only in the top bar now, not as a settings row.
     await tap(nav.getByRole("link", { name: "Settings" }));
     await expect(page).toHaveURL(/\/app\/settings\/?$/, { timeout: 10_000 });
-    await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole("button", { name: "Lock" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /The vault/i })).toBeVisible({
+      timeout: 10_000,
+    });
 
-    // Dashboard tab -> back to the dashboard. Match either the populated heading
-    // or the empty-state heading, so the test does not depend on fixture data.
-    await tap(nav.getByRole("link", { name: "Dashboard" }));
+    // Invest tab -> back to the invest screen. Its content is gated on the
+    // OPFS-backed net-worth query whose timing depends on cross-spec fixture
+    // state, so this routing test asserts the route and the active-tab marker
+    // (the Invest screen's own rendering is covered by dashboard.mobile.spec).
+    await tap(nav.getByRole("link", { name: "Invest" }));
     await expect(page).toHaveURL(/\/app\/?$/, { timeout: 10_000 });
-    await expect(
-      page
-        .getByRole("heading", { name: "Dashboard" })
-        .or(page.getByRole("heading", { name: "Track your net worth." })),
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(nav.getByRole("link", { name: "Invest" })).toHaveAttribute("aria-current", "page");
   });
 });

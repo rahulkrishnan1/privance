@@ -1,11 +1,12 @@
 "use client";
 
-import { validatePhrase } from "@privance/core";
+import { countRecognizedWords, validatePhrase } from "@privance/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button } from "@/components/Button";
-import { Input } from "@/components/Input";
+import { AuthErrorBar } from "@/components/auth/AuthErrorBar";
+import { PasswordStrength } from "@/components/auth/PasswordStrength";
+import { useErrorShake } from "@/components/auth/use-error-shake";
 import * as authApi from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -29,11 +30,13 @@ export default function RecoveryPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [pending, setPending] = useState(false);
-  const [phraseError, setPhraseError] = useState<string | undefined>(undefined);
+  const [phraseError, setPhraseError] = useState(false);
   const [passwordError, setPasswordError] = useState<string | undefined>(undefined);
   const [usernameError, setUsernameError] = useState<string | undefined>(undefined);
-  const [banner, setBanner] = useState<string | undefined>(undefined);
+  const [banner, setBanner] = useState<"limit" | "net" | "generic" | undefined>(undefined);
+  const [errorSeq, setErrorSeq] = useState(0);
   const hydrated = useHydrated();
+  const shaking = useErrorShake(errorSeq);
 
   const [step, setStep] = useState<Step>("form");
   const [newPhrase, setNewPhrase] = useState<string | null>(null);
@@ -49,10 +52,24 @@ export default function RecoveryPage() {
 
   const normalizedPhrase = phrase.trim().toLowerCase().replace(/\s+/g, " ");
   const phraseValid = validatePhrase(normalizedPhrase);
+  const recognizedCount = countRecognizedWords(phrase);
+
+  function raisePhraseError() {
+    setPhraseError(true);
+    setErrorSeq((n) => n + 1);
+  }
+
+  function raiseBanner(kind: "limit" | "net" | "generic") {
+    setBanner(kind);
+    setErrorSeq((n) => n + 1);
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setPhraseError(undefined);
+    // Re-entrancy guard: a second submit would fire recoveryReset again against
+    // already-rotated server state and 401 over the success screen.
+    if (pending) return;
+    setPhraseError(false);
     setPasswordError(undefined);
     setUsernameError(undefined);
     setBanner(undefined);
@@ -64,7 +81,7 @@ export default function RecoveryPage() {
       return;
     }
     if (!phraseValid) {
-      setPhraseError("Invalid recovery phrase. Check all 12 words and try again.");
+      raisePhraseError();
       return;
     }
     const passwordValidationError = validatePassword(newPassword);
@@ -86,13 +103,12 @@ export default function RecoveryPage() {
         itemsKey = await deriveRecoveryUnwrap({
           phrase: normalizedPhrase,
           recoverySalt: recoveryParams.recovery_salt,
-          recoveryKdfParams: recoveryParams.recovery_params,
           wrappedDekRecovery: recoveryParams.wrapped_dek_recovery,
           wrappedDekRecoveryIv: recoveryParams.wrapped_dek_recovery_iv,
         });
       } catch (e) {
         if (e instanceof DecryptionError) {
-          setPhraseError("Invalid recovery phrase.");
+          raisePhraseError();
           return;
         }
         throw e;
@@ -101,11 +117,16 @@ export default function RecoveryPage() {
       const recoveryProof = await deriveRecoveryProof({
         phrase: normalizedPhrase,
         recoverySalt: recoveryParams.recovery_salt,
-        recoveryKdfParams: recoveryParams.recovery_params,
       });
 
       const newCreds = await deriveNewCredsAfterRecovery({ newPassword, itemsKey });
 
+      // Known limitation: this reset is single-phase. Once recoveryReset commits,
+      // the old phrase is void server-side and the new phrase (newCreds.newPhrase)
+      // lives only in React state until the user acknowledges it on the next step.
+      // Closing the tab here leaves the account with no valid recovery phrase until
+      // the user re-derives one. The durable fix (regenerate recovery phrase from a
+      // signed-in session) is tracked for the Settings rebuild, not the auth flow.
       const resetResult = await authApi.recoveryReset({
         username: trimmedUsername,
         recovery_proof: recoveryProof,
@@ -127,16 +148,16 @@ export default function RecoveryPage() {
     } catch (e) {
       if (e instanceof ApiError) {
         if (e.status === 401) {
-          setPhraseError("Recovery phrase is invalid or does not match this account.");
+          raisePhraseError();
         } else if (e.status === 429) {
-          setBanner("Too many recovery attempts. Try again later.");
+          raiseBanner("limit");
         } else if (e.status === 0) {
-          setBanner("Network error. Check your connection and try again.");
+          raiseBanner("net");
         } else {
-          setBanner("Recovery failed. Try again.");
+          raiseBanner("generic");
         }
       } else {
-        setBanner("Recovery failed. Try again.");
+        raiseBanner("generic");
       }
     } finally {
       setPending(false);
@@ -156,100 +177,160 @@ export default function RecoveryPage() {
   if (step === "new-phrase" && newPhrase !== null && pendingLogin !== undefined) {
     const numberedWords = newPhrase.split(" ").map((word, i) => ({ word, num: i + 1 }));
     return (
-      <div className="flex flex-col gap-8">
-        <h1
-          className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
-          style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
-        >
-          Save your new{" "}
-          <span className="font-editorial italic text-gold-accent">recovery phrase.</span>
-        </h1>
-
-        <div
-          role="alert"
-          className="rounded-lg border border-gold-accent/30 bg-gold-accent/[0.06] px-4 py-3"
-        >
-          <p className="text-[13px] text-gold-accent">
-            Your old recovery phrase no longer works. Write down this new phrase now.
-          </p>
+      <div className="flex flex-col">
+        <div className="w-[74px] h-[74px] rounded-full border border-accent-dim mx-auto mb-[30px] flex items-center justify-center text-accent relative">
+          <span className="absolute inset-[6px] border border-dashed border-[rgba(127,196,198,.3)] rounded-full" />
+          <svg
+            viewBox="0 0 24 24"
+            width="26"
+            height="26"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            aria-hidden="true"
+          >
+            <path d="M4 6h16M4 12h16M4 18h10" />
+          </svg>
         </div>
 
-        <fieldset className="rounded-xl border border-app-line bg-app-panel p-5">
-          <legend className="sr-only">Recovery phrase words</legend>
-          <div className="grid grid-cols-4 gap-3">
+        <h1 className="font-serif font-normal text-[34px] text-center tracking-[-0.01em] leading-[1.12]">
+          A new spare <em className="text-accent">key.</em>
+        </h1>
+        <p className="text-center text-dim text-[14px] mt-[10px]">
+          Recovery worked, and burned the old phrase. These twelve words replace it.
+        </p>
+
+        <div
+          className="mt-6 border rounded-[8px] px-[17px] py-[15px] text-[12.5px] text-cream-soft leading-[1.6]"
+          style={{ borderColor: "rgba(127,196,198,.3)", background: "rgba(127,196,198,.05)" }}
+        >
+          <strong className="text-accent font-medium">Your old phrase is void.</strong> It can never
+          open this vault again. Only the words below can.
+        </div>
+
+        <fieldset className="border-0 p-0 m-0">
+          <legend className="sr-only">New recovery phrase words</legend>
+          <div
+            className="grid gap-[9px] mt-[28px]"
+            style={{ gridTemplateColumns: "repeat(3, 1fr)" }}
+          >
             {numberedWords.map(({ word, num }) => (
-              <div key={num} className="flex flex-col gap-0.5">
-                <span className="font-mono text-[10px] text-app-dim">{num}</span>
-                <span className="font-mono text-[13px] text-app-text break-all">{word}</span>
+              <div
+                key={num}
+                className="bg-panel border border-line rounded-[7px] px-[13px] py-[11px] font-mono text-[12.5px] flex gap-[9px] items-baseline"
+              >
+                <span className="text-faint text-[9.5px] w-[14px] flex-none">{num}</span>
+                {word}
               </div>
             ))}
           </div>
         </fieldset>
 
-        <p className="text-[12px] text-app-red">This phrase will not be shown again.</p>
-
-        <label className="flex cursor-pointer items-start gap-3">
+        <label className="flex gap-[11px] items-start mt-5 cursor-pointer text-[13px] text-cream-soft">
           <input
             type="checkbox"
             checked={newPhraseAcknowledged}
             onChange={(e) => setNewPhraseAcknowledged(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-app-line accent-gold-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit]"
+            className="mt-[3px] accent-accent"
           />
-          <span className="text-[14px] text-app-text">
-            I have written down my new recovery phrase in a safe place.
-          </span>
+          <span>I replaced the paper. The old phrase is in the shredder.</span>
         </label>
 
-        <Button
+        <button
           type="button"
-          onClick={onContinue}
+          onClick={() => void onContinue()}
           disabled={!newPhraseAcknowledged}
-          className="w-full"
+          className="w-full mt-[26px] font-mono text-[12px] tracking-[0.16em] uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Continue
-        </Button>
+          Enter the vault
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <h1
-          className="font-serif text-[32px] leading-tight font-light tracking-[-0.015em] text-app-text"
-          style={{ fontVariationSettings: '"opsz" 48, "SOFT" 50' }}
+    <div className={`flex flex-col${shaking ? " auth-shake" : ""}`}>
+      <div className="w-[74px] h-[74px] rounded-full border border-accent-dim mx-auto mb-[30px] flex items-center justify-center text-accent relative">
+        <span className="absolute inset-[6px] border border-dashed border-[rgba(127,196,198,.3)] rounded-full" />
+        <svg
+          viewBox="0 0 24 24"
+          width="26"
+          height="26"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          aria-hidden="true"
         >
-          Recover your <span className="font-editorial italic text-gold-accent">account.</span>
-        </h1>
-        <p className="text-[14px] text-app-muted">
-          Use your 12-word recovery phrase to set a new master password.
-        </p>
+          <path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" />
+        </svg>
       </div>
 
-      {banner && (
-        <div role="alert" className="rounded-lg border border-app-red/40 bg-app-red/10 px-4 py-3">
-          <p className="text-[13px] text-app-red">{banner}</p>
-        </div>
+      <h1 className="font-serif font-normal text-[34px] text-center tracking-[-0.01em] leading-[1.12]">
+        Recover with <em className="text-accent">phrase.</em>
+      </h1>
+      <p className="text-center text-dim text-[14px] mt-[10px]">
+        Enter your 12 words in order, then set a new master password.
+      </p>
+
+      {phraseError && (
+        <AuthErrorBar lead="Those words don&rsquo;t derive the key.">
+          Check the order and spelling of all 12. The phrase is unforgiving on purpose.
+        </AuthErrorBar>
       )}
+      {banner === "limit" && (
+        <AuthErrorBar lead="The lock is cooling down.">
+          Too many attempts. Try again in a moment.
+        </AuthErrorBar>
+      )}
+      {banner === "net" && (
+        <AuthErrorBar lead="Can&rsquo;t reach your vault host.">
+          Check the connection and try again. Nothing you typed left this device.
+        </AuthErrorBar>
+      )}
+      {banner === "generic" && <AuthErrorBar lead="Recovery failed.">Try again.</AuthErrorBar>}
 
-      <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-6" noValidate>
-        <Input
-          label="Username"
-          type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value.toLowerCase())}
-          autoComplete="username"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          maxLength={USERNAME_MAX}
-          error={usernameError}
-        />
+      <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col mt-[26px]" noValidate>
+        <div className="flex flex-col gap-[9px]">
+          <label
+            htmlFor="recovery-username"
+            className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-faint"
+          >
+            Username
+          </label>
+          <input
+            id="recovery-username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value.toLowerCase())}
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            maxLength={USERNAME_MAX}
+            aria-invalid={usernameError !== undefined}
+            aria-describedby={usernameError !== undefined ? "recovery-username-error" : undefined}
+            className={[
+              "w-full bg-panel border rounded-[8px] text-cream font-mono text-[15px] px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
+              usernameError
+                ? "border-[rgba(208,133,98,.55)]"
+                : "border-line focus:border-accent-dim",
+            ].join(" ")}
+          />
+          {usernameError && (
+            <p
+              id="recovery-username-error"
+              role="alert"
+              className="font-mono text-[10px] text-down tracking-[0.04em]"
+            >
+              {usernameError}
+            </p>
+          )}
+        </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-[9px] mt-[26px]">
           <label
             htmlFor="recovery-phrase"
-            className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim"
+            className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-faint"
           >
             Recovery phrase (12 words)
           </label>
@@ -262,57 +343,97 @@ export default function RecoveryPage() {
             spellCheck={false}
             rows={3}
             maxLength={200}
-            placeholder="word1 word2 word3 …"
-            aria-invalid={phraseError !== undefined}
-            aria-describedby={phraseError !== undefined ? "phrase-error" : undefined}
+            placeholder="word word word ..."
+            aria-invalid={phraseError}
             className={[
-              "w-full bg-transparent border-b px-1 py-2.5 font-mono text-sm text-app-text",
-              "placeholder:text-app-dim/70 resize-none transition-colors duration-150",
-              "focus:outline-none",
+              "w-full bg-panel border rounded-[8px] text-cream font-mono text-[15px] px-4 py-[15px] outline-none transition-colors tracking-[0.04em] placeholder:text-faint placeholder:tracking-[0.02em] resize-y min-h-[84px] leading-[1.7]",
               phraseError
-                ? "border-app-red"
+                ? "border-[rgba(208,133,98,.55)]"
                 : phrase.length > 0 && phraseValid
-                  ? "border-gold-accent"
-                  : "border-app-line focus:border-gold-accent",
+                  ? "border-accent-dim"
+                  : "border-line focus:border-accent-dim",
             ].join(" ")}
           />
-          {phraseError ? (
-            <p id="phrase-error" role="alert" className="text-[13px] text-app-red">
-              {phraseError}
+          {phrase.trim().length > 0 && (
+            <p
+              className={[
+                "font-mono text-[10px] tracking-[0.04em]",
+                recognizedCount === 12 ? "text-accent-dim" : "text-faint",
+              ].join(" ")}
+            >
+              {recognizedCount} of 12 words recognized
             </p>
-          ) : phrase.length > 0 && phraseValid ? (
-            <p className="text-[13px] text-gold-accent">Phrase looks valid.</p>
-          ) : null}
+          )}
         </div>
 
-        <Input
-          label="New master password"
-          type="password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          autoComplete="new-password"
-          maxLength={PASSWORD_MAX}
-          error={passwordError}
-        />
+        <div className="flex flex-col gap-[9px] mt-[26px]">
+          <label
+            htmlFor="recovery-newpassword"
+            className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-faint"
+          >
+            New master password
+          </label>
+          <input
+            id="recovery-newpassword"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            autoComplete="new-password"
+            maxLength={PASSWORD_MAX}
+            placeholder="a fresh one, not the forgotten one"
+            aria-invalid={passwordError !== undefined}
+            aria-describedby={passwordError !== undefined ? "recovery-password-error" : undefined}
+            className={[
+              "w-full bg-panel border rounded-[8px] text-cream font-mono text-[15px] px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
+              passwordError
+                ? "border-[rgba(208,133,98,.55)]"
+                : "border-line focus:border-accent-dim",
+            ].join(" ")}
+          />
+          <PasswordStrength password={newPassword} />
+          {passwordError && (
+            <p
+              id="recovery-password-error"
+              role="alert"
+              className="font-mono text-[10px] text-down tracking-[0.04em]"
+            >
+              {passwordError}
+            </p>
+          )}
+        </div>
 
-        <Input
-          label="Confirm new master password"
-          type="password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          autoComplete="new-password"
-          maxLength={PASSWORD_MAX}
-        />
+        <div className="flex flex-col gap-[9px] mt-[26px]">
+          <label
+            htmlFor="recovery-confirmpassword"
+            className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-faint"
+          >
+            Confirm new master password
+          </label>
+          <input
+            id="recovery-confirmpassword"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            autoComplete="new-password"
+            maxLength={PASSWORD_MAX}
+            className="w-full bg-panel border border-line focus:border-accent-dim rounded-[8px] text-cream font-mono text-[15px] px-4 py-[15px] outline-none transition-colors tracking-[0.06em]"
+          />
+        </div>
 
-        <Button type="submit" loading={pending} disabled={!hydrated} className="w-full mt-2">
-          {pending ? "Recovering account…" : "Recover account"}
-        </Button>
+        <button
+          type="submit"
+          disabled={!hydrated || pending}
+          aria-busy={pending}
+          className="w-full mt-[26px] font-mono text-[12px] tracking-[0.16em] uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {pending ? "Recovering account…" : "Derive new keys & continue"}
+        </button>
       </form>
 
-      <p className="text-center font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim">
+      <p className="text-center font-mono text-[11px] tracking-[0.04em] text-faint mt-[26px]">
         <Link
           href="/auth/login"
-          className="inline-block py-3 px-2 -my-3 -mx-2 hover:text-app-text transition-colors focus-visible:outline-none focus-visible:text-gold-accent"
+          className="text-accent-dim no-underline hover:text-accent transition-colors"
         >
           Back to sign in
         </Link>

@@ -1,13 +1,10 @@
 name: Release
 
-# Semver-shaped tags only: the metadata-action semver patterns below emit zero
-# image tags for refs like "vtest", which would burn a full multi-arch build and
-# publish nothing usable.
+# Only semver tags: non-semver refs (e.g. "vtest") produce no usable image tags.
 on:
   push:
     tags: ["v*.*.*"]
 
-# Cancel any in-progress release run for the same tag (e.g. a re-push).
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -15,15 +12,10 @@ concurrency:
 permissions:
   contents: read
   packages: write
+  id-token: write
+  attestations: write
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Build and push all three images to GHCR on a version tag.
-  #
-  # arm64 builds run under QEMU emulation and add significant time (bun + QEMU
-  # is slow). If arm64 proves consistently flaky, drop it to amd64 only here;
-  # the production VPS is amd64 and does not need arm64.
-  # ---------------------------------------------------------------------------
   build-push:
     name: Build and push ${{ matrix.name }}
     runs-on: ubuntu-latest
@@ -63,16 +55,13 @@ jobs:
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}
-          # latest is added automatically for non-prerelease semver tags
-          # (flavor latest=auto), so an rc tag never moves latest.
-          # The v prefix is kept so image tags equal the git tag verbatim;
-          # {{version}} alone strips it, which broke the first deploy
-          # (compose pulled :v0.1.0, the registry had :0.1.0).
+          # Keep the v prefix: {{version}} strips it, but compose pulls :v<tag>.
           tags: |
             type=semver,pattern=v{{version}}
             type=semver,pattern=v{{major}}.{{minor}}
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: ${{ matrix.context }}
@@ -83,3 +72,28 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          sbom: true
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
+        with:
+          subject-name: ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+  github-release:
+    name: Create GitHub Release
+    needs: build-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create release with auto-generated notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            --verify-tag

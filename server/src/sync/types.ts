@@ -1,7 +1,9 @@
 export class SyncError extends Error {
-  constructor(message: string) {
+  readonly code: string;
+  constructor(code: string, message: string) {
     super(message);
     this.name = "SyncError";
+    this.code = code;
   }
 }
 
@@ -10,14 +12,14 @@ export class ConflictError extends SyncError {
     public readonly objectId: string,
     public readonly currentVersion: bigint,
   ) {
-    super(`Conflict on object ${objectId}: current version is ${currentVersion}`);
+    super("conflict", `Conflict on object ${objectId}: current version is ${currentVersion}`);
     this.name = "ConflictError";
   }
 }
 
 export class NotFoundError extends SyncError {
   constructor(public readonly objectId: string) {
-    super(`Object not found: ${objectId}`);
+    super("not_found", `Object not found: ${objectId}`);
     this.name = "NotFoundError";
   }
 }

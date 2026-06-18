@@ -20,18 +20,17 @@ export function useCooldown(): { cooldownMs: number; refresh: () => void } {
     refresh();
   }, [refresh]);
 
+  const active = cooldownMs > 0;
   useEffect(() => {
-    if (cooldownMs <= 0) return;
+    if (!active) return;
     const id = setInterval(() => {
       setCooldownMs((prev) => {
         const next = prev - 1000;
         return next <= 0 ? 0 : next;
       });
     }, 1000);
-    return () => {
-      clearInterval(id);
-    };
-  }, [cooldownMs]);
+    return () => clearInterval(id);
+  }, [active]);
 
   return { cooldownMs, refresh };
 }

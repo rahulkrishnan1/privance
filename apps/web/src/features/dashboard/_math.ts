@@ -11,10 +11,23 @@ export type Delta = { dollar: Decimal; pct: number };
 
 type Breakdown = ReturnType<typeof computeNetWorth>;
 
-// Per-holding day change in cents = shares × (price − prevPrice) × scaleFactor.
-// Skipped when prior price is missing so the row renders em-dash rather than a
-// misleading zero. Sub-cent rounding can drift up to ±1 cent vs `MV_today −
-// MV_yesterday` computed independently; harmless for display.
+// Skeleton only during the initial price fetch while a holding is still
+// unpriced. After prices settle, unpriced holdings (illiquid, manual, or a
+// failed lookup) render as "no price" via computeNetWorth zeroing instead of
+// hanging the whole screen.
+export function isAwaitingInitialPrices(
+  holdings: ReadonlyArray<{ payload: { ticker: string; proxyTicker: string | null } }>,
+  prices: ReadonlyMap<string, unknown>,
+  pricesLoading: boolean,
+): boolean {
+  if (!pricesLoading) return false;
+  return holdings.some((h) => prices.get(h.payload.proxyTicker ?? h.payload.ticker) === undefined);
+}
+
+// Per-holding day change in cents = shares * (price - prevPrice) * scaleFactor.
+// Skipped when prior price is missing so the row renders a placeholder rather
+// than a misleading zero. Sub-cent rounding can drift up to 1 cent vs
+// `MV_today - MV_yesterday` computed independently; harmless for display.
 export function computeDayChangeByHoldingId(
   holdings: readonly Holding[],
   prices: ReadonlyMap<string, Decimal>,

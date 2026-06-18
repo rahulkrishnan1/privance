@@ -42,13 +42,11 @@ export class LookupService {
     const { tickers } = opts;
     if (tickers.length === 0) return { profiles: [], unknown: [] };
 
-    // Phase 1: DB hit.
     const cached = await this.#repo.getMany({ tickers });
     const cacheMisses = tickers.filter((t) => !cached.has(t));
 
     let fetched = 0;
     if (cacheMisses.length > 0) {
-      // Phase 2: upstream fetch for misses only.
       const upstream = USE_FAKE_UPSTREAM
         ? fetchFakeProfiles(cacheMisses)
         : await fetchYahooProfiles(cacheMisses, this.#fetcher);

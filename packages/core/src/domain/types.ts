@@ -11,6 +11,7 @@ export type PriceId = Branded<string, "PriceId">;
 export type NetWorthSnapshotId = Branded<string, "NetWorthSnapshotId">;
 export type ActivityId = Branded<string, "ActivityId">;
 export type PlanId = Branded<string, "PlanId">;
+export type SpendItemId = Branded<string, "SpendItemId">;
 
 /** ISO-8601 date string (YYYY-MM-DD). */
 export type IsoDate = Branded<string, "IsoDate">;

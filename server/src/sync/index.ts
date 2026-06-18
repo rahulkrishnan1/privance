@@ -1,3 +1,4 @@
+export { purgeUserData } from "./repo.js";
 export type {
   BatchDeleteItem,
   BatchInput,

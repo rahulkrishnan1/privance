@@ -1,13 +1,16 @@
 "use client";
 
 import type { Account, AccountKind } from "@privance/core";
-import { encryptAead, KDF_PARAM_VERSION, LABEL_VERSION } from "@privance/core";
+import {
+  Decimal,
+  encryptAead,
+  KDF_PARAM_VERSION,
+  KIND_ACCOUNT,
+  LABEL_VERSION,
+  SCALE_CENTS,
+} from "@privance/core";
 import { useCallback, useState } from "react";
-import { readItemsKey, useSync } from "@/providers/index";
-
-// ---------------------------------------------------------------------------
-// Encryption helper
-// ---------------------------------------------------------------------------
+import { readItemsKey, useSync } from "@/providers";
 
 function encryptPayload(opts: { payload: unknown; objectId: string }): {
   ciphertext: Uint8Array;
@@ -22,16 +25,12 @@ function encryptPayload(opts: { payload: unknown; objectId: string }): {
     key,
     aad: {
       recordUuid: opts.objectId,
-      kind: "account",
+      kind: KIND_ACCOUNT,
       labelVersion: LABEL_VERSION,
       kdfParamVersion: KDF_PARAM_VERSION,
     },
   });
 }
-
-// ---------------------------------------------------------------------------
-// Payload builders per kind
-// ---------------------------------------------------------------------------
 
 type CreateInput = {
   id: string;
@@ -40,78 +39,78 @@ type CreateInput = {
   currency: string;
   /** Balance as a decimal string, e.g. "1234.56". */
   balanceString: string;
+  /** Investment or cash account sub-kind. */
+  subKind?: string;
+  /** APY as a decimal fraction string (e.g. "0.041"), cash + investment sweep. */
+  apy?: string;
+  /** Interest rate as a decimal fraction string (e.g. "0.0625"), liability only. */
+  interestRate?: string;
+  /** Remaining term in years as a decimal string (e.g. "22"), liability only. */
+  termYears?: string;
+  /** Date the asset was last valued (ISO yyyy-mm-dd), manual_asset only. */
+  valuedAt?: string;
 };
 
 function buildPayload(input: CreateInput): unknown {
   const cents = balanceStringToCents(input.balanceString);
   switch (input.kind) {
-    case "cash":
-      return {
+    case "cash": {
+      const cashPayload: Record<string, unknown> = {
         kind: "cash",
-        subKind: "checking",
+        subKind: input.subKind ?? "checking",
         name: input.name,
         balanceCents: cents,
         currency: input.currency,
       };
-    case "investment":
-      return {
+      if (input.apy !== undefined && input.apy !== "") cashPayload.apy = input.apy;
+      return cashPayload;
+    }
+    case "investment": {
+      const investPayload: Record<string, unknown> = {
         kind: "investment",
-        subKind: "brokerage",
+        subKind: input.subKind ?? "brokerage",
         name: input.name,
         cashBalanceCents: cents,
         currency: input.currency,
         assetType: "stock",
       };
-    case "liability":
-      return {
+      if (input.apy !== undefined && input.apy !== "") investPayload.apy = input.apy;
+      return investPayload;
+    }
+    case "liability": {
+      const liabilityPayload: Record<string, unknown> = {
         kind: "liability",
         subKind: "credit_card",
         name: input.name,
         balanceCents: cents,
         currency: input.currency,
       };
-    case "manual_asset":
-      return {
+      if (input.interestRate !== undefined && input.interestRate !== "")
+        liabilityPayload.interestRate = input.interestRate;
+      if (input.termYears !== undefined && input.termYears !== "")
+        liabilityPayload.termYearsRemaining = input.termYears;
+      return liabilityPayload;
+    }
+    case "manual_asset": {
+      const assetPayload: Record<string, unknown> = {
         kind: "manual_asset",
         subKind: "other_asset",
         name: input.name,
         valueCents: cents,
         currency: input.currency,
       };
+      if (input.valuedAt !== undefined && input.valuedAt !== "")
+        assetPayload.valuedAt = input.valuedAt;
+      return assetPayload;
+    }
   }
 }
 
-/** Convert a decimal string like "1234.56" to minor-unit bigint string "123456". */
 function balanceStringToCents(s: string): string {
-  const trimmed = s.trim();
-  const isNeg = trimmed.startsWith("-");
-  const unsigned = isNeg ? trimmed.slice(1) : trimmed;
-  const dotIdx = unsigned.indexOf(".");
-  let intPart: string;
-  let fracPart: string;
-  if (dotIdx === -1) {
-    intPart = unsigned;
-    fracPart = "00";
-  } else {
-    intPart = unsigned.slice(0, dotIdx);
-    fracPart = unsigned
-      .slice(dotIdx + 1)
-      .padEnd(2, "0")
-      .slice(0, 2);
-  }
-  const cents = BigInt(intPart) * 100n + BigInt(fracPart);
-  return isNeg ? (-cents).toString() : cents.toString();
+  return Decimal.fromString(s.trim(), SCALE_CENTS).toMinorUnits().toString();
 }
-
-// ---------------------------------------------------------------------------
-// Mutation state
-// ---------------------------------------------------------------------------
 
 type MutationState = "idle" | "pending" | "error";
-
-// ---------------------------------------------------------------------------
-// useCreateAccount
-// ---------------------------------------------------------------------------
 
 export function useCreateAccount(): {
   create: (input: CreateInput) => Promise<void>;
@@ -131,7 +130,7 @@ export function useCreateAccount(): {
         const payload = buildPayload(input);
         const { ciphertext, nonce } = encryptPayload({ payload, objectId: input.id });
         await store.put({
-          kind: "account",
+          kind: KIND_ACCOUNT,
           objectId: input.id,
           ciphertext,
           nonce,
@@ -140,7 +139,7 @@ export function useCreateAccount(): {
           updatedAt: Date.now(),
         });
         await store.enqueue({
-          kind: "account",
+          kind: KIND_ACCOUNT,
           objectId: input.id,
           ciphertext,
           nonce,
@@ -164,15 +163,20 @@ export function useCreateAccount(): {
   return { create, state, error };
 }
 
-// ---------------------------------------------------------------------------
-// useUpdateAccount
-// ---------------------------------------------------------------------------
-
 type UpdateInput = {
   account: Account;
   name: string;
   currency: string;
   balanceString: string;
+  subKind?: string;
+  /** APY as a decimal fraction string (e.g. "0.041"), cash + investment sweep. */
+  apy?: string;
+  /** Interest rate as a decimal fraction string (e.g. "0.0625"), liability only. */
+  interestRate?: string;
+  /** Remaining term in years as a decimal string (e.g. "22"), liability only. */
+  termYears?: string;
+  /** Date the asset was last valued (ISO yyyy-mm-dd), manual_asset only. */
+  valuedAt?: string;
 };
 
 export function useUpdateAccount(): {
@@ -191,7 +195,7 @@ export function useUpdateAccount(): {
       setError(null);
       try {
         const objectId = input.account.id;
-        const existing = await store.get({ kind: "account", objectId });
+        const existing = await store.get({ kind: KIND_ACCOUNT, objectId });
         const prevVersion = existing?.version ?? 1n;
         const nextVersion = prevVersion + 1n;
 
@@ -200,28 +204,88 @@ export function useUpdateAccount(): {
         const prev = input.account.payload;
         let merged: unknown;
         switch (prev.kind) {
-          case "cash":
-            merged = { ...prev, name: input.name, currency: input.currency, balanceCents: cents };
+          case "cash": {
+            const cashMerge: Record<string, unknown> = {
+              ...prev,
+              name: input.name,
+              currency: input.currency,
+              balanceCents: cents,
+            };
+            if (input.subKind) cashMerge.subKind = input.subKind;
+            if (input.apy !== undefined) {
+              if (input.apy === "") {
+                delete cashMerge.apy;
+              } else {
+                cashMerge.apy = input.apy;
+              }
+            }
+            merged = cashMerge;
             break;
-          case "investment":
-            merged = {
+          }
+          case "investment": {
+            const investUpdate: Record<string, unknown> = {
               ...prev,
               name: input.name,
               currency: input.currency,
               cashBalanceCents: cents,
             };
+            if (input.subKind) investUpdate.subKind = input.subKind;
+            if (input.apy !== undefined) {
+              if (input.apy === "") {
+                delete investUpdate.apy;
+              } else {
+                investUpdate.apy = input.apy;
+              }
+            }
+            merged = investUpdate;
             break;
-          case "liability":
-            merged = { ...prev, name: input.name, currency: input.currency, balanceCents: cents };
+          }
+          case "liability": {
+            const liabilityUpdate: Record<string, unknown> = {
+              ...prev,
+              name: input.name,
+              currency: input.currency,
+              balanceCents: cents,
+            };
+            if (input.interestRate !== undefined) {
+              if (input.interestRate === "") {
+                delete liabilityUpdate.interestRate;
+              } else {
+                liabilityUpdate.interestRate = input.interestRate;
+              }
+            }
+            if (input.termYears !== undefined) {
+              if (input.termYears === "") {
+                delete liabilityUpdate.termYearsRemaining;
+              } else {
+                liabilityUpdate.termYearsRemaining = input.termYears;
+              }
+            }
+            merged = liabilityUpdate;
             break;
-          case "manual_asset":
-            merged = { ...prev, name: input.name, currency: input.currency, valueCents: cents };
+          }
+          case "manual_asset": {
+            const assetMerge: Record<string, unknown> = {
+              ...prev,
+              name: input.name,
+              currency: input.currency,
+              valueCents: cents,
+            };
+            if (input.valuedAt !== undefined) {
+              if (input.valuedAt === "") {
+                delete assetMerge.valuedAt;
+              } else {
+                assetMerge.valuedAt = input.valuedAt;
+              }
+            }
+            merged = assetMerge;
             break;
+          }
         }
 
         const { ciphertext, nonce } = encryptPayload({ payload: merged, objectId });
         await store.put({
-          kind: "account",
+          kind: KIND_ACCOUNT,
           objectId,
           ciphertext,
           nonce,
@@ -230,7 +294,7 @@ export function useUpdateAccount(): {
           updatedAt: Date.now(),
         });
         await store.enqueue({
-          kind: "account",
+          kind: KIND_ACCOUNT,
           objectId,
           ciphertext,
           nonce,
@@ -254,16 +318,7 @@ export function useUpdateAccount(): {
   return { update, state, error };
 }
 
-// ---------------------------------------------------------------------------
-// useDeleteAccount
-//
-// Permanently removes an account by writing a tombstone. The sync server treats
-// tombstoned objects as deleted and the local store hides them. Reversible
-// archive (`archived` flag preserved server-side) is not in the current schema;
-// adding it requires bumping the Account payload schema in @privance/core and
-// is tracked as a follow-up.
-// ---------------------------------------------------------------------------
-
+// Note: reversible archive is not in the current schema; adding it requires bumping the Account payload schema in @privance/core.
 export function useDeleteAccount(): {
   deleteAccount: (account: Account) => Promise<void>;
   state: MutationState;
@@ -280,7 +335,7 @@ export function useDeleteAccount(): {
       setError(null);
       try {
         const objectId = account.id;
-        const existing = await store.get({ kind: "account", objectId });
+        const existing = await store.get({ kind: KIND_ACCOUNT, objectId });
         const prevVersion = existing?.version ?? 1n;
         const nextVersion = prevVersion + 1n;
 
@@ -290,7 +345,7 @@ export function useDeleteAccount(): {
         });
 
         await store.put({
-          kind: "account",
+          kind: KIND_ACCOUNT,
           objectId,
           ciphertext,
           nonce,
@@ -299,7 +354,7 @@ export function useDeleteAccount(): {
           updatedAt: Date.now(),
         });
         await store.enqueue({
-          kind: "account",
+          kind: KIND_ACCOUNT,
           objectId,
           ciphertext,
           nonce,

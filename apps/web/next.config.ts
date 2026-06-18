@@ -1,15 +1,20 @@
 import type { NextConfig } from "next";
+import pkg from "./package.json" with { type: "json" };
 
 const nextConfig: NextConfig = {
+  // Surface the package version to the client so Settings can show the real
+  // build without a hardcoded literal drifting out of date.
+  env: { NEXT_PUBLIC_APP_VERSION: pkg.version },
+
   // Static export so Capacitor can wrap the same bundle into iOS/Android shells.
   // Server-side rendering is incompatible with our zero-knowledge model
   // (the DEK never leaves the browser), so static is the correct mode.
   output: "export",
 
-  // Transpile workspace TS packages — Next.js only transpiles JS by default.
+  // Next.js only transpiles JS by default; workspace TS packages need this.
   transpilePackages: ["@privance/core"],
 
-  // Capacitor serves files via file:// — avoid trailingSlash mismatches in routes.
+  // Capacitor serves files via file://; avoid trailingSlash mismatches in routes.
   trailingSlash: true,
 
   // Disable Next.js image optimization: it requires a server, which static

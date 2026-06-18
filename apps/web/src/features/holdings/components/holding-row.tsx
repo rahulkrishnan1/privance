@@ -1,12 +1,10 @@
 "use client";
 
-import { Decimal, SCALE_CENTS, SCALE_CRYPTO } from "@privance/core";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import type { KeyboardEvent, MouseEvent } from "react";
+import type { Decimal } from "@privance/core";
+import type { KeyboardEvent } from "react";
 import { formatCurrency } from "@/lib/format";
-import { parseCostBasisCents } from "../_helpers";
-import type { LocalGroup, LocalHolding } from "../types";
-import { GroupChip } from "./group-chips";
+import { computeEffectivePrice, computeMarketValue, parseCostBasisCents } from "../_helpers";
+import type { LocalHolding } from "../types";
 
 type PriceEntry = {
   ticker: string;
@@ -15,62 +13,14 @@ type PriceEntry = {
 
 type HoldingRowProps = {
   holding: LocalHolding;
-  accountName: string;
-  groups: LocalGroup[];
   prices: Map<string, PriceEntry>;
-  /** Parameterised so the parent can pass a stable useCallback ref instead of
-   *  allocating a fresh () => onEdit(holding) closure per row per render. */
-  onEdit: (holding: LocalHolding) => void;
-  onDelete: (holding: LocalHolding) => void;
-  /** True when this row's mobile detail sub-row is open. Ignored on desktop. */
-  isExpanded: boolean;
-  /** Toggles the mobile detail sub-row open/closed for the given holding id. */
-  onToggle: (id: string) => void;
+  /** Day change in cents for this holding; null when prior price not available. */
+  dayChangeCents: Decimal | null;
+  /** Total investment portfolio value in cents; used to compute weight. */
+  totalInvestmentsCents: Decimal | null;
+  /** Called when the row is clicked to open the detail sheet. */
+  onRowClick: (holding: LocalHolding) => void;
 };
-
-function formatShares(sharesMajor: string, sharesScale: number): string {
-  try {
-    const d = Decimal.fromString(sharesMajor, sharesScale);
-    return d.toFloat().toLocaleString("en-US", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 4,
-    });
-  } catch {
-    return sharesMajor;
-  }
-}
-
-function computeMarketValue(
-  sharesMajor: string,
-  sharesScale: number,
-  priceStr: string,
-  scaleFactor?: string,
-): Decimal | null {
-  try {
-    const shares = Decimal.fromString(sharesMajor, sharesScale);
-    const price = Decimal.fromString(priceStr, SCALE_CRYPTO);
-    const scale = scaleFactor ? Decimal.fromString(scaleFactor, SCALE_CRYPTO) : null;
-    const effectivePrice = scale !== null ? price.mul(scale, { resultScale: SCALE_CRYPTO }) : price;
-    return shares.mul(effectivePrice, { resultScale: SCALE_CENTS });
-  } catch {
-    return null;
-  }
-}
-
-function computeAvgCostPerShare(
-  costBasisCents: string,
-  sharesMajor: string,
-  sharesScale: number,
-): Decimal | null {
-  try {
-    const cost = parseCostBasisCents(costBasisCents);
-    const shares = Decimal.fromString(sharesMajor, sharesScale);
-    if (shares.isZero()) return null;
-    return cost.div(shares);
-  } catch {
-    return null;
-  }
-}
 
 function computeGain(
   marketValue: Decimal,
@@ -79,21 +29,10 @@ function computeGain(
   try {
     const cost = parseCostBasisCents(costBasisCents);
     const gainDollar = marketValue.sub(cost);
-    // Float ratio for display only. Decimal.div at scale 2 truncates to whole
+    // Float ratio for display only; Decimal.div at scale 2 truncates to whole
     // percent precision, which makes every percent end in ".00".
     const gainPct = cost.isZero() ? null : gainDollar.toFloat() / cost.toFloat();
     return { gainDollar, gainPct };
-  } catch {
-    return null;
-  }
-}
-
-function computeEffectivePrice(priceStr: string, scaleFactor?: string): Decimal | null {
-  try {
-    const p = Decimal.fromString(priceStr, SCALE_CRYPTO);
-    if (scaleFactor === undefined) return p;
-    const sf = Decimal.fromString(scaleFactor, SCALE_CRYPTO);
-    return p.mul(sf, { resultScale: SCALE_CRYPTO });
   } catch {
     return null;
   }
@@ -116,20 +55,16 @@ function formatSignedPct(pct: number): string {
 
 function formatSignedCurrency(d: Decimal): string {
   const float = d.toFloat();
-  const sign = float > 0 ? "+" : float < 0 ? "" : "";
-  // formatCurrency handles the leading "-" itself for negatives.
+  const sign = float > 0 ? "+" : "";
   return `${sign}${formatCurrency(d, "USD")}`;
 }
 
 export function HoldingRow({
   holding,
-  accountName,
-  groups,
   prices,
-  onEdit,
-  onDelete,
-  isExpanded,
-  onToggle,
+  dayChangeCents,
+  totalInvestmentsCents,
+  onRowClick,
 }: HoldingRowProps) {
   const priceTicker = holding.proxyTicker ?? holding.ticker;
   const priceEntry = prices.get(priceTicker);
@@ -147,223 +82,153 @@ export function HoldingRow({
     ? computeEffectivePrice(priceEntry.price, holding.scaleFactor)
     : null;
 
-  const avgCost = computeAvgCostPerShare(
-    holding.costBasisCents,
-    holding.sharesMajor,
-    holding.sharesScale,
-  );
-
   const gain = marketValue ? computeGain(marketValue, holding.costBasisCents) : null;
 
-  const holdingGroups = groups.filter((g) => g.id === holding.groupId);
+  const gainPositive = gain !== null && !gain.gainDollar.isNegative() && !gain.gainDollar.isZero();
+  const gainNegative = gain?.gainDollar.isNegative();
+  const gainTone = gainPositive ? "text-up" : gainNegative ? "text-down" : "text-faint";
 
-  const gainTone =
-    gain === null
-      ? "text-app-dim"
-      : gain.gainDollar.isZero()
-        ? "text-app-muted"
-        : gain.gainDollar.isNegative()
-          ? "text-app-red"
-          : "text-app-green";
+  // Require prior > marketValue / 10000 to avoid division by near-zero.
+  const dayPct: number | null = (() => {
+    if (dayChangeCents === null || marketValue === null) return null;
+    const prior = marketValue.sub(dayChangeCents);
+    if (prior.isNegative() || prior.toMinorUnits() * 10000n <= marketValue.toMinorUnits())
+      return null;
+    return dayChangeCents.toFloat() / prior.toFloat();
+  })();
 
-  const subRowId = `holding-detail-${holding.id}`;
+  const dayPositive =
+    dayChangeCents !== null && !dayChangeCents.isNegative() && !dayChangeCents.isZero();
+  const dayZero = dayChangeCents === null || dayChangeCents.isZero();
+  const dayTone =
+    dayChangeCents === null
+      ? "text-faint"
+      : dayZero
+        ? "text-dim"
+        : dayPositive
+          ? "text-up"
+          : "text-down";
 
-  // stopPropagation keeps Edit/Delete from also toggling the row when the whole
-  // row is the disclosure target.
-  const handleEdit = (e: MouseEvent) => {
-    e.stopPropagation();
-    onEdit(holding);
-  };
-  const handleDelete = (e: MouseEvent) => {
-    e.stopPropagation();
-    onDelete(holding);
-  };
-  const handleToggle = () => onToggle(holding.id);
+  const weightPct: number | null = (() => {
+    if (marketValue === null || totalInvestmentsCents === null || totalInvestmentsCents.isZero())
+      return null;
+    return (marketValue.toFloat() / totalInvestmentsCents.toFloat()) * 100;
+  })();
+
+  const noPrice = priceEntry === undefined;
+
+  const handleClick = () => onRowClick(holding);
   const onRowKeyDown = (e: KeyboardEvent<HTMLTableRowElement>) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      onToggle(holding.id);
+      onRowClick(holding);
     }
   };
 
   return (
-    <>
-      {/* Whole row is the tap target on mobile; a button wrapping only the
-          ticker cell left Value and G/L% dead to touch. */}
-      <tr
-        className="border-b border-app-line-soft hover:bg-white/[0.03] cursor-pointer md:cursor-default focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold-accent"
-        onClick={handleToggle}
-        onKeyDown={onRowKeyDown}
-        tabIndex={0}
-        aria-expanded={isExpanded}
-        aria-controls={subRowId}
-        aria-label={`${holding.ticker}, ${isExpanded ? "collapse" : "expand"} details`}
-      >
-        {/* Ticker + name */}
-        <td className="px-3 py-3">
-          <div className="flex items-center justify-between">
-            <p className="font-mono text-[13px] text-app-text truncate">{holding.ticker}</p>
-            <span aria-hidden className="md:hidden flex-shrink-0 ml-1 text-app-dim">
-              {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </span>
+    <tr
+      className="hover:bg-white/[0.015] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
+      onClick={handleClick}
+      onKeyDown={onRowKeyDown}
+      tabIndex={0}
+      aria-label={`${holding.ticker}, open holding details`}
+    >
+      {/* Holding: ticker (cream, mono) + name, or "Proxy · TICKER" when proxied */}
+      <td className="border-t border-line-soft py-[13px] tabular-nums text-left">
+        <div className="h-tk font-mono text-[12.5px] tracking-[.04em] text-cream truncate">
+          {holding.ticker}
+        </div>
+        {holding.proxyTicker ? (
+          <div className="h-nm hidden md:block font-mono text-[11.5px] text-dim mt-0.5 truncate">
+            Proxy &middot; {holding.proxyTicker}
           </div>
-          {holding.name !== undefined && (
-            <p className="text-xs text-app-muted truncate">{holding.name}</p>
-          )}
-        </td>
-
-        {/* Account chip */}
-        <td className="hidden md:table-cell px-3 py-3">
-          <span className="inline-block rounded-full bg-white/5 px-2 py-0.5 text-xs text-app-muted truncate max-w-full">
-            {accountName}
-          </span>
-        </td>
-
-        {/* Shares */}
-        <td className="hidden md:table-cell px-3 py-3 text-right">
-          <span className="font-mono text-[14px] tabular-nums text-app-text">
-            {formatShares(holding.sharesMajor, holding.sharesScale)}
-          </span>
-        </td>
-
-        {/* Current price (effective, anchored if proxy) */}
-        <td className="hidden md:table-cell px-3 py-3 text-right">
-          <span className="font-mono text-[14px] tabular-nums text-app-text">
-            {effectivePrice ? formatPrice(effectivePrice) : "-"}
-          </span>
-        </td>
-
-        {/* Avg cost */}
-        <td className="hidden md:table-cell px-3 py-3 text-right">
-          <span className="font-mono text-[14px] tabular-nums text-app-text">
-            {avgCost ? formatCurrency(avgCost, "USD") : "-"}
-          </span>
-        </td>
-
-        {/* Market value */}
-        <td className="px-3 py-3 text-right">
-          <span className="font-mono text-[14px] tabular-nums text-app-text font-semibold">
-            {marketValue ? formatCurrency(marketValue, "USD") : "-"}
-          </span>
-        </td>
-
-        {/* Gain $ */}
-        <td className="hidden md:table-cell px-3 py-3 text-right">
-          <span className={`font-mono text-[14px] tabular-nums font-medium ${gainTone}`}>
-            {gain ? formatSignedCurrency(gain.gainDollar) : "-"}
-          </span>
-        </td>
-
-        {/* Gain % */}
-        <td className="px-3 py-3 text-right">
-          <span className={`font-mono text-[14px] tabular-nums font-medium ${gainTone}`}>
-            {gain && gain.gainPct !== null ? formatSignedPct(gain.gainPct) : "-"}
-          </span>
-        </td>
-
-        {/* Group chips */}
-        <td className="hidden md:table-cell px-3 py-3">
-          <div className="flex flex-wrap gap-1">
-            {holdingGroups.map((g) => (
-              <GroupChip key={g.id} group={g} />
-            ))}
-          </div>
-        </td>
-
-        {/* Actions */}
-        <td className="hidden md:table-cell px-3 py-3">
-          <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={handleEdit}
-              aria-label={`Edit ${holding.ticker}`}
-              className="px-2 py-1 rounded hover:bg-white/[0.03] text-xs text-gold-accent font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              onClick={handleDelete}
-              aria-label={`Delete ${holding.ticker}`}
-              className="px-2 py-1 rounded hover:bg-white/[0.03] text-xs text-app-red font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
-            >
-              Delete
-            </button>
-          </div>
-        </td>
-      </tr>
-
-      {isExpanded && (
-        <tr id={subRowId} className="md:hidden border-b border-app-line-soft bg-white/[0.02]">
-          {/* 9999 clamps to the actual column count; the sub-row stays
-              full-width without coupling to holdings-table.tsx's count. */}
-          <td colSpan={9999} className="px-3 py-4">
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
-              <dt className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim self-center">
-                Account
-              </dt>
-              <dd className="text-[13px] text-app-text text-right truncate">{accountName}</dd>
-
-              <dt className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim self-center">
-                Shares
-              </dt>
-              <dd className="font-mono text-[13px] tabular-nums text-app-text text-right">
-                {formatShares(holding.sharesMajor, holding.sharesScale)}
-              </dd>
-
-              <dt className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim self-center">
-                Price
-              </dt>
-              <dd className="font-mono text-[13px] tabular-nums text-app-text text-right">
-                {effectivePrice ? formatPrice(effectivePrice) : "-"}
-              </dd>
-
-              <dt className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim self-center">
-                Avg Cost
-              </dt>
-              <dd className="font-mono text-[13px] tabular-nums text-app-text text-right">
-                {avgCost ? formatCurrency(avgCost, "USD") : "-"}
-              </dd>
-
-              <dt className="font-mono text-[10px] tracking-[0.22em] uppercase text-app-dim self-center">
-                Total G/L $
-              </dt>
-              <dd
-                className={`font-mono text-[13px] tabular-nums font-medium text-right ${gainTone}`}
-              >
-                {gain ? formatSignedCurrency(gain.gainDollar) : "-"}
-              </dd>
-            </dl>
-
-            {holdingGroups.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1">
-                {holdingGroups.map((g) => (
-                  <GroupChip key={g.id} group={g} />
-                ))}
-              </div>
-            )}
-
-            <div className="mt-4 pt-3 border-t border-app-line-soft flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={handleEdit}
-                aria-label={`Edit ${holding.ticker}`}
-                className="px-3 py-1.5 rounded text-[13px] text-gold-accent font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                aria-label={`Delete ${holding.ticker}`}
-                className="px-3 py-1.5 rounded text-[13px] text-app-red font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-accent focus-visible:rounded-[inherit] min-h-9 cursor-pointer"
-              >
-                Delete
-              </button>
+        ) : (
+          holding.name !== undefined && (
+            <div className="h-nm hidden md:block text-[12px] text-dim mt-0.5 truncate">
+              {holding.name}
             </div>
-          </td>
-        </tr>
-      )}
-    </>
+          )
+        )}
+      </td>
+
+      <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right">
+        {noPrice ? (
+          <span className="text-faint">—</span>
+        ) : (
+          <span className="vfig h-val font-mono text-[13px] text-cream">
+            {effectivePrice ? formatPrice(effectivePrice) : "—"}
+          </span>
+        )}
+      </td>
+
+      {/* Day -- desktop only: dollar over percent (mobile shows G/L instead) */}
+      <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right">
+        {noPrice ? (
+          <span className="font-mono text-[12px] text-faint">—</span>
+        ) : (
+          <span className={`inline-flex flex-col items-end font-mono ${dayTone}`}>
+            <span className="vfig text-[13px]">
+              {dayChangeCents !== null ? formatSignedCurrency(dayChangeCents) : "—"}
+            </span>
+            {dayPct !== null && (
+              <span className="text-[11px] opacity-80">{formatSignedPct(dayPct)}</span>
+            )}
+          </span>
+        )}
+      </td>
+
+      {/* G/L -- percent only on mobile, dollar over percent on desktop */}
+      <td className="border-t border-line-soft py-[13px] tabular-nums text-right">
+        {noPrice || gain === null ? (
+          <span className="text-faint">—</span>
+        ) : (
+          <>
+            <span className={`md:hidden font-mono text-[12px] ${gainTone}`}>
+              {gain.gainPct !== null ? formatSignedPct(gain.gainPct) : "—"}
+            </span>
+            <span
+              className={`h-gain hidden md:inline-flex flex-col items-end font-mono ${gainTone}`}
+            >
+              <span className="vfig text-[13px]">{formatSignedCurrency(gain.gainDollar)}</span>
+              {gain.gainPct !== null && (
+                <span className="g-pc text-[11px] opacity-80">{formatSignedPct(gain.gainPct)}</span>
+              )}
+            </span>
+          </>
+        )}
+      </td>
+
+      {/* Weight -- hidden on mobile: thin bar + % */}
+      <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right">
+        {noPrice || weightPct === null ? (
+          <span className="text-faint">—</span>
+        ) : (
+          <span className="h-wt inline-flex items-center gap-[10px] justify-end">
+            <span className="wt-bar w-[74px] h-1 rounded-[2px] bg-[rgba(235,235,230,0.08)] overflow-hidden">
+              <span
+                className="block h-full bg-accent rounded-[2px]"
+                style={{ width: `${Math.min(100, weightPct).toFixed(1)}%` }}
+                aria-hidden="true"
+              />
+            </span>
+            <span className="wt-pc font-mono text-[11.5px] text-dim w-11 text-right">
+              {weightPct.toFixed(1)}%
+            </span>
+          </span>
+        )}
+      </td>
+
+      <td className="border-t border-line-soft py-[13px] tabular-nums text-right">
+        {noPrice ? (
+          <span className="np font-mono text-[9.5px] tracking-[.08em] uppercase text-down border border-down/30 rounded-[5px] px-2 py-1 whitespace-nowrap">
+            no price &middot; set one
+          </span>
+        ) : (
+          <span className="vfig h-val font-mono text-[13px] text-cream">
+            {marketValue ? formatCurrency(marketValue, "USD") : "—"}
+          </span>
+        )}
+      </td>
+    </tr>
   );
 }
