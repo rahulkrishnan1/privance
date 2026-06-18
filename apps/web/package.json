@@ -22,7 +22,7 @@
   "dependencies": {
     "@capacitor/android": "8.3.4",
     "@capacitor/core": "8.3.4",
-    "@capacitor/ios": "8.3.4",
+    "@capacitor/ios": "8.4.0",
     "@hookform/resolvers": "5.2.2",
     "@privance/core": "workspace:*",
     "@sqlite.org/sqlite-wasm": "3.53.0-build1",
