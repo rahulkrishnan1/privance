@@ -9,23 +9,6 @@ import { pickFailure } from "./prices";
 // the real SCALE_CRYPTO, and a different query-key shape), so it asserted
 // behavior the app never had. Only the exported pickFailure is unit-tested.
 
-describe("cooldown 429", () => {
-  it("ApiError with status 429 is surfaced without throwing unexpectedly", () => {
-    const err = new ApiError(429, "rate_limited", "Rate limited");
-    expect(err.status).toBe(429);
-    expect(err.code).toBe("rate_limited");
-
-    const isStale = err instanceof ApiError && err.status === 429;
-    expect(isStale).toBe(true);
-  });
-
-  it("non-429 ApiError is not treated as stale", () => {
-    const err = new ApiError(503, "upstream_unavailable", "Service down");
-    const isStale = err instanceof ApiError && err.status === 429;
-    expect(isStale).toBe(false);
-  });
-});
-
 function fulfilled<T>(value: T): PromiseFulfilledResult<T> {
   return { status: "fulfilled", value };
 }

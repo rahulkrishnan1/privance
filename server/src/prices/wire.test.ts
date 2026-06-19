@@ -323,10 +323,8 @@ describe("POST /refresh, UpstreamUnavailableError maps to 503", () => {
   });
 });
 
-describe("POST /refresh, per-user rate-limit", () => {
-  it("second request within cooldown → 429 with Retry-After", async () => {
-    // First request fetches AAPL and populates the cache. Second request uses MSFT
-    // (not cached) so it must go to upstream and hits the rate-limit gate.
+describe("POST /refresh, per-user upstream cooldown", () => {
+  it("second request within cooldown serves cache and skips upstream (no 429)", async () => {
     const server = buildTestApp(yahooOkFetcher({ AAPL: 182.5, MSFT: 420 }));
 
     const first = await server.fetch(
@@ -342,15 +340,20 @@ describe("POST /refresh, per-user rate-limit", () => {
       new Request(`${BASE}/api/prices/refresh`, {
         method: "POST",
         headers: headers("POST"),
-        body: JSON.stringify({ tickers: ["MSFT"], source: "yahoo" }),
+        body: JSON.stringify({ tickers: ["AAPL", "MSFT"], source: "yahoo" }),
       }),
     );
-    expect(second.status).toBe(429);
-    expect(second.headers.get("retry-after")).toBeDefined();
+    expect(second.status).toBe(200);
+    const body = (await second.json()) as {
+      prices: Array<{ ticker: string }>;
+      unknown: string[];
+    };
+    expect(body.prices.map((p) => p.ticker)).toEqual(["AAPL"]);
+    expect(body.unknown).toEqual(["MSFT"]);
   });
 
   it("different users have independent cooldowns", async () => {
-    const server = buildTestApp(yahooOkFetcher({ AAPL: 182.5 }));
+    const server = buildTestApp(yahooOkFetcher({ AAPL: 182.5, MSFT: 420 }));
 
     await server.fetch(
       new Request(`${BASE}/api/prices/refresh`, {
@@ -364,10 +367,13 @@ describe("POST /refresh, per-user rate-limit", () => {
       new Request(`${BASE}/api/prices/refresh`, {
         method: "POST",
         headers: headers("POST", "user-B"),
-        body: JSON.stringify({ tickers: ["AAPL"], source: "yahoo" }),
+        body: JSON.stringify({ tickers: ["MSFT"], source: "yahoo" }),
       }),
     );
     expect(res.status).toBe(200);
+    const body = (await res.json()) as { prices: Array<{ ticker: string }>; unknown: string[] };
+    expect(body.prices.map((p) => p.ticker)).toEqual(["MSFT"]);
+    expect(body.unknown).toEqual([]);
   });
 });
 

@@ -75,27 +75,28 @@ export class PriceService {
       };
     }
 
-    rateLimit.gateRefresh(userId, this.#cooldownMs);
-
-    let upstream: Map<string, { price: string; previousPrice: string | null; fetchedAt: string }>;
+    let upstream: Map<string, { price: string; previousPrice: string | null; fetchedAt: string }> =
+      new Map();
     let upstreamFailed = false;
 
-    // An upstream call is being made now; start the cooldown regardless of the
-    // outcome so a failing or empty upstream can't be hammered every request.
-    rateLimit.recordRefresh(userId, this.#cooldownMs);
-
-    try {
-      upstream = USE_FAKE_UPSTREAM
-        ? fetchFakePrices(needFetch)
-        : dataSource === "yahoo"
-          ? await fetchYahooPrices(needFetch, this.#fetcher)
-          : await fetchCoinGeckoPrices(needFetch, this.#fetcher);
-    } catch (err) {
-      if (err instanceof UpstreamUnavailableError) {
-        upstream = new Map();
-        upstreamFailed = true;
-      } else {
-        throw err;
+    // Cooldown gates the upstream call, not the cache: when cooling, serve cached rows below.
+    const inCooldown = rateLimit.msUntilNextRefresh(userId, dataSource, this.#cooldownMs) > 0;
+    if (!inCooldown) {
+      // Start the cooldown on attempt so a failing upstream can't be hammered.
+      rateLimit.recordRefresh(userId, dataSource, this.#cooldownMs);
+      try {
+        upstream = USE_FAKE_UPSTREAM
+          ? fetchFakePrices(needFetch)
+          : dataSource === "yahoo"
+            ? await fetchYahooPrices(needFetch, this.#fetcher)
+            : await fetchCoinGeckoPrices(needFetch, this.#fetcher);
+      } catch (err) {
+        if (err instanceof UpstreamUnavailableError) {
+          upstream = new Map();
+          upstreamFailed = true;
+        } else {
+          throw err;
+        }
       }
     }
 
@@ -117,6 +118,7 @@ export class PriceService {
         requested: tickers.length,
         fetched: upstream.size,
         cacheHits: freshCached.length,
+        skippedUpstream: inCooldown,
         upstreamFailed,
       },
       "price refresh completed",
@@ -166,7 +168,11 @@ export class PriceService {
     return { prices, unknown };
   }
 
+  // Longer of the two per-source windows; the button drives both sources.
   msUntilNextRefresh(userId: string): number {
-    return rateLimit.msUntilNextRefresh(userId, this.#cooldownMs);
+    return Math.max(
+      rateLimit.msUntilNextRefresh(userId, "yahoo", this.#cooldownMs),
+      rateLimit.msUntilNextRefresh(userId, "coingecko", this.#cooldownMs),
+    );
   }
 }

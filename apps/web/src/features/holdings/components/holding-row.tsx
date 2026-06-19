@@ -134,7 +134,7 @@ export function HoldingRow({
       aria-label={`${holding.ticker}, open holding details`}
     >
       {/* Holding: ticker (cream, mono) + name, or "Proxy · TICKER" when proxied */}
-      <td className="border-t border-line-soft py-[13px] tabular-nums text-left">
+      <td className="border-t border-line-soft py-[13px] tabular-nums text-left max-w-0">
         <div className="h-tk font-mono text-[12.5px] tracking-[.04em] text-cream truncate">
           {holding.ticker}
         </div>
@@ -151,7 +151,7 @@ export function HoldingRow({
         )}
       </td>
 
-      <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right">
+      <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
         {noPrice ? (
           <span className="text-faint">—</span>
         ) : (
@@ -162,7 +162,7 @@ export function HoldingRow({
       </td>
 
       {/* Day -- desktop only: dollar over percent (mobile shows G/L instead) */}
-      <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right">
+      <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
         {noPrice ? (
           <span className="font-mono text-[12px] text-faint">—</span>
         ) : (
@@ -178,7 +178,7 @@ export function HoldingRow({
       </td>
 
       {/* G/L -- percent only on mobile, dollar over percent on desktop */}
-      <td className="border-t border-line-soft py-[13px] tabular-nums text-right">
+      <td className="border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
         {noPrice || gain === null ? (
           <span className="text-faint">—</span>
         ) : (
@@ -199,7 +199,7 @@ export function HoldingRow({
       </td>
 
       {/* Weight -- hidden on mobile: thin bar + % */}
-      <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right">
+      <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
         {noPrice || weightPct === null ? (
           <span className="text-faint">—</span>
         ) : (
@@ -218,7 +218,7 @@ export function HoldingRow({
         )}
       </td>
 
-      <td className="border-t border-line-soft py-[13px] tabular-nums text-right">
+      <td className="border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
         {noPrice ? (
           <span className="np font-mono text-[9.5px] tracking-[.08em] uppercase text-down border border-down/30 rounded-[5px] px-2 py-1 whitespace-nowrap">
             no price &middot; set one

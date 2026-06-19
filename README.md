@@ -20,9 +20,6 @@
 
 Privance is a command center for your money: net worth, holdings, spending, and a financial independence planner. Everything is encrypted in your browser before it leaves. The server, ours or yours, stores that encrypted data but never the keys to unlock it. Even if it were breached, all anyone would find is your username and some timestamps. Not your balances, not your investments, not a single dollar.
 
-> [!WARNING]
-> **No backdoor, by design.** There are no resets, no recovery email, no master key in a drawer. Lose both your master password and your 12-word recovery phrase and the data is gone for good, even to a hosted-instance operator. Keep the phrase on paper, offline.
-
 ## Inside the vault
 
 - **Net worth, honestly computed.** Assets minus liabilities across cash, brokerage, retirement, property, and crypto, tracked on a daily trend and calculated to the exact cent.

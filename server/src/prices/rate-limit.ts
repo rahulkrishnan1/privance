@@ -1,25 +1,31 @@
 import { createRateLimitBucket } from "../core/rate-limit.js";
-import { RateLimitedError } from "./types.js";
+import type { DataSource } from "./types.js";
 
 const DEFAULT_COOLDOWN_MS = 30_000;
 
 const bucket = createRateLimitBucket();
 
-/** Records a successful refresh for userId. Call after the upstream fetch succeeds. */
-export function recordRefresh(userId: string, cooldownMs = DEFAULT_COOLDOWN_MS): void {
-  bucket.record(userId, cooldownMs);
+// Per (user, source) so the parallel provider refreshes don't gate each other.
+function key(userId: string, source: DataSource): string {
+  return `${userId}:${source}`;
 }
 
-/** Returns ms remaining in the cooldown window, or 0 if the user is free to refresh. */
-export function msUntilNextRefresh(userId: string, cooldownMs = DEFAULT_COOLDOWN_MS): number {
-  return bucket.msRemaining(userId, cooldownMs);
+/** Records a refresh for (userId, source). Call when an upstream fetch is made. */
+export function recordRefresh(
+  userId: string,
+  source: DataSource,
+  cooldownMs = DEFAULT_COOLDOWN_MS,
+): void {
+  bucket.record(key(userId, source), cooldownMs);
 }
 
-/** Throws RateLimitedError if the user is within their cooldown window. */
-export function gateRefresh(userId: string, cooldownMs = DEFAULT_COOLDOWN_MS): void {
-  bucket.gate(userId, cooldownMs, (ms) => {
-    throw new RateLimitedError(ms);
-  });
+/** Returns ms remaining in the (userId, source) cooldown window, or 0 if free. */
+export function msUntilNextRefresh(
+  userId: string,
+  source: DataSource,
+  cooldownMs = DEFAULT_COOLDOWN_MS,
+): number {
+  return bucket.msRemaining(key(userId, source), cooldownMs);
 }
 
 /** Clear all state. For tests only. */

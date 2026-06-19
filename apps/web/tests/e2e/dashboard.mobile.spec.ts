@@ -16,6 +16,7 @@ import { expect, test } from "@playwright/test";
 import type { Fixtures } from "../../playwright/global-setup";
 import type { SessionSnapshot } from "./helpers/auth";
 import { loginAndCapture, restoreSession, waitForSynced } from "./helpers/auth";
+import { horizontalOverflow } from "./helpers/overflow";
 
 function loadFixtures(): Fixtures {
   const p = path.join(__dirname, "../../.playwright-fixtures.json");
@@ -108,5 +109,16 @@ test.describe("dashboard mobile", () => {
     // The history range selector is reachable and switchable on touch.
     await page.getByRole("button", { name: "1M range" }).click();
     await expect(page.getByRole("button", { name: "1M range", pressed: true })).toBeVisible();
+  });
+
+  // Sideways scroll at a phone width makes iOS WebKit shrink-to-fit zoom on launch.
+  test("no horizontal overflow on the invest screen at a phone viewport", async ({ page }) => {
+    await page.goto("/app/");
+    await expect(page.getByRole("navigation", { name: "Invest sub-navigation" })).toBeVisible({
+      timeout: SAVE_TIMEOUT,
+    });
+    await waitForSynced(page);
+
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1); // sub-pixel slop
   });
 });

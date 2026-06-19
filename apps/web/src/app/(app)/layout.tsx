@@ -115,7 +115,7 @@ function TopBar({
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-20 border-b border-line-soft bg-[color-mix(in_srgb,var(--color-vault)_88%,transparent)] backdrop-blur-[12px]">
+    <header className="sticky top-0 z-20 border-b border-line-soft bg-[color-mix(in_srgb,var(--color-vault)_88%,transparent)] backdrop-blur-[12px] [padding-top:env(safe-area-inset-top)]">
       <div className="mx-auto flex h-[62px] max-w-[1120px] items-center justify-between px-7 max-[760px]:h-14">
         <Link href="/app" className="flex items-center gap-[9px] text-cream">
           <Logo size={23} className="text-cream" />

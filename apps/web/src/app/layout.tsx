@@ -35,7 +35,8 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    // Dark app draws full-bleed under the iOS status bar; headers pad safe-area-top.
+    statusBarStyle: "black-translucent",
     title: "Privance",
   },
   icons: {

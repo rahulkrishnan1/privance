@@ -21,7 +21,7 @@ function SplitTile({
   return (
     <div className="bg-panel border border-line rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
       <p className="font-mono text-[9.5px] tracking-[.2em] uppercase text-faint">{label}</p>
-      <p className={`vfig font-serif text-[27px] mt-2 max-[480px]:text-[21px] ${valueColor}`}>
+      <p className={`vfig font-serif text-[27px] mt-2 max-[480px]:text-[23px] ${valueColor}`}>
         {value}
       </p>
       <p className={`vfig font-mono text-[11px] mt-1 max-[480px]:text-[10px] ${sublineColor}`}>

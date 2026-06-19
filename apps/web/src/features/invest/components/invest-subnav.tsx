@@ -27,7 +27,7 @@ export function InvestSubnav({ onAdd, addLabel }: InvestSubnavProps) {
   return (
     <nav
       aria-label="Invest sub-navigation"
-      className="flex gap-[30px] border-b border-line mt-2 sticky top-[62px] max-[760px]:top-14 bg-[color-mix(in_srgb,var(--color-vault)_92%,transparent)] backdrop-blur-[8px] z-[15]"
+      className="flex gap-[30px] max-[760px]:gap-4 border-b border-line mt-2 sticky top-[62px] max-[760px]:top-14 bg-[color-mix(in_srgb,var(--color-vault)_92%,transparent)] backdrop-blur-[8px] z-[15]"
     >
       {NAV_ITEMS.map(({ view, label, href }) => {
         const isActive = active === view;

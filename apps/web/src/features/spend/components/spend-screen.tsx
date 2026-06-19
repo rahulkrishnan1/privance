@@ -200,7 +200,7 @@ function SkeletonRow() {
 
 function LoadingSkeleton() {
   return (
-    <div className={`${MAX_WIDTH} pt-11`}>
+    <div className={`${MAX_WIDTH} pt-6`}>
       <div className="h-2.5 w-16 rounded bg-white/5 animate-pulse mb-4" />
       <div className="h-16 w-52 rounded bg-white/5 animate-pulse mb-2" />
       <div className="h-3 w-48 rounded bg-white/5 animate-pulse mb-8" />
@@ -252,14 +252,6 @@ export function SpendScreen() {
     [subscriptionItems],
   );
   const activeCount = useMemo(() => items.filter((i) => i.status === "active").length, [items]);
-  const essentialActiveCount = useMemo(
-    () => essentialItems.filter((i) => i.status === "active").length,
-    [essentialItems],
-  );
-  const subscriptionActiveCount = useMemo(
-    () => subscriptionItems.filter((i) => i.status === "active").length,
-    [subscriptionItems],
-  );
   const subscriptionShare = useMemo(
     () => subscriptionSharePct(subscriptionMonthly, monthlyTotal),
     [subscriptionMonthly, monthlyTotal],
@@ -305,7 +297,7 @@ export function SpendScreen() {
 
   if (error !== null) {
     return (
-      <div className={`${MAX_WIDTH} pt-11`}>
+      <div className={`${MAX_WIDTH} pt-6`}>
         <p className="font-mono text-[11px] text-down" role="alert">
           Failed to load. {error.message}
         </p>
@@ -362,7 +354,7 @@ export function SpendScreen() {
 
   return (
     <div className={MAX_WIDTH}>
-      <section className="pt-11 pb-0">
+      <section className="pt-6 pb-0">
         <p className="font-mono text-[10px] tracking-[.26em] uppercase text-faint">Spend</p>
         <div className="flex items-end gap-5 flex-wrap mt-3">
           <span
@@ -389,12 +381,11 @@ export function SpendScreen() {
       <div className="grid grid-cols-4 gap-4 mt-4 max-[880px]:grid-cols-2">
         <div className="bg-panel border border-line rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
           <p className="font-mono text-[9.5px] tracking-[.2em] uppercase text-faint">Essentials</p>
-          <p className="vfig font-serif text-[27px] mt-2 max-[480px]:text-[21px]">
+          <p className="vfig font-serif text-[27px] mt-2 max-[480px]:text-[23px]">
             {formatCurrencyWhole(essentialMonthly)}
             <span className="font-mono text-[11px] text-faint ml-1">/mo</span>
           </p>
           <p className="font-mono text-[10.5px] mt-1 text-dim">
-            {essentialActiveCount} active &middot;{" "}
             <span className="vfig">{formatCurrencyWhole(essentialAnnual)} / yr</span>
           </p>
         </div>
@@ -402,12 +393,11 @@ export function SpendScreen() {
           <p className="font-mono text-[9.5px] tracking-[.2em] uppercase text-faint">
             Subscriptions
           </p>
-          <p className="vfig font-serif text-[27px] mt-2 max-[480px]:text-[21px]">
+          <p className="vfig font-serif text-[27px] mt-2 max-[480px]:text-[23px]">
             {formatCurrencyWhole(subscriptionMonthly)}
             <span className="font-mono text-[11px] text-faint ml-1">/mo</span>
           </p>
           <p className="font-mono text-[10.5px] mt-1 text-dim">
-            {subscriptionActiveCount} active &middot;{" "}
             <span className="vfig">{formatCurrencyWhole(subscriptionAnnual)} / yr</span>
           </p>
         </div>
@@ -416,14 +406,14 @@ export function SpendScreen() {
             Subscription share
           </p>
           {/* A ratio, not a money figure, so it stays readable under the Veil. */}
-          <p className="font-serif text-[27px] mt-2 max-[480px]:text-[21px]">
+          <p className="font-serif text-[27px] mt-2 max-[480px]:text-[23px]">
             {subscriptionShare}%
           </p>
           <p className="font-mono text-[10.5px] mt-1 text-dim">of monthly spend</p>
         </div>
         <div className="bg-panel border border-line rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
           <p className="font-mono text-[9.5px] tracking-[.2em] uppercase text-faint">Per day</p>
-          <p className="vfig font-serif text-[27px] mt-2 max-[480px]:text-[21px]">
+          <p className="vfig font-serif text-[27px] mt-2 max-[480px]:text-[23px]">
             {formatCurrencyWhole(dailyBurn)}
             <span className="font-mono text-[11px] text-faint ml-1">/day</span>
           </p>

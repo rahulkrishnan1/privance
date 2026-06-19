@@ -13,7 +13,8 @@ type LogoProps = {
 export function Logo({ size = 32, className, "aria-hidden": ariaHidden }: LogoProps) {
   return (
     <svg
-      viewBox="0 0 64 64"
+      // Origin offset to (5,1): the mark's optical center is (37,33), not (32,32).
+      viewBox="5 1 64 64"
       width={size}
       height={size}
       role={ariaHidden ? undefined : "img"}

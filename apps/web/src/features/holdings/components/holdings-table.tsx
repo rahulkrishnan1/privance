@@ -96,10 +96,10 @@ export function HoldingsTable({
       <table aria-label="Holdings" className="w-full">
         <thead>
           <tr>
-            <th scope="col" className="text-left pb-3">
+            <th scope="col" className="w-full text-left pb-3">
               <SortableHeader column="ticker" label="Holding" sort={sort} onPress={onSortChange} />
             </th>
-            <th scope="col" className="hidden md:table-cell text-right pb-3">
+            <th scope="col" className="hidden md:table-cell text-right pb-3 pl-8 whitespace-nowrap">
               <SortableHeader
                 column="currentPrice"
                 label="Price"
@@ -108,7 +108,7 @@ export function HoldingsTable({
                 align="right"
               />
             </th>
-            <th scope="col" className="hidden md:table-cell text-right pb-3">
+            <th scope="col" className="hidden md:table-cell text-right pb-3 pl-8 whitespace-nowrap">
               <SortableHeader
                 column="dayPct"
                 label="Day"
@@ -117,7 +117,7 @@ export function HoldingsTable({
                 align="right"
               />
             </th>
-            <th scope="col" className="text-right pb-3">
+            <th scope="col" className="text-right pb-3 pl-8 whitespace-nowrap">
               <SortableHeader
                 column="gainDollar"
                 label="G/L"
@@ -126,7 +126,7 @@ export function HoldingsTable({
                 align="right"
               />
             </th>
-            <th scope="col" className="hidden md:table-cell text-right pb-3">
+            <th scope="col" className="hidden md:table-cell text-right pb-3 pl-8 whitespace-nowrap">
               <SortableHeader
                 column="weight"
                 label="Weight"
@@ -135,7 +135,7 @@ export function HoldingsTable({
                 align="right"
               />
             </th>
-            <th scope="col" className="text-right pb-3">
+            <th scope="col" className="text-right pb-3 pl-8 whitespace-nowrap">
               <SortableHeader
                 column="marketValue"
                 label="Value"

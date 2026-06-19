@@ -101,6 +101,20 @@ test.describe("holdings", () => {
     expect(investmentAccountCreated).toBe(true);
   });
 
+  test("filtering by account updates the holdings panel heading (regression)", async ({ page }) => {
+    await goToHoldings(page);
+
+    await expect(page.getByRole("heading", { name: /All holdings/ })).toBeVisible({
+      timeout: 10_000,
+    });
+
+    await page.getByRole("button", { name: INVESTMENT_ACCOUNT_NAME }).click();
+    await expect(
+      page.getByRole("heading", { name: new RegExp(INVESTMENT_ACCOUNT_NAME) }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: /All holdings/ })).not.toBeVisible();
+  });
+
   test("creates a holding via ticker and sees it in the table", async ({ page }) => {
     await goToHoldings(page);
 

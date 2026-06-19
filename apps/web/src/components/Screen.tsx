@@ -27,7 +27,7 @@ export function Screen({ children, scrollable = true, width = "sm", className }:
     return (
       <div className={base}>
         <div
-          className={["px-7 max-[760px]:px-4 pt-11 mx-auto w-full", widthClass, className]
+          className={["px-7 max-[760px]:px-4 pt-6 mx-auto w-full", widthClass, className]
             .filter(Boolean)
             .join(" ")}
         >

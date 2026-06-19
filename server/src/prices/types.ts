@@ -19,16 +19,6 @@ export class UpstreamUnavailableError extends PriceError {
   }
 }
 
-/** Per-user refresh cooldown not yet elapsed. */
-export class RateLimitedError extends PriceError {
-  readonly msRemaining: number;
-  constructor(msRemaining: number) {
-    super("rate_limited", `refresh cooldown: ${msRemaining}ms remaining`);
-    this.name = "RateLimitedError";
-    this.msRemaining = msRemaining;
-  }
-}
-
 export class InvalidSourceError extends PriceError {
   constructor(source: string) {
     super("invalid_source", `unknown price source: ${source}`);

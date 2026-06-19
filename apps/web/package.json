@@ -1,6 +1,6 @@
 {
   "name": "@privance/web",
-  "version": "0.1.0",
+  "version": "0.5.1",
   "private": true,
   "scripts": {
     "dev": "node scripts/build-sim-worker.mjs && next dev --webpack --port 8081",

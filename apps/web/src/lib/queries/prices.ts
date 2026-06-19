@@ -3,7 +3,6 @@
 import { Decimal, SCALE_CRYPTO } from "@privance/core";
 import { useQuery } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
-import { ApiError } from "@/lib/api/client";
 import { refreshPrices } from "@/lib/api/prices";
 
 export type PricesMap = Map<string, Decimal>;
@@ -20,8 +19,6 @@ export type PricesQueryResult = {
   /** Prior session close per ticker. Absent when upstream didn't provide it. */
   previousPrices: PricesMap;
   isLoading: boolean;
-  /** True when the server returned 429; cached prices may still be present. */
-  isCooldownActive: boolean;
   isError: boolean;
 };
 
@@ -125,7 +122,7 @@ export function usePricesQuery(input: PricesQueryInput): PricesQueryResult {
   const prices = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const previousPrices = useSyncExternalStore(subscribe, getPrevSnapshot, getPrevSnapshot);
 
-  const { isFetching, isError, error } = useQuery({
+  const { isFetching, isError } = useQuery({
     queryKey: ["prices", "y", ...yahooSorted, "c", ...coingeckoSorted],
     queryFn: async () => {
       // settled, not all-or-nothing: a Yahoo 429 mustn't black out CoinGecko.
@@ -168,7 +165,6 @@ export function usePricesQuery(input: PricesQueryInput): PricesQueryResult {
     prices,
     previousPrices,
     isLoading: isFetching && prices.size === 0,
-    isCooldownActive: isError && error instanceof ApiError && error.status === 429,
     isError,
   };
 }
