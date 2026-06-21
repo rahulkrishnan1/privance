@@ -108,7 +108,7 @@ export function InvestScreen({ view }: InvestScreenProps) {
           )}
 
           {dashData.status === "loading" && (
-            <div className="pt-11 pb-0">
+            <div className="pt-6 pb-0">
               <div className="h-3 w-20 rounded bg-white/5 animate-pulse mb-4" />
               <div className="h-16 w-64 rounded bg-white/5 animate-pulse mb-2" />
               <div className="mt-8 h-[140px] rounded bg-white/5 animate-pulse" />

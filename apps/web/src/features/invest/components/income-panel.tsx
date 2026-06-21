@@ -43,18 +43,18 @@ export function IncomePanel({ result }: IncomePanelProps) {
         {visiblePayers.map((payer) => (
           <div
             key={payer.id}
-            className="flex items-center gap-3 py-[11px] border-b border-line-soft last:border-b-0"
+            className="flex items-center py-[11px] border-b border-line-soft last:border-b-0"
           >
             <span className="font-mono text-[11px] tracking-[.06em] text-accent bg-panel-2 border border-line rounded-[5px] px-[9px] py-[5px] flex-none">
               {payer.ticker}
             </span>
-            <span className="flex-1 text-[14px] text-cream truncate max-[400px]:hidden">
+            <span className="flex-1 text-[14px] text-cream truncate ml-3 max-[400px]:hidden">
               {payer.name}
             </span>
-            <span className="vfig font-mono text-[12.5px] text-cream-soft tabular-nums whitespace-nowrap max-[400px]:ml-auto">
+            <span className="vfig font-mono text-[12.5px] text-cream-soft tabular-nums whitespace-nowrap pl-8 max-[400px]:ml-auto">
               {formatCurrency(payer.annualCents)}/yr
             </span>
-            <span className="font-mono text-[12.5px] text-dim tabular-nums">
+            <span className="font-mono text-[12.5px] text-dim tabular-nums pl-8">
               {(payer.yield * 100).toFixed(2)}%
             </span>
           </div>

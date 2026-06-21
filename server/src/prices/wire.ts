@@ -6,17 +6,10 @@ import type { FeatureRouter } from "../core/app.js";
 import { db } from "../core/db.js";
 import { PriceService } from "./price-service.js";
 import { PricesRepo } from "./repo.js";
-import { InvalidSourceError, RateLimitedError, UpstreamUnavailableError } from "./types.js";
+import { InvalidSourceError, UpstreamUnavailableError } from "./types.js";
 
 function errorToHttp(err: unknown): Response {
   if (err instanceof HTTPException) return err.getResponse();
-  if (err instanceof RateLimitedError) {
-    const retryAfterSec = Math.ceil(err.msRemaining / 1000);
-    return new Response(JSON.stringify({ error: err.code, ms_remaining: err.msRemaining }), {
-      status: 429,
-      headers: { "Content-Type": "application/json", "Retry-After": String(retryAfterSec) },
-    });
-  }
   if (err instanceof UpstreamUnavailableError) {
     return new Response(JSON.stringify({ error: err.code }), {
       status: 503,

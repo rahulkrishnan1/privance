@@ -44,6 +44,14 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+/* iOS standalone WebKit zooms the whole page out on launch if any element is
+   wider than the viewport. Clip at the root as a guardrail; `clip` (not
+   `hidden`) keeps sticky headers working. */
+html,
+body {
+  overflow-x: clip;
+}
+
 ::selection {
   background: var(--color-accent);
   color: var(--color-vault);
@@ -84,6 +92,15 @@ input[type="number"]::-webkit-outer-spin-button {
 input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
+}
+
+/* iOS zooms into inputs under 16px; pin controls to 16px on touch. */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }
 
 /* Plan lever slider: an 18px-tall hit area with a thin 5px track painted as a

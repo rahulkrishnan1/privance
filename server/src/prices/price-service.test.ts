@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { PriceService } from "./price-service.js";
 import * as rateLimit from "./rate-limit.js";
 import type { CachedPriceRow } from "./repo.js";
-import { InvalidSourceError, RateLimitedError, UpstreamUnavailableError } from "./types.js";
+import { InvalidSourceError, UpstreamUnavailableError } from "./types.js";
 import { fetchYahooPrices } from "./upstream-yahoo.js";
 
 type StubRepo = {
@@ -352,12 +352,14 @@ describe("PriceService, per-user cooldown", () => {
     ).resolves.toBeDefined();
   });
 
-  it("throws RateLimitedError on second request within cooldown window", async () => {
-    // First request fetches AAPL and populates cache. Second request uses MSFT
-    // (not cached) so it must go to upstream and hits the rate-limit gate.
+  it("within cooldown, serves cached prices and skips upstream for uncached tickers", async () => {
+    let msftFetched = false;
     const fetcher = async (url: string | URL | Request) => {
       if (String(url).includes("AAPL")) return yahooResponse("AAPL", 182.5);
-      if (String(url).includes("MSFT")) return yahooResponse("MSFT", 420.0);
+      if (String(url).includes("MSFT")) {
+        msftFetched = true;
+        return yahooResponse("MSFT", 420.0);
+      }
       return new Response("not found", { status: 404 });
     };
     const service = new PriceService({
@@ -368,9 +370,81 @@ describe("PriceService, per-user cooldown", () => {
 
     await service.refresh({ userId: "user-cooldown", tickers: ["AAPL"], source: "yahoo" });
 
-    await expect(
-      service.refresh({ userId: "user-cooldown", tickers: ["MSFT"], source: "yahoo" }),
-    ).rejects.toBeInstanceOf(RateLimitedError);
+    const second = await service.refresh({
+      userId: "user-cooldown",
+      tickers: ["AAPL", "MSFT"],
+      source: "yahoo",
+    });
+
+    expect(second.prices.map((p) => p.ticker)).toEqual(["AAPL"]);
+    expect(second.unknown).toEqual(["MSFT"]);
+    expect(msftFetched).toBe(false);
+  });
+
+  it("within cooldown, serves a stale cached row rather than dropping it to unknown", async () => {
+    const stale: CachedPriceRow = {
+      source: "yahoo",
+      ticker: "AAPL",
+      price: "150.00",
+      previousPrice: null,
+      fetchedAt: new Date(0), // epoch, far beyond CACHE_TTL_MS
+    };
+    let aaplFetched = false;
+    const fetcher = async (url: string | URL | Request) => {
+      if (String(url).includes("AAPL")) {
+        aaplFetched = true;
+        return yahooResponse("AAPL", 999.0);
+      }
+      if (String(url).includes("ZZZ")) return yahooResponse("ZZZ", 5.0);
+      return new Response("not found", { status: 404 });
+    };
+    const service = new PriceService({
+      pricesRepo: createStubRepo([stale]),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
+
+    // Unrelated ticker starts the cooldown.
+    await service.refresh({ userId: "user-stale", tickers: ["ZZZ"], source: "yahoo" });
+
+    const second = await service.refresh({
+      userId: "user-stale",
+      tickers: ["AAPL"],
+      source: "yahoo",
+    });
+
+    expect(second.prices.map((p) => p.ticker)).toEqual(["AAPL"]);
+    expect(second.prices[0]?.price).toBe("150.00");
+    expect(second.unknown).toEqual([]);
+    expect(aaplFetched).toBe(false);
+  });
+
+  it("a refresh of one source does not gate a refresh of the other source", async () => {
+    let coingeckoFetched = false;
+    const fetcher = async (url: string | URL | Request) => {
+      const u = String(url);
+      if (u.includes("coingecko")) {
+        coingeckoFetched = true;
+        return coingeckoResponse({ bitcoin: { usd: 50000 } });
+      }
+      return yahooResponse("AAPL", 182.5);
+    };
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
+
+    await service.refresh({ userId: "user-multi", tickers: ["AAPL"], source: "yahoo" });
+    const cg = await service.refresh({
+      userId: "user-multi",
+      tickers: ["bitcoin"],
+      source: "coingecko",
+    });
+
+    expect(coingeckoFetched).toBe(true);
+    expect(cg.prices.map((p) => p.ticker)).toEqual(["bitcoin"]);
+    expect(cg.unknown).toEqual([]);
   });
 
   it("allows request after cooldown window elapses", async () => {

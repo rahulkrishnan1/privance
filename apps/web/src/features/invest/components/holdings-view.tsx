@@ -116,6 +116,23 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
     return subsetGain(filteredValuations);
   }, [breakdown, visibleHoldings]);
 
+  // Reset a filter whose account/group was deleted; guard on settled data so a
+  // transient refetch gap doesn't clear a valid filter.
+  useEffect(() => {
+    if (accountsState.status !== "success" || groupsLoading) return;
+    const gone =
+      (filter.kind === "account" && !investmentAccounts.some((a) => a.id === filter.accountId)) ||
+      (filter.kind === "group" && !groups.some((g) => g.id === filter.groupId));
+    if (gone) setFilter({ kind: "all" });
+  }, [filter, investmentAccounts, groups, accountsState.status, groupsLoading]);
+
+  const filterLabel =
+    filter.kind === "all"
+      ? "All holdings"
+      : filter.kind === "account"
+        ? (accountNamesMap.get(filter.accountId) ?? "Account")
+        : (groups.find((g) => g.id === filter.groupId)?.name ?? "Group");
+
   const handleLookupProxyPrice = useCallback(
     (ticker: string): Promise<string | null> =>
       lookupProxyPrice(
@@ -312,7 +329,7 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
         <div className="flex justify-between items-baseline mb-4 gap-2.5 max-[560px]:flex-col max-[560px]:items-start max-[560px]:gap-1.5">
           <div>
             <h3 className="font-serif text-[20px] font-normal tracking-[-0.005em]">
-              All holdings &middot; {holdings.length}
+              {filterLabel} &middot; {visibleHoldings.length}
             </h3>
             {gain !== null && !gain.gainCents.isZero() && (
               <p

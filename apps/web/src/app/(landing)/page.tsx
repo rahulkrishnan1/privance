@@ -24,7 +24,7 @@ function randStr(n: number): string {
 
 function NavBar() {
   return (
-    <header className="sticky top-0 z-30 bg-vault/86 backdrop-blur-[12px] border-b border-line-soft">
+    <header className="sticky top-0 z-30 bg-vault/86 backdrop-blur-[12px] border-b border-line-soft [padding-top:env(safe-area-inset-top)]">
       <div className="max-w-[1160px] mx-auto px-8 h-[66px] flex items-center justify-between">
         <Link
           href="/"
@@ -141,14 +141,6 @@ function Hero() {
           "radial-gradient(490px 490px at 50% 150px, rgba(127,196,198,.10), rgba(127,196,198,.03) 45%, transparent 65%)",
       }}
     >
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 pointer-events-none opacity-50"
-        style={{
-          background:
-            "repeating-linear-gradient(to bottom, transparent 0 110px, rgba(235,235,230,.045) 110px 111px)",
-        }}
-      />
       <div className="max-w-[1160px] mx-auto px-8">
         <p className="reveal-up font-mono text-[10.5px] tracking-[0.26em] uppercase text-accent-dim whitespace-nowrap max-[480px]:text-[9px] max-[480px]:tracking-[0.18em]">
           Open source &middot; zero&#8209;knowledge &middot; yours

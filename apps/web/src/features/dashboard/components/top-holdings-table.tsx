@@ -25,7 +25,7 @@ type TopHoldingsTableProps = {
   onRowClick: (holding: LocalHolding) => void;
 };
 
-const MAX_ROWS = 10;
+const MAX_ROWS = 5;
 
 type AggregatedRow = {
   key: string;
@@ -156,30 +156,32 @@ export function TopHoldingsTable({
       </div>
 
       <div className="overflow-x-auto">
+        {/* Holding column (w-full) absorbs the slack and truncates; numeric
+            columns hug their content (whitespace-nowrap) so they sit adjacent. */}
         <table aria-label="Top holdings" className="w-full">
           <thead>
             <tr>
               <th
                 scope="col"
-                className="font-mono text-[9.5px] tracking-[.16em] uppercase text-faint font-normal text-left pb-3"
+                className="w-full font-mono text-[9.5px] tracking-[.16em] uppercase text-faint font-normal text-left pb-3"
               >
                 Holding
               </th>
               <th
                 scope="col"
-                className="font-mono text-[9.5px] tracking-[.16em] uppercase text-faint font-normal text-right pb-3"
+                className="font-mono text-[9.5px] tracking-[.16em] uppercase text-faint font-normal text-right pb-3 pl-8 whitespace-nowrap"
               >
                 Day
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell font-mono text-[9.5px] tracking-[.16em] uppercase text-faint font-normal text-right pb-3"
+                className="hidden md:table-cell font-mono text-[9.5px] tracking-[.16em] uppercase text-faint font-normal text-right pb-3 pl-8 whitespace-nowrap"
               >
                 Weight
               </th>
               <th
                 scope="col"
-                className="font-mono text-[9.5px] tracking-[.16em] uppercase text-faint font-normal text-right pb-3"
+                className="font-mono text-[9.5px] tracking-[.16em] uppercase text-faint font-normal text-right pb-3 pl-8 whitespace-nowrap"
               >
                 Value
               </th>
@@ -242,7 +244,7 @@ export function TopHoldingsTable({
                   }
                 >
                   {/* Holding: ticker (mono, cream) + name (dim, smaller) */}
-                  <td className="border-t border-line-soft py-[13px] tabular-nums text-left">
+                  <td className="border-t border-line-soft py-[13px] tabular-nums text-left max-w-0">
                     <p className="font-mono text-[12.5px] tracking-[.04em] text-cream truncate">
                       {h.ticker}
                     </p>
@@ -254,14 +256,14 @@ export function TopHoldingsTable({
                   </td>
 
                   <td
-                    className={`border-t border-line-soft py-[13px] tabular-nums text-right font-mono text-[12.5px] ${dayColor}`}
+                    className={`border-t border-line-soft py-[13px] tabular-nums text-right font-mono text-[12.5px] whitespace-nowrap pl-8 ${dayColor}`}
                   >
                     {h.dayChange === null || dayPct === null
                       ? "-"
                       : formatPercent(dayPct, { signed: true })}
                   </td>
 
-                  <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right">
+                  <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
                     <span className="inline-flex items-center gap-2.5 justify-end">
                       <span
                         className="w-[74px] h-1 rounded-[2px] bg-[rgba(235,235,230,0.08)] overflow-hidden"
@@ -278,7 +280,7 @@ export function TopHoldingsTable({
                     </span>
                   </td>
 
-                  <td className="border-t border-line-soft py-[13px] tabular-nums text-right font-mono text-[13px] text-cream">
+                  <td className="border-t border-line-soft py-[13px] tabular-nums text-right font-mono text-[13px] text-cream whitespace-nowrap pl-8">
                     <span className="vfig">{formatCurrency(h.marketValue)}</span>
                   </td>
                 </tr>
