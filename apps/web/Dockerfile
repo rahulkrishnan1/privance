@@ -15,6 +15,10 @@ COPY --from=deps /build/node_modules ./node_modules
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY packages/core/ ./packages/core/
 COPY apps/web/ ./apps/web/
+# Version is injected from the git tag by the release workflow (single source of
+# truth); next.config falls back to package.json when the arg is absent (dev).
+ARG NEXT_PUBLIC_APP_VERSION
+ENV NEXT_PUBLIC_APP_VERSION=${NEXT_PUBLIC_APP_VERSION}
 # CI=true: pnpm 11 detects the hoisted node_modules layout in a non-TTY
 # container and aborts asking for confirmation to recreate it; CI mode proceeds.
 RUN CI=true pnpm -F @privance/web build
