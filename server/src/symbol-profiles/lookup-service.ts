@@ -2,7 +2,9 @@ import { logger } from "../core/logger.js";
 import { regionFromCountry } from "./_region.js";
 import type { SymbolProfileRepo } from "./repo.js";
 import type { FetchLike, LookupResult, SymbolProfile } from "./types.js";
+import { UpstreamUnavailableError } from "./types.js";
 import { fetchFakeProfiles } from "./upstream-fake.js";
+import { fetchFinnhubProfiles } from "./upstream-finnhub.js";
 import { fetchYahooProfiles } from "./upstream-yahoo.js";
 
 const USE_FAKE_UPSTREAM = process.env.PRICE_PROVIDER === "fake";
@@ -56,6 +58,27 @@ export class LookupService {
         await this.#repo.upsertMany({ profiles: [...upstream.values()] });
         for (const [ticker, profile] of upstream) {
           cached.set(ticker, profile);
+        }
+      }
+
+      // Best-effort failover to fill cache misses Yahoo left unresolved; a Finnhub
+      // failure is swallowed so those tickers stay unknown.
+      const finnhubApiKey = process.env.FINNHUB_API_KEY?.trim() || undefined;
+      if (!USE_FAKE_UPSTREAM && finnhubApiKey !== undefined) {
+        const stillMissing = cacheMisses.filter((t) => !cached.has(t));
+        if (stillMissing.length > 0) {
+          try {
+            const finnhub = await fetchFinnhubProfiles(stillMissing, finnhubApiKey, this.#fetcher);
+            if (finnhub.size > 0) {
+              await this.#repo.upsertMany({ profiles: [...finnhub.values()] });
+              for (const [ticker, profile] of finnhub) {
+                cached.set(ticker, profile);
+              }
+              fetched += finnhub.size;
+            }
+          } catch (err) {
+            if (!(err instanceof UpstreamUnavailableError)) throw err;
+          }
         }
       }
     }

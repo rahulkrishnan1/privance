@@ -1,20 +1,17 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { secureHeaders } from "hono/secure-headers";
 import type { MiddlewareHandler } from "hono/types";
 
 import { requireCsrfHeader } from "../core/middleware.js";
-import { EnrichService } from "./enrich-service.js";
 import { LookupService } from "./lookup-service.js";
-import * as rateLimit from "./rate-limit.js";
 import type { SymbolProfile } from "./types.js";
 import { UpstreamUnavailableError } from "./types.js";
 import { __clearYahooAuthCache } from "./upstream-yahoo.js";
 import { createFeatureRouter } from "./wire.js";
 
 const BASE = "http://localhost";
-const TEST_COOLDOWN_MS = 80;
 
 function mockSessionMiddleware(userId = "wire-user-1"): MiddlewareHandler {
   return async (c, next) => {
@@ -99,16 +96,10 @@ function upstream500Fetcher(): (url: string | URL | Request) => Promise<Response
 function buildTestApp(
   repo: InMemoryRepo,
   fetcherForUpstream: (url: string | URL | Request) => Promise<Response>,
-  cooldownMs = TEST_COOLDOWN_MS,
 ): { fetch: (req: Request) => Promise<Response> } {
   const lookupSvc = new LookupService({ repo: repo as never, fetcher: fetcherForUpstream });
-  const enrichSvc = new EnrichService({
-    repo: repo as never,
-    fetcher: fetcherForUpstream,
-    cooldownMs,
-  });
 
-  const { router } = createFeatureRouter(mockSessionMiddleware(), lookupSvc, enrichSvc);
+  const { router } = createFeatureRouter(mockSessionMiddleware(), lookupSvc);
 
   const app = new Hono();
   app.use("*", secureHeaders());
@@ -119,12 +110,7 @@ function buildTestApp(
 }
 
 beforeEach(() => {
-  rateLimit.resetAll();
   __clearYahooAuthCache();
-});
-
-afterEach(() => {
-  rateLimit.resetAll();
 });
 
 describe("CSRF guard", () => {
@@ -140,19 +126,6 @@ describe("CSRF guard", () => {
     );
     expect(res.status).toBe(403);
   });
-
-  it("POST /refresh without X-Requested-With → 403", async () => {
-    const repo = new InMemoryRepo();
-    const server = buildTestApp(repo, yahooOkFetcher([]));
-    const res = await server.fetch(
-      new Request(`${BASE}/api/symbol-profiles/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-User-Id": "u1" },
-        body: JSON.stringify({ tickers: ["AAPL"] }),
-      }),
-    );
-    expect(res.status).toBe(403);
-  });
 });
 
 describe("Auth guard", () => {
@@ -161,19 +134,6 @@ describe("Auth guard", () => {
     const server = buildTestApp(repo, yahooOkFetcher([]));
     const res = await server.fetch(
       new Request(`${BASE}/api/symbol-profiles/lookup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-        body: JSON.stringify({ tickers: ["AAPL"] }),
-      }),
-    );
-    expect(res.status).toBe(401);
-  });
-
-  it("POST /refresh without session → 401", async () => {
-    const repo = new InMemoryRepo();
-    const server = buildTestApp(repo, yahooOkFetcher([]));
-    const res = await server.fetch(
-      new Request(`${BASE}/api/symbol-profiles/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
         body: JSON.stringify({ tickers: ["AAPL"] }),
@@ -353,93 +313,16 @@ describe("POST /lookup, upstream 5xx", () => {
   });
 });
 
-describe("POST /refresh, happy path", () => {
-  it("returns profile from upstream", async () => {
-    const repo = new InMemoryRepo();
-    const aapl: SymbolProfile = { ticker: "AAPL", assetType: "stock", displayName: "Apple Inc." };
-    const server = buildTestApp(repo, yahooOkFetcher([aapl]));
-
-    const res = await server.fetch(
-      new Request(`${BASE}/api/symbol-profiles/refresh`, {
-        method: "POST",
-        headers: postHeaders(),
-        body: JSON.stringify({ tickers: ["AAPL"] }),
-      }),
-    );
-
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { profiles: SymbolProfile[]; unknown: string[] };
-    expect(body.profiles).toHaveLength(1);
-    expect(body.profiles[0]?.ticker).toBe("AAPL");
-    expect(body.unknown).toEqual([]);
-  });
-});
-
-describe("POST /refresh, per-user rate-limit", () => {
-  it("second request within cooldown → 429 with Retry-After", async () => {
-    const repo = new InMemoryRepo();
-    const aapl: SymbolProfile = { ticker: "AAPL", assetType: "stock" };
-    const server = buildTestApp(repo, yahooOkFetcher([aapl]));
-
-    const first = await server.fetch(
-      new Request(`${BASE}/api/symbol-profiles/refresh`, {
-        method: "POST",
-        headers: postHeaders(),
-        body: JSON.stringify({ tickers: ["AAPL"] }),
-      }),
-    );
-    expect(first.status).toBe(200);
-
-    const second = await server.fetch(
-      new Request(`${BASE}/api/symbol-profiles/refresh`, {
-        method: "POST",
-        headers: postHeaders(),
-        body: JSON.stringify({ tickers: ["AAPL"] }),
-      }),
-    );
-    expect(second.status).toBe(429);
-    expect(second.headers.get("retry-after")).toBeDefined();
-  });
-
-  it("different users have independent cooldowns", async () => {
-    const repo = new InMemoryRepo();
-    const aapl: SymbolProfile = { ticker: "AAPL", assetType: "stock" };
-    const server = buildTestApp(repo, yahooOkFetcher([aapl]));
-
-    await server.fetch(
-      new Request(`${BASE}/api/symbol-profiles/refresh`, {
-        method: "POST",
-        headers: postHeaders("user-A"),
-        body: JSON.stringify({ tickers: ["AAPL"] }),
-      }),
-    );
-
-    const res = await server.fetch(
-      new Request(`${BASE}/api/symbol-profiles/refresh`, {
-        method: "POST",
-        headers: postHeaders("user-B"),
-        body: JSON.stringify({ tickers: ["AAPL"] }),
-      }),
-    );
-    expect(res.status).toBe(200);
-  });
-});
-
 describe("UpstreamUnavailableError maps to 503", () => {
-  function appWithThrowingServices(): { fetch: (req: Request) => Promise<Response> } {
+  function appWithThrowingService(): { fetch: (req: Request) => Promise<Response> } {
     const throwing = {
       lookup: async () => {
         throw new UpstreamUnavailableError("upstream returned non-2xx");
       },
-      refresh: async () => {
-        throw new UpstreamUnavailableError("upstream returned non-2xx");
-      },
-      msUntilNextRefresh: () => 0,
     };
     const { router } = createFeatureRouter(
       mockSessionMiddleware(),
       throwing as unknown as LookupService,
-      throwing as unknown as EnrichService,
     );
     const app = new Hono();
     app.use("*", secureHeaders());
@@ -449,7 +332,7 @@ describe("UpstreamUnavailableError maps to 503", () => {
   }
 
   it("POST /lookup → 503 with Retry-After header", async () => {
-    const server = appWithThrowingServices();
+    const server = appWithThrowingService();
     const res = await server.fetch(
       new Request(`${BASE}/api/symbol-profiles/lookup`, {
         method: "POST",
@@ -459,46 +342,5 @@ describe("UpstreamUnavailableError maps to 503", () => {
     );
     expect(res.status).toBe(503);
     expect(res.headers.get("retry-after")).toBe("30");
-  });
-
-  it("POST /refresh → 503 with Retry-After header", async () => {
-    const server = appWithThrowingServices();
-    const res = await server.fetch(
-      new Request(`${BASE}/api/symbol-profiles/refresh`, {
-        method: "POST",
-        headers: postHeaders(),
-        body: JSON.stringify({ tickers: ["AAPL"] }),
-      }),
-    );
-    expect(res.status).toBe(503);
-    expect(res.headers.get("retry-after")).toBe("30");
-  });
-});
-
-describe("POST /refresh, input validation", () => {
-  it("missing tickers → 400", async () => {
-    const repo = new InMemoryRepo();
-    const server = buildTestApp(repo, yahooOkFetcher([]));
-    const res = await server.fetch(
-      new Request(`${BASE}/api/symbol-profiles/refresh`, {
-        method: "POST",
-        headers: postHeaders(),
-        body: JSON.stringify({}),
-      }),
-    );
-    expect(res.status).toBe(400);
-  });
-
-  it("empty tickers [] → 400", async () => {
-    const repo = new InMemoryRepo();
-    const server = buildTestApp(repo, yahooOkFetcher([]));
-    const res = await server.fetch(
-      new Request(`${BASE}/api/symbol-profiles/refresh`, {
-        method: "POST",
-        headers: postHeaders(),
-        body: JSON.stringify({ tickers: [] }),
-      }),
-    );
-    expect(res.status).toBe(400);
   });
 });

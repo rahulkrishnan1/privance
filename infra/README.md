@@ -100,6 +100,8 @@ EOF
 chmod 600 /etc/privance/env.d/server.env
 ```
 
+The template also carries optional price-feed failover keys (`FINNHUB_API_KEY`, `COINGECKO_API_KEY`); both are free and absent-by-default, so skip them unless you want the extra resilience.
+
 Fill in `ENUMERATION_SECRET` without the value transiting your terminal or shell history:
 
 ```sh

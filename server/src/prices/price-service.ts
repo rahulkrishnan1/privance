@@ -5,6 +5,7 @@ import type { DataSource, FetchLike, PriceEntry, RefreshResult } from "./types.j
 import { InvalidSourceError, UpstreamUnavailableError } from "./types.js";
 import { fetchCoinGeckoPrices } from "./upstream-coingecko.js";
 import { fetchFakePrices } from "./upstream-fake.js";
+import { fetchFinnhubPrices } from "./upstream-finnhub.js";
 import { fetchYahooPrices } from "./upstream-yahoo.js";
 
 const USE_FAKE_UPSTREAM = process.env.PRICE_PROVIDER === "fake";
@@ -78,6 +79,7 @@ export class PriceService {
     let upstream: Map<string, { price: string; previousPrice: string | null; fetchedAt: string }> =
       new Map();
     let upstreamFailed = false;
+    let finnhubUsed = false;
 
     // Cooldown gates the upstream call, not the cache: when cooling, serve cached rows below.
     const inCooldown = rateLimit.msUntilNextRefresh(userId, dataSource, this.#cooldownMs) > 0;
@@ -96,6 +98,24 @@ export class PriceService {
           upstreamFailed = true;
         } else {
           throw err;
+        }
+      }
+
+      // Yahoo-only, best-effort failover to fill tickers Yahoo missed; a Finnhub
+      // failure is swallowed so they fall through to the stale-cache / unknown path.
+      const finnhubApiKey = process.env.FINNHUB_API_KEY?.trim() || undefined;
+      if (!USE_FAKE_UPSTREAM && dataSource === "yahoo" && finnhubApiKey !== undefined) {
+        const stillMissing = needFetch.filter((t) => !upstream.has(t));
+        if (stillMissing.length > 0) {
+          try {
+            const finnhub = await fetchFinnhubPrices(stillMissing, finnhubApiKey, this.#fetcher);
+            for (const [ticker, entry] of finnhub) {
+              upstream.set(ticker, entry);
+            }
+            if (finnhub.size > 0) finnhubUsed = true;
+          } catch (err) {
+            if (!(err instanceof UpstreamUnavailableError)) throw err;
+          }
         }
       }
     }
@@ -120,6 +140,7 @@ export class PriceService {
         cacheHits: freshCached.length,
         skippedUpstream: inCooldown,
         upstreamFailed,
+        finnhubUsed,
       },
       "price refresh completed",
     );

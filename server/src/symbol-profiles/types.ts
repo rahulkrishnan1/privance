@@ -20,16 +20,6 @@ export class UpstreamUnavailableError extends SymbolProfileError {
   }
 }
 
-/** Per-user refresh cooldown not yet elapsed. */
-export class RateLimitedError extends SymbolProfileError {
-  readonly msRemaining: number;
-  constructor(msRemaining: number) {
-    super("rate_limited", `refresh cooldown: ${msRemaining}ms remaining`);
-    this.name = "RateLimitedError";
-    this.msRemaining = msRemaining;
-  }
-}
-
 export type { FetchLike } from "../core/fetch.js";
 
 export type LookupResult = {

@@ -912,3 +912,130 @@ describe("PriceService, previousPrice round-trip", () => {
     expect(result.prices[0]?.previousPrice).toBe("97.50000000");
   });
 });
+
+// --- Finnhub failover ---
+
+function finnhubQuoteResponse(price: number, pc?: number, status = 200): Response {
+  const body: Record<string, number> = { c: price };
+  if (pc !== undefined) body.pc = pc;
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+describe("PriceService, Finnhub failover", () => {
+  const SAVED_KEY = process.env.FINNHUB_API_KEY;
+
+  afterEach(() => {
+    if (SAVED_KEY === undefined) {
+      delete process.env.FINNHUB_API_KEY;
+    } else {
+      process.env.FINNHUB_API_KEY = SAVED_KEY;
+    }
+    rateLimit.resetAll();
+  });
+
+  it("Yahoo 429 + key set: Finnhub serves the prices", async () => {
+    process.env.FINNHUB_API_KEY = "test-key";
+
+    const fetcher = async (url: string | URL | Request) => {
+      const u = String(url);
+      // Yahoo chart endpoint → 429
+      if (u.includes("finance/chart")) return new Response("throttled", { status: 429 });
+      // Finnhub quote endpoint → price
+      if (u.includes("finnhub.io")) return finnhubQuoteResponse(182.5, 180.0);
+      return new Response("not found", { status: 404 });
+    };
+
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
+    const result = await service.refresh({ userId: "fh-1", tickers: ["AAPL"], source: "yahoo" });
+
+    expect(result.unknown).toEqual([]);
+    expect(result.prices).toHaveLength(1);
+    expect(result.prices[0]?.price).toMatch(/^182\./);
+    expect(result.prices[0]?.previousPrice).toMatch(/^180\./);
+  });
+
+  it("no key set: Finnhub never called, Yahoo failure serves unknown/stale as today", async () => {
+    delete process.env.FINNHUB_API_KEY;
+
+    let finnhubCalled = false;
+    const fetcher = async (url: string | URL | Request) => {
+      const u = String(url);
+      if (u.includes("finnhub.io")) finnhubCalled = true;
+      // Yahoo → 429 for all tickers
+      return new Response("throttled", { status: 429 });
+    };
+
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
+    const result = await service.refresh({ userId: "fh-2", tickers: ["AAPL"], source: "yahoo" });
+
+    expect(finnhubCalled).toBe(false);
+    expect(result.unknown).toEqual(["AAPL"]);
+  });
+
+  it("Yahoo 429 + Finnhub 429: failure swallowed, ticker stays unknown", async () => {
+    process.env.FINNHUB_API_KEY = "test-key";
+
+    const fetcher = async (url: string | URL | Request) => {
+      const u = String(url);
+      if (u.includes("finance/chart")) return new Response("throttled", { status: 429 });
+      if (u.includes("finnhub.io")) return new Response("throttled", { status: 429 });
+      return new Response("not found", { status: 404 });
+    };
+
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
+    const result = await service.refresh({ userId: "fh-4", tickers: ["AAPL"], source: "yahoo" });
+
+    expect(result.prices).toEqual([]);
+    expect(result.unknown).toEqual(["AAPL"]);
+  });
+
+  it("Yahoo partial + key: Finnhub fills only the missing tickers", async () => {
+    process.env.FINNHUB_API_KEY = "test-key";
+
+    const fetcher = async (url: string | URL | Request) => {
+      const u = String(url);
+      // Yahoo serves AAPL, misses MSFT (404)
+      if (u.includes("finance/chart") && u.includes("AAPL")) return yahooResponse("AAPL", 182.5);
+      if (u.includes("finance/chart") && u.includes("MSFT"))
+        return new Response("not found", { status: 404 });
+      // Finnhub serves MSFT
+      if (u.includes("finnhub.io") && u.includes("MSFT")) return finnhubQuoteResponse(420.0, 418.0);
+      // Finnhub must NOT be called for AAPL (already covered)
+      if (u.includes("finnhub.io") && u.includes("AAPL")) {
+        throw new Error("Finnhub should not be called for a ticker Yahoo already returned");
+      }
+      return new Response("not found", { status: 404 });
+    };
+
+    const service = new PriceService({
+      pricesRepo: createStubRepo(),
+      fetcher,
+      cooldownMs: TEST_COOLDOWN_MS,
+    });
+    const result = await service.refresh({
+      userId: "fh-3",
+      tickers: ["AAPL", "MSFT"],
+      source: "yahoo",
+    });
+
+    expect(result.unknown).toEqual([]);
+    expect(result.prices).toHaveLength(2);
+    expect(result.prices.find((p) => p.ticker === "AAPL")?.price).toMatch(/^182\./);
+    expect(result.prices.find((p) => p.ticker === "MSFT")?.price).toMatch(/^420\./);
+  });
+});

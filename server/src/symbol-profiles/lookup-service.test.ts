@@ -1,8 +1,9 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it } from "bun:test";
 
 import { LookupService } from "./lookup-service.js";
 import type { SymbolProfile } from "./types.js";
 import { UpstreamUnavailableError } from "./types.js";
+import { __clearYahooAuthCache } from "./upstream-yahoo.js";
 
 class InMemoryRepo {
   private store = new Map<string, SymbolProfile>();
@@ -241,5 +242,239 @@ describe("LookupService, UpstreamUnavailableError messages contain no ticker sym
         expect(err.message).not.toContain(TICKER);
       }
     }
+  });
+});
+
+// --- Finnhub profile failover ---
+
+function finnhubProfileResponse(
+  ticker: string,
+  opts: { name?: string; sector?: string; country?: string; currency?: string; exchange?: string },
+  status = 200,
+): Response {
+  if (status !== 200) {
+    return new Response("error", { status });
+  }
+  const body: Record<string, string> = {};
+  if (opts.name) body.name = opts.name;
+  if (opts.sector) body.finnhubIndustry = opts.sector;
+  if (opts.country) body.country = opts.country;
+  if (opts.currency) body.currency = opts.currency;
+  if (opts.exchange) body.exchange = opts.exchange;
+  body.ticker = ticker;
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+describe("LookupService, Finnhub profile failover", () => {
+  const SAVED_KEY = process.env.FINNHUB_API_KEY;
+
+  afterEach(() => {
+    if (SAVED_KEY === undefined) {
+      delete process.env.FINNHUB_API_KEY;
+    } else {
+      process.env.FINNHUB_API_KEY = SAVED_KEY;
+    }
+    // Clear the Yahoo auth cache so each test authenticates through its own
+    // injected fetcher rather than inheriting a prior test's crumb.
+    __clearYahooAuthCache();
+  });
+
+  it("Yahoo returns empty + key set: Finnhub populates the profile and it is upserted", async () => {
+    process.env.FINNHUB_API_KEY = "test-key";
+
+    const repo = new InMemoryRepo();
+    const fetcher = async (url: string | URL | Request) => {
+      const u = String(url);
+      // Yahoo crumb/cookie handshake
+      if (u.includes("/v1/test/getcrumb")) return new Response("test-crumb", { status: 200 });
+      if (u.includes("fc.yahoo.com"))
+        return new Response("", { status: 404, headers: { "set-cookie": "A1=test; Path=/" } });
+      // Yahoo quoteSummary → unknown ticker (empty result)
+      if (u.includes("quoteSummary")) {
+        const body = { quoteSummary: { result: [], error: null } };
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      // Finnhub profile endpoint
+      if (u.includes("finnhub.io") && u.includes("AAPL")) {
+        return finnhubProfileResponse("AAPL", {
+          name: "Apple Inc",
+          sector: "Technology",
+          country: "US",
+          currency: "USD",
+          exchange: "NASDAQ NMS - GLOBAL MARKET",
+        });
+      }
+      return new Response("not found", { status: 404 });
+    };
+
+    const service = new LookupService({ repo: repo as never, fetcher });
+    const result = await service.lookup({ tickers: ["AAPL"] });
+
+    expect(result.profiles).toHaveLength(1);
+    expect(result.profiles[0]?.ticker).toBe("AAPL");
+    expect(result.profiles[0]?.sector).toBe("Technology");
+    expect(result.profiles[0]?.displayName).toBe("Apple Inc");
+
+    // Upserted into repo
+    const stored = await (repo as unknown as InMemoryRepo).getMany({ tickers: ["AAPL"] });
+    expect(stored.has("AAPL")).toBe(true);
+    expect(result.unknown).toEqual([]);
+  });
+
+  it("Finnhub dividend yield comes from /stock/metric as a fraction (percent / 100)", async () => {
+    process.env.FINNHUB_API_KEY = "test-key";
+
+    const repo = new InMemoryRepo();
+    const fetcher = async (url: string | URL | Request) => {
+      const u = String(url);
+      if (u.includes("/v1/test/getcrumb")) return new Response("test-crumb", { status: 200 });
+      if (u.includes("fc.yahoo.com"))
+        return new Response("", { status: 404, headers: { "set-cookie": "A1=test; Path=/" } });
+      if (u.includes("quoteSummary")) {
+        const body = { quoteSummary: { result: [], error: null } };
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (u.includes("/stock/profile2")) {
+        return finnhubProfileResponse("AAPL", { name: "Apple Inc", sector: "Technology" });
+      }
+      if (u.includes("/stock/metric")) {
+        // Finnhub reports the yield as a percent (1.5 = 1.5%).
+        return new Response(JSON.stringify({ metric: { dividendYieldIndicatedAnnual: 1.5 } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response("not found", { status: 404 });
+    };
+
+    const service = new LookupService({ repo: repo as never, fetcher });
+    const result = await service.lookup({ tickers: ["AAPL"] });
+
+    expect(result.profiles).toHaveLength(1);
+    expect(result.profiles[0]?.dividendYield).toBe("0.015000");
+  });
+
+  it("no key: Finnhub not called, unknown ticker stays unknown", async () => {
+    delete process.env.FINNHUB_API_KEY;
+
+    let finnhubCalled = false;
+    const repo = new InMemoryRepo();
+    const fetcher = async (url: string | URL | Request) => {
+      const u = String(url);
+      if (u.includes("finnhub.io")) finnhubCalled = true;
+      if (u.includes("/v1/test/getcrumb")) return new Response("test-crumb", { status: 200 });
+      if (u.includes("fc.yahoo.com"))
+        return new Response("", { status: 404, headers: { "set-cookie": "A1=test; Path=/" } });
+      if (u.includes("quoteSummary")) {
+        const body = { quoteSummary: { result: [], error: null } };
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response("not found", { status: 404 });
+    };
+
+    const service = new LookupService({ repo: repo as never, fetcher });
+    const result = await service.lookup({ tickers: ["MSFT"] });
+
+    expect(finnhubCalled).toBe(false);
+    expect(result.unknown).toEqual(["MSFT"]);
+  });
+
+  it("Yahoo empty + Finnhub 429: failure swallowed, ticker stays unknown", async () => {
+    process.env.FINNHUB_API_KEY = "test-key";
+
+    const repo = new InMemoryRepo();
+    const fetcher = async (url: string | URL | Request) => {
+      const u = String(url);
+      if (u.includes("/v1/test/getcrumb")) return new Response("test-crumb", { status: 200 });
+      if (u.includes("fc.yahoo.com"))
+        return new Response("", { status: 404, headers: { "set-cookie": "A1=test; Path=/" } });
+      if (u.includes("quoteSummary")) {
+        const body = { quoteSummary: { result: [], error: null } };
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (u.includes("finnhub.io")) return new Response("throttled", { status: 429 });
+      return new Response("not found", { status: 404 });
+    };
+
+    const service = new LookupService({ repo: repo as never, fetcher });
+    const result = await service.lookup({ tickers: ["AAPL"] });
+
+    expect(result.profiles).toEqual([]);
+    expect(result.unknown).toEqual(["AAPL"]);
+  });
+
+  it("Yahoo covers some, Finnhub fills the rest", async () => {
+    process.env.FINNHUB_API_KEY = "test-key";
+
+    const repo = new InMemoryRepo();
+    const msft = makeProfile("MSFT");
+
+    const fetcher = async (url: string | URL | Request) => {
+      const u = String(url);
+      if (u.includes("/v1/test/getcrumb")) return new Response("test-crumb", { status: 200 });
+      if (u.includes("fc.yahoo.com"))
+        return new Response("", { status: 404, headers: { "set-cookie": "A1=test; Path=/" } });
+      // Yahoo serves MSFT, leaves AAPL unknown
+      if (u.includes("quoteSummary") && u.includes("MSFT")) {
+        const body = {
+          quoteSummary: {
+            result: [
+              {
+                assetProfile: { sector: msft.sector },
+                summaryDetail: {},
+                quoteType: { longName: msft.displayName, quoteType: "EQUITY" },
+              },
+            ],
+            error: null,
+          },
+        };
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (u.includes("quoteSummary") && u.includes("AAPL")) {
+        const body = { quoteSummary: { result: [], error: null } };
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      // Finnhub fills AAPL; must NOT be called for MSFT
+      if (u.includes("finnhub.io") && u.includes("AAPL")) {
+        return finnhubProfileResponse("AAPL", {
+          name: "Apple Inc",
+          sector: "Technology",
+          country: "US",
+        });
+      }
+      if (u.includes("finnhub.io") && u.includes("MSFT")) {
+        throw new Error("Finnhub should not be called for a ticker Yahoo already returned");
+      }
+      return new Response("not found", { status: 404 });
+    };
+
+    const service = new LookupService({ repo: repo as never, fetcher });
+    const result = await service.lookup({ tickers: ["MSFT", "AAPL"] });
+
+    expect(result.unknown).toEqual([]);
+    expect(result.profiles.map((p) => p.ticker).sort()).toEqual(["AAPL", "MSFT"]);
+    expect(result.profiles.find((p) => p.ticker === "AAPL")?.sector).toBe("Technology");
+    expect(result.profiles.find((p) => p.ticker === "MSFT")?.sector).toBe("Technology");
   });
 });

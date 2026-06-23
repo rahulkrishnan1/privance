@@ -306,7 +306,7 @@ export default function SignupPage() {
         Forge your <em className="text-accent">vault.</em>
       </h1>
       <p className="text-center text-dim text-[14px] mt-[10px]">
-        Pick a username and a master password. We can never see, reset, or recover the password.
+        Pick a username and a master password.
       </p>
 
       {errors.banner === "network" && (
@@ -449,7 +449,7 @@ export default function SignupPage() {
             ].join(" ")}
           />
           <p className="font-mono text-[10px] text-faint tracking-[0.04em]">
-            invite&#8209;only while the hosted beta lasts &middot; self&#8209;hosters skip this
+            invite&#8209;only for now &middot; self&#8209;hosters skip this
           </p>
           {errors.inviteToken && (
             <p

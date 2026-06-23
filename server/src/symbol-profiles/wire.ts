@@ -3,24 +3,11 @@ import { HTTPException } from "hono/http-exception";
 import type { MiddlewareHandler } from "hono/types";
 import type { FeatureRouter } from "../core/app.js";
 import { db } from "../core/db.js";
-import { EnrichService } from "./enrich-service.js";
 import { LookupService } from "./lookup-service.js";
 import { SymbolProfileRepo } from "./repo.js";
-import { RateLimitedError, UpstreamUnavailableError } from "./types.js";
+import { UpstreamUnavailableError } from "./types.js";
 
 function errorToHttp(err: unknown): never {
-  if (err instanceof RateLimitedError) {
-    const retryAfterSec = Math.ceil(err.msRemaining / 1000);
-    throw new HTTPException(429, {
-      res: new Response(JSON.stringify({ error: err.code, ms_remaining: err.msRemaining }), {
-        status: 429,
-        headers: {
-          "Content-Type": "application/json",
-          "Retry-After": String(retryAfterSec),
-        },
-      }),
-    });
-  }
   if (err instanceof UpstreamUnavailableError) {
     throw new HTTPException(503, {
       res: new Response(JSON.stringify({ error: err.code }), {
@@ -62,11 +49,7 @@ function requireTickers(value: unknown): string[] {
   return value as string[];
 }
 
-function buildRouter(
-  sessionMiddleware: MiddlewareHandler,
-  lookupService: LookupService,
-  enrichService: EnrichService,
-): Hono {
+function buildRouter(sessionMiddleware: MiddlewareHandler, lookupService: LookupService): Hono {
   const router = new Hono();
   router.use("*", sessionMiddleware);
 
@@ -82,34 +65,16 @@ function buildRouter(
     }
   });
 
-  router.post("/refresh", async (c) => {
-    const userId = c.get("userId");
-    const body = await c.req.json<Record<string, unknown>>();
-    const tickers = requireTickers(body.tickers);
-
-    try {
-      const result = await enrichService.refresh({ userId, tickers });
-      return c.json(result);
-    } catch (err) {
-      errorToHttp(err);
-    }
-  });
-
   return router;
 }
 
 export function createFeatureRouter(
   sessionMiddleware: MiddlewareHandler,
   lookupService?: LookupService,
-  enrichService?: EnrichService,
 ): FeatureRouter {
   const repo = new SymbolProfileRepo(db);
   return {
     basePath: "/api/symbol-profiles",
-    router: buildRouter(
-      sessionMiddleware,
-      lookupService ?? new LookupService({ repo }),
-      enrichService ?? new EnrichService({ repo }),
-    ),
+    router: buildRouter(sessionMiddleware, lookupService ?? new LookupService({ repo })),
   };
 }

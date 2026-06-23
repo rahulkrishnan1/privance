@@ -6,15 +6,13 @@ type LogoProps = {
 };
 
 /**
- * Keyhole P mark. The P stroke takes `currentColor` so callers set it via text
- * color; the keyhole (circle + dropped triangle) stays Tide teal as the fixed
- * brand accent.
+ * Lock + bars mark. The padlock takes `currentColor` so callers set it via text
+ * color; the ascending bars stay Tide teal as the fixed brand accent.
  */
 export function Logo({ size = 32, className, "aria-hidden": ariaHidden }: LogoProps) {
   return (
     <svg
-      // Origin offset to (5,1): the mark's optical center is (37,33), not (32,32).
-      viewBox="5 1 64 64"
+      viewBox="12 10 136 136"
       width={size}
       height={size}
       role={ariaHidden ? undefined : "img"}
@@ -23,14 +21,25 @@ export function Logo({ size = 32, className, "aria-hidden": ariaHidden }: LogoPr
       className={className}
     >
       <path
-        d="M20 58 V8 H38 a16 16 0 0 1 0 32 H28"
+        d="M54 64 V42 a26 26 0 0 1 52 0 V64"
         fill="none"
         stroke="currentColor"
-        strokeWidth="6"
+        strokeWidth="7"
         strokeLinecap="round"
       />
-      <circle cx="38" cy="22" r="4.6" fill="#7FC4C6" />
-      <path d="M38 24 l-3.4 9.5 h6.8 Z" fill="#7FC4C6" />
+      <rect
+        x="30"
+        y="64"
+        width="100"
+        height="76"
+        rx="18"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="7"
+      />
+      <rect x="53.5" y="102" width="12.7" height="20.8" rx="3.2" fill="#7FC4C6" />
+      <rect x="73.6" y="92" width="12.7" height="30.8" rx="3.2" fill="#7FC4C6" />
+      <rect x="93.8" y="81.2" width="12.7" height="41.6" rx="3.2" fill="#7FC4C6" />
     </svg>
   );
 }
