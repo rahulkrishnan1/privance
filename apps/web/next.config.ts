@@ -2,9 +2,10 @@ import type { NextConfig } from "next";
 import pkg from "./package.json" with { type: "json" };
 
 const nextConfig: NextConfig = {
-  // Surface the package version to the client so Settings can show the real
-  // build without a hardcoded literal drifting out of date.
-  env: { NEXT_PUBLIC_APP_VERSION: pkg.version },
+  // Surface the build version to the client (Settings shows it). Release builds
+  // inject NEXT_PUBLIC_APP_VERSION from the git tag (the single source of truth);
+  // local/dev builds fall back to package.json so there's no manual bump to forget.
+  env: { NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION || pkg.version },
 
   // Static export so Capacitor can wrap the same bundle into iOS/Android shells.
   // Server-side rendering is incompatible with our zero-knowledge model

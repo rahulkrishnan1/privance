@@ -37,6 +37,12 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
+      # The tag is the single source of truth for the app version. Strip the
+      # leading "v" so the web build embeds the bare semver (the UI prepends "v").
+      - name: Compute app version from tag
+        id: ver
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
 
@@ -68,6 +74,8 @@ jobs:
           file: ${{ matrix.dockerfile }}
           push: true
           platforms: linux/amd64,linux/arm64
+          # Only the web image embeds the app version; other images ignore it.
+          build-args: ${{ matrix.name == 'privance-web' && format('NEXT_PUBLIC_APP_VERSION={0}', steps.ver.outputs.value) || '' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.name }}
