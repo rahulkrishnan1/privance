@@ -20,7 +20,7 @@
   "dependencies": {
     "@privance/core": "workspace:*",
     "drizzle-orm": "0.45.2",
-    "hono": "4.12.25",
+    "hono": "4.12.27",
     "pino": "10.3.1",
     "postgres": "3.4.9",
     "zod": "4.4.3"
