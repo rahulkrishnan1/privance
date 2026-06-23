@@ -35,7 +35,7 @@ jobs:
             dockerfile: infra/restic-runner/Dockerfile
 
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       # The tag is the single source of truth for the app version. Strip the
       # leading "v" so the web build embeds the bare semver (the UI prepends "v").
