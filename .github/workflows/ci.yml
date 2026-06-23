@@ -208,7 +208,7 @@ jobs:
     # Browsers + system deps are preinstalled, so CI never runs the apt-bound
     # `playwright install --with-deps` (it stalled the job). Pin to the
     # @playwright/test version; bump both together.
-    container: mcr.microsoft.com/playwright:v1.60.0-noble
+    container: mcr.microsoft.com/playwright:v1.61.0-noble
     timeout-minutes: 30
     needs: [lint, typecheck, test-unit-core, test-unit-web, test-unit-server]
     services:
