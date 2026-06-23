@@ -19,7 +19,13 @@ jobs:
   build-push:
     name: Build and push ${{ matrix.name }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # arm64 is built via QEMU emulation. A normal release reuses the cached
+    # arm64 dependency layer (1-8 min), but a release that follows a full
+    # lockfile change rebuilds it cold under emulation, which can exceed an
+    # hour. Generous headroom so a cold build completes and re-warms the cache;
+    # the native-arm64-runner migration (tracked separately) removes the
+    # emulation and makes this moot.
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
