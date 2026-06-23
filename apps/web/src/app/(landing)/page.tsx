@@ -172,7 +172,7 @@ function Hero() {
             className="font-mono text-[12px] tracking-[0.14em] uppercase font-medium bg-accent text-vault no-underline px-[30px] py-[17px] rounded-[7px] hover:bg-cream inline-block"
             style={{ transition: "transform .15s, background .2s" }}
           >
-            Sign up
+            Have an invite?
           </a>
           <a
             href="#deploy"
@@ -587,7 +587,7 @@ function Deploy() {
             Two ways in
           </p>
           <h2
-            className="font-serif font-normal leading-[1.03] tracking-[-0.015em] mt-[14px] max-w-[20ch]"
+            className="font-serif font-normal leading-[1.03] tracking-[-0.015em] mt-[14px] max-w-[20ch] md:max-w-none"
             style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
           >
             Run it on our box, <em className="text-accent">or your own.</em>
@@ -596,7 +596,7 @@ function Deploy() {
         <div className="grid grid-cols-2 gap-4 max-[880px]:grid-cols-1">
           <div className="border border-line rounded-[12px] px-[30px] py-[30px] bg-panel relative">
             <span className="absolute top-5 right-[22px] font-mono text-[14px] tracking-[0.18em] text-accent">
-              RECOMMENDED
+              INVITE&#8209;ONLY
             </span>
             <h3 className="font-serif font-normal text-[26px] tracking-[-0.01em] mt-[26px]">
               privance.app
@@ -609,7 +609,7 @@ function Deploy() {
               href="/auth/signup/"
               className="font-mono text-[12px] tracking-[0.14em] uppercase font-medium bg-accent text-vault no-underline px-[30px] py-[17px] rounded-[7px] hover:bg-cream transition-colors inline-block mt-[26px]"
             >
-              Create your vault
+              Have an invite?
             </a>
           </div>
           <div className="border border-line rounded-[12px] px-[30px] py-[30px] bg-panel relative">

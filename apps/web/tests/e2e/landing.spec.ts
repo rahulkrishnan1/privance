@@ -16,14 +16,14 @@ test.describe("landing page", () => {
     await expect(page).toHaveURL("/");
 
     await expect(page.getByRole("heading", { name: /Personal finance/ }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: /Sign up/i }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: /Have an invite/i }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Sign in" }).first()).toBeVisible();
   });
 
-  test("Sign up CTA navigates to /auth/signup", async ({ page }) => {
+  test("invite CTA navigates to /auth/signup", async ({ page }) => {
     await page.goto("/");
     await page
-      .getByRole("link", { name: /Sign up/i })
+      .getByRole("link", { name: /Have an invite/i })
       .first()
       .click();
     await expect(page).toHaveURL(/\/auth\/signup/, { timeout: 10_000 });

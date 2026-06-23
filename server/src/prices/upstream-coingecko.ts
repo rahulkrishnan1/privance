@@ -36,10 +36,15 @@ export async function fetchCoinGeckoPrices(
   let res: Response;
   try {
     // The server proxies the call so the user's IP never reaches the upstream.
-    // CoinGecko's free tier accepts unauthenticated requests without a UA.
+    // The Demo API key header is added when the env var is set; omitted otherwise.
+    const apiKey = process.env.COINGECKO_API_KEY?.trim() || undefined;
+    const headers: Record<string, string> = { Accept: "application/json" };
+    if (apiKey !== undefined) {
+      headers["x-cg-demo-api-key"] = apiKey;
+    }
     res = await fetcher(COINGECKO_PRICE_URL(ids.join(",")), {
       signal: controller.signal,
-      headers: { Accept: "application/json" },
+      headers,
     });
   } catch (err) {
     clearTimeout(timeoutId);

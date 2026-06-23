@@ -16,8 +16,8 @@ See [ARCHITECTURE.md](../ARCHITECTURE.md) for the full server design and
 | `src/auth/` | Signup, login, recovery, password-change, sessions, rate limiting |
 | `src/auth/rate-limit.ts` | Sliding-window + progressive backoff counters (in-memory) |
 | `src/account/` | Account destruction: verified cascade-delete of all per-user data |
-| `src/prices/` | Public market-price refresh with Postgres cache (Yahoo + CoinGecko) |
-| `src/symbol-profiles/` | Symbol metadata + sector weightings (Yahoo upstream, Postgres cache) |
+| `src/prices/` | Public market-price refresh with Postgres cache (Yahoo + CoinGecko, optional Finnhub failover) |
+| `src/symbol-profiles/` | Symbol metadata + sector weightings (Yahoo upstream + optional Finnhub failover, Postgres cache) |
 | `src/sync/` | Encrypted blob CRUD + change-feed endpoint |
 | `drizzle/` | Migration SQL files |
 
@@ -54,6 +54,8 @@ bun run typecheck
 | `PRIVANCE_SECRETS_DIR` | No | Directory to read `postgres_password` secret file from (Docker secrets pattern) |
 | `PRICE_PROVIDER` | No | Set to `fake` to use deterministic in-process prices instead of hitting Yahoo / CoinGecko. Used in E2E and local dev. |
 | `PRICE_FAKE_UNKNOWN` | No | Comma-separated tickers the fake upstream treats as unknown (no price returned). Only meaningful when `PRICE_PROVIDER=fake`. Used in E2E to exercise the proxy-failure path without touching real upstream quotas. |
+| `FINNHUB_API_KEY` | No | Failover source for stock/ETF prices and profiles when Yahoo is unavailable. Free key at finnhub.io; unset = Yahoo only. |
+| `COINGECKO_API_KEY` | No | CoinGecko Demo key for higher crypto-price rate limits. Free at coingecko.com/en/api; unset = keyless tier. |
 
 ## Module template
 

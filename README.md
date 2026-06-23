@@ -49,7 +49,7 @@ The code is open and the cryptography is standard, so you never have to take our
 
 ## Try it
 
-- **Hosted.** Sign up at [privance.app](https://privance.app). We run the servers and keep the backups; everything we store is encrypted, and we hold no key to read it.
+- **Hosted.** Sign up at [privance.app](https://privance.app) (invite-only). We run the servers and keep the backups; everything we store is encrypted, and we hold no key to read it.
 - **Local, one command.** Build and run the whole stack on your machine:
   ```sh
   git clone https://github.com/rahulkrishnan1/privance.git
@@ -62,7 +62,7 @@ The code is open and the cryptography is standard, so you never have to take our
 
 One server container, one Postgres, one Caddy for automatic TLS. A small VPS or even a Raspberry Pi will do. Public images ship from GHCR (`ghcr.io/rahulkrishnan1/privance-{server,web,restic-runner}`), so there is nothing to build; bring a Linux host with Docker and a domain with A + AAAA records.
 
-The full procedure (TLS, secrets, encrypted offsite backups, invite-only signup) is in [`infra/README.md`](infra/README.md); the rationale is in [`docs/adr/0002-deployment.md`](docs/adr/0002-deployment.md).
+The full procedure (TLS, secrets, encrypted offsite backups, invite-only signup) is in [`infra/README.md`](infra/README.md).
 
 ## Development
 
