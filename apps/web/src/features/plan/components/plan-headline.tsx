@@ -29,20 +29,18 @@ function Progress({ potCents, fireNumber }: { potCents: Decimal; fireNumber: Dec
     <div className="mt-6 max-w-[680px]">
       <div className="flex items-end justify-between gap-3">
         <span className="flex flex-col gap-[3px]">
-          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-faint">Today</span>
-          <span className="vfig font-mono text-[13px] tabular-nums" data-testid="starting-pot">
+          <span className="font-mono text-xs uppercase tracking-label text-faint">Today</span>
+          <span className="vfig font-mono text-sm tabular-nums" data-testid="starting-pot">
             {formatCurrencyWhole(potCents)}
           </span>
         </span>
-        <span className="self-center font-mono text-[10px] uppercase tracking-[0.1em] text-accent max-[560px]:hidden">
+        <span className="self-center font-mono text-xs uppercase tracking-label text-accent max-[560px]:hidden">
           {pctLabel}% of the way
         </span>
         <span className="flex flex-col items-end gap-[3px] text-right">
-          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-faint">
-            FI number
-          </span>
+          <span className="font-mono text-xs uppercase tracking-label text-faint">FI number</span>
           <span
-            className="vfig font-mono text-[13px] tabular-nums text-accent"
+            className="vfig font-mono text-sm tabular-nums text-accent"
             data-testid="fire-number"
           >
             {formatCurrencyWhole(fireNumber)}
@@ -94,7 +92,7 @@ function Confidence({
             aria-pressed={method === m}
             onClick={() => onMethodChange(m)}
             className={[
-              "rounded-md px-3.5 py-[7px] font-mono text-[10px] uppercase tracking-[0.1em] transition-colors cursor-pointer",
+              "rounded-md px-3.5 py-[7px] font-mono text-xs uppercase tracking-button transition-colors cursor-pointer",
               method === m ? "bg-panel-2 text-cream" : "text-faint hover:text-cream",
             ].join(" ")}
           >
@@ -108,7 +106,7 @@ function Confidence({
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="font-mono text-[11.5px] tracking-[0.04em] text-dim" aria-live="polite">
+      <span className="font-mono text-xs tracking-[0.04em] text-dim" aria-live="polite">
         <strong className="font-medium text-accent" data-testid="confidence-rate">
           {pct}%
         </strong>{" "}
@@ -121,7 +119,7 @@ function Confidence({
 }
 
 const H1 =
-  "font-serif font-normal text-[clamp(38px,5.6vw,62px)] leading-[1.04] tracking-[-0.015em] max-w-[21ch]";
+  "font-serif font-normal text-[clamp(38px,5.6vw,62px)] leading-[1.04] tracking-[-0.015em]";
 
 export function PlanHeadline({
   state,
@@ -137,10 +135,10 @@ export function PlanHeadline({
 }: PlanHeadlineProps) {
   return (
     <section aria-live="polite" aria-atomic="true">
-      <p className="font-mono text-[10px] uppercase tracking-[0.26em] text-faint">The plan</p>
+      <p className="font-mono text-xs uppercase tracking-label text-faint">The plan</p>
 
       {state === "normal" && (
-        <h1 className={`${H1} mt-3.5`}>
+        <h1 className={`${H1} mt-3.5 max-w-[21ch]`}>
           Independent by{" "}
           <em className="text-accent" data-testid="fire-year">
             {fireYear}
@@ -166,7 +164,7 @@ export function PlanHeadline({
       <Progress potCents={potCents} fireNumber={fireNumber} />
 
       {state === "neverFi" ? (
-        <p className="mt-6 text-[13px] text-cream-soft">
+        <p className="mt-6 text-sm text-cream-soft">
           Short of your <span className="vfig font-medium">{formatCurrencyWhole(fireNumber)}</span>{" "}
           target. Raising contributions or trimming spend closes the gap.
         </p>

@@ -77,7 +77,7 @@ export function DestroyDialog({
       className="border-[rgba(208,133,98,0.4)]"
     >
       <DialogHeader title="Destroy vault" titleId="destroy-title" onClose={handleClose} danger />
-      <p className="text-[13.5px] leading-[1.6] text-cream-soft">
+      <p className="text-sm leading-[1.6] text-cream-soft">
         Every ciphertext record is erased from the server and this device. There is no backup, no
         grace period, no undo. This is the whole point of Privance, which is why we make you type
         it.
@@ -116,7 +116,7 @@ export function DestroyDialog({
         </div>
 
         {error && (
-          <p role="alert" className="mt-4 font-mono text-[12px] text-signal">
+          <p role="alert" className="mt-4 font-mono text-xs text-signal">
             {error}
           </p>
         )}

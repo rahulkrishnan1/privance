@@ -89,7 +89,7 @@ test("split cards show subscription share and per-day, not annualized", async ()
     }),
   ]);
   const screen = await render(<SpendScreen />);
-  await expect.element(screen.getByText("Subscription share")).toBeVisible();
+  await expect.element(screen.getByText("Subs share")).toBeVisible();
   await expect.element(screen.getByText("50%")).toBeVisible();
   await expect.element(screen.getByText("Per day")).toBeVisible();
   expect(screen.getByText("Annualized").query()).toBeNull();

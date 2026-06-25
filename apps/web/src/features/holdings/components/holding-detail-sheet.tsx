@@ -145,14 +145,14 @@ export function HoldingDetailSheet({
     <Modal open onClose={onClose} variant="sheet">
       <div className="flex justify-between items-start">
         <div>
-          <p className="font-mono text-[16px] text-cream tracking-[.08em]">{holding.ticker}</p>
+          <p className="font-mono text-base text-cream tracking-[.08em]">{holding.ticker}</p>
           {holding.proxyTicker ? (
-            <p className="font-mono text-[12.5px] text-dim tracking-[.04em] mt-1.5">
+            <p className="font-mono text-sm text-dim tracking-[.04em] mt-1.5">
               Proxy &middot; {holding.proxyTicker}
             </p>
           ) : (
             holding.name !== undefined && (
-              <h3 className="font-serif text-[25px] font-light tracking-[-0.01em] mt-1">
+              <h3 className="font-serif text-3xl font-light tracking-[-0.01em] mt-1">
                 {holding.name}
               </h3>
             )
@@ -162,7 +162,7 @@ export function HoldingDetailSheet({
           type="button"
           onClick={onClose}
           aria-label="Close holding details"
-          className="text-faint hover:text-cream text-[18px] leading-none p-1 cursor-pointer"
+          className="text-faint hover:text-cream text-lg leading-none p-1 cursor-pointer"
         >
           <X size={18} />
         </button>
@@ -171,16 +171,16 @@ export function HoldingDetailSheet({
       {marketValue !== null ? (
         <p
           data-testid="holding-detail-value"
-          className="vfig font-serif text-[38px] mt-4 tracking-[-0.01em]"
+          className="vfig font-serif text-5xl mt-4 tracking-[-0.01em]"
         >
           {formatCurrency(marketValue, "USD")}
         </p>
       ) : (
-        <p className="font-mono text-[12px] text-faint mt-4">no price, set one</p>
+        <p className="font-mono text-xs text-faint mt-4">no price, set one</p>
       )}
 
       {unrealizedGain !== null && (
-        <p className={`font-mono text-[11px] mt-1.5 ${gainTone}`}>
+        <p className={`font-mono text-xs mt-1.5 ${gainTone}`}>
           {unrealizedGain.isNegative() ? "" : "+"}
           {formatCurrency(unrealizedGain, "USD")} unrealized
           {unrealizedPct !== null &&
@@ -188,27 +188,25 @@ export function HoldingDetailSheet({
         </p>
       )}
 
-      <p className="font-mono text-[9px] tracking-[.2em] uppercase text-faint mt-6 mb-1.5">
-        Position
-      </p>
+      <p className="font-mono text-xs tracking-label uppercase text-faint mt-6 mb-1.5">Position</p>
 
-      <div className="flex justify-between py-2 border-b border-line-soft text-[13px]">
+      <div className="flex justify-between py-2 border-b border-line-soft text-sm">
         <span className="text-dim">Quantity</span>
-        <span className="vfig font-mono text-[13px] tabular-nums">
+        <span className="vfig font-mono text-sm tabular-nums">
           {formatShares(holding.sharesMajor, holding.sharesScale)}
         </span>
       </div>
 
-      <div className="flex justify-between py-2 border-b border-line-soft text-[13px]">
+      <div className="flex justify-between py-2 border-b border-line-soft text-sm">
         <span className="text-dim">Price</span>
-        <span className="font-mono text-[13px] tabular-nums">
+        <span className="font-mono text-sm tabular-nums">
           {effectivePrice ? formatPrice(effectivePrice) : "-"}
         </span>
       </div>
 
-      <div className="flex justify-between py-2 border-b border-line-soft text-[13px]">
+      <div className="flex justify-between py-2 border-b border-line-soft text-sm">
         <span className="text-dim">Day</span>
-        <span className={`font-mono text-[13px] tabular-nums ${dayTone}`}>
+        <span className={`font-mono text-sm tabular-nums ${dayTone}`}>
           {dayChangeCents === null ? (
             "-"
           ) : (
@@ -223,39 +221,39 @@ export function HoldingDetailSheet({
         </span>
       </div>
 
-      <div className="flex justify-between py-2 border-b border-line-soft text-[13px]">
+      <div className="flex justify-between py-2 border-b border-line-soft text-sm">
         <span className="text-dim">Avg cost basis</span>
-        <span className="vfig font-mono text-[13px] tabular-nums">
+        <span className="vfig font-mono text-sm tabular-nums">
           {avgCostBasis !== null
             ? avgCostBasis.toLocaleString("en-US", { style: "currency", currency: "USD" })
             : "-"}
         </span>
       </div>
 
-      <div className="flex justify-between py-2 border-b border-line-soft text-[13px]">
+      <div className="flex justify-between py-2 border-b border-line-soft text-sm">
         <span className="text-dim">Total cost basis</span>
-        <span className="vfig font-mono text-[13px] tabular-nums">
+        <span className="vfig font-mono text-sm tabular-nums">
           {costBasis !== null ? formatCurrency(costBasis, "USD") : "-"}
         </span>
       </div>
 
-      <div className="flex justify-between py-2 border-b border-line-soft text-[13px]">
+      <div className="flex justify-between py-2 border-b border-line-soft text-sm">
         <span className="text-dim">Portfolio weight</span>
-        <span className="font-mono text-[13px] tabular-nums">
+        <span className="font-mono text-sm tabular-nums">
           {weightPct !== null ? `${weightPct.toFixed(1)}%` : "-"}
         </span>
       </div>
 
-      <div className="flex justify-between py-2 border-b border-line-soft text-[13px]">
+      <div className="flex justify-between py-2 border-b border-line-soft text-sm">
         <span className="text-dim">Account</span>
-        <span className="text-[13px] text-cream-soft">{accountName}</span>
+        <span className="text-sm text-cream-soft">{accountName}</span>
       </div>
 
       <div className="flex gap-2.5 mt-6">
         <button
           type="button"
           onClick={() => onEdit(holding)}
-          className="flex-1 font-mono text-[11px] tracking-[.14em] uppercase text-dim border border-line rounded-lg py-3.5 cursor-pointer hover:text-cream transition-colors"
+          className="flex-1 font-mono text-xs tracking-button uppercase text-dim border border-line rounded-lg py-3.5 cursor-pointer hover:text-cream transition-colors"
         >
           Edit holding
         </button>
@@ -264,7 +262,7 @@ export function HoldingDetailSheet({
           onClick={() => void handleDelete()}
           disabled={deleting}
           className={[
-            "font-mono text-[11px] tracking-[.14em] uppercase rounded-lg py-3.5 px-4 cursor-pointer border transition-colors",
+            "font-mono text-xs tracking-button uppercase rounded-lg py-3.5 px-4 cursor-pointer border transition-colors",
             deleteArmed
               ? "text-vault bg-down border-down"
               : "text-down border-down/35 hover:bg-down/8",

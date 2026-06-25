@@ -32,7 +32,7 @@ function NavBar() {
             e.preventDefault();
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
-          className="flex items-center gap-[10px] no-underline font-serif text-[23px] text-cream"
+          className="flex items-center gap-[10px] no-underline font-serif text-2xl text-cream"
           aria-label="Privance"
         >
           <Logo size={26} className="text-cream flex-none" aria-hidden={true} />
@@ -44,7 +44,7 @@ function NavBar() {
             <a
               key={l.href}
               href={l.href}
-              className="font-mono text-[11px] tracking-[0.16em] uppercase text-dim hover:text-accent transition-colors no-underline"
+              className="font-mono text-xs tracking-button uppercase text-dim hover:text-accent transition-colors no-underline"
             >
               {l.label}
             </a>
@@ -53,7 +53,7 @@ function NavBar() {
 
         <Link
           href="/auth/login"
-          className="font-mono text-[11px] tracking-[0.12em] uppercase font-medium bg-accent text-vault no-underline px-5 py-[11px] rounded-[6px] hover:bg-cream transition-colors max-[560px]:px-[14px] max-[560px]:py-[10px] max-[560px]:text-[10px] max-[560px]:whitespace-nowrap"
+          className="font-mono text-xs tracking-button uppercase font-medium bg-accent text-vault no-underline px-5 py-[11px] rounded-[6px] hover:bg-cream transition-colors max-[560px]:px-[14px] max-[560px]:py-[10px] max-[560px]:text-xs max-[560px]:whitespace-nowrap"
         >
           Sign in
         </Link>
@@ -116,14 +116,14 @@ function ScrambleWidget() {
       }}
     >
       <span
-        className={`font-mono text-[9.5px] tracking-[0.22em] uppercase text-left flex-none w-[160px] whitespace-nowrap transition-colors duration-[400ms] ${
+        className={`font-mono text-xs tracking-label uppercase text-left flex-none w-[160px] whitespace-nowrap transition-colors duration-[400ms] ${
           youSide ? "text-accent" : "text-faint"
         }`}
       >
         {who}
       </span>
       <span
-        className="font-mono tabular-nums text-cream text-right overflow-hidden whitespace-nowrap max-[560px]:text-left max-[560px]:text-[14px]"
+        className="font-mono tabular-nums text-cream text-right overflow-hidden whitespace-nowrap max-[560px]:text-left"
         style={{ fontSize: "clamp(15px, 2.6vw, 22px)" }}
       >
         {val}
@@ -142,7 +142,7 @@ function Hero() {
       }}
     >
       <div className="max-w-[1160px] mx-auto px-8">
-        <p className="reveal-up font-mono text-[10.5px] tracking-[0.26em] uppercase text-accent-dim whitespace-nowrap max-[480px]:text-[9px] max-[480px]:tracking-[0.18em]">
+        <p className="reveal-up font-mono text-xs tracking-label uppercase text-accent-dim whitespace-nowrap max-[480px]:text-xs max-[480px]:tracking-[0.18em]">
           Open source &middot; zero&#8209;knowledge &middot; yours
         </p>
         <h1
@@ -157,7 +157,7 @@ function Hero() {
           <em className="text-accent">kept personal.</em>
         </h1>
         <p
-          className="reveal-up mt-[22px] mx-auto max-w-[52ch] text-[17.5px] text-dim leading-[1.65]"
+          className="reveal-up mt-[22px] mx-auto max-w-[52ch] text-lg text-dim leading-[1.65]"
           style={{ animationDelay: "0.22s" }}
         >
           Privance is a full command center for your money. Everything is encrypted in your browser
@@ -169,14 +169,14 @@ function Hero() {
         >
           <a
             href="/auth/signup/"
-            className="font-mono text-[12px] tracking-[0.14em] uppercase font-medium bg-accent text-vault no-underline px-[30px] py-[17px] rounded-[7px] hover:bg-cream inline-block"
+            className="font-mono text-xs tracking-button uppercase font-medium bg-accent text-vault no-underline px-[30px] py-[17px] rounded-[7px] hover:bg-cream inline-block"
             style={{ transition: "transform .15s, background .2s" }}
           >
             Have an invite?
           </a>
           <a
             href="#deploy"
-            className="font-mono text-[12px] tracking-[0.14em] uppercase text-cream-soft no-underline px-[26px] py-[17px] border border-line rounded-[7px] hover:border-accent-dim hover:text-accent transition-colors inline-block"
+            className="font-mono text-xs tracking-button uppercase text-cream-soft no-underline px-[26px] py-[17px] border border-line rounded-[7px] hover:border-accent-dim hover:text-accent transition-colors inline-block"
           >
             Self&#8209;host instead
           </a>
@@ -207,7 +207,7 @@ function AppFrame() {
           <span className="w-[9px] h-[9px] rounded-full bg-[rgba(235,235,230,.12)]" />
           <span className="w-[9px] h-[9px] rounded-full bg-[rgba(235,235,230,.12)]" />
           <span className="w-[9px] h-[9px] rounded-full bg-[rgba(235,235,230,.12)]" />
-          <span className="mx-auto font-mono text-[10.5px] text-faint tracking-[0.06em] border border-line-soft rounded-[6px] px-[14px] py-[5px] flex items-center gap-[7px]">
+          <span className="mx-auto font-mono text-xs text-faint tracking-[0.06em] border border-line-soft rounded-[6px] px-[14px] py-[5px] flex items-center gap-[7px]">
             <svg
               width="10"
               height="10"
@@ -229,13 +229,13 @@ function AppFrame() {
         >
           <div className="flex justify-between items-end flex-wrap gap-4">
             <div>
-              <p className="font-mono text-[9.5px] tracking-[0.24em] uppercase text-faint">
+              <p className="font-mono text-xs tracking-[0.24em] uppercase text-faint">
                 Net worth &middot; today
               </p>
               <p className="vfig font-serif text-[clamp(40px,6vw,62px)] leading-none mt-[10px] tracking-[-0.01em] transition-[filter,opacity] duration-[450ms]">
                 $1,248,392
               </p>
-              <p className="vfig font-mono text-[12px] text-up mt-[9px] transition-[filter,opacity] duration-[450ms]">
+              <p className="vfig font-mono text-sm text-up mt-[9px] transition-[filter,opacity] duration-[450ms]">
                 &#9650; $23,847 <span className="text-faint">&middot; 1.9% &middot; 30 days</span>
               </p>
             </div>
@@ -244,7 +244,7 @@ function AppFrame() {
               aria-pressed={veiled}
               onClick={() => setVeiled((v) => !v)}
               className={[
-                "flex items-center gap-2 border rounded-full px-4 py-2 font-mono text-[10px] tracking-[0.16em] uppercase cursor-pointer transition-colors",
+                "flex items-center gap-2 border rounded-full px-4 py-2 font-mono text-xs tracking-button uppercase cursor-pointer transition-colors",
                 veiled
                   ? "text-accent border-accent-dim bg-[rgba(127,196,198,.08)]"
                   : "text-dim border-line hover:text-accent hover:border-accent-dim",
@@ -302,18 +302,18 @@ function AppFrame() {
                   key={tk}
                   className="flex justify-between items-baseline py-3 border-b border-line-soft last:border-b-0"
                 >
-                  <span className="font-mono text-[11.5px] text-accent tracking-[0.06em] w-[52px] flex-none">
+                  <span className="font-mono text-xs text-accent tracking-[0.06em] w-[52px] flex-none">
                     {tk}
                   </span>
-                  <span className="flex-1 text-[13px] text-cream-soft text-left">{nm}</span>
-                  <span className="vfig font-mono text-[12.5px] transition-[filter,opacity] duration-[450ms]">
+                  <span className="flex-1 text-sm text-cream-soft text-left">{nm}</span>
+                  <span className="vfig font-mono text-sm transition-[filter,opacity] duration-[450ms]">
                     {v}
                   </span>
                 </div>
               ))}
             </div>
             <div>
-              <p className="font-mono text-[9.5px] tracking-[0.24em] uppercase text-faint mt-3">
+              <p className="font-mono text-xs tracking-[0.24em] uppercase text-faint mt-3">
                 Allocation
               </p>
               <div className="flex h-[7px] rounded-full overflow-hidden mt-[14px]">
@@ -331,27 +331,27 @@ function AppFrame() {
                 ].map(([color, label]) => (
                   <span
                     key={label}
-                    className="font-mono text-[9.5px] tracking-[0.1em] uppercase text-faint flex gap-[7px] items-center"
+                    className="font-mono text-xs tracking-label uppercase text-faint flex gap-[7px] items-center"
                   >
                     <span className="w-2 h-2 rounded-[2px]" style={{ background: color }} />
                     {label}
                   </span>
                 ))}
               </div>
-              <p className="font-mono text-[9.5px] tracking-[0.24em] uppercase text-faint mt-[26px]">
+              <p className="font-mono text-xs tracking-[0.24em] uppercase text-faint mt-[26px]">
                 Plan
               </p>
-              <p className="font-serif text-[19px] mt-2">
+              <p className="font-serif text-xl mt-2">
                 Independent by <em className="text-accent">2041</em>
               </p>
-              <p className="font-mono text-[10.5px] text-faint mt-[5px]">
+              <p className="font-mono text-xs text-faint mt-[5px]">
                 84% of 1,000 simulated futures
               </p>
             </div>
           </div>
         </div>
       </div>
-      <div className="flex justify-end mt-[18px] font-mono text-[9.5px] tracking-[0.16em] uppercase text-faint flex-wrap gap-2">
+      <div className="flex justify-end mt-[18px] font-mono text-xs tracking-label uppercase text-faint flex-wrap gap-2">
         <span className={`text-accent transition-opacity ${veiled ? "opacity-0" : ""}`}>
           &#9650; tap the veil, numbers off, shape on
         </span>
@@ -377,7 +377,7 @@ function CipherBelt() {
       style={{ background: "#121317" }}
     >
       <span
-        className="absolute left-0 top-0 bottom-0 z-[2] flex items-center font-mono text-[10px] tracking-[0.22em] uppercase text-accent"
+        className="absolute left-0 top-0 bottom-0 z-[2] flex items-center font-mono text-xs tracking-label uppercase text-accent"
         style={{
           padding: "0 22px 0 32px",
           background: "linear-gradient(to right, #121317 72%, transparent)",
@@ -390,7 +390,7 @@ function CipherBelt() {
           <span
             // biome-ignore lint/suspicious/noArrayIndexKey: static decorative marquee, never reordered
             key={i}
-            className="font-mono text-[12px] text-faint whitespace-nowrap pr-12"
+            className="font-mono text-sm text-faint whitespace-nowrap pr-12"
           >
             {chunk}
           </span>
@@ -433,9 +433,7 @@ function Tenets() {
     <section id="tenets" className="py-12">
       <div className="max-w-[1160px] mx-auto px-8">
         <div className="mb-9">
-          <p className="font-mono text-[10.5px] tracking-[0.26em] uppercase text-accent-dim">
-            Three tenets
-          </p>
+          <p className="font-mono text-xs tracking-label uppercase text-accent-dim">Three tenets</p>
           <h2
             className="font-serif font-normal leading-[1.03] tracking-[-0.015em] mt-[14px] max-w-[20ch]"
             style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
@@ -450,20 +448,20 @@ function Tenets() {
               key={t.idx}
               className="border border-line rounded-[12px] px-[30px] py-[34px] bg-panel relative group transition-[transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-[rgba(127,196,198,.35)]"
             >
-              <span className="absolute top-5 right-[22px] font-serif italic text-[18px] text-faint">
+              <span className="absolute top-5 right-[22px] font-serif italic text-lg text-faint">
                 {t.idx}
               </span>
               <div
-                className="w-[52px] h-[52px] border border-accent-dim rounded-full flex items-center justify-center text-accent font-mono text-[7.5px] tracking-[0.12em] relative mb-[26px]"
+                className="w-[52px] h-[52px] border border-accent-dim rounded-full flex items-center justify-center text-accent font-mono text-xs tracking-[0.12em] relative mb-[26px]"
                 style={{ transform: "rotate(-8deg)" }}
               >
                 <span className="absolute inset-[4px] border border-dashed border-[rgba(127,196,198,.35)] rounded-full" />
                 {t.seal}
               </div>
-              <h3 className="font-serif font-normal text-[26px] tracking-[-0.01em] leading-[1.12]">
+              <h3 className="font-serif font-normal text-3xl tracking-[-0.01em] leading-[1.12]">
                 {t.title} <em className="text-accent">{t.titleEm}</em> {t.titleSuffix}
               </h3>
-              <p className="mt-3 text-[14px] text-dim max-w-[36ch] leading-[1.6]">{t.body}</p>
+              <p className="mt-3 text-sm text-dim max-w-[36ch] leading-[1.6]">{t.body}</p>
             </div>
           ))}
         </div>
@@ -482,27 +480,25 @@ function Protocol() {
       />
       <div className="max-w-[1160px] mx-auto px-8 grid gap-12 items-start grid-cols-[.9fr_1.1fr] max-[920px]:grid-cols-1 max-[920px]:gap-11">
         <div>
-          <p className="font-mono text-[10.5px] tracking-[0.26em] uppercase text-accent-dim">
-            The protocol
-          </p>
+          <p className="font-mono text-xs tracking-label uppercase text-accent-dim">The protocol</p>
           <h2
             className="font-serif font-normal leading-[1.05] tracking-[-0.015em] mt-[14px]"
             style={{ fontSize: "clamp(34px, 4.6vw, 54px)" }}
           >
             Built so we <em className="text-accent">couldn&rsquo;t peek</em> even if subpoenaed.
           </h2>
-          <p className="mt-[18px] text-dim text-[15px] max-w-[40ch] leading-[1.65]">
+          <p className="mt-[18px] text-dim text-base max-w-[40ch] leading-[1.65]">
             Not a privacy policy. A key schedule. The math is public, the code is open, and the
             server&rsquo;s ignorance is provable from both.
           </p>
           <div className="mt-[34px]">
             <code
-              className="block font-mono text-[12.5px] text-accent border border-[rgba(127,196,198,.2)] rounded-[8px] px-[18px] py-[13px]"
+              className="block font-mono text-sm text-accent border border-[rgba(127,196,198,.2)] rounded-[8px] px-[18px] py-[13px]"
               style={{ background: "rgba(127,196,198,.06)" }}
             >
               github.com/rahulkrishnan1/privance
             </code>
-            <span className="block mt-[10px] font-mono text-[10px] tracking-[0.14em] uppercase text-faint">
+            <span className="block mt-[10px] font-mono text-xs tracking-label uppercase text-faint">
               audit it, fork it, run it
             </span>
           </div>
@@ -535,23 +531,23 @@ function Protocol() {
                   className="absolute left-10 bottom-[-15px] w-px h-[15px] bg-accent-dim opacity-50"
                 />
               )}
-              <span className="font-serif italic text-[26px] text-accent flex-none w-[34px] opacity-90">
+              <span className="font-serif italic text-3xl text-accent flex-none w-[34px] opacity-90">
                 {step.n}
               </span>
               <div>
-                <h4 className="font-mono text-[11.5px] tracking-[0.18em] uppercase text-cream">
+                <h4 className="font-mono text-xs tracking-label uppercase text-cream">
                   {step.title}
                 </h4>
-                <p className="mt-[7px] text-[13.5px] text-dim leading-[1.6]">{step.body}</p>
+                <p className="mt-[7px] text-sm text-dim leading-[1.6]">{step.body}</p>
               </div>
             </div>
           ))}
           <div className="grid grid-cols-2 gap-[14px] mt-[22px] max-[560px]:grid-cols-1">
             <div className="rounded-[11px] px-[22px] py-5 border border-[rgba(127,196,198,.3)] bg-[rgba(127,196,198,.05)]">
-              <span className="font-mono text-[9px] tracking-[0.2em] uppercase text-accent">
+              <span className="font-mono text-xs tracking-label uppercase text-accent">
                 Server holds
               </span>
-              <p className="font-mono text-[12.5px] mt-[9px] text-cream-soft leading-[1.7]">
+              <p className="font-mono text-sm mt-[9px] text-cream-soft leading-[1.7]">
                 auth verifier
                 <br />
                 ciphertext blobs
@@ -560,10 +556,10 @@ function Protocol() {
               </p>
             </div>
             <div className="rounded-[11px] px-[22px] py-5 border border-line">
-              <span className="font-mono text-[9px] tracking-[0.2em] uppercase text-faint">
+              <span className="font-mono text-xs tracking-label uppercase text-faint">
                 Server never holds
               </span>
-              <p className="font-mono text-[12.5px] mt-[9px] text-cream-soft leading-[1.7]">
+              <p className="font-mono text-sm mt-[9px] text-cream-soft leading-[1.7]">
                 <s className="text-faint no-underline line-through">passwords</s>
                 <br />
                 <s className="text-faint no-underline line-through">encryption keys</s>
@@ -583,9 +579,7 @@ function Deploy() {
     <section id="deploy" className="py-12 border-t border-line-soft">
       <div className="max-w-[1160px] mx-auto px-8">
         <div className="mb-9">
-          <p className="font-mono text-[10.5px] tracking-[0.26em] uppercase text-accent-dim">
-            Two ways in
-          </p>
+          <p className="font-mono text-xs tracking-label uppercase text-accent-dim">Two ways in</p>
           <h2
             className="font-serif font-normal leading-[1.03] tracking-[-0.015em] mt-[14px] max-w-[20ch] md:max-w-none"
             style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
@@ -595,36 +589,36 @@ function Deploy() {
         </div>
         <div className="grid grid-cols-2 gap-4 max-[880px]:grid-cols-1">
           <div className="border border-line rounded-[12px] px-[30px] py-[30px] bg-panel relative">
-            <span className="absolute top-5 right-[22px] font-mono text-[14px] tracking-[0.18em] text-accent">
+            <span className="absolute top-5 right-[22px] font-mono text-sm tracking-[0.18em] text-accent">
               INVITE&#8209;ONLY
             </span>
-            <h3 className="font-serif font-normal text-[26px] tracking-[-0.01em] mt-[26px]">
+            <h3 className="font-serif font-normal text-3xl tracking-[-0.01em] mt-[26px]">
               privance.app
             </h3>
-            <p className="mt-3 text-[14px] text-dim max-w-[44ch] leading-[1.6]">
+            <p className="mt-3 text-sm text-dim max-w-[44ch] leading-[1.6]">
               Sign up and go. We run the servers and keep the backups, and all we ever hold is
               ciphertext. Zero knowledge means trusting the math, not us.
             </p>
             <a
               href="/auth/signup/"
-              className="font-mono text-[12px] tracking-[0.14em] uppercase font-medium bg-accent text-vault no-underline px-[30px] py-[17px] rounded-[7px] hover:bg-cream transition-colors inline-block mt-[26px]"
+              className="font-mono text-xs tracking-button uppercase font-medium bg-accent text-vault no-underline px-[30px] py-[17px] rounded-[7px] hover:bg-cream transition-colors inline-block mt-[26px]"
             >
               Have an invite?
             </a>
           </div>
           <div className="border border-line rounded-[12px] px-[30px] py-[30px] bg-panel relative">
-            <span className="absolute top-5 right-[22px] font-mono text-[14px] tracking-[0.18em] text-faint">
+            <span className="absolute top-5 right-[22px] font-mono text-sm tracking-[0.18em] text-faint">
               FULL CONTROL
             </span>
-            <h3 className="font-serif font-normal text-[26px] tracking-[-0.01em] mt-[26px]">
+            <h3 className="font-serif font-normal text-3xl tracking-[-0.01em] mt-[26px]">
               Your own box
             </h3>
-            <p className="mt-3 text-[14px] text-dim max-w-[44ch] leading-[1.6]">
+            <p className="mt-3 text-sm text-dim max-w-[44ch] leading-[1.6]">
               One container, one Postgres. A Raspberry Pi will do. Bring a domain and you own the
               whole data path, end to end.
             </p>
             <code
-              className="block font-mono text-[12.5px] text-accent border border-[rgba(127,196,198,.2)] rounded-[8px] px-[18px] py-[13px] mt-[26px]"
+              className="block font-mono text-sm text-accent border border-[rgba(127,196,198,.2)] rounded-[8px] px-[18px] py-[13px] mt-[26px]"
               style={{ background: "rgba(127,196,198,.06)" }}
             >
               $ docker compose up -d
@@ -641,7 +635,7 @@ function Features() {
     <section id="features" className="py-12 border-t border-line-soft">
       <div className="max-w-[1160px] mx-auto px-8">
         <div className="mb-9">
-          <p className="font-mono text-[10.5px] tracking-[0.26em] uppercase text-accent-dim">
+          <p className="font-mono text-xs tracking-label uppercase text-accent-dim">
             Inside the vault
           </p>
           <h2
@@ -680,7 +674,7 @@ function Features() {
               title: "Numbers off, shape on",
               body: "One tap frosts every figure for shoulder surfers. Charts and weights stay readable.",
               art: (
-                <div className="font-mono text-[19px] tracking-[0.14em] text-accent">
+                <div className="font-mono text-xl tracking-[0.14em] text-accent">
                   $ &bull;&bull;&bull;,&bull;&bull;&bull;
                 </div>
               ),
@@ -705,7 +699,7 @@ function Features() {
               title: "What you're committed to",
               body: "Rent, utilities, insurance, subscriptions, logged by hand. No bank linking; the server never learns where the money went.",
               art: (
-                <div className="font-mono text-[11.5px] text-faint tracking-[0.06em]">
+                <div className="font-mono text-xs text-faint tracking-[0.06em]">
                   12 recurring &middot; $2,140 / mo
                 </div>
               ),
@@ -739,7 +733,7 @@ function Features() {
               title: "Priced live, owned quietly",
               body: "Stocks, funds, and crypto with fractional shares and your real cost basis. Price lookups go out anonymously, never tied to you.",
               art: (
-                <div className="font-mono text-[11.5px] text-faint tracking-[0.06em]">
+                <div className="font-mono text-xs text-faint tracking-[0.06em]">
                   VTI &middot; 1,482.214 sh &middot; <span className="text-up">+30.5%</span>
                 </div>
               ),
@@ -750,7 +744,7 @@ function Features() {
               title: "Face, fingerprint, phrase",
               body: "Biometric unlock via passkeys on devices you trust. The recovery phrase stays on paper, where it belongs.",
               art: (
-                <div className="font-mono text-[11.5px] text-faint tracking-[0.06em]">
+                <div className="font-mono text-xs text-faint tracking-[0.06em]">
                   salt &middot; ember &middot; quiet &middot; harbor &middot; &hellip;
                 </div>
               ),
@@ -799,15 +793,13 @@ function Features() {
               key={f.tag}
               className={`${f.cls} border border-line rounded-[12px] p-[30px] bg-panel relative overflow-hidden transition-[transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-[rgba(127,196,198,.3)]`}
             >
-              <span className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-accent">
+              <span className="font-mono text-xs tracking-label uppercase text-accent">
                 {f.tag}
               </span>
-              <h3 className="font-serif font-normal text-[24px] mt-[10px] tracking-[-0.01em]">
+              <h3 className="font-serif font-normal text-2xl mt-[10px] tracking-[-0.01em]">
                 {f.title}
               </h3>
-              <p className="mt-[10px] text-[13.5px] text-dim max-w-[46ch] leading-[1.6]">
-                {f.body}
-              </p>
+              <p className="mt-[10px] text-sm text-dim max-w-[46ch] leading-[1.6]">{f.body}</p>
               <div className="mt-6">{f.art}</div>
             </div>
           ))}
@@ -843,13 +835,13 @@ function LandingFooter() {
         <div className="flex justify-center mt-7">
           <a
             href="/auth/signup/"
-            className="font-mono text-[12px] tracking-[0.14em] uppercase font-medium bg-accent text-vault no-underline px-[30px] py-[17px] rounded-[7px] hover:bg-cream transition-colors inline-block"
+            className="font-mono text-xs tracking-button uppercase font-medium bg-accent text-vault no-underline px-[30px] py-[17px] rounded-[7px] hover:bg-cream transition-colors inline-block"
           >
             Start with Privance
           </a>
         </div>
         <div className="flex justify-between items-center gap-7 flex-wrap mt-[52px] pt-6 border-t border-line-soft">
-          <span className="font-mono text-[10px] tracking-[0.08em] text-faint">
+          <span className="font-mono text-xs tracking-[0.08em] text-faint">
             Privance &middot; zero&#8209;knowledge personal finance
           </span>
           <div className="flex gap-[26px] flex-wrap">
@@ -865,13 +857,13 @@ function LandingFooter() {
               <a
                 key={l.label}
                 href={l.href}
-                className="font-mono text-[10.5px] tracking-[0.14em] uppercase text-dim hover:text-accent transition-colors no-underline"
+                className="font-mono text-xs tracking-button uppercase text-dim hover:text-accent transition-colors no-underline"
               >
                 {l.label}
               </a>
             ))}
           </div>
-          <span className="font-mono text-[10px] tracking-[0.08em] text-faint">
+          <span className="font-mono text-xs tracking-[0.08em] text-faint">
             No analytics. No trackers. This page can&rsquo;t even tell anyone you read it.
           </span>
         </div>

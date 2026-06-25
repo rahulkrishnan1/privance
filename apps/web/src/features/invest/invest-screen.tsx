@@ -86,17 +86,17 @@ export function InvestScreen({ view }: InvestScreenProps) {
           <div className="w-[84px] h-[84px] rounded-full border border-dashed border-cream/20 flex items-center justify-center text-accent mx-auto mb-7">
             <Plus size={30} strokeWidth={1.5} />
           </div>
-          <h2 className="font-serif text-[32px] font-normal tracking-[-0.01em]">
+          <h2 className="font-serif text-4xl font-normal tracking-[-0.01em]">
             Your vault is empty, <span className="italic text-accent">and sealed.</span>
           </h2>
-          <p className="text-dim max-w-[42ch] mx-auto mt-3 text-[14.5px]">
+          <p className="text-dim max-w-[42ch] mx-auto mt-3 text-base">
             Add your first account to start tracking net worth. Everything you enter is encrypted on
             this device before it is stored.
           </p>
           <button
             type="button"
             onClick={() => setAddAccountOpen(true)}
-            className="inline-block mt-7 font-mono text-[11.5px] tracking-[.12em] uppercase bg-accent text-vault rounded-md px-[26px] py-3.5 cursor-pointer hover:bg-cream transition-colors"
+            className="inline-block mt-7 font-mono text-xs tracking-button uppercase bg-accent text-vault rounded-md px-[26px] py-3.5 cursor-pointer hover:bg-cream transition-colors"
           >
             Add first account
           </button>

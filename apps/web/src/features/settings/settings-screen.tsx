@@ -183,7 +183,7 @@ export function SettingsScreen() {
   return (
     <Screen>
       <div className="mb-8">
-        <p className="font-mono text-[10px] uppercase tracking-[0.26em] text-faint">Settings</p>
+        <p className="font-mono text-xs uppercase tracking-label text-faint">Settings</p>
         <h1 className="mt-[10px] font-serif font-normal text-[clamp(36px,5vw,52px)] leading-[1.05] tracking-[-0.015em]">
           The vault, <em className="text-accent">your way.</em>
         </h1>
@@ -346,9 +346,7 @@ export function SettingsScreen() {
               }
               name="Version"
               description={hydrated ? `running at ${window.location.host}` : "running"}
-              trailing={
-                <span className="shrink-0 font-mono text-[11px] text-dim">v{APP_VERSION}</span>
-              }
+              trailing={<span className="shrink-0 font-mono text-xs text-dim">v{APP_VERSION}</span>}
             />
             <Row
               icon={

@@ -50,11 +50,11 @@ export function SwUpdateBanner() {
       role="status"
       className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl border border-line bg-panel px-4 py-3 shadow-lg"
     >
-      <span className="text-[13px] text-cream">Update available</span>
+      <span className="text-sm text-cream">Update available</span>
       <button
         type="button"
         onClick={handleUpdate}
-        className="text-[13px] font-medium text-accent hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
+        className="text-sm font-medium text-accent hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
       >
         Reload
       </button>

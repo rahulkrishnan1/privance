@@ -2,59 +2,71 @@
 
 import { useState } from "react";
 import { formatCurrency, formatPercent } from "@/lib/format";
+import { useFillCount } from "@/lib/use-fill-count";
+import { useMediaQuery } from "@/lib/use-media-query";
 import type { EstimatedIncomeResult } from "../_invest-math";
 
 type IncomePanelProps = {
   result: EstimatedIncomeResult;
 };
 
-const TOP_PAYERS = 3;
+const TOP_PAYERS = 5;
 
 export function IncomePanel({ result }: IncomePanelProps) {
   const { annualCents, portfolioYield, monthlyCents, payers } = result;
   const [expanded, setExpanded] = useState(false);
 
+  // Desktop fills the "Where it lives"-driven height; mobile shows a fixed preview.
+  const isWide = useMediaQuery("(min-width: 881px)");
+  const { areaRef, rowRef, count, minHeight } = useFillCount<HTMLDivElement, HTMLDivElement>({
+    active: isWide && !expanded,
+    total: payers.length,
+    collapsed: TOP_PAYERS,
+  });
+
   if (payers.length === 0) {
     return null;
   }
 
-  const hasMore = payers.length > TOP_PAYERS;
-  const visiblePayers = expanded ? payers : payers.slice(0, TOP_PAYERS);
+  const hasMore = payers.length > count;
+  const visiblePayers = expanded ? payers : payers.slice(0, count);
 
   return (
-    <div className="bg-panel border border-line rounded-[10px] p-6 h-full">
+    <div className="bg-panel border border-line rounded-[10px] p-6 h-full flex flex-col">
       <div className="flex justify-between items-baseline mb-4 gap-2.5 flex-wrap">
-        <h3 className="font-serif text-[20px] font-normal tracking-[-0.005em]">Income</h3>
-        <span className="font-mono text-[10px] tracking-[.14em] uppercase text-faint">
+        <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">Income</h3>
+        <span className="font-mono text-xs tracking-label uppercase text-faint">
           {payers.length} {payers.length === 1 ? "payer" : "payers"}
         </span>
       </div>
 
-      <p className="vfig font-serif text-[27px] leading-none">
+      <p className="vfig font-serif text-3xl leading-none">
         {formatCurrency(annualCents)}{" "}
-        <span className="font-mono text-[11px] text-faint">/ yr forward</span>
+        <span className="font-mono text-sm text-faint">/ yr forward</span>
       </p>
-      <p className="font-mono text-[10.5px] text-dim mt-1">
+      <p className="font-mono text-xs text-dim mt-1">
         {formatPercent(portfolioYield)} portfolio yield &middot;{" "}
         <span className="vfig">&#8776;{formatCurrency(monthlyCents)}/mo</span>
       </p>
 
-      <div className="mt-4">
-        {visiblePayers.map((payer) => (
+      <div
+        ref={areaRef}
+        className={isWide && !expanded ? "mt-4 flex-1 overflow-hidden" : "mt-4"}
+        style={isWide && !expanded ? { minHeight } : undefined}
+      >
+        {visiblePayers.map((payer, idx) => (
           <div
             key={payer.id}
-            className="flex items-center py-[11px] border-b border-line-soft last:border-b-0"
+            ref={idx === 0 ? rowRef : undefined}
+            className="grid grid-cols-[1fr_auto_auto] items-center gap-x-8 py-[11px] border-b border-line-soft last:border-b-0"
           >
-            <span className="font-mono text-[11px] tracking-[.06em] text-accent bg-panel-2 border border-line rounded-[5px] px-[9px] py-[5px] flex-none">
+            <span className="justify-self-start font-mono text-xs tracking-[.06em] text-accent bg-panel-2 border border-line rounded-[5px] px-[9px] py-[5px]">
               {payer.ticker}
             </span>
-            <span className="flex-1 text-[14px] text-cream truncate ml-3 max-[400px]:hidden">
-              {payer.name}
-            </span>
-            <span className="vfig font-mono text-[12.5px] text-cream-soft tabular-nums whitespace-nowrap pl-8 max-[400px]:ml-auto">
+            <span className="vfig font-mono text-sm text-cream-soft tabular-nums text-right">
               {formatCurrency(payer.annualCents)}/yr
             </span>
-            <span className="font-mono text-[12.5px] text-dim tabular-nums pl-8">
+            <span className="font-mono text-sm text-dim tabular-nums text-right">
               {(payer.yield * 100).toFixed(2)}%
             </span>
           </div>
@@ -66,13 +78,13 @@ export function IncomePanel({ result }: IncomePanelProps) {
           type="button"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
-          className="mt-3 font-mono text-[10px] tracking-[.14em] uppercase text-faint hover:text-accent transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded"
+          className="mt-3 font-mono text-xs tracking-button uppercase text-faint hover:text-accent transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded"
         >
           {expanded ? "Show less" : `Show all ${payers.length}`}
         </button>
       )}
 
-      <p className="font-mono text-[9.5px] tracking-[.06em] text-faint mt-3.5 leading-[1.7]">
+      <p className="font-mono text-xs tracking-[.06em] text-faint mt-3.5 leading-[1.7]">
         forward estimate from dividend yields and cash APY
       </p>
     </div>

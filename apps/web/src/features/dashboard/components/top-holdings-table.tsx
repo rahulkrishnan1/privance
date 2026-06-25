@@ -2,10 +2,10 @@
 
 import type { Decimal, Holding, HoldingId, HoldingValuation } from "@privance/core";
 import Link from "next/link";
-import { humanizeCryptoId } from "@/features/holdings";
 import type { LocalHolding } from "@/features/holdings/types";
-import type { SymbolProfileEntry } from "@/lib/api/symbol-profiles";
 import { formatCurrency, formatPercent } from "@/lib/format";
+import { useFillCount } from "@/lib/use-fill-count";
+import { useMediaQuery } from "@/lib/use-media-query";
 
 type TopHoldingsTableProps = {
   byHolding: readonly HoldingValuation[];
@@ -17,10 +17,8 @@ type TopHoldingsTableProps = {
   totalInvestments: Decimal;
   /** Per-holding day change in cents; absent when prior price isn't available. */
   dayChangeByHoldingId: ReadonlyMap<HoldingId, Decimal>;
-  /** Full holding records for name lookup and detail sheet. */
+  /** Full holding records for the detail sheet. */
   holdings: Holding[];
-  /** Server-resolved instrument profiles by ticker; supplies display names. */
-  profilesByTicker?: ReadonlyMap<string, SymbolProfileEntry>;
   /** Called when a row is clicked; receives the first LocalHolding for that aggregated key. */
   onRowClick: (holding: LocalHolding) => void;
 };
@@ -32,7 +30,6 @@ type AggregatedRow = {
   /** Primary holdingId, the first holdingId seen when building this aggregate. */
   primaryHoldingId: HoldingId;
   ticker: string;
-  name: string | undefined;
   marketValue: Decimal;
   /** Sum of per-holding day change across all rows sharing the ticker. Null when none reported. */
   dayChange: Decimal | null;
@@ -43,7 +40,6 @@ function aggregateByTicker(
   tickerById: ReadonlyMap<HoldingId, string>,
   groupKeyById: ReadonlyMap<HoldingId, string>,
   dayChangeByHoldingId: ReadonlyMap<HoldingId, Decimal>,
-  holdingNameById: ReadonlyMap<HoldingId, string | undefined>,
 ): AggregatedRow[] {
   const merged = new Map<string, AggregatedRow>();
   for (const h of byHolding) {
@@ -71,7 +67,6 @@ function aggregateByTicker(
         key,
         primaryHoldingId: h.holdingId,
         ticker: displayTicker,
-        name: holdingNameById.get(h.holdingId),
         marketValue: h.marketValue,
         dayChange: rowDay,
       });
@@ -105,36 +100,29 @@ export function TopHoldingsTable({
   totalInvestments,
   dayChangeByHoldingId,
   holdings,
-  profilesByTicker,
   onRowClick,
 }: TopHoldingsTableProps) {
   const holdingById = new Map<HoldingId, Holding>(holdings.map((h) => [h.id, h]));
-  const holdingNameById = new Map<HoldingId, string | undefined>(
-    holdings.map((h) => {
-      // Match the aggregation key: proxied holdings take the proxy's name.
-      const priceTicker = h.payload.proxyTicker ?? h.payload.ticker;
-      const fallback =
-        h.payload.assetType === "crypto" ? humanizeCryptoId(h.payload.ticker) : undefined;
-      return [h.id, profilesByTicker?.get(priceTicker)?.displayName ?? h.payload.name ?? fallback];
-    }),
-  );
 
-  const sorted = aggregateByTicker(
+  const aggregated = aggregateByTicker(
     byHolding,
     tickerById,
     groupKeyById,
     dayChangeByHoldingId,
-    holdingNameById,
-  )
-    .sort((a, b) => b.marketValue.cmp(a.marketValue))
-    .slice(0, MAX_ROWS);
+  ).sort((a, b) => b.marketValue.cmp(a.marketValue));
 
-  if (sorted.length === 0) {
+  const isWide = useMediaQuery("(min-width: 881px)");
+  const { areaRef, rowRef, count, minHeight } = useFillCount<HTMLDivElement, HTMLTableRowElement>({
+    active: isWide,
+    total: aggregated.length,
+    collapsed: MAX_ROWS,
+  });
+  const sorted = aggregated.slice(0, count);
+
+  if (aggregated.length === 0) {
     return (
       <div className="bg-panel border border-line rounded-[10px] p-6 h-full">
-        <h3 className="font-serif text-[20px] font-normal tracking-[-0.005em] mb-4">
-          Top holdings
-        </h3>
+        <h3 className="font-serif text-2xl font-normal tracking-[-0.005em] mb-4">Top holdings</h3>
         <p className="text-sm text-dim">No holdings yet.</p>
       </div>
     );
@@ -143,19 +131,25 @@ export function TopHoldingsTable({
   const totalFloat = totalInvestments.toFloat();
 
   return (
-    <div className="bg-panel border border-line rounded-[10px] p-6 h-full">
+    <div className="bg-panel border border-line rounded-[10px] p-6 h-full flex flex-col">
       <div className="flex items-baseline justify-between mb-4 gap-2.5">
-        <h3 className="font-serif text-[20px] font-normal tracking-[-0.005em]">Top holdings</h3>
+        <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">Top holdings</h3>
         <Link
           href="/app/holdings"
-          className="font-mono text-[10px] tracking-[.14em] uppercase text-faint hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded"
+          className="font-mono text-xs tracking-button uppercase text-faint hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded"
           aria-label="View all holdings"
         >
           All {byHolding.length} &rarr;
         </Link>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* Desktop fills the Allocation-driven height with the rows that fit (never
+          fewer than the preview); mobile keeps the original in-flow scroll area. */}
+      <div
+        ref={areaRef}
+        className={isWide ? "flex-1 overflow-hidden" : "overflow-x-auto"}
+        style={isWide ? { minHeight } : undefined}
+      >
         {/* Holding column (w-full) absorbs the slack and truncates; numeric
             columns hug their content (whitespace-nowrap) so they sit adjacent. */}
         <table aria-label="Top holdings" className="w-full">
@@ -163,32 +157,32 @@ export function TopHoldingsTable({
             <tr>
               <th
                 scope="col"
-                className="w-full font-mono text-[9.5px] tracking-[.16em] uppercase text-faint font-normal text-left pb-3"
+                className="w-full font-mono text-xs tracking-label uppercase text-faint font-normal text-left pb-3"
               >
                 Holding
               </th>
               <th
                 scope="col"
-                className="font-mono text-[9.5px] tracking-[.16em] uppercase text-faint font-normal text-right pb-3 pl-8 whitespace-nowrap"
+                className="font-mono text-xs tracking-label uppercase text-faint font-normal text-right pb-3 pl-8 whitespace-nowrap"
               >
                 Day
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell font-mono text-[9.5px] tracking-[.16em] uppercase text-faint font-normal text-right pb-3 pl-8 whitespace-nowrap"
+                className="hidden md:table-cell font-mono text-xs tracking-label uppercase text-faint font-normal text-right pb-3 pl-8 whitespace-nowrap"
               >
                 Weight
               </th>
               <th
                 scope="col"
-                className="font-mono text-[9.5px] tracking-[.16em] uppercase text-faint font-normal text-right pb-3 pl-8 whitespace-nowrap"
+                className="font-mono text-xs tracking-label uppercase text-faint font-normal text-right pb-3 pl-8 whitespace-nowrap"
               >
                 Value
               </th>
             </tr>
           </thead>
           <tbody>
-            {sorted.map((h) => {
+            {sorted.map((h, idx) => {
               const allocShare = totalInvestments.isZero()
                 ? 0
                 : h.marketValue.toFloat() / totalFloat;
@@ -224,6 +218,7 @@ export function TopHoldingsTable({
               return (
                 <tr
                   key={h.key}
+                  ref={idx === 0 ? rowRef : undefined}
                   onClick={handleClick}
                   onKeyDown={
                     handleClick
@@ -243,20 +238,14 @@ export function TopHoldingsTable({
                       : undefined
                   }
                 >
-                  {/* Holding: ticker (mono, cream) + name (dim, smaller) */}
                   <td className="border-t border-line-soft py-[13px] tabular-nums text-left max-w-0">
-                    <p className="font-mono text-[12.5px] tracking-[.04em] text-cream truncate">
+                    <p className="font-mono text-sm tracking-[.04em] text-cream truncate">
                       {h.ticker}
                     </p>
-                    {h.name !== undefined && (
-                      <p className="hidden md:block text-[12px] text-dim mt-0.5 truncate">
-                        {h.name}
-                      </p>
-                    )}
                   </td>
 
                   <td
-                    className={`border-t border-line-soft py-[13px] tabular-nums text-right font-mono text-[12.5px] whitespace-nowrap pl-8 ${dayColor}`}
+                    className={`border-t border-line-soft py-[13px] tabular-nums text-right font-mono text-sm whitespace-nowrap pl-8 ${dayColor}`}
                   >
                     {h.dayChange === null || dayPct === null
                       ? "-"
@@ -274,13 +263,13 @@ export function TopHoldingsTable({
                           style={{ width: `${Math.min(100, weightPct).toFixed(1)}%` }}
                         />
                       </span>
-                      <span className="font-mono text-[11.5px] text-dim w-11 text-right">
+                      <span className="font-mono text-xs text-dim w-11 text-right">
                         {formatPercent(allocShare)}
                       </span>
                     </span>
                   </td>
 
-                  <td className="border-t border-line-soft py-[13px] tabular-nums text-right font-mono text-[13px] text-cream whitespace-nowrap pl-8">
+                  <td className="border-t border-line-soft py-[13px] tabular-nums text-right font-mono text-sm text-cream whitespace-nowrap pl-8">
                     <span className="vfig">{formatCurrency(h.marketValue)}</span>
                   </td>
                 </tr>

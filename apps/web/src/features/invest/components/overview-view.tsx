@@ -78,11 +78,11 @@ export function OverviewView({
       <SplitsRow breakdown={breakdown} delta={netWorthDelta} portfolioGain={gain} />
 
       <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-5 max-[880px]:col-span-12 h-full">
+        <div className="col-span-6 max-[880px]:col-span-12 h-full">
           <AllocationPie title="Allocation" classSlices={classSlices} sectorSlices={sectorSlices} />
         </div>
 
-        <div className="col-span-7 max-[880px]:col-span-12 h-full">
+        <div className="col-span-6 max-[880px]:col-span-12 h-full">
           <TopHoldingsTable
             byHolding={breakdown.byHolding}
             tickerById={priceTickerById}
@@ -90,13 +90,12 @@ export function OverviewView({
             totalInvestments={breakdown.byAccountKind.investment}
             dayChangeByHoldingId={dayChangeByHoldingId}
             holdings={holdings}
-            profilesByTicker={profilesByTicker}
             onRowClick={() => router.push("/app/holdings/")}
           />
         </div>
 
         <div
-          className={`${hasIncome ? "col-span-5" : "col-span-12"} max-[880px]:col-span-12 h-full`}
+          className={`${hasIncome ? "col-span-6" : "col-span-12"} max-[880px]:col-span-12 h-full`}
         >
           <TaxBucketsPanel
             buckets={taxBucketsResult.buckets}
@@ -104,7 +103,7 @@ export function OverviewView({
           />
         </div>
         {hasIncome && (
-          <div className="col-span-7 max-[880px]:col-span-12 h-full">
+          <div className="col-span-6 max-[880px]:col-span-12 h-full">
             <IncomePanel result={income} />
           </div>
         )}

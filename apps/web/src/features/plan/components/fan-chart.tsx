@@ -50,7 +50,7 @@ function BandTooltip({ active, payload, label, startAge, accent }: BandTooltipPr
   const isToday = startAge !== undefined && pt.age === startAge;
   return (
     <div className="rounded-lg border border-line bg-panel-2/95 px-3 py-2.5 text-xs shadow-lg shadow-black/30 backdrop-blur-sm">
-      <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-dim">
+      <p className="mb-2 font-mono text-xs uppercase tracking-label text-dim">
         {isToday ? "Today" : `Age ${label}`}
       </p>
       <div className="flex items-center justify-between gap-5">
@@ -376,7 +376,7 @@ export function FanChart({
             <span
               // biome-ignore lint/suspicious/noArrayIndexKey: fixed positional tick scale
               key={i}
-              className="vfig bg-vault px-1 font-mono text-[9.5px] text-faint"
+              className="vfig bg-vault px-1 font-mono text-xs text-faint"
             >
               {formatYAxisTick(v)}
             </span>
@@ -385,7 +385,7 @@ export function FanChart({
       </div>
 
       {/* Legend below the chart, four items echoing the mock. */}
-      <div className="mt-3.5 flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-[10px] uppercase tracking-[0.12em] text-faint">
+      <div className="mt-3.5 flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-xs uppercase tracking-label text-faint">
         <span className="flex items-center gap-2">
           <span className="inline-block h-[3px] w-4 rounded-sm" style={{ background: accent }} />
           Median path

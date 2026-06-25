@@ -29,10 +29,8 @@ export function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
 
   return (
     <div className="rounded-lg border border-line bg-panel-2 px-3 py-2 shadow-sm">
-      {dateStr ? (
-        <p className="font-mono text-[10px] text-faint mb-1">{formatDate(dateStr)}</p>
-      ) : null}
-      <p className="vfig font-mono text-[13px] text-cream">
+      {dateStr ? <p className="font-mono text-xs text-faint mb-1">{formatDate(dateStr)}</p> : null}
+      <p className="vfig font-mono text-sm text-cream">
         {decimal !== undefined ? formatCurrency(decimal) : "-"}
       </p>
     </div>

@@ -119,7 +119,7 @@ function TopBar({
       <div className="mx-auto flex h-[62px] max-w-[1120px] items-center justify-between px-7 max-[760px]:h-14">
         <Link href="/app" className="flex items-center gap-[9px] text-cream">
           <Logo size={23} className="text-cream" />
-          <span className="font-serif text-[21px]">Privance</span>
+          <span className="font-serif text-2xl">Privance</span>
         </Link>
 
         <nav
@@ -134,7 +134,7 @@ function TopBar({
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={[
-                  "rounded-full px-[18px] py-2 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                  "rounded-full px-[18px] py-2 font-mono text-xs uppercase tracking-button transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
                   active ? "bg-cream text-vault" : "text-dim hover:text-cream",
                 ].join(" ")}
               >
@@ -212,7 +212,7 @@ function BottomNav() {
             href={href}
             aria-current={active ? "page" : undefined}
             className={[
-              "flex flex-1 flex-col items-center gap-1 py-1.5 font-mono text-[8.5px] uppercase tracking-[0.18em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent",
+              "flex flex-1 flex-col items-center gap-1 py-1.5 font-mono text-xs uppercase tracking-button focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent",
               active ? "text-accent" : "text-faint",
             ].join(" ")}
           >

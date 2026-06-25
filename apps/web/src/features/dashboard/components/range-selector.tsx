@@ -35,7 +35,7 @@ export function RangeSelector({ selected, onChange, ranges }: RangeSelectorProps
             aria-pressed={isSelected}
             aria-label={`${range} range`}
             className={[
-              "shrink-0 whitespace-nowrap rounded-[5px] px-3 py-[7px] font-mono text-[10.5px] tracking-[.1em] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent focus-visible:rounded-[inherit]",
+              "shrink-0 whitespace-nowrap rounded-[5px] px-3 py-[7px] font-mono text-xs tracking-button cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent focus-visible:rounded-[inherit]",
               isSelected ? "text-cream bg-panel-2" : "text-faint hover:text-cream-soft",
             ].join(" ")}
           >

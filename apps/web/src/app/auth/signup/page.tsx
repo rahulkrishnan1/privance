@@ -166,10 +166,10 @@ export default function SignupPage() {
     return (
       <div className={`flex flex-col${shaking ? " auth-shake" : ""}`}>
         <StepDots current={3} />
-        <h1 className="font-serif font-normal text-[34px] text-center tracking-[-0.01em] leading-[1.12]">
+        <h1 className="font-serif font-normal text-5xl text-center tracking-[-0.01em] leading-[1.12]">
           Prove <em className="text-accent">it.</em>
         </h1>
-        <p className="text-center text-dim text-[14px] mt-[10px]">
+        <p className="text-center text-dim text-sm mt-[10px]">
           Type words 3, 7, and 12 to confirm the phrase survived the trip to paper.
         </p>
 
@@ -184,7 +184,7 @@ export default function SignupPage() {
             <div key={idx} className={`flex flex-col gap-[9px]${i > 0 ? " mt-[26px]" : ""}`}>
               <label
                 htmlFor={`verify-word-${idx}`}
-                className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-faint"
+                className="font-mono text-xs tracking-label uppercase text-faint"
               >
                 Word {idx + 1}
               </label>
@@ -206,7 +206,7 @@ export default function SignupPage() {
                 spellCheck={false}
                 aria-invalid={verifyError}
                 className={[
-                  "w-full bg-panel border rounded-[8px] text-cream font-mono text-[15px] px-4 py-[15px] outline-none transition-colors tracking-[0.06em]",
+                  "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em]",
                   verifyError
                     ? "border-[rgba(208,133,98,.55)]"
                     : "border-line focus:border-accent-dim",
@@ -217,13 +217,13 @@ export default function SignupPage() {
 
           <button
             type="submit"
-            className="w-full mt-[26px] font-mono text-[12px] tracking-[0.16em] uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream"
+            className="w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream"
           >
             Seal the vault
           </button>
         </form>
 
-        <p className="text-center font-mono text-[11px] tracking-[0.04em] text-faint mt-[26px]">
+        <p className="text-center font-mono text-xs tracking-[0.04em] text-faint mt-[26px]">
           <button
             type="button"
             onClick={() => {
@@ -244,10 +244,10 @@ export default function SignupPage() {
     return (
       <div className="flex flex-col">
         <StepDots current={2} />
-        <h1 className="font-serif font-normal text-[34px] text-center tracking-[-0.01em] leading-[1.12]">
+        <h1 className="font-serif font-normal text-5xl text-center tracking-[-0.01em] leading-[1.12]">
           Your recovery <em className="text-accent">phrase.</em>
         </h1>
-        <p className="text-center text-dim text-[14px] mt-[10px]">
+        <p className="text-center text-dim text-sm mt-[10px]">
           Twelve words. Write them on paper. This is the only spare key in existence.
         </p>
 
@@ -260,9 +260,9 @@ export default function SignupPage() {
             {numberedWords.map(({ word, num }) => (
               <div
                 key={num}
-                className="bg-panel border border-line rounded-[7px] px-[13px] py-[11px] font-mono text-[12.5px] flex gap-[9px] items-baseline"
+                className="bg-panel border border-line rounded-[7px] px-[13px] py-[11px] font-mono text-sm flex gap-[9px] items-baseline"
               >
-                <span className="text-faint text-[9.5px] w-[14px] flex-none">{num}</span>
+                <span className="text-faint text-xs w-[14px] flex-none">{num}</span>
                 {word}
               </div>
             ))}
@@ -270,14 +270,14 @@ export default function SignupPage() {
         </fieldset>
 
         <div
-          className="mt-[22px] border rounded-[8px] px-[17px] py-[15px] text-[12.5px] text-cream-soft leading-[1.6]"
+          className="mt-[22px] border rounded-[8px] px-[17px] py-[15px] text-sm text-cream-soft leading-[1.6]"
           style={{ borderColor: "rgba(200,85,31,.3)", background: "rgba(200,85,31,.06)" }}
         >
           <strong className="text-signal font-medium">No screenshots.</strong> Anyone with these
           words owns your data. Lose them and your password, and you can&rsquo;t get back in.
         </div>
 
-        <label className="flex gap-[11px] items-start mt-5 cursor-pointer text-[13px] text-cream-soft">
+        <label className="flex gap-[11px] items-start mt-5 cursor-pointer text-sm text-cream-soft">
           <input
             type="checkbox"
             checked={phraseAcknowledged}
@@ -291,7 +291,7 @@ export default function SignupPage() {
           type="button"
           onClick={() => setStage("verify")}
           disabled={!phraseAcknowledged}
-          className="w-full mt-[26px] font-mono text-[12px] tracking-[0.16em] uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-40 disabled:cursor-not-allowed"
         >
           I have it. Continue
         </button>
@@ -302,10 +302,10 @@ export default function SignupPage() {
   return (
     <div className={`flex flex-col${shaking ? " auth-shake" : ""}`}>
       <StepDots current={1} />
-      <h1 className="font-serif font-normal text-[34px] text-center tracking-[-0.01em] leading-[1.12]">
+      <h1 className="font-serif font-normal text-5xl text-center tracking-[-0.01em] leading-[1.12]">
         Forge your <em className="text-accent">vault.</em>
       </h1>
-      <p className="text-center text-dim text-[14px] mt-[10px]">
+      <p className="text-center text-dim text-sm mt-[10px]">
         Pick a username and a master password.
       </p>
 
@@ -325,7 +325,7 @@ export default function SignupPage() {
         <div className="flex flex-col gap-[9px]">
           <label
             htmlFor="signup-username"
-            className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-faint"
+            className="font-mono text-xs tracking-label uppercase text-faint"
           >
             Username
           </label>
@@ -343,7 +343,7 @@ export default function SignupPage() {
             aria-invalid={errors.username !== undefined}
             aria-describedby={errors.username !== undefined ? "signup-username-error" : undefined}
             className={[
-              "w-full bg-panel border rounded-[8px] text-cream font-mono text-[15px] px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
+              "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
               errors.username
                 ? "border-[rgba(208,133,98,.55)]"
                 : "border-line focus:border-accent-dim",
@@ -353,7 +353,7 @@ export default function SignupPage() {
             <p
               id="signup-username-error"
               role="alert"
-              className="font-mono text-[10px] text-down tracking-[0.04em]"
+              className="font-mono text-xs text-down tracking-[0.04em]"
             >
               taken &middot; usernames are first come, first served
             </p>
@@ -361,7 +361,7 @@ export default function SignupPage() {
             <p
               id="signup-username-error"
               role="alert"
-              className="font-mono text-[10px] text-down tracking-[0.04em]"
+              className="font-mono text-xs text-down tracking-[0.04em]"
             >
               {errors.username}
             </p>
@@ -371,7 +371,7 @@ export default function SignupPage() {
         <div className="flex flex-col gap-[9px] mt-[26px]">
           <label
             htmlFor="signup-password"
-            className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-faint"
+            className="font-mono text-xs tracking-label uppercase text-faint"
           >
             Master password
           </label>
@@ -386,7 +386,7 @@ export default function SignupPage() {
             aria-invalid={errors.password !== undefined}
             aria-describedby={errors.password !== undefined ? "signup-password-error" : undefined}
             className={[
-              "w-full bg-panel border rounded-[8px] text-cream font-mono text-[15px] px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
+              "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
               errors.password
                 ? "border-[rgba(208,133,98,.55)]"
                 : "border-line focus:border-accent-dim",
@@ -397,7 +397,7 @@ export default function SignupPage() {
             <p
               id="signup-password-error"
               role="alert"
-              className="font-mono text-[10px] text-down tracking-[0.04em]"
+              className="font-mono text-xs text-down tracking-[0.04em]"
             >
               {errors.password}
             </p>
@@ -407,7 +407,7 @@ export default function SignupPage() {
         <div className="flex flex-col gap-[9px] mt-[26px]">
           <label
             htmlFor="signup-confirm"
-            className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-faint"
+            className="font-mono text-xs tracking-label uppercase text-faint"
           >
             Confirm master password
           </label>
@@ -418,14 +418,14 @@ export default function SignupPage() {
             onChange={(e) => setConfirm(e.target.value)}
             autoComplete="new-password"
             maxLength={PASSWORD_MAX}
-            className="w-full bg-panel border border-line focus:border-accent-dim rounded-[8px] text-cream font-mono text-[15px] px-4 py-[15px] outline-none transition-colors tracking-[0.06em]"
+            className="w-full bg-panel border border-line focus:border-accent-dim rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em]"
           />
         </div>
 
         <div className="flex flex-col gap-[9px] mt-[26px]">
           <label
             htmlFor="signup-invite"
-            className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-faint"
+            className="font-mono text-xs tracking-label uppercase text-faint"
           >
             Invite code
           </label>
@@ -442,20 +442,20 @@ export default function SignupPage() {
             aria-invalid={errors.inviteToken !== undefined}
             aria-describedby={errors.inviteToken !== undefined ? "signup-invite-error" : undefined}
             className={[
-              "w-full bg-panel border rounded-[8px] text-cream font-mono text-[15px] px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
+              "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
               errors.inviteToken
                 ? "border-[rgba(208,133,98,.55)]"
                 : "border-line focus:border-accent-dim",
             ].join(" ")}
           />
-          <p className="font-mono text-[10px] text-faint tracking-[0.04em]">
+          <p className="font-mono text-xs text-faint tracking-[0.04em]">
             invite&#8209;only for now &middot; self&#8209;hosters skip this
           </p>
           {errors.inviteToken && (
             <p
               id="signup-invite-error"
               role="alert"
-              className="font-mono text-[10px] text-down tracking-[0.04em]"
+              className="font-mono text-xs text-down tracking-[0.04em]"
             >
               {errors.inviteToken}
             </p>
@@ -466,13 +466,13 @@ export default function SignupPage() {
           type="submit"
           disabled={!hydrated || pending}
           aria-busy={pending}
-          className="w-full mt-[26px] font-mono text-[12px] tracking-[0.16em] uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {pending ? "Creating account…" : "Continue"}
         </button>
       </form>
 
-      <p className="text-center font-mono text-[11px] tracking-[0.04em] text-faint mt-[26px]">
+      <p className="text-center font-mono text-xs tracking-[0.04em] text-faint mt-[26px]">
         Already vaulted?{" "}
         <Link
           href="/auth/login"

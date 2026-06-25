@@ -426,17 +426,17 @@ export function PlanScreen() {
                 <circle cx="12" cy="12" r="1.5" />
               </svg>
             </div>
-            <h2 className="font-serif text-[32px] font-normal tracking-[-0.01em]">
+            <h2 className="font-serif text-4xl font-normal tracking-[-0.01em]">
               Project your path to <em className="text-accent">independence.</em>
             </h2>
-            <p className="text-dim mx-auto mt-3 max-w-[44ch] text-[14.5px]">
+            <p className="text-dim mx-auto mt-3 max-w-[44ch] text-base">
               Privance models your future from what you have today. Add accounts and it pulls your
               balance in automatically.
             </p>
             <button
               type="button"
               onClick={() => router.push("/app/accounts/")}
-              className="mt-7 inline-block cursor-pointer rounded-md bg-accent px-[26px] py-3.5 font-mono text-[11.5px] uppercase tracking-[.12em] text-vault transition-colors hover:bg-cream"
+              className="mt-7 inline-block cursor-pointer rounded-md bg-accent px-[26px] py-3.5 font-mono text-xs uppercase tracking-button text-vault transition-colors hover:bg-cream"
             >
               Add accounts
             </button>
@@ -508,7 +508,7 @@ export function PlanScreen() {
               fireYear={fireYear}
               planUntilAge={sim.input.planUntilAge}
             />
-            <p className="mt-3 font-mono text-[10px] leading-relaxed text-faint">
+            <p className="mt-3 font-mono text-xs leading-relaxed text-faint">
               {method === "mc"
                 ? "Percentile bands from 1,000 simulated futures, drawn on your allocation's return and volatility."
                 : `Your plan replayed through every market stretch since ${DATASET_START_YEAR}, crashes and recoveries included.`}

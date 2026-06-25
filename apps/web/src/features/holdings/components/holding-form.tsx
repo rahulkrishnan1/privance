@@ -145,7 +145,7 @@ export function HoldingForm({
         name="assetType"
         render={({ field }) => (
           <div className="flex flex-col gap-2">
-            <span className="font-mono text-[9px] tracking-[.22em] uppercase text-faint">
+            <span className="font-mono text-xs tracking-label uppercase text-faint">
               Asset type
             </span>
             <div
@@ -164,7 +164,7 @@ export function HoldingForm({
                     aria-checked={active}
                     onClick={() => field.onChange(type)}
                     className={[
-                      "font-mono text-[9.5px] tracking-[.1em] uppercase rounded-md py-2.5 px-4 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                      "font-mono text-xs tracking-button uppercase rounded-md py-2.5 px-4 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
                       active
                         ? "bg-vault text-accent border border-line"
                         : "text-faint hover:text-cream-soft",
@@ -214,7 +214,7 @@ export function HoldingForm({
                 placeholder="e.g. bitcoin"
                 error={errors.ticker?.message}
               />
-              <p className="font-mono text-[9.5px] text-faint tracking-[.04em]">
+              <p className="font-mono text-xs text-faint tracking-[.04em]">
                 Find IDs at coingecko.com (URL ends with the ID).
               </p>
             </div>
@@ -226,7 +226,7 @@ export function HoldingForm({
       <div className="flex flex-col gap-2">
         <label
           htmlFor="holding-account"
-          className="font-mono text-[9px] tracking-[.22em] uppercase text-faint"
+          className="font-mono text-xs tracking-label uppercase text-faint"
         >
           Account
         </label>
@@ -238,7 +238,7 @@ export function HoldingForm({
               id="holding-account"
               {...field}
               className={[
-                "w-full bg-panel-2 border border-line rounded-lg text-cream font-mono text-[14px] px-3.5 py-3 outline-none focus:border-accent-dim transition-colors cursor-pointer appearance-none",
+                "w-full bg-panel-2 border border-line rounded-lg text-cream font-mono text-base px-3.5 py-3 outline-none focus:border-accent-dim transition-colors cursor-pointer appearance-none",
                 "bg-[length:14px] bg-[right_12px_center] bg-no-repeat pr-9",
                 errors.accountId ? "border-signal" : "",
               ].join(" ")}
@@ -266,7 +266,7 @@ export function HoldingForm({
           )}
         />
         {errors.accountId && (
-          <p role="alert" className="text-[13px] text-signal">
+          <p role="alert" className="text-sm text-signal">
             {errors.accountId.message}
           </p>
         )}
@@ -318,7 +318,7 @@ export function HoldingForm({
                 placeholder="e.g. 342.19"
                 error={errors.nav?.message}
               />
-              <p className="font-mono text-[9.5px] text-faint tracking-[.04em]">
+              <p className="font-mono text-xs text-faint tracking-[.04em]">
                 Today's per-share price of your actual asset (not the proxy). We anchor the proxy to
                 this so your market value tracks reality. Re-anchor anytime by editing this holding.
               </p>
@@ -330,7 +330,7 @@ export function HoldingForm({
       {/* Group picker, edit-only */}
       {isEdit && (
         <div className="flex flex-col gap-2">
-          <span className="font-mono text-[9px] tracking-[.22em] uppercase text-faint">
+          <span className="font-mono text-xs tracking-label uppercase text-faint">
             Group (optional)
           </span>
           <div className="flex flex-wrap gap-2">
@@ -356,7 +356,7 @@ export function HoldingForm({
                 placeholder="New group name"
                 aria-label="New group name"
                 maxLength={64}
-                className="flex-1 bg-transparent border-b border-line focus:border-accent-dim px-1 py-2 text-[14px] text-cream placeholder:text-faint/70 focus:outline-none transition-colors min-h-9"
+                className="flex-1 bg-transparent border-b border-line focus:border-accent-dim px-1 py-2 text-base text-cream placeholder:text-faint/70 focus:outline-none transition-colors min-h-9"
               />
               <Button
                 type="button"
@@ -370,14 +370,14 @@ export function HoldingForm({
               </Button>
             </div>
             {groupNameError !== undefined && (
-              <p role="alert" className="text-[13px] text-signal">
+              <p role="alert" className="text-sm text-signal">
                 {groupNameError}
               </p>
             )}
           </div>
 
           {selectedGroup !== undefined && (
-            <p className="font-mono text-[9.5px] text-faint tracking-[.04em]">
+            <p className="font-mono text-xs text-faint tracking-[.04em]">
               Selected: {selectedGroup.name}, click to deselect
             </p>
           )}
@@ -390,7 +390,7 @@ export function HoldingForm({
         onClick={() => setAdvancedOpen((o) => !o)}
         aria-label={advancedOpen ? "Collapse advanced options" : "Expand advanced options"}
         aria-expanded={advancedOpen}
-        className="flex items-center gap-1 font-mono text-[10px] tracking-[.1em] uppercase text-accent-dim hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent focus-visible:rounded rounded min-h-9 cursor-pointer transition-colors"
+        className="flex items-center gap-1 font-mono text-xs tracking-button uppercase text-accent-dim hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent focus-visible:rounded rounded min-h-9 cursor-pointer transition-colors"
       >
         <span>No public ticker? Use a price proxy</span>
         {advancedOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -412,7 +412,7 @@ export function HoldingForm({
                   placeholder="e.g. VOO"
                   error={errors.proxyTicker?.message}
                 />
-                <p className="font-mono text-[9.5px] text-faint tracking-[.04em]">
+                <p className="font-mono text-xs text-faint tracking-[.04em]">
                   Use a public ticker to track an asset we can't price directly (mutual funds,
                   private holdings). Leave blank if your ticker already has a live price.
                 </p>

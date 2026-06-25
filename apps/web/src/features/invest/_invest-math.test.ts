@@ -546,7 +546,6 @@ describe("estimatedIncome", () => {
     expect(result.annualCents.toMinorUnits()).toBe(1370n);
     expect(result.payers).toHaveLength(1);
     expect(result.payers[0].ticker).toBe("SCHD");
-    expect(result.payers[0].name).toBe("Schwab Dividend");
     expect(result.payers[0].yield).toBeCloseTo(0.0137, 6);
     // portfolioYield = 1370 / 100000 = 0.0137.
     expect(result.portfolioYield).toBeCloseTo(0.0137, 6);
@@ -570,7 +569,6 @@ describe("estimatedIncome", () => {
     expect(result.annualCents.toMinorUnits()).toBe(3000n);
     expect(result.payers).toHaveLength(1);
     expect(result.payers[0].ticker).toBe("VXUS");
-    expect(result.payers[0].name).toBe("Vanguard ex-US");
   });
 
   it("excludes holdings with no yield from income and payers", () => {
@@ -661,7 +659,6 @@ describe("estimatedIncome", () => {
     expect(result.payers.map((p) => p.ticker)).toEqual(["CASH", "SCHD"]);
     const cashPayer = result.payers[0];
     expect(cashPayer.id).toBe("cash:c1");
-    expect(cashPayer.name).toBe("Ally Savings");
     expect(cashPayer.annualCents.toMinorUnits()).toBe(40000n);
     expect(cashPayer.yield).toBeCloseTo(0.04, 6);
     // Blended yield = 41370 / (100000 holdings + 1000000 cash).

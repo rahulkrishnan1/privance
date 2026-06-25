@@ -193,15 +193,15 @@ export default function RecoveryPage() {
           </svg>
         </div>
 
-        <h1 className="font-serif font-normal text-[34px] text-center tracking-[-0.01em] leading-[1.12]">
+        <h1 className="font-serif font-normal text-5xl text-center tracking-[-0.01em] leading-[1.12]">
           A new spare <em className="text-accent">key.</em>
         </h1>
-        <p className="text-center text-dim text-[14px] mt-[10px]">
+        <p className="text-center text-dim text-sm mt-[10px]">
           Recovery worked, and burned the old phrase. These twelve words replace it.
         </p>
 
         <div
-          className="mt-6 border rounded-[8px] px-[17px] py-[15px] text-[12.5px] text-cream-soft leading-[1.6]"
+          className="mt-6 border rounded-[8px] px-[17px] py-[15px] text-sm text-cream-soft leading-[1.6]"
           style={{ borderColor: "rgba(127,196,198,.3)", background: "rgba(127,196,198,.05)" }}
         >
           <strong className="text-accent font-medium">Your old phrase is void.</strong> It can never
@@ -217,16 +217,16 @@ export default function RecoveryPage() {
             {numberedWords.map(({ word, num }) => (
               <div
                 key={num}
-                className="bg-panel border border-line rounded-[7px] px-[13px] py-[11px] font-mono text-[12.5px] flex gap-[9px] items-baseline"
+                className="bg-panel border border-line rounded-[7px] px-[13px] py-[11px] font-mono text-sm flex gap-[9px] items-baseline"
               >
-                <span className="text-faint text-[9.5px] w-[14px] flex-none">{num}</span>
+                <span className="text-faint text-xs w-[14px] flex-none">{num}</span>
                 {word}
               </div>
             ))}
           </div>
         </fieldset>
 
-        <label className="flex gap-[11px] items-start mt-5 cursor-pointer text-[13px] text-cream-soft">
+        <label className="flex gap-[11px] items-start mt-5 cursor-pointer text-sm text-cream-soft">
           <input
             type="checkbox"
             checked={newPhraseAcknowledged}
@@ -240,7 +240,7 @@ export default function RecoveryPage() {
           type="button"
           onClick={() => void onContinue()}
           disabled={!newPhraseAcknowledged}
-          className="w-full mt-[26px] font-mono text-[12px] tracking-[0.16em] uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Enter the vault
         </button>
@@ -265,10 +265,10 @@ export default function RecoveryPage() {
         </svg>
       </div>
 
-      <h1 className="font-serif font-normal text-[34px] text-center tracking-[-0.01em] leading-[1.12]">
+      <h1 className="font-serif font-normal text-5xl text-center tracking-[-0.01em] leading-[1.12]">
         Recover with <em className="text-accent">phrase.</em>
       </h1>
-      <p className="text-center text-dim text-[14px] mt-[10px]">
+      <p className="text-center text-dim text-sm mt-[10px]">
         Enter your 12 words in order, then set a new master password.
       </p>
 
@@ -293,7 +293,7 @@ export default function RecoveryPage() {
         <div className="flex flex-col gap-[9px]">
           <label
             htmlFor="recovery-username"
-            className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-faint"
+            className="font-mono text-xs tracking-label uppercase text-faint"
           >
             Username
           </label>
@@ -310,7 +310,7 @@ export default function RecoveryPage() {
             aria-invalid={usernameError !== undefined}
             aria-describedby={usernameError !== undefined ? "recovery-username-error" : undefined}
             className={[
-              "w-full bg-panel border rounded-[8px] text-cream font-mono text-[15px] px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
+              "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
               usernameError
                 ? "border-[rgba(208,133,98,.55)]"
                 : "border-line focus:border-accent-dim",
@@ -320,7 +320,7 @@ export default function RecoveryPage() {
             <p
               id="recovery-username-error"
               role="alert"
-              className="font-mono text-[10px] text-down tracking-[0.04em]"
+              className="font-mono text-xs text-down tracking-[0.04em]"
             >
               {usernameError}
             </p>
@@ -330,7 +330,7 @@ export default function RecoveryPage() {
         <div className="flex flex-col gap-[9px] mt-[26px]">
           <label
             htmlFor="recovery-phrase"
-            className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-faint"
+            className="font-mono text-xs tracking-label uppercase text-faint"
           >
             Recovery phrase (12 words)
           </label>
@@ -346,7 +346,7 @@ export default function RecoveryPage() {
             placeholder="word word word ..."
             aria-invalid={phraseError}
             className={[
-              "w-full bg-panel border rounded-[8px] text-cream font-mono text-[15px] px-4 py-[15px] outline-none transition-colors tracking-[0.04em] placeholder:text-faint placeholder:tracking-[0.02em] resize-y min-h-[84px] leading-[1.7]",
+              "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.04em] placeholder:text-faint placeholder:tracking-[0.02em] resize-y min-h-[84px] leading-[1.7]",
               phraseError
                 ? "border-[rgba(208,133,98,.55)]"
                 : phrase.length > 0 && phraseValid
@@ -357,7 +357,7 @@ export default function RecoveryPage() {
           {phrase.trim().length > 0 && (
             <p
               className={[
-                "font-mono text-[10px] tracking-[0.04em]",
+                "font-mono text-xs tracking-[0.04em]",
                 recognizedCount === 12 ? "text-accent-dim" : "text-faint",
               ].join(" ")}
             >
@@ -369,7 +369,7 @@ export default function RecoveryPage() {
         <div className="flex flex-col gap-[9px] mt-[26px]">
           <label
             htmlFor="recovery-newpassword"
-            className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-faint"
+            className="font-mono text-xs tracking-label uppercase text-faint"
           >
             New master password
           </label>
@@ -384,7 +384,7 @@ export default function RecoveryPage() {
             aria-invalid={passwordError !== undefined}
             aria-describedby={passwordError !== undefined ? "recovery-password-error" : undefined}
             className={[
-              "w-full bg-panel border rounded-[8px] text-cream font-mono text-[15px] px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
+              "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
               passwordError
                 ? "border-[rgba(208,133,98,.55)]"
                 : "border-line focus:border-accent-dim",
@@ -395,7 +395,7 @@ export default function RecoveryPage() {
             <p
               id="recovery-password-error"
               role="alert"
-              className="font-mono text-[10px] text-down tracking-[0.04em]"
+              className="font-mono text-xs text-down tracking-[0.04em]"
             >
               {passwordError}
             </p>
@@ -405,7 +405,7 @@ export default function RecoveryPage() {
         <div className="flex flex-col gap-[9px] mt-[26px]">
           <label
             htmlFor="recovery-confirmpassword"
-            className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-faint"
+            className="font-mono text-xs tracking-label uppercase text-faint"
           >
             Confirm new master password
           </label>
@@ -416,7 +416,7 @@ export default function RecoveryPage() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             autoComplete="new-password"
             maxLength={PASSWORD_MAX}
-            className="w-full bg-panel border border-line focus:border-accent-dim rounded-[8px] text-cream font-mono text-[15px] px-4 py-[15px] outline-none transition-colors tracking-[0.06em]"
+            className="w-full bg-panel border border-line focus:border-accent-dim rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em]"
           />
         </div>
 
@@ -424,13 +424,13 @@ export default function RecoveryPage() {
           type="submit"
           disabled={!hydrated || pending}
           aria-busy={pending}
-          className="w-full mt-[26px] font-mono text-[12px] tracking-[0.16em] uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {pending ? "Recovering account…" : "Derive new keys & continue"}
         </button>
       </form>
 
-      <p className="text-center font-mono text-[11px] tracking-[0.04em] text-faint mt-[26px]">
+      <p className="text-center font-mono text-xs tracking-[0.04em] text-faint mt-[26px]">
         <Link
           href="/auth/login"
           className="text-accent-dim no-underline hover:text-accent transition-colors"

@@ -131,7 +131,7 @@ export function ChangePasswordDialog({
           </div>
 
           {error && (
-            <p role="alert" className="mt-4 font-mono text-[12px] text-signal">
+            <p role="alert" className="mt-4 font-mono text-xs text-signal">
               {error}
             </p>
           )}
@@ -152,7 +152,7 @@ export function ChangePasswordDialog({
             titleId="change-password-title"
             onClose={handleClose}
           />
-          <p className="text-[13.5px] leading-[1.6] text-cream-soft">
+          <p className="text-sm leading-[1.6] text-cream-soft">
             Your password changed, and that replaced your recovery phrase. The old twelve words can
             never open this vault again. Write these down before you close.
           </p>
