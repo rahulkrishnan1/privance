@@ -38,6 +38,38 @@
   --color-signal: #c8551f;
 }
 
+/* Type scale. One ladder; every step a canonical value (Tailwind / Material /
+   iOS). The migration only ever lifts a size UP this ladder, never down, the
+   app read too small before, so nothing ends smaller than it was. Apply by role
+   (guidance, not extra tokens):
+     xs   12  eyebrow / micro-label / caption  (the floor, nothing smaller)
+     sm   14  dense data, table rows, secondary
+     base 16  body, row labels, inputs (iOS zoom floor), reading prose
+     lg   18  emphasis
+     xl   20  section title
+     2xl  24  small card figure / sub-heading
+     3xl  28  stat figure / sheet heading
+     4xl  32  screen title
+     5xl  40  amount entry, hero figure
+   Dense surfaces (holdings, transactions) lean sm; reading surfaces lean base. */
+@theme {
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.75rem;
+  --text-4xl: 2rem;
+  --text-5xl: 2.5rem;
+
+  /* One source of truth for letter-spacing so uppercase labels and buttons
+     never drift again. `label` = static eyebrows/headers; `button` = clickable
+     uppercase controls. Subtle mono spacing on tickers/badges stays inline. */
+  --tracking-label: 0.2em;
+  --tracking-button: 0.14em;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -94,8 +126,11 @@ input[type="number"] {
   appearance: textfield;
 }
 
-/* iOS zooms into inputs under 16px; pin controls to 16px on touch. */
-@media (pointer: coarse) {
+/* iOS zooms into a focused input sized under 16px. Default form controls to the
+   16px floor in the base layer so utilities still win, a larger field (the amount
+   entry) keeps its size, while bare inputs never trip the zoom. Keep every input
+   utility at text-base or above; never style an input below 16px. */
+@layer base {
   input,
   textarea,
   select {
@@ -174,13 +209,16 @@ input[type="range"].plan-range:focus-visible::-moz-range-thumb {
     0 0 0 1px var(--color-accent);
 }
 
-/* No tap-flash on mobile, and no focus ring on the chart surface (Recharts
-   gives its SVG a focusable a11y layer; the cursor line + tooltip already mark
-   the read point, so a hard outline on tap is just noise). */
+/* No tap-flash on mobile, and no focus ring anywhere in the chart (Recharts
+   gives the surface and Pie sectors a focusable a11y layer; the cursor line +
+   tooltip already mark the read point, so a hard outline on tap is just noise).
+   Cover the whole wrapper subtree, not only the surface, since the focused
+   element differs by chart type. */
 html {
   -webkit-tap-highlight-color: transparent;
 }
-.recharts-surface:focus {
+.recharts-wrapper:focus,
+.recharts-wrapper :focus {
   outline: none;
 }
 

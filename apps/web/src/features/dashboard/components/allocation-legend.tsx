@@ -1,39 +1,49 @@
 "use client";
 
 import type { AllocationSlice } from "@privance/core";
-import { formatPercent } from "@/lib/format";
-import { assignColors } from "../palette";
+import { formatCurrencyWhole, formatPercent } from "@/lib/format";
 
 type AllocationLegendProps = {
   slices: AllocationSlice[];
+  colors: string[];
   hoveredIndex: number | null;
+  onHover: (index: number | null) => void;
 };
 
-export function AllocationLegend({ slices, hoveredIndex }: AllocationLegendProps) {
-  const colors = assignColors(slices.map((s) => s.label));
+export function AllocationLegend({ slices, colors, hoveredIndex, onHover }: AllocationLegendProps) {
   return (
-    <ul className="flex-1 min-w-[200px] list-none p-0 m-0" aria-label="Allocation legend">
+    <ul className="w-full list-none p-0 m-0" aria-label="Allocation legend">
       {slices.map((slice, i) => {
         const color = colors[i];
         const isLast = i === slices.length - 1;
+        const isActive = hoveredIndex === i;
+        const isDim = hoveredIndex !== null && hoveredIndex !== i;
         return (
           <li
             key={slice.label}
+            onMouseEnter={() => onHover(i)}
+            onMouseLeave={() => onHover(null)}
             className={[
-              "flex items-center gap-2.5 py-2 text-[14px]",
+              "grid grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_auto] items-center gap-x-8 px-1 py-2 text-sm rounded-[5px] transition-[background-color,opacity] duration-100",
               isLast ? "" : "border-b border-line-soft",
-              hoveredIndex !== null && hoveredIndex !== i ? "opacity-50" : "",
+              isActive ? "bg-panel-2" : "",
+              isDim ? "opacity-50" : "",
             ]
               .filter(Boolean)
               .join(" ")}
           >
-            <span
-              className="w-[9px] h-[9px] rounded-[2px] flex-none"
-              style={{ backgroundColor: color }}
-              aria-hidden="true"
-            />
-            <span className="flex-1 text-cream">{slice.label}</span>
-            <span className="font-mono text-[12.5px] text-cream-soft tabular-nums">
+            <span className="flex items-center gap-2.5 min-w-0">
+              <span
+                className="w-[9px] h-[9px] rounded-[2px] flex-none"
+                style={{ backgroundColor: color }}
+                aria-hidden="true"
+              />
+              <span className="text-cream truncate">{slice.label}</span>
+            </span>
+            <span className="hidden md:block font-mono text-cream-soft tabular-nums text-right">
+              {formatCurrencyWhole(slice.value)}
+            </span>
+            <span className="font-mono text-dim tabular-nums text-right">
               {formatPercent(slice.share)}
             </span>
           </li>

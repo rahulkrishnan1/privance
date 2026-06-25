@@ -2,7 +2,7 @@
 
 import { Decimal, SCALE_CENTS } from "@privance/core";
 import { assignColors } from "@/features/dashboard/palette";
-import { formatCurrencyWhole } from "@/lib/format";
+import { formatCurrencyWhole, formatPercent } from "@/lib/format";
 import type { TaxBucket } from "../_invest-math";
 
 type TaxBucketsPanelProps = {
@@ -23,8 +23,8 @@ export function TaxBucketsPanel({
   return (
     <div className="bg-panel border border-line rounded-[10px] p-6 h-full">
       <div className="flex justify-between items-baseline mb-4 gap-2.5 flex-wrap">
-        <h3 className="font-serif text-[20px] font-normal tracking-[-0.005em]">Where it lives</h3>
-        <span className="font-mono text-[10px] tracking-[.14em] uppercase text-faint">
+        <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">Where it lives</h3>
+        <span className="font-mono text-xs tracking-label uppercase text-faint">
           by tax treatment
         </span>
       </div>
@@ -49,27 +49,38 @@ export function TaxBucketsPanel({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-x-7 gap-y-[11px] max-[560px]:grid-cols-1 max-[560px]:gap-y-[9px]">
-        {buckets.map((b, i) => (
-          <div key={b.key} className="flex items-center gap-[9px] text-[14px]">
-            <span
-              className="w-[9px] h-[9px] rounded-[2px] flex-none"
-              style={{ background: colors[i] }}
-              aria-hidden="true"
-            />
-            <span className="flex-1 text-cream">{b.label}</span>
-            <span
-              data-testid={`tax-bucket-${b.key}`}
-              className="vfig font-mono text-[12.5px] text-cream-soft tabular-nums"
+      <div className="flex flex-col">
+        {buckets.map((b, i) => {
+          const share = total > 0 ? b.valueCents.toFloat() / total : 0;
+          return (
+            <div
+              key={b.key}
+              className="grid grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_auto] items-center gap-x-8 text-sm py-[11px] border-b border-line-soft last:border-b-0"
             >
-              {formatCurrencyWhole(b.valueCents)}
-            </span>
-          </div>
-        ))}
+              <span className="flex items-center gap-2.5 min-w-0">
+                <span
+                  className="w-[9px] h-[9px] rounded-[2px] flex-none"
+                  style={{ background: colors[i] }}
+                  aria-hidden="true"
+                />
+                <span className="text-cream truncate">{b.label}</span>
+              </span>
+              <span
+                data-testid={`tax-bucket-${b.key}`}
+                className="vfig font-mono text-sm text-cream-soft tabular-nums text-right"
+              >
+                {formatCurrencyWhole(b.valueCents)}
+              </span>
+              <span className="hidden md:block font-mono text-sm text-dim tabular-nums text-right">
+                {formatPercent(share)}
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       {!reachableBeforeFiftyNineHalfCents.isZero() && (
-        <div className="mt-5 border border-accent/25 bg-accent/5 rounded-lg px-4 py-3 text-[12.5px] text-cream-soft leading-[1.55]">
+        <div className="mt-5 border border-accent/25 bg-accent/5 rounded-lg px-4 py-3 text-sm text-cream-soft leading-[1.55]">
           <span className="text-accent font-medium">
             <span className="vfig">{formatCurrencyWhole(reachableBeforeFiftyNineHalfCents)}</span>
             {" reachable before 59½."}

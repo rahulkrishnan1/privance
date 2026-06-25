@@ -69,7 +69,7 @@ export function PhraseCheckDialog({
   return (
     <Modal open={open} onClose={handleClose} labelledBy="phrase-title">
       <DialogHeader title="Phrase check" titleId="phrase-title" onClose={handleClose} />
-      <p className="text-[13.5px] leading-[1.6] text-dim">
+      <p className="text-sm leading-[1.6] text-dim">
         Fetch the paper and type all twelve words, in order, to confirm your spare key is intact.
         Nothing you type leaves this device.
       </p>
@@ -96,7 +96,7 @@ export function PhraseCheckDialog({
           {phrase.trim().length > 0 && result === null && (
             <p
               className={[
-                "mt-[7px] font-mono text-[10px] tracking-[0.04em]",
+                "mt-[7px] font-mono text-xs tracking-[0.04em]",
                 recognized === 12 ? "text-accent-dim" : "text-faint",
               ].join(" ")}
             >
@@ -106,17 +106,17 @@ export function PhraseCheckDialog({
         </div>
 
         {result === "ok" && (
-          <p role="status" className="mt-4 font-mono text-[12px] text-accent">
+          <p role="status" className="mt-4 font-mono text-xs text-accent">
             Verified, your recovery phrase still opens the vault.
           </p>
         )}
         {result === "fail" && (
-          <p role="alert" className="mt-4 font-mono text-[12px] text-signal">
+          <p role="alert" className="mt-4 font-mono text-xs text-signal">
             That phrase doesn&rsquo;t match. Check the words and spacing.
           </p>
         )}
         {result === "error" && (
-          <p role="alert" className="mt-4 font-mono text-[12px] text-signal">
+          <p role="alert" className="mt-4 font-mono text-xs text-signal">
             Couldn&rsquo;t run the check. Try again.
           </p>
         )}

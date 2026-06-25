@@ -36,7 +36,7 @@ export function InvestHero({ breakdown, delta, historyPoints }: InvestHeroProps)
 
   return (
     <section className="pt-6 pb-0 relative">
-      <p className="font-mono text-[10px] tracking-[.26em] uppercase text-faint">Net worth</p>
+      <p className="font-mono text-xs tracking-label uppercase text-faint">Net worth</p>
 
       <div className="flex items-end gap-5 flex-wrap mt-3">
         <span
@@ -49,7 +49,7 @@ export function InvestHero({ breakdown, delta, historyPoints }: InvestHeroProps)
         {delta !== null && (
           <span
             className={[
-              "vfig flex items-center gap-2 font-mono text-[12.5px] border rounded-full px-3.5 py-1.5 mb-2.5",
+              "vfig flex items-center gap-2 font-mono text-sm border rounded-full px-3.5 py-1.5 mb-2.5",
               deltaColor,
               deltaBorder,
             ].join(" ")}

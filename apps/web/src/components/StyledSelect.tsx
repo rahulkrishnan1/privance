@@ -25,7 +25,7 @@ export function StyledSelect({
     <select
       {...props}
       className={[
-        "w-full bg-panel-2 border rounded-lg text-cream font-mono text-[14px] px-3.5 py-3 outline-none focus:border-accent-dim transition-colors cursor-pointer appearance-none",
+        "w-full bg-panel-2 border rounded-lg text-cream font-mono text-base px-3.5 py-3 outline-none focus:border-accent-dim transition-colors cursor-pointer appearance-none",
         "bg-[length:14px] bg-[right_12px_center] bg-no-repeat pr-9",
         invalid ? "border-signal" : "border-line",
         className,

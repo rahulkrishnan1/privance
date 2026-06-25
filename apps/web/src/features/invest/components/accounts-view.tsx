@@ -105,15 +105,15 @@ function AccountRow({ account, displayValue, holdingsCount, onClick }: AccountRo
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-[14px] text-cream truncate">{account.payload.name}</p>
-        <p className="font-mono text-[10.5px] text-faint mt-[3px] truncate">
+        <p className="text-sm text-cream truncate">{account.payload.name}</p>
+        <p className="font-mono text-xs text-faint mt-[3px] truncate">
           {accountSubLine(account, holdingsCount)}
         </p>
       </div>
 
       <span
         className={[
-          "vfig font-mono text-[14px] tabular-nums shrink-0",
+          "vfig font-mono text-sm tabular-nums shrink-0",
           showNegative ? "text-down" : "text-cream",
         ].join(" ")}
       >
@@ -222,7 +222,7 @@ export function AccountsView({ breakdown }: AccountsViewProps) {
   if (query.status === "error") {
     return (
       <div className="pt-4">
-        <p className="text-[13px] text-down">{query.error.message}</p>
+        <p className="text-sm text-down">{query.error.message}</p>
       </div>
     );
   }
@@ -249,7 +249,7 @@ export function AccountsView({ breakdown }: AccountsViewProps) {
     <div className="pt-4">
       {renderedSections.map(({ kind, accounts: sectionAccounts }, sectionIndex) => (
         <div key={kind} className={sectionIndex > 0 ? "mt-4" : ""}>
-          <p className="font-mono text-[9.5px] tracking-[.2em] uppercase text-faint pb-2.5">
+          <p className="font-mono text-xs tracking-label uppercase text-faint pb-2.5">
             {SECTION_LABEL[kind]}
           </p>
           <div className="flex flex-col gap-2.5">
@@ -268,8 +268,8 @@ export function AccountsView({ breakdown }: AccountsViewProps) {
 
       {accounts.length === 0 && (
         <div className="py-16 text-center">
-          <p className="text-cream-soft text-[15px] mb-1">No accounts yet</p>
-          <p className="font-mono text-[11px] text-faint">
+          <p className="text-cream-soft text-base mb-1">No accounts yet</p>
+          <p className="font-mono text-xs text-faint">
             Add an account to start tracking your net worth.
           </p>
         </div>

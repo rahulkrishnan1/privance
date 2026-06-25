@@ -288,10 +288,10 @@ export default function UnlockPage() {
                   <path d="M12 7v5l3 2" />
                 </svg>
               </div>
-              <h1 className="font-serif font-normal text-[34px] text-center tracking-[-0.01em] leading-[1.12]">
+              <h1 className="font-serif font-normal text-5xl text-center tracking-[-0.01em] leading-[1.12]">
                 The vault re&#8209;sealed <em className="text-accent">itself.</em>
               </h1>
-              <p className="text-center text-dim text-[14px] mt-[10px]">
+              <p className="text-center text-dim text-sm mt-[10px]">
                 You were away long enough that the session key was discarded. That&rsquo;s the deal:
                 idle means locked.
               </p>
@@ -301,11 +301,11 @@ export default function UnlockPage() {
                   setSessionExpired(false);
                   setShowPasswordForm(true);
                 }}
-                className="w-full mt-[26px] font-mono text-[12px] tracking-[0.16em] uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream"
+                className="w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream"
               >
                 Sign back in
               </button>
-              <p className="text-center font-mono text-[11px] tracking-[0.04em] text-faint mt-[26px]">
+              <p className="text-center font-mono text-xs tracking-[0.04em] text-faint mt-[26px]">
                 Not{" "}
                 <span className="text-cream-soft font-mono">{hydrated ? expiredUsername : ""}</span>
                 ?{" "}
@@ -341,10 +341,10 @@ export default function UnlockPage() {
                     </svg>
                   </div>
 
-                  <h1 className="font-serif font-normal text-[34px] text-center tracking-[-0.01em] leading-[1.12]">
+                  <h1 className="font-serif font-normal text-5xl text-center tracking-[-0.01em] leading-[1.12]">
                     Welcome back, <em className="text-accent">{hydrated ? username : ""}.</em>
                   </h1>
-                  <p className="text-center text-dim text-[14px] mt-[10px]">
+                  <p className="text-center text-dim text-sm mt-[10px]">
                     The vault is sealed. Decryption happens here, on this device.
                   </p>
                 </>
@@ -366,10 +366,10 @@ export default function UnlockPage() {
                     </svg>
                   </div>
 
-                  <h1 className="font-serif font-normal text-[34px] text-center tracking-[-0.01em] leading-[1.12]">
+                  <h1 className="font-serif font-normal text-5xl text-center tracking-[-0.01em] leading-[1.12]">
                     Welcome <em className="text-accent">back.</em>
                   </h1>
-                  <p className="text-center text-dim text-[14px] mt-[10px]">
+                  <p className="text-center text-dim text-sm mt-[10px]">
                     Signed in as{" "}
                     <span className="text-cream-soft font-mono">{hydrated ? username : ""}</span>.
                   </p>
@@ -410,7 +410,7 @@ export default function UnlockPage() {
                   aria-busy={biometricPending}
                   disabled={!hydrated || biometricPending}
                   onClick={() => void handleBiometric()}
-                  className="w-full mt-[26px] font-mono text-[12px] tracking-[0.16em] uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-[11px]"
+                  className="w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-[11px]"
                 >
                   <svg
                     viewBox="0 0 24 24"
@@ -436,7 +436,7 @@ export default function UnlockPage() {
                   <div className="flex flex-col gap-[9px]">
                     <label
                       htmlFor="unlock-password"
-                      className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-faint"
+                      className="font-mono text-xs tracking-label uppercase text-faint"
                     >
                       Master password
                     </label>
@@ -453,7 +453,7 @@ export default function UnlockPage() {
                       placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;"
                       aria-invalid={error === "wrong"}
                       className={[
-                        "w-full bg-panel border rounded-[8px] text-cream font-mono text-[15px] px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
+                        "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
                         error === "wrong"
                           ? "border-[rgba(208,133,98,.55)]"
                           : "border-line focus:border-accent-dim",
@@ -466,7 +466,7 @@ export default function UnlockPage() {
                     disabled={!hydrated || pending || error === "limit"}
                     aria-busy={pending}
                     className={[
-                      "w-full mt-[26px] font-mono text-[12px] tracking-[0.16em] uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-50 disabled:cursor-not-allowed",
+                      "w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-50 disabled:cursor-not-allowed",
                       error === "limit" ? "opacity-40 pointer-events-none" : "",
                     ].join(" ")}
                   >
@@ -480,7 +480,7 @@ export default function UnlockPage() {
                   type="button"
                   onClick={() => setShowPasswordForm(true)}
                   className={[
-                    "w-full mt-3 font-mono text-[11px] tracking-[0.14em] uppercase bg-transparent rounded-[8px] py-[15px] cursor-pointer transition-colors flex items-center justify-center",
+                    "w-full mt-3 font-mono text-xs tracking-button uppercase bg-transparent rounded-[8px] py-[15px] cursor-pointer transition-colors flex items-center justify-center",
                     softBioError
                       ? "border border-accent-dim text-accent"
                       : "border border-line text-dim hover:text-accent hover:border-accent-dim",
@@ -491,12 +491,12 @@ export default function UnlockPage() {
               )}
 
               {biometricRecord && (
-                <p className="text-center font-mono text-[9.5px] tracking-[0.08em] text-faint mt-[14px]">
+                <p className="text-center font-mono text-xs tracking-[0.08em] text-faint mt-[14px]">
                   password still required every 14 days, by design
                 </p>
               )}
 
-              <p className="mt-6 text-center font-mono text-[10px] tracking-[0.22em] uppercase text-faint opacity-60">
+              <p className="mt-6 text-center font-mono text-xs tracking-label uppercase text-faint opacity-60">
                 <button
                   type="button"
                   onClick={() => void handleSignOut()}

@@ -135,16 +135,16 @@ export function HoldingRow({
     >
       {/* Holding: ticker (cream, mono) + name, or "Proxy · TICKER" when proxied */}
       <td className="border-t border-line-soft py-[13px] tabular-nums text-left max-w-0">
-        <div className="h-tk font-mono text-[12.5px] tracking-[.04em] text-cream truncate">
+        <div className="h-tk font-mono text-sm tracking-[.04em] text-cream truncate">
           {holding.ticker}
         </div>
         {holding.proxyTicker ? (
-          <div className="h-nm hidden md:block font-mono text-[11.5px] text-dim mt-0.5 truncate">
+          <div className="h-nm hidden md:block font-mono text-xs text-dim mt-0.5 truncate">
             Proxy &middot; {holding.proxyTicker}
           </div>
         ) : (
           holding.name !== undefined && (
-            <div className="h-nm hidden md:block text-[12px] text-dim mt-0.5 truncate">
+            <div className="h-nm hidden md:block text-xs text-dim mt-0.5 truncate">
               {holding.name}
             </div>
           )
@@ -155,7 +155,7 @@ export function HoldingRow({
         {noPrice ? (
           <span className="text-faint">—</span>
         ) : (
-          <span className="vfig h-val font-mono text-[13px] text-cream">
+          <span className="vfig h-val font-mono text-sm text-cream">
             {effectivePrice ? formatPrice(effectivePrice) : "—"}
           </span>
         )}
@@ -164,14 +164,14 @@ export function HoldingRow({
       {/* Day -- desktop only: dollar over percent (mobile shows G/L instead) */}
       <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
         {noPrice ? (
-          <span className="font-mono text-[12px] text-faint">—</span>
+          <span className="font-mono text-sm text-faint">—</span>
         ) : (
           <span className={`inline-flex flex-col items-end font-mono ${dayTone}`}>
-            <span className="vfig text-[13px]">
+            <span className="vfig text-sm">
               {dayChangeCents !== null ? formatSignedCurrency(dayChangeCents) : "—"}
             </span>
             {dayPct !== null && (
-              <span className="text-[11px] opacity-80">{formatSignedPct(dayPct)}</span>
+              <span className="text-xs opacity-80">{formatSignedPct(dayPct)}</span>
             )}
           </span>
         )}
@@ -183,15 +183,15 @@ export function HoldingRow({
           <span className="text-faint">—</span>
         ) : (
           <>
-            <span className={`md:hidden font-mono text-[12px] ${gainTone}`}>
+            <span className={`md:hidden font-mono text-sm ${gainTone}`}>
               {gain.gainPct !== null ? formatSignedPct(gain.gainPct) : "—"}
             </span>
             <span
               className={`h-gain hidden md:inline-flex flex-col items-end font-mono ${gainTone}`}
             >
-              <span className="vfig text-[13px]">{formatSignedCurrency(gain.gainDollar)}</span>
+              <span className="vfig text-sm">{formatSignedCurrency(gain.gainDollar)}</span>
               {gain.gainPct !== null && (
-                <span className="g-pc text-[11px] opacity-80">{formatSignedPct(gain.gainPct)}</span>
+                <span className="g-pc text-xs opacity-80">{formatSignedPct(gain.gainPct)}</span>
               )}
             </span>
           </>
@@ -211,7 +211,7 @@ export function HoldingRow({
                 aria-hidden="true"
               />
             </span>
-            <span className="wt-pc font-mono text-[11.5px] text-dim w-11 text-right">
+            <span className="wt-pc font-mono text-sm text-dim w-11 text-right">
               {weightPct.toFixed(1)}%
             </span>
           </span>
@@ -220,11 +220,11 @@ export function HoldingRow({
 
       <td className="border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
         {noPrice ? (
-          <span className="np font-mono text-[9.5px] tracking-[.08em] uppercase text-down border border-down/30 rounded-[5px] px-2 py-1 whitespace-nowrap">
+          <span className="np font-mono text-xs tracking-[.08em] uppercase text-down border border-down/30 rounded-[5px] px-2 py-1 whitespace-nowrap">
             no price &middot; set one
           </span>
         ) : (
-          <span className="vfig h-val font-mono text-[13px] text-cream">
+          <span className="vfig h-val font-mono text-sm text-cream">
             {marketValue ? formatCurrency(marketValue, "USD") : "—"}
           </span>
         )}

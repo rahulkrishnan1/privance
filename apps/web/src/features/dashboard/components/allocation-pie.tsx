@@ -1,9 +1,9 @@
 "use client";
 
 import { type AllocationSlice, Decimal, SCALE_CENTS } from "@privance/core";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
-import { formatCurrencyCompact } from "@/lib/format";
+import { formatCurrencyCompact, formatPercent } from "@/lib/format";
 import { assignColors, PALETTE_FALLBACK_GRAY } from "../palette";
 import { AllocationLegend } from "./allocation-legend";
 
@@ -26,9 +26,9 @@ const MODE_LABEL: Record<AllocationMode, string> = {
   sector: "By sector",
 };
 
-const CENTER_LABEL: Record<AllocationMode, string> = {
-  class: "invested + cash",
-  sector: "by sector",
+const REST_LABEL: Record<AllocationMode, string> = {
+  class: "Total",
+  sector: "Invested",
 };
 
 export function AllocationPie({ title, classSlices, sectorSlices }: AllocationPieProps) {
@@ -43,12 +43,17 @@ export function AllocationPie({ title, classSlices, sectorSlices }: AllocationPi
     return { name: s.label, value: safeValue.toFloat(), index: i };
   });
 
-  const colors = assignColors(slices.map((s) => s.label));
+  const colors = useMemo(() => assignColors(slices.map((s) => s.label)), [slices]);
 
   const total = slices.reduce(
     (acc, s) => acc.add(s.value.isNegative() ? Decimal.zero(SCALE_CENTS) : s.value),
     Decimal.zero(SCALE_CENTS),
   );
+
+  const hovered = hoveredIndex !== null ? slices[hoveredIndex] : null;
+  const centerLabel = hovered ? hovered.label : REST_LABEL[mode];
+  const centerValue = hovered ? hovered.value : total;
+  const centerPct = hovered ? formatPercent(hovered.share) : "";
 
   return (
     <div
@@ -57,7 +62,7 @@ export function AllocationPie({ title, classSlices, sectorSlices }: AllocationPi
       aria-label={`${title} allocation chart`}
     >
       <div className="flex justify-between items-baseline mb-4 flex-wrap gap-x-3 gap-y-1">
-        <h3 className="font-serif text-[20px] font-normal tracking-[-0.005em]">{title}</h3>
+        <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">{title}</h3>
         <button
           type="button"
           onClick={() => {
@@ -65,7 +70,7 @@ export function AllocationPie({ title, classSlices, sectorSlices }: AllocationPi
             setHoveredIndex(null);
           }}
           aria-label={`Switch allocation view (currently ${MODE_LABEL[mode]})`}
-          className="font-mono text-[10px] tracking-[.14em] uppercase text-faint hover:text-accent transition-colors cursor-pointer"
+          className="font-mono text-xs tracking-button uppercase text-faint hover:text-accent transition-colors cursor-pointer"
         >
           {MODE_LABEL[mode]} <span aria-hidden="true">&#9662;</span>
         </button>
@@ -74,13 +79,13 @@ export function AllocationPie({ title, classSlices, sectorSlices }: AllocationPi
       {isEmpty ? (
         <p className="text-sm text-dim text-center py-8">Add holdings to see allocation</p>
       ) : (
-        <div className="flex gap-7 items-center flex-wrap justify-center">
-          {/* Donut, 168x168 fixed, center label absolutely positioned */}
-          <div className="relative w-[168px] h-[168px] flex-none">
+        <div className="flex flex-col items-center gap-[18px]">
+          {/* Donut on top, center label/figure/pct swap to the hovered slice */}
+          <div className="relative w-full max-w-[228px] aspect-square">
             <ResponsiveContainer
               width="100%"
               height="100%"
-              initialDimension={{ width: 168, height: 168 }}
+              initialDimension={{ width: 228, height: 228 }}
             >
               <PieChart>
                 <Pie
@@ -107,15 +112,25 @@ export function AllocationPie({ title, classSlices, sectorSlices }: AllocationPi
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="vfig font-serif text-[24px]">{formatCurrencyCompact(total)}</span>
-              <span className="font-mono text-[8.5px] tracking-[.18em] uppercase text-faint mt-[3px]">
-                {CENTER_LABEL[mode]}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-6 text-center">
+              <span className="font-mono text-xs tracking-label uppercase text-faint max-w-full truncate">
+                {centerLabel}
+              </span>
+              <span className="vfig font-serif text-4xl leading-none mt-1">
+                {formatCurrencyCompact(centerValue)}
+              </span>
+              <span className="font-mono text-xs text-accent mt-[3px] min-h-[1em]">
+                {centerPct}
               </span>
             </div>
           </div>
 
-          <AllocationLegend slices={slices} hoveredIndex={hoveredIndex} />
+          <AllocationLegend
+            slices={slices}
+            colors={colors}
+            hoveredIndex={hoveredIndex}
+            onHover={setHoveredIndex}
+          />
         </div>
       )}
     </div>

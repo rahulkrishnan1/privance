@@ -49,7 +49,7 @@ function SortableHeader({ column, label, sort, onPress, align = "left" }: Sortab
     >
       <span
         className={[
-          "font-mono text-[9.5px] tracking-[.16em] uppercase whitespace-nowrap font-normal",
+          "font-mono text-xs tracking-label uppercase whitespace-nowrap font-normal",
           active ? "text-accent" : "text-faint",
         ].join(" ")}
       >

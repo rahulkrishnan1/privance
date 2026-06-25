@@ -109,7 +109,7 @@ export default function LoginPage() {
         </svg>
       </div>
 
-      <h1 className="font-serif font-normal text-[34px] text-center tracking-[-0.01em] leading-[1.12]">
+      <h1 className="font-serif font-normal text-5xl text-center tracking-[-0.01em] leading-[1.12]">
         Unlock your <em className="text-accent">vault.</em>
       </h1>
 
@@ -134,7 +134,7 @@ export default function LoginPage() {
         <div className="flex flex-col gap-[9px]">
           <label
             htmlFor="login-username"
-            className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-faint"
+            className="font-mono text-xs tracking-label uppercase text-faint"
           >
             Username
           </label>
@@ -153,7 +153,7 @@ export default function LoginPage() {
             maxLength={USERNAME_MAX}
             aria-invalid={credInvalid}
             className={[
-              "w-full bg-panel border rounded-[8px] text-cream font-mono text-[15px] px-4 py-[15px] outline-none transition-colors tracking-[0.06em]",
+              "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em]",
               credInvalid ? "border-[rgba(208,133,98,.55)]" : "border-line focus:border-accent-dim",
             ].join(" ")}
           />
@@ -162,7 +162,7 @@ export default function LoginPage() {
         <div className="flex flex-col gap-[9px] mt-[26px]">
           <label
             htmlFor="login-password"
-            className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-faint"
+            className="font-mono text-xs tracking-label uppercase text-faint"
           >
             Master password
           </label>
@@ -179,7 +179,7 @@ export default function LoginPage() {
             placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;"
             aria-invalid={credInvalid}
             className={[
-              "w-full bg-panel border rounded-[8px] text-cream font-mono text-[15px] px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
+              "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
               credInvalid ? "border-[rgba(208,133,98,.55)]" : "border-line focus:border-accent-dim",
             ].join(" ")}
           />
@@ -189,13 +189,13 @@ export default function LoginPage() {
           type="submit"
           disabled={!hydrated || pending || rateLimited}
           aria-busy={pending}
-          className="w-full mt-[26px] font-mono text-[12px] tracking-[0.16em] uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {pending ? "Signing in…" : "Sign in"}
         </button>
       </form>
 
-      <p className="text-center font-mono text-[11px] tracking-[0.04em] text-faint mt-[26px]">
+      <p className="text-center font-mono text-xs tracking-[0.04em] text-faint mt-[26px]">
         <Link
           href="/auth/signup"
           className="text-accent-dim no-underline hover:text-accent transition-colors"

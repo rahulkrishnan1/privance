@@ -274,14 +274,14 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
           role="alert"
           className="rounded-lg bg-down/10 border border-down/40 px-4 py-3 mb-4 flex items-center justify-between"
         >
-          <p className="text-[13px] text-down flex-1">
+          <p className="text-sm text-down flex-1">
             {anyError?.message ?? error ?? "An error occurred"}
           </p>
           <button
             type="button"
             onClick={tick}
             aria-label="Retry"
-            className="ml-2 text-[13px] font-medium text-down hover:underline cursor-pointer"
+            className="ml-2 text-sm font-medium text-down hover:underline cursor-pointer"
           >
             Retry
           </button>
@@ -318,7 +318,7 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
           <button
             type="button"
             onClick={() => setGroupsManagerOpen(true)}
-            className="ml-auto font-mono text-[10px] tracking-[.1em] uppercase text-faint border border-line rounded-full px-3.5 py-[7px] hover:text-accent hover:border-accent-dim transition cursor-pointer"
+            className="ml-auto font-mono text-xs tracking-button uppercase text-faint border border-line rounded-full px-3.5 py-[7px] hover:text-accent hover:border-accent-dim transition cursor-pointer"
           >
             &#8862; Edit groups
           </button>
@@ -328,12 +328,12 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
       <div className="bg-panel border border-line rounded-[10px] p-6">
         <div className="flex justify-between items-baseline mb-4 gap-2.5 max-[560px]:flex-col max-[560px]:items-start max-[560px]:gap-1.5">
           <div>
-            <h3 className="font-serif text-[20px] font-normal tracking-[-0.005em]">
+            <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">
               {filterLabel} &middot; {visibleHoldings.length}
             </h3>
             {gain !== null && !gain.gainCents.isZero() && (
               <p
-                className={`vfig font-mono text-[11px] mt-[5px] ${!gain.gainCents.isNegative() ? "text-up" : "text-down"}`}
+                className={`vfig font-mono text-xs mt-[5px] ${!gain.gainCents.isNegative() ? "text-up" : "text-down"}`}
               >
                 {!gain.gainCents.isNegative() ? "+" : ""}
                 {formatCurrencyWhole(gain.gainCents)} unrealized &middot;{" "}

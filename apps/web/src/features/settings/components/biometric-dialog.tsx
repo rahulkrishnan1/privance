@@ -25,12 +25,12 @@ export function BiometricDialog({
     <Modal open={open} onClose={onClose} labelledBy="biometric-title">
       <DialogHeader title="Biometric unlock" titleId="biometric-title" onClose={onClose} />
       {enrolled ? (
-        <p className="text-[13.5px] leading-[1.6] text-cream-soft">
+        <p className="text-sm leading-[1.6] text-cream-soft">
           Face ID or Touch ID opens the vault on this device. The master password is still demanded
           every 14 days, so it never fades from memory.
         </p>
       ) : (
-        <p className="text-[13.5px] leading-[1.6] text-cream-soft">
+        <p className="text-sm leading-[1.6] text-cream-soft">
           Enable Face ID or Touch ID to unlock without typing the master password. Your OS will
           prompt for the gesture.
         </p>
@@ -39,22 +39,22 @@ export function BiometricDialog({
       {message && (
         <div className="mt-4 flex flex-col gap-2">
           {message.kind === "cancelled" && (
-            <p role="alert" className="font-mono text-[12px] text-signal">
+            <p role="alert" className="font-mono text-xs text-signal">
               Enrollment was cancelled.
             </p>
           )}
           {message.kind === "unsupported" && (
-            <p role="alert" className="font-mono text-[12px] text-signal">
+            <p role="alert" className="font-mono text-xs text-signal">
               This device does not support biometric unlock.
             </p>
           )}
           {message.kind === "other" && (
-            <p role="alert" className="font-mono text-[12px] text-signal">
+            <p role="alert" className="font-mono text-xs text-signal">
               {message.text}
             </p>
           )}
           {message.kind === "save-failed-with-orphan" && (
-            <p role="alert" className="font-mono text-[12px] text-signal">
+            <p role="alert" className="font-mono text-xs text-signal">
               Enrollment failed to save. A passkey was created and may appear in your OS passkey
               manager. You can remove it there.
             </p>
@@ -62,7 +62,7 @@ export function BiometricDialog({
           {(message.kind === "os-passkey-notice" ||
             message.kind === "save-failed-with-orphan" ||
             message.kind === "unsupported") && (
-            <p className="font-mono text-[12px] text-faint">
+            <p className="font-mono text-xs text-faint">
               The associated passkey remains in your device credential manager. You can remove it
               from your OS settings.
             </p>

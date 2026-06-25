@@ -97,15 +97,15 @@ function RecurringRow({
         <CategoryIcon category={item.category} className="w-4 h-4" />
       </span>
       <span className="flex-1 min-w-0">
-        <span className="block text-[14px] text-cream">
+        <span className="block text-sm text-cream">
           {item.name}
           {isPaused && (
-            <span className="inline-block font-mono text-[8px] tracking-[.12em] uppercase text-faint border border-line rounded-full px-[7px] py-[2px] ml-[7px] align-[1px]">
+            <span className="inline-block font-mono text-xs tracking-label uppercase text-faint border border-line rounded-full px-[7px] py-[2px] ml-[7px] align-[1px]">
               paused
             </span>
           )}
         </span>
-        <span className="block font-mono text-[10.5px] text-faint mt-[3px]">
+        <span className="block font-mono text-xs text-faint mt-[3px]">
           {subLine(item, now)}
           {!isPaused && billed !== null && (
             <>
@@ -118,14 +118,14 @@ function RecurringRow({
       </span>
       <span
         className={[
-          "vfig font-mono text-[13px] tabular-nums text-right flex-none",
+          "vfig font-mono text-sm tabular-nums text-right flex-none",
           isPaused ? "line-through" : "",
         ]
           .join(" ")
           .trim()}
       >
         {formatMoney(monthly)}
-        <span className="text-[10px] text-faint">/mo</span>
+        <span className="text-xs text-faint">/mo</span>
       </span>
     </button>
   );
@@ -145,7 +145,7 @@ function SubtotalRow({ items }: { items: LocalSpendItem[] }) {
       : `${active.length} active`;
 
   return (
-    <div className="flex justify-between flex-wrap gap-1 border-t border-line-soft mt-2.5 pt-3.5 font-mono text-[11px] tracking-[.06em] text-faint">
+    <div className="flex justify-between flex-wrap gap-1 border-t border-line-soft mt-2.5 pt-3.5 font-mono text-xs tracking-[.06em] text-faint">
       <span>{countText}</span>
       <span>
         <b className="vfig text-cream font-medium tabular-nums">{formatCurrencyWhole(monthly)}</b> /
@@ -172,7 +172,7 @@ function Panel({
 }) {
   return (
     <div className={`bg-panel border border-line rounded-[10px] p-6 ${className}`}>
-      <h3 className="font-serif text-[20px] font-normal tracking-[-0.005em] mb-4">{title}</h3>
+      <h3 className="font-serif text-2xl font-normal tracking-[-0.005em] mb-4">{title}</h3>
       {/* Rows wrapped so the last row is a real :last-child and drops its border,
           leaving the subtotal's top border as the only divider above it. */}
       <div>
@@ -298,13 +298,13 @@ export function SpendScreen() {
   if (error !== null) {
     return (
       <div className={`${MAX_WIDTH} pt-6`}>
-        <p className="font-mono text-[11px] text-down" role="alert">
+        <p className="font-mono text-xs text-down" role="alert">
           Failed to load. {error.message}
         </p>
         <button
           type="button"
           onClick={tick}
-          className="mt-3 font-mono text-[10px] tracking-[.12em] uppercase text-accent border border-accent/30 rounded-md px-4 py-2 cursor-pointer hover:bg-accent/8 transition-colors"
+          className="mt-3 font-mono text-xs tracking-button uppercase text-accent border border-accent/30 rounded-md px-4 py-2 cursor-pointer hover:bg-accent/8 transition-colors"
         >
           Retry
         </button>
@@ -327,17 +327,17 @@ export function SpendScreen() {
             <path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M12 7v5l3 2" />
           </svg>
         </div>
-        <h2 className="font-serif text-[32px] tracking-[-0.01em]">
+        <h2 className="font-serif text-4xl tracking-[-0.01em]">
           Nothing recurring, <em className="text-accent">yet.</em>
         </h2>
-        <p className="text-dim max-w-[44ch] mx-auto mt-3 text-[14.5px]">
+        <p className="text-dim max-w-[44ch] mx-auto mt-3 text-base">
           Add the costs that hit every month, rent, utilities, insurance, subscriptions, and
           Privance keeps the running total. No bank linking, encrypted on this device.
         </p>
         <button
           type="button"
           onClick={openAdd}
-          className="inline-block mt-7 font-mono text-[11.5px] tracking-[.12em] uppercase bg-accent text-vault border-0 rounded-[6px] px-[26px] py-[14px] cursor-pointer hover:bg-cream transition-colors"
+          className="inline-block mt-7 font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[6px] px-[26px] py-[14px] cursor-pointer hover:bg-cream transition-colors"
         >
           Add a recurring expense
         </button>
@@ -355,7 +355,7 @@ export function SpendScreen() {
   return (
     <div className={MAX_WIDTH}>
       <section className="pt-6 pb-0">
-        <p className="font-mono text-[10px] tracking-[.26em] uppercase text-faint">Spend</p>
+        <p className="font-mono text-xs tracking-label uppercase text-faint">Spend</p>
         <div className="flex items-end gap-5 flex-wrap mt-3">
           <span
             data-testid="spend-monthly-total"
@@ -367,12 +367,12 @@ export function SpendScreen() {
           <button
             type="button"
             onClick={openAdd}
-            className="mb-2.5 font-mono text-[10.5px] tracking-[.12em] uppercase text-vault bg-accent border-0 rounded-md px-4 py-2 cursor-pointer hover:bg-cream transition-colors"
+            className="mb-2.5 font-mono text-xs tracking-button uppercase text-vault bg-accent border-0 rounded-md px-4 py-2 cursor-pointer hover:bg-cream transition-colors"
           >
             + Add expense
           </button>
         </div>
-        <p className="font-mono text-[13px] text-dim mt-3.5 tracking-[.02em]">
+        <p className="font-mono text-sm text-dim mt-3.5 tracking-[.02em]">
           <b className="vfig text-cream-soft font-medium">{formatCurrencyWhole(annualTotal)}</b>
           {` a year · ${activeCount} active ${activeCount === 1 ? "commitment" : "commitments"}`}
         </p>
@@ -380,44 +380,38 @@ export function SpendScreen() {
 
       <div className="grid grid-cols-4 gap-4 mt-4 max-[880px]:grid-cols-2">
         <div className="bg-panel border border-line rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
-          <p className="font-mono text-[9.5px] tracking-[.2em] uppercase text-faint">Essentials</p>
-          <p className="vfig font-serif text-[27px] mt-2 max-[480px]:text-[23px]">
+          <p className="font-mono text-xs tracking-label uppercase text-faint">Essentials</p>
+          <p className="vfig font-serif text-3xl mt-2 max-[480px]:text-2xl">
             {formatCurrencyWhole(essentialMonthly)}
-            <span className="font-mono text-[11px] text-faint ml-1">/mo</span>
+            <span className="font-mono text-xs text-faint ml-1">/mo</span>
           </p>
-          <p className="font-mono text-[10.5px] mt-1 text-dim">
+          <p className="font-mono text-xs mt-1 text-dim">
             <span className="vfig">{formatCurrencyWhole(essentialAnnual)} / yr</span>
           </p>
         </div>
         <div className="bg-panel border border-line rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
-          <p className="font-mono text-[9.5px] tracking-[.2em] uppercase text-faint">
-            Subscriptions
-          </p>
-          <p className="vfig font-serif text-[27px] mt-2 max-[480px]:text-[23px]">
+          <p className="font-mono text-xs tracking-label uppercase text-faint">Subscriptions</p>
+          <p className="vfig font-serif text-3xl mt-2 max-[480px]:text-2xl">
             {formatCurrencyWhole(subscriptionMonthly)}
-            <span className="font-mono text-[11px] text-faint ml-1">/mo</span>
+            <span className="font-mono text-xs text-faint ml-1">/mo</span>
           </p>
-          <p className="font-mono text-[10.5px] mt-1 text-dim">
+          <p className="font-mono text-xs mt-1 text-dim">
             <span className="vfig">{formatCurrencyWhole(subscriptionAnnual)} / yr</span>
           </p>
         </div>
         <div className="bg-panel border border-line rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
-          <p className="font-mono text-[9.5px] tracking-[.2em] uppercase text-faint">
-            Subscription share
-          </p>
+          <p className="font-mono text-xs tracking-label uppercase text-faint">Subs share</p>
           {/* A ratio, not a money figure, so it stays readable under the Veil. */}
-          <p className="font-serif text-[27px] mt-2 max-[480px]:text-[23px]">
-            {subscriptionShare}%
-          </p>
-          <p className="font-mono text-[10.5px] mt-1 text-dim">of monthly spend</p>
+          <p className="font-serif text-3xl mt-2 max-[480px]:text-2xl">{subscriptionShare}%</p>
+          <p className="font-mono text-xs mt-1 text-dim">of monthly spend</p>
         </div>
         <div className="bg-panel border border-line rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
-          <p className="font-mono text-[9.5px] tracking-[.2em] uppercase text-faint">Per day</p>
-          <p className="vfig font-serif text-[27px] mt-2 max-[480px]:text-[23px]">
+          <p className="font-mono text-xs tracking-label uppercase text-faint">Per day</p>
+          <p className="vfig font-serif text-3xl mt-2 max-[480px]:text-2xl">
             {formatCurrencyWhole(dailyBurn)}
-            <span className="font-mono text-[11px] text-faint ml-1">/day</span>
+            <span className="font-mono text-xs text-faint ml-1">/day</span>
           </p>
-          <p className="font-mono text-[10.5px] mt-1 text-dim">
+          <p className="font-mono text-xs mt-1 text-dim">
             <span className="vfig">{formatCurrencyWhole(weeklyBurn)} / wk</span>
           </p>
         </div>

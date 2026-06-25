@@ -80,7 +80,7 @@ export function HoldingDrawer({
         <div className="flex items-center justify-between">
           <h2
             id="holding-drawer-title"
-            className="font-serif text-[23px] leading-tight font-light tracking-[-0.01em] text-cream"
+            className="font-serif text-2xl leading-tight font-light tracking-[-0.01em] text-cream"
           >
             {mode.kind === "add" ? "Add holding" : "Edit holding"}
           </h2>

@@ -72,7 +72,7 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
         <div className="flex items-center justify-between">
           <h2
             id="groups-manager-title"
-            className="font-serif text-[23px] leading-tight font-light tracking-[-0.01em] text-cream"
+            className="font-serif text-2xl leading-tight font-light tracking-[-0.01em] text-cream"
           >
             Groups
           </h2>
@@ -86,12 +86,12 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
           </button>
         </div>
 
-        <p className="text-[13px] text-dim leading-[1.6]">
+        <p className="text-sm text-dim leading-[1.6]">
           Your own buckets, your own taxonomy. Groups live encrypted with everything else.
         </p>
 
         {groups.length === 0 && (
-          <p className="text-[13px] text-faint text-center py-4">No groups yet</p>
+          <p className="text-sm text-faint text-center py-4">No groups yet</p>
         )}
 
         <div>
@@ -108,7 +108,7 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
                     aria-label="Group name"
                     // biome-ignore lint/a11y/noAutofocus: focuses the rename input inside the modal
                     autoFocus
-                    className="flex-1 rounded-lg border border-accent-dim/30 px-3 py-2 text-[14px] text-cream bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent min-h-9"
+                    className="flex-1 rounded-lg border border-accent-dim/30 px-3 py-2 text-base text-cream bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent min-h-9"
                   />
                   <Button
                     onClick={() => void commitRename(group.id)}
@@ -123,14 +123,14 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
                     type="button"
                     onClick={cancelEdit}
                     aria-label="Cancel edit"
-                    className="rounded-lg px-3 py-2 text-[13px] text-dim hover:text-cream min-h-9 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent cursor-pointer transition-colors"
+                    className="rounded-lg px-3 py-2 text-sm text-dim hover:text-cream min-h-9 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent cursor-pointer transition-colors"
                   >
                     Cancel
                   </button>
                 </div>
               ) : pendingDelete === group.id ? (
                 <div className="flex-1 flex items-center gap-2">
-                  <span className="flex-1 text-[13px] text-cream">
+                  <span className="flex-1 text-sm text-cream">
                     Delete &quot;{group.name}&quot;?
                   </span>
                   <Button
@@ -147,19 +147,19 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
                     type="button"
                     onClick={() => setPendingDelete(null)}
                     aria-label="Cancel delete"
-                    className="rounded-lg px-3 py-2 text-[13px] text-dim hover:text-cream min-h-9 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent cursor-pointer transition-colors"
+                    className="rounded-lg px-3 py-2 text-sm text-dim hover:text-cream min-h-9 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent cursor-pointer transition-colors"
                   >
                     Cancel
                   </button>
                 </div>
               ) : (
                 <>
-                  <span className="flex-1 text-[14px] text-cream">{group.name}</span>
+                  <span className="flex-1 text-base text-cream">{group.name}</span>
                   <button
                     type="button"
                     onClick={() => startEdit(group)}
                     aria-label={`Rename ${group.name}`}
-                    className="font-mono text-[9.5px] tracking-[.1em] uppercase px-3 py-1 rounded text-faint hover:text-cream min-h-9 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent cursor-pointer transition-colors"
+                    className="font-mono text-xs tracking-button uppercase px-3 py-1 rounded text-faint hover:text-cream min-h-9 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent cursor-pointer transition-colors"
                   >
                     Rename
                   </button>

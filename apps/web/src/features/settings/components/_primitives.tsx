@@ -26,11 +26,11 @@ export function Row({
         {icon}
       </span>
       <span className="min-w-0 flex-1 text-left">
-        <span className={["block text-[14.5px]", danger ? "text-down" : "text-cream"].join(" ")}>
+        <span className={["block text-base", danger ? "text-down" : "text-cream"].join(" ")}>
           {name}
         </span>
         {description && (
-          <span className="mt-[3px] block font-mono text-[10.5px] tracking-[0.04em] text-faint">
+          <span className="mt-[3px] block font-mono text-xs tracking-[0.04em] text-faint">
             {description}
           </span>
         )}
@@ -70,7 +70,7 @@ export function Badge({
   return (
     <span
       className={[
-        "shrink-0 rounded-full border px-[11px] py-[5px] font-mono text-[10.5px] uppercase tracking-[0.1em]",
+        "shrink-0 rounded-full border px-[11px] py-[5px] font-mono text-xs uppercase tracking-label",
         cls,
       ].join(" ")}
     >
@@ -80,12 +80,12 @@ export function Badge({
 }
 
 export function Caret() {
-  return <span className="shrink-0 text-faint text-[18px] leading-none">&rsaquo;</span>;
+  return <span className="shrink-0 text-faint text-lg leading-none">&rsaquo;</span>;
 }
 
 export function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.24em] text-faint">{children}</p>
+    <p className="mb-3 font-mono text-xs uppercase tracking-[0.24em] text-faint">{children}</p>
   );
 }
 
@@ -142,7 +142,7 @@ export function DialogHeader({
       <h3
         id={titleId}
         className={[
-          "font-serif font-normal text-[23px] tracking-[-0.01em]",
+          "font-serif font-normal text-2xl tracking-[-0.01em]",
           danger ? "text-down" : "",
         ].join(" ")}
       >
@@ -169,9 +169,9 @@ export function PhraseGrid({ phrase }: { phrase: string }) {
         {words.map(({ word, num }) => (
           <div
             key={num}
-            className="flex items-baseline gap-[9px] rounded-[7px] border border-line bg-panel-2 px-[13px] py-[11px] font-mono text-[12.5px]"
+            className="flex items-baseline gap-[9px] rounded-[7px] border border-line bg-panel-2 px-[13px] py-[11px] font-mono text-sm"
           >
-            <span className="w-[14px] flex-none text-[9.5px] text-faint">{num}</span>
+            <span className="w-[14px] flex-none text-xs text-faint">{num}</span>
             {word}
           </div>
         ))}

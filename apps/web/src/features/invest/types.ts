@@ -25,7 +25,6 @@ export type IncomePayer = {
   id: string;
   /** Chip label: ticker for dividend payers, "CASH" for interest-bearing cash. */
   ticker: string;
-  name?: string;
   annualCents: Decimal;
   /** Forward yield as a ratio, e.g. 0.0137 for 1.37% (dividend yield or cash APY). */
   yield: number;

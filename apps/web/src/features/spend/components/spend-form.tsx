@@ -118,21 +118,21 @@ export function SpendForm({
   const titleId = `${formId}-title`;
 
   const segBase =
-    "flex-1 font-mono text-[9.5px] tracking-[.08em] uppercase border-0 rounded-[6px] py-[9px] px-1 cursor-pointer transition-colors";
+    "flex-1 font-mono text-xs tracking-[.08em] uppercase border-0 rounded-[6px] py-[9px] px-1 cursor-pointer transition-colors";
   const segOn = "bg-vault text-accent border border-line";
   const segOff = "bg-transparent text-faint hover:text-cream";
 
   return (
     <Modal open={open} onClose={onClose} variant="center" labelledBy={titleId}>
       <div className="flex justify-between items-center mb-[18px]">
-        <h3 id={titleId} className="font-serif text-[23px] tracking-[-0.01em]">
+        <h3 id={titleId} className="font-serif text-2xl tracking-[-0.01em]">
           {isEdit ? `Edit ${item.name}` : "Add expense"}
         </h3>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="text-faint hover:text-cream bg-transparent border-0 text-[18px] leading-none p-1 cursor-pointer"
+          className="text-faint hover:text-cream bg-transparent border-0 text-lg leading-none p-1 cursor-pointer"
         >
           &#10005;
         </button>
@@ -149,7 +149,7 @@ export function SpendForm({
         <div className="mt-4">
           <label
             htmlFor={`${formId}-amount`}
-            className="block font-mono text-[9px] tracking-[.22em] uppercase text-faint mb-2"
+            className="block font-mono text-xs tracking-label uppercase text-faint mb-2"
           >
             Amount
           </label>
@@ -164,19 +164,19 @@ export function SpendForm({
                 inputMode="decimal"
                 placeholder="$0"
                 aria-label="Amount"
-                className="w-full bg-panel-2 border border-line rounded-[8px] text-cream font-serif text-[34px] text-center tracking-[-0.01em] py-[18px] px-[14px] outline-none focus:border-accent/60 transition-colors placeholder:text-faint"
+                className="w-full bg-panel-2 border border-line rounded-[8px] text-cream font-serif text-5xl text-center tracking-[-0.01em] py-[18px] px-[14px] outline-none focus:border-accent/60 transition-colors placeholder:text-faint"
               />
             )}
           />
           {errors.amount && (
-            <p role="alert" className="font-mono text-[10px] text-signal mt-1.5">
+            <p role="alert" className="font-mono text-xs text-signal mt-1.5">
               {errors.amount.message}
             </p>
           )}
         </div>
 
         <div className="mt-4">
-          <span className="block font-mono text-[9px] tracking-[.22em] uppercase text-faint mb-2">
+          <span className="block font-mono text-xs tracking-label uppercase text-faint mb-2">
             Bills every
           </span>
           <div className="flex gap-2">
@@ -189,7 +189,7 @@ export function SpendForm({
                   type="text"
                   inputMode="numeric"
                   aria-label="Interval count"
-                  className="w-[78px] bg-panel-2 border border-line rounded-[8px] text-cream font-mono text-[14px] text-center py-[13px] px-[10px] outline-none focus:border-accent/60 transition-colors"
+                  className="w-[78px] bg-panel-2 border border-line rounded-[8px] text-cream font-mono text-base text-center py-[13px] px-[10px] outline-none focus:border-accent/60 transition-colors"
                 />
               )}
             />
@@ -216,7 +216,7 @@ export function SpendForm({
             />
           </div>
           {(errors.intervalCount || errors.intervalUnit) && (
-            <p role="alert" className="font-mono text-[10px] text-signal mt-1.5">
+            <p role="alert" className="font-mono text-xs text-signal mt-1.5">
               {errors.intervalCount?.message ?? errors.intervalUnit?.message}
             </p>
           )}
@@ -225,7 +225,7 @@ export function SpendForm({
         <div className="mt-4">
           <label
             htmlFor={`${formId}-name`}
-            className="block font-mono text-[9px] tracking-[.22em] uppercase text-faint mb-2"
+            className="block font-mono text-xs tracking-label uppercase text-faint mb-2"
           >
             Name
           </label>
@@ -239,12 +239,12 @@ export function SpendForm({
                 type="text"
                 placeholder="Rent, Netflix, Auto insurance..."
                 aria-label="Name"
-                className="w-full bg-panel-2 border border-line rounded-[8px] text-cream font-mono text-[14px] py-[13px] px-[14px] outline-none focus:border-accent/60 transition-colors placeholder:text-faint"
+                className="w-full bg-panel-2 border border-line rounded-[8px] text-cream font-mono text-base py-[13px] px-[14px] outline-none focus:border-accent/60 transition-colors placeholder:text-faint"
               />
             )}
           />
           {errors.name && (
-            <p role="alert" className="font-mono text-[10px] text-signal mt-1.5">
+            <p role="alert" className="font-mono text-xs text-signal mt-1.5">
               {errors.name.message}
             </p>
           )}
@@ -253,7 +253,7 @@ export function SpendForm({
         <div className="mt-4">
           <label
             htmlFor={`${formId}-category`}
-            className="block font-mono text-[9px] tracking-[.22em] uppercase text-faint mb-2"
+            className="block font-mono text-xs tracking-label uppercase text-faint mb-2"
           >
             Category
           </label>
@@ -288,14 +288,14 @@ export function SpendForm({
             )}
           />
           {errors.category && (
-            <p role="alert" className="font-mono text-[10px] text-signal mt-1.5">
+            <p role="alert" className="font-mono text-xs text-signal mt-1.5">
               {errors.category.message}
             </p>
           )}
         </div>
 
         <div className="mt-4">
-          <span className="block font-mono text-[9px] tracking-[.22em] uppercase text-faint mb-2">
+          <span className="block font-mono text-xs tracking-label uppercase text-faint mb-2">
             Group
           </span>
           <Controller
@@ -328,7 +328,7 @@ export function SpendForm({
         <div className="mt-4">
           <label
             htmlFor={`${formId}-renews`}
-            className="block font-mono text-[9px] tracking-[.22em] uppercase text-faint mb-2"
+            className="block font-mono text-xs tracking-label uppercase text-faint mb-2"
           >
             Next bill &middot; optional
           </label>
@@ -343,15 +343,15 @@ export function SpendForm({
                 value={field.value ?? ""}
                 onChange={(e) => field.onChange(e.target.value)}
                 onBlur={field.onBlur}
-                className="w-full bg-panel-2 border border-line rounded-[8px] text-cream font-mono text-[14px] py-[13px] px-[14px] outline-none focus:border-accent/60 transition-colors [color-scheme:dark]"
+                className="w-full bg-panel-2 border border-line rounded-[8px] text-cream font-mono text-base py-[13px] px-[14px] outline-none focus:border-accent/60 transition-colors [color-scheme:dark]"
               />
             )}
           />
-          <p className="font-mono text-[9.5px] text-faint mt-1.5 tracking-[.04em]">
+          <p className="font-mono text-sm text-faint mt-1.5 tracking-[.04em]">
             the date it next charges &middot; stays current automatically
           </p>
           {errors.nextRenewalAt && (
-            <p role="alert" className="font-mono text-[10px] text-signal mt-1">
+            <p role="alert" className="font-mono text-xs text-signal mt-1">
               {errors.nextRenewalAt.message}
             </p>
           )}
@@ -359,7 +359,7 @@ export function SpendForm({
 
         {isEdit && (
           <div className="mt-4">
-            <span className="block font-mono text-[9px] tracking-[.22em] uppercase text-faint mb-2">
+            <span className="block font-mono text-xs tracking-label uppercase text-faint mb-2">
               Status
             </span>
             <Controller
@@ -387,7 +387,7 @@ export function SpendForm({
                 </div>
               )}
             />
-            <p className="font-mono text-[9.5px] text-faint mt-1.5 tracking-[.04em]">
+            <p className="font-mono text-sm text-faint mt-1.5 tracking-[.04em]">
               paused items stay in your list but drop out of the total
             </p>
           </div>
@@ -397,7 +397,7 @@ export function SpendForm({
           <button
             type="button"
             onClick={onClose}
-            className="font-mono text-[11px] tracking-[.14em] uppercase text-dim bg-transparent border border-line rounded-[8px] py-[15px] px-5 cursor-pointer hover:text-cream transition-colors"
+            className="font-mono text-xs tracking-button uppercase text-dim bg-transparent border border-line rounded-[8px] py-[15px] px-5 cursor-pointer hover:text-cream transition-colors"
           >
             Cancel
           </button>
@@ -405,7 +405,7 @@ export function SpendForm({
             type="submit"
             form={formId}
             disabled={submitting}
-            className="flex-1 font-mono text-[11px] tracking-[.14em] uppercase text-vault bg-accent rounded-[8px] py-[15px] cursor-pointer hover:bg-cream transition-colors font-medium disabled:opacity-50"
+            className="flex-1 font-mono text-xs tracking-button uppercase text-vault bg-accent rounded-[8px] py-[15px] cursor-pointer hover:bg-cream transition-colors font-medium disabled:opacity-50"
           >
             {submitting ? "Saving..." : isEdit ? "Save changes" : "Add"}
           </button>
@@ -416,7 +416,7 @@ export function SpendForm({
             type="button"
             onClick={handleRemoveClick}
             disabled={deleting}
-            className="w-full mt-3.5 font-mono text-[10.5px] tracking-[.14em] uppercase text-down bg-transparent border border-down/35 rounded-[8px] py-[13px] cursor-pointer hover:bg-down/8 transition-colors disabled:opacity-50"
+            className="w-full mt-3.5 font-mono text-xs tracking-button uppercase text-down bg-transparent border border-down/35 rounded-[8px] py-[13px] cursor-pointer hover:bg-down/8 transition-colors disabled:opacity-50"
           >
             {removeArmed
               ? "Tap again to remove this recurring expense"

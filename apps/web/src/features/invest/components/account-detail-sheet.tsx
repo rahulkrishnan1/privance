@@ -38,9 +38,7 @@ function AccountTypeTag({ account }: { account: Account }) {
     label = CASH_TYPE_LABEL[account.payload.subKind] ?? null;
   }
   if (label === null) return null;
-  return (
-    <p className="font-mono text-[13px] text-accent tracking-[.08em]">{label.toUpperCase()}</p>
-  );
+  return <p className="font-mono text-sm text-accent tracking-[.08em]">{label.toUpperCase()}</p>;
 }
 
 export function AccountDetailSheet({
@@ -90,7 +88,7 @@ export function AccountDetailSheet({
       <div className="flex justify-between items-start">
         <div>
           <AccountTypeTag account={account} />
-          <h3 className="font-serif text-[25px] font-light tracking-[-0.01em] mt-1.5">
+          <h3 className="font-serif text-3xl font-light tracking-[-0.01em] mt-1.5">
             {account.payload.name}
           </h3>
         </div>
@@ -98,7 +96,7 @@ export function AccountDetailSheet({
           type="button"
           onClick={onClose}
           aria-label="Close account details"
-          className="text-faint hover:text-cream text-[18px] leading-none p-1 cursor-pointer"
+          className="text-faint hover:text-cream text-lg leading-none p-1 cursor-pointer"
         >
           <X size={18} />
         </button>
@@ -106,13 +104,13 @@ export function AccountDetailSheet({
 
       <p
         data-testid="account-detail-value"
-        className="vfig font-serif text-[38px] mt-4 tracking-[-0.01em]"
+        className="vfig font-serif text-5xl mt-4 tracking-[-0.01em]"
       >
         {formatAccountBalanceWhole(account, totalValue).text}
       </p>
 
       {hasGain && (
-        <p className={`font-mono text-[11px] mt-1.5 ${gainPositive ? "text-up" : "text-down"}`}>
+        <p className={`font-mono text-xs mt-1.5 ${gainPositive ? "text-up" : "text-down"}`}>
           {gainPositive ? "+" : ""}
           {formatCurrencyWhole(accountGainCents)} unrealized &middot;{" "}
           {formatPercent(gainPct, { signed: true })}
@@ -121,8 +119,8 @@ export function AccountDetailSheet({
 
       {account.payload.kind === "cash" && account.payload.apy && (
         <div className="flex justify-between items-center mt-3">
-          <span className="font-mono text-[10.5px] text-faint tracking-[.06em]">APY</span>
-          <span className="font-mono text-[12px] text-cream tabular-nums">
+          <span className="font-mono text-xs text-faint tracking-[.06em]">APY</span>
+          <span className="font-mono text-sm text-cream tabular-nums">
             {(Number(account.payload.apy) * 100).toFixed(2)}%
           </span>
         </div>
@@ -130,8 +128,8 @@ export function AccountDetailSheet({
 
       {account.payload.kind === "investment" && account.payload.apy && (
         <div className="flex justify-between items-center mt-3">
-          <span className="font-mono text-[10.5px] text-faint tracking-[.06em]">Cash APY</span>
-          <span className="font-mono text-[12px] text-cream tabular-nums">
+          <span className="font-mono text-xs text-faint tracking-[.06em]">Cash APY</span>
+          <span className="font-mono text-sm text-cream tabular-nums">
             {(Number(account.payload.apy) * 100).toFixed(2)}%
           </span>
         </div>
@@ -139,18 +137,16 @@ export function AccountDetailSheet({
 
       {account.payload.kind === "liability" && account.payload.interestRate && (
         <div className="flex justify-between items-center mt-3">
-          <span className="font-mono text-[10.5px] text-faint tracking-[.06em]">Rate</span>
-          <span className="font-mono text-[12px] text-cream tabular-nums">
+          <span className="font-mono text-xs text-faint tracking-[.06em]">Rate</span>
+          <span className="font-mono text-sm text-cream tabular-nums">
             {(Number(account.payload.interestRate) * 100).toFixed(2)}%
           </span>
         </div>
       )}
       {account.payload.kind === "liability" && account.payload.termYearsRemaining && (
         <div className="flex justify-between items-center mt-3">
-          <span className="font-mono text-[10.5px] text-faint tracking-[.06em]">
-            Term remaining
-          </span>
-          <span className="font-mono text-[12px] text-cream tabular-nums">
+          <span className="font-mono text-xs text-faint tracking-[.06em]">Term remaining</span>
+          <span className="font-mono text-sm text-cream tabular-nums">
             {Number(account.payload.termYearsRemaining)}y
           </span>
         </div>
@@ -158,8 +154,8 @@ export function AccountDetailSheet({
 
       {account.payload.kind === "manual_asset" && account.payload.valuedAt && (
         <div className="flex justify-between items-center mt-3">
-          <span className="font-mono text-[10.5px] text-faint tracking-[.06em]">Valued</span>
-          <span className="font-mono text-[12px] text-cream">
+          <span className="font-mono text-xs text-faint tracking-[.06em]">Valued</span>
+          <span className="font-mono text-sm text-cream">
             {new Date(`${account.payload.valuedAt}T00:00:00`).toLocaleDateString("en-US", {
               month: "short",
               year: "numeric",
@@ -170,25 +166,25 @@ export function AccountDetailSheet({
 
       {holdingsByAccount.length > 0 && (
         <>
-          <p className="font-mono text-[9px] tracking-[.2em] uppercase text-faint mt-6 mb-0.5">
+          <p className="font-mono text-xs tracking-label uppercase text-faint mt-6 mb-0.5">
             Holdings &middot; {holdingsByAccount.length}
             {sweepCents !== null && !sweepCents.isZero() ? " + cash" : ""}
           </p>
           {holdingsByAccount.map((h) => (
             <div
               key={h.id}
-              className="flex justify-between py-2.5 border-b border-line-soft text-[13px]"
+              className="flex justify-between py-2.5 border-b border-line-soft text-sm"
             >
               <span className="font-mono text-cream tracking-[.04em]">{h.ticker}</span>
-              <span className="vfig font-mono text-[12.5px] tabular-nums">
+              <span className="vfig font-mono text-sm tabular-nums">
                 {formatCurrencyWhole(h.valueCents)}
               </span>
             </div>
           ))}
           {sweepCents !== null && !sweepCents.isZero() && (
-            <div className="flex justify-between py-2.5 border-b border-line-soft text-[13px]">
+            <div className="flex justify-between py-2.5 border-b border-line-soft text-sm">
               <span className="text-dim">Cash</span>
-              <span className="vfig font-mono text-[12.5px] tabular-nums">
+              <span className="vfig font-mono text-sm tabular-nums">
                 {formatCurrencyWhole(sweepCents)}
               </span>
             </div>
@@ -200,7 +196,7 @@ export function AccountDetailSheet({
         <button
           type="button"
           onClick={() => onEdit(account)}
-          className="flex-1 font-mono text-[11px] tracking-[.14em] uppercase text-dim border border-line rounded-lg py-3.5 cursor-pointer hover:text-cream transition-colors"
+          className="flex-1 font-mono text-xs tracking-button uppercase text-dim border border-line rounded-lg py-3.5 cursor-pointer hover:text-cream transition-colors"
         >
           Edit account
         </button>
@@ -209,7 +205,7 @@ export function AccountDetailSheet({
           onClick={() => void handleDelete()}
           disabled={deleting}
           className={[
-            "font-mono text-[11px] tracking-[.14em] uppercase rounded-lg py-3.5 px-4 cursor-pointer border transition-colors",
+            "font-mono text-xs tracking-button uppercase rounded-lg py-3.5 px-4 cursor-pointer border transition-colors",
             deleteArmed
               ? "text-vault bg-down border-down"
               : "text-down border-down/35 hover:bg-down/8",

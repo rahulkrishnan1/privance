@@ -28,11 +28,11 @@ export function SignOutDialog({
   return (
     <Modal open={open} onClose={onClose} labelledBy="signout-title">
       <DialogHeader title="Sign out" titleId="signout-title" onClose={onClose} />
-      <p className="text-[13.5px] leading-[1.6] text-cream-soft">
+      <p className="text-sm leading-[1.6] text-cream-soft">
         This wipes the decrypted store and biometric enrollment from this device. Your data stays on
         the server, as ciphertext, and comes back on your next sign-in.
       </p>
-      <div className="mt-[18px] rounded-lg border border-signal/30 bg-signal/6 px-4 py-[13px] text-[12.5px] leading-[1.55] text-cream-soft">
+      <div className="mt-[18px] rounded-lg border border-signal/30 bg-signal/6 px-4 py-[13px] text-sm leading-[1.55] text-cream-soft">
         <strong className="font-medium text-signal">Know your password.</strong> Getting back in
         requires the master password, or the recovery phrase. There is no other door.
       </div>

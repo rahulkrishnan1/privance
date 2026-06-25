@@ -87,9 +87,7 @@ const KIND_DISPLAY: Record<AccountKind, string> = {
 function KindSegmentControl({ value, onChange, disabled = false }: KindSegmentProps) {
   return (
     <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
-      <legend className="font-mono text-[9px] tracking-[.22em] uppercase text-faint mb-2">
-        Kind
-      </legend>
+      <legend className="font-mono text-xs tracking-label uppercase text-faint mb-2">Kind</legend>
       <div className="flex gap-1 bg-panel-2 border border-line rounded-lg p-1">
         {SECTION_ORDER.map((k) => {
           const active = k === value;
@@ -102,7 +100,7 @@ function KindSegmentControl({ value, onChange, disabled = false }: KindSegmentPr
               aria-label={KIND_META[k].label}
               disabled={disabled}
               className={[
-                "flex-1 font-mono text-[9.5px] tracking-[.1em] uppercase rounded-md py-2.5 px-1 cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                "flex-1 font-mono text-xs tracking-button uppercase rounded-md py-2.5 px-1 cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                 active
                   ? "bg-vault text-accent border border-line"
                   : "text-faint hover:text-cream-soft",
@@ -128,7 +126,7 @@ function SubKindSelect({ value, onChange, error }: SubKindSelectProps) {
     <div className="flex flex-col gap-2">
       <label
         htmlFor="account-subkind"
-        className="font-mono text-[9px] tracking-[.22em] uppercase text-faint"
+        className="font-mono text-xs tracking-label uppercase text-faint"
       >
         Account type
       </label>
@@ -148,7 +146,7 @@ function SubKindSelect({ value, onChange, error }: SubKindSelectProps) {
         ))}
       </StyledSelect>
       {error !== undefined && (
-        <p role="alert" className="text-[13px] text-signal">
+        <p role="alert" className="text-sm text-signal">
           {error}
         </p>
       )}
@@ -167,7 +165,7 @@ function CashSubKindSelect({ value, onChange, error }: CashSubKindSelectProps) {
     <div className="flex flex-col gap-2">
       <label
         htmlFor="cash-subkind"
-        className="font-mono text-[9px] tracking-[.22em] uppercase text-faint"
+        className="font-mono text-xs tracking-label uppercase text-faint"
       >
         Account type
       </label>
@@ -187,7 +185,7 @@ function CashSubKindSelect({ value, onChange, error }: CashSubKindSelectProps) {
         ))}
       </StyledSelect>
       {error !== undefined && (
-        <p role="alert" className="text-[13px] text-signal">
+        <p role="alert" className="text-sm text-signal">
           {error}
         </p>
       )}
@@ -291,7 +289,7 @@ export function AccountForm({
         <div className="flex items-center justify-between">
           <h2
             id="account-form-title"
-            className="font-serif text-[23px] leading-tight font-light tracking-[-0.01em] text-cream"
+            className="font-serif text-2xl leading-tight font-light tracking-[-0.01em] text-cream"
           >
             {isEditMode ? "Edit account" : "Add account"}
           </h2>
@@ -391,7 +389,7 @@ export function AccountForm({
                   />
                 )}
               />
-              <p className="font-mono text-[9.5px] text-faint tracking-[.04em]">
+              <p className="font-mono text-xs text-faint tracking-[.04em]">
                 uninvested cash in this account, added to its total alongside holdings
               </p>
             </div>
@@ -413,7 +411,7 @@ export function AccountForm({
                 )}
               />
               {balanceNote && (
-                <p className="font-mono text-[9.5px] text-faint tracking-[.04em]">{balanceNote}</p>
+                <p className="font-mono text-xs text-faint tracking-[.04em]">{balanceNote}</p>
               )}
             </div>
           )}
@@ -475,7 +473,7 @@ export function AccountForm({
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="valued-at"
-                className="font-mono text-[9px] tracking-[.22em] uppercase text-faint"
+                className="font-mono text-xs tracking-label uppercase text-faint"
               >
                 Valued date (optional)
               </label>
@@ -488,7 +486,7 @@ export function AccountForm({
                     type="date"
                     {...field}
                     value={field.value ?? ""}
-                    className="w-full bg-panel-2 border border-line rounded-lg text-cream font-mono text-[14px] px-3.5 py-3 outline-none focus:border-accent-dim transition-colors"
+                    className="w-full bg-panel-2 border border-line rounded-lg text-cream font-mono text-base px-3.5 py-3 outline-none focus:border-accent-dim transition-colors"
                   />
                 )}
               />
@@ -497,7 +495,7 @@ export function AccountForm({
 
           {saveError !== null && (
             <div role="alert" className="rounded-lg border border-signal/40 bg-signal/10 px-4 py-3">
-              <p className="text-[13px] text-signal">{saveError}</p>
+              <p className="text-sm text-signal">{saveError}</p>
             </div>
           )}
 

@@ -324,7 +324,7 @@ export function estimatedIncome({
   // rolls into its proxy's payer row instead of showing as a separate name.
   const byTicker = new Map<
     string,
-    { ticker: string; name: string | undefined; annualCents: Decimal; marketValue: Decimal }
+    { ticker: string; annualCents: Decimal; marketValue: Decimal }
   >();
 
   for (const valuation of breakdown.byHolding) {
@@ -352,7 +352,6 @@ export function estimatedIncome({
     } else {
       byTicker.set(priceTicker, {
         ticker: priceTicker,
-        name: profile?.displayName,
         annualCents: holdingAnnualCents,
         marketValue: valuation.marketValue,
       });
@@ -362,7 +361,6 @@ export function estimatedIncome({
   const dividendPayers: IncomePayer[] = [...byTicker.values()].map((p) => ({
     id: p.ticker,
     ticker: p.ticker,
-    name: p.name,
     annualCents: p.annualCents,
     yield: p.marketValue.isZero() ? 0 : p.annualCents.toFloat() / p.marketValue.toFloat(),
   }));
@@ -392,7 +390,6 @@ export function estimatedIncome({
     interestPayers.push({
       id: `cash:${account.id}`,
       ticker: "CASH",
-      name: p.name,
       annualCents: interestCents,
       yield: apyRatio,
     });

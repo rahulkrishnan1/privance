@@ -175,7 +175,7 @@ export function HistoryChart({ points, className }: HistoryChartProps) {
               <span
                 // biome-ignore lint/suspicious/noArrayIndexKey: fixed 3-label scale
                 key={i}
-                className="vfig bg-vault px-1 font-mono text-[9.5px] text-faint"
+                className="vfig bg-vault px-1 font-mono text-xs text-faint"
               >
                 {formatYAxisTick(v)}
               </span>

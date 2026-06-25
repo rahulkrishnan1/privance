@@ -20,7 +20,7 @@ export function AuthBackdrop() {
         <Link
           href="/"
           aria-label="Back to home"
-          className="flex items-center gap-[9px] no-underline font-serif text-[22px] text-cream hover:opacity-80 transition-opacity"
+          className="flex items-center gap-[9px] no-underline font-serif text-2xl text-cream hover:opacity-80 transition-opacity"
         >
           <Logo size={24} className="text-cream flex-none" />
           Privance

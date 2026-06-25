@@ -83,7 +83,7 @@ function FactInput({
     <div className={["flex flex-col", className].filter(Boolean).join(" ")}>
       <label
         htmlFor={id}
-        className="mb-[7px] font-mono text-[9px] uppercase tracking-[0.18em] text-faint"
+        className="mb-[7px] font-mono text-xs uppercase tracking-label text-faint"
       >
         {label}
       </label>
@@ -109,7 +109,7 @@ function FactInput({
             focusedRef.current = false;
             setText(value === undefined ? "" : format ? format(value) : String(value));
           }}
-          className={`min-w-0 flex-1 rounded-lg border border-line bg-panel-2 px-3 py-[11px] font-mono text-[14px] text-cream outline-none transition-colors focus:border-accent-dim disabled:text-cream-soft${veil ? " vfig" : ""}`}
+          className={`min-w-0 flex-1 rounded-lg border border-line bg-panel-2 px-3 py-[11px] font-mono text-base text-cream outline-none transition-colors focus:border-accent-dim disabled:text-cream-soft${veil ? " vfig" : ""}`}
         />
         {children}
       </div>
@@ -149,8 +149,8 @@ function Lever({
   return (
     <div className="border-b border-line-soft py-4 last:border-b-0 last:pb-0">
       <div className="flex items-baseline justify-between">
-        <span className="text-[14px] text-cream">{name}</span>
-        <span className={`font-mono text-[13px] tabular-nums text-accent${veiled ? " vfig" : ""}`}>
+        <span className="text-sm text-cream">{name}</span>
+        <span className={`font-mono text-sm tabular-nums text-accent${veiled ? " vfig" : ""}`}>
           {readout}
         </span>
       </div>
@@ -167,11 +167,9 @@ function Lever({
         aria-valuetext={ariaValueText}
       />
       {children}
-      {impact !== undefined && (
-        <p className="mt-2.5 font-mono text-[10.5px] text-faint">{impact}</p>
-      )}
+      {impact !== undefined && <p className="mt-2.5 font-mono text-xs text-faint">{impact}</p>}
       {warn != null && (
-        <p className="mt-1.5 font-mono text-[10.5px] text-signal" role="alert">
+        <p className="mt-1.5 font-mono text-xs text-signal" role="alert">
           {warn}
         </p>
       )}
@@ -191,7 +189,7 @@ function FiReadout({
   baselineNeverFi: boolean;
 }) {
   const capsule =
-    "inline-flex items-baseline gap-2 rounded-full border border-line px-3 py-[5px] font-mono text-[11px] tabular-nums";
+    "inline-flex items-baseline gap-2 rounded-full border border-line px-3 py-[5px] font-mono text-xs tabular-nums";
   if (currentNeverFi) {
     return <span className={`${capsule} text-faint`}>Off track at this setting</span>;
   }
@@ -200,8 +198,8 @@ function FiReadout({
   const delta = baselineNeverFi ? 0 : baselineFireAge - currentFireAge;
   return (
     <span className={capsule}>
-      <span className="text-[9px] uppercase tracking-[0.14em] text-faint">FI age</span>
-      <span className="text-[13px] font-medium text-accent">{currentFireAge}</span>
+      <span className="text-xs uppercase tracking-label text-faint">FI age</span>
+      <span className="text-sm font-medium text-accent">{currentFireAge}</span>
       {delta > 0 && (
         <span className="text-up">
           {delta} yr{delta > 1 ? "s" : ""} sooner
@@ -270,9 +268,7 @@ export function AdjustPanel({
             line on mobile: the sooner/later delta changes width as levers move,
             and an inline readout would reflow the title row on every drag. */}
         <div className="flex min-w-0 flex-col sm:flex-row sm:items-baseline sm:gap-3">
-          <h3 className="font-serif text-[20px] font-normal tracking-[-0.005em]">
-            Adjust your plan
-          </h3>
+          <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">Adjust your plan</h3>
           <div className="mt-2.5 sm:mt-0">
             <FiReadout
               currentFireAge={currentFireAge}
@@ -288,7 +284,7 @@ export function AdjustPanel({
           disabled={!canSave}
           aria-label={dirty ? "Save plan" : "Plan saved"}
           className={[
-            "shrink-0 whitespace-nowrap rounded-md border px-4 py-2 font-mono text-[10.5px] uppercase tracking-[.12em] transition-colors",
+            "shrink-0 whitespace-nowrap rounded-md border px-4 py-2 font-mono text-xs uppercase tracking-button transition-colors",
             // Saving keeps the accent fill (only the cursor/hover stop); a
             // save-blocking error or a clean plan reads as inert.
             dirty && !saveDisabled
@@ -302,7 +298,7 @@ export function AdjustPanel({
       </div>
 
       {saveError && (
-        <p role="alert" className="mb-4 font-mono text-[10.5px] text-signal">
+        <p role="alert" className="mb-4 font-mono text-xs text-signal">
           Could not save your plan. Check your connection and try again.
         </p>
       )}
@@ -366,7 +362,7 @@ export function AdjustPanel({
                   });
                 }}
                 className={[
-                  "rounded-md px-3 py-[6px] font-mono text-[10px] uppercase tracking-[0.1em] transition-colors cursor-pointer",
+                  "rounded-md px-3 py-[6px] font-mono text-xs uppercase tracking-button transition-colors cursor-pointer",
                   manual === isManual ? "bg-panel-2 text-cream" : "text-faint hover:text-cream",
                 ].join(" ")}
               >
@@ -425,10 +421,7 @@ export function AdjustPanel({
         ariaLabel="Stock allocation (percent stocks)"
         ariaValueText={`${stockPct}% stocks, ${100 - stockPct}% bonds`}
         impact={
-          <>
-            ~{expectedReturn}% / yr expected real return · return and volatility follow the mix,
-            never a number you guess
-          </>
+          <>~{expectedReturn}% / yr expected real return · return and volatility follow the mix</>
         }
       >
         <div className="mt-3 flex gap-2">
@@ -441,7 +434,7 @@ export function AdjustPanel({
                 aria-pressed={active}
                 onClick={() => onChange({ preset: s.preset })}
                 className={[
-                  "rounded-full border px-3 py-1 font-mono text-[10px] uppercase tracking-[0.1em] transition-colors cursor-pointer",
+                  "rounded-full border px-3 py-1 font-mono text-xs uppercase tracking-button transition-colors cursor-pointer",
                   active
                     ? "border-accent bg-accent/10 text-accent"
                     : "border-line text-dim hover:text-cream",

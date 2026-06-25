@@ -68,11 +68,11 @@ function MilestoneRow({
           className={["h-[5px] w-[5px] rounded-full", reached ? "bg-vault" : "bg-accent"].join(" ")}
         />
       </span>
-      <span className="w-11 shrink-0 font-mono text-[11px] text-accent tabular-nums">
+      <span className="w-11 shrink-0 font-mono text-xs text-accent tabular-nums">
         {year ?? "-"}
       </span>
       <span className="min-w-0">
-        <span className="text-[14px] text-cream">
+        <span className="text-sm text-cream">
           {label}
           {milestone.amountCents !== null && (
             <>
@@ -83,7 +83,7 @@ function MilestoneRow({
             </>
           )}
         </span>
-        <span className="mt-[3px] block font-mono text-[10.5px] text-faint">
+        <span className="mt-[3px] block font-mono text-xs text-faint">
           {status} · {desc}
         </span>
       </span>
@@ -111,7 +111,7 @@ export function MilestonesSection({ result, input, currentYear, neverFi }: Miles
 
   return (
     <div className="rounded-[10px] border border-line bg-panel p-6">
-      <h3 className="mb-4 font-serif text-[20px] font-normal tracking-[-0.005em]">Milestones</h3>
+      <h3 className="mb-4 font-serif text-2xl font-normal tracking-[-0.005em]">Milestones</h3>
       {milestones.map((m, i) => (
         <MilestoneRow
           key={m.key}

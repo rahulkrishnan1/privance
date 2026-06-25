@@ -9,15 +9,18 @@ function SkeletonBox({ className }: { className?: string }) {
 export function AllocationPieSkeleton() {
   return (
     <div
-      className="bg-panel border border-line rounded-[10px] p-6 flex gap-7 items-center"
+      className="bg-panel border border-line rounded-[10px] p-6 h-full"
       role="status"
       aria-label="Loading allocation"
     >
-      <SkeletonBox className="w-[168px] h-[168px] rounded-full shrink-0" />
-      <div className="flex-1 min-w-[200px] flex flex-col gap-3">
-        <SkeletonBox className="h-3 w-full" />
-        <SkeletonBox className="h-3 w-5/6" />
-        <SkeletonBox className="h-3 w-2/3" />
+      <SkeletonBox className="h-6 w-28 mb-4" />
+      <div className="flex flex-col items-center gap-[18px]">
+        <SkeletonBox className="w-[200px] h-[200px] rounded-full" />
+        <div className="w-full flex flex-col gap-3">
+          <SkeletonBox className="h-3 w-full" />
+          <SkeletonBox className="h-3 w-5/6" />
+          <SkeletonBox className="h-3 w-2/3" />
+        </div>
       </div>
     </div>
   );
