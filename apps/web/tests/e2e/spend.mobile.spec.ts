@@ -53,7 +53,7 @@ test.describe("spend mobile", () => {
     await dialog.getByLabel("Interval unit").selectOption("month");
     await dialog.getByLabel("Name").fill("Rent");
     await dialog.getByLabel("Category").selectOption("housing");
-    await dialog.getByRole("button", { name: "Add", exact: true }).click();
+    await dialog.getByRole("button", { name: "Add expense", exact: true }).click();
 
     const rentRow = page.getByRole("button", { name: /Rent/ });
     await expect(rentRow).toBeVisible({ timeout: 10_000 });
@@ -71,11 +71,10 @@ test.describe("spend mobile", () => {
     await dialog.getByLabel("Interval unit").selectOption("year");
     await dialog.getByLabel("Name").fill("Prime");
     await dialog.getByLabel("Category").selectOption("shopping");
-    await dialog.getByRole("button", { name: "Add", exact: true }).click();
+    await dialog.getByRole("button", { name: "Add expense", exact: true }).click();
 
     const primeRow = page.getByRole("button", { name: /Prime/ });
     await expect(primeRow).toBeVisible({ timeout: 10_000 });
-    await expect(primeRow).toContainText("billed yearly");
     await expect(primeRow).toContainText("$11.58");
     await expect(page.getByTestId("spend-monthly-total")).toContainText("$1,462");
 

@@ -13,8 +13,8 @@ const PATHS: Record<SpendCategory, string> = {
   phone: "M7 2h10a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM10 18h4",
   insurance: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z",
   health: "M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6z",
-  // transport and music have dedicated sub-components; paths here satisfy the
-  // Record<SpendCategory, string> constraint but are never rendered via this table
+  // transport, music, and gaming have dedicated sub-components; paths here satisfy
+  // the Record<SpendCategory, string> constraint but are never rendered via this table
   transport: "M5 16l1-5h12l1 5M4 16h16v3H4",
   streaming: "M5 3l14 9-14 9z",
   music: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18",
@@ -64,9 +64,30 @@ function MusicIcon({ className }: { className?: string }) {
   );
 }
 
+// Gaming is a full controller body with a D-pad and round buttons; round caps
+// render the button dots (the lone D-pad cross alone read as a stray plus).
+function GamingIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M6 11h4M8 9v4M15 12h.01M18 11h.01" />
+      <path d="M17.32 5H6.68a4 4 0 0 0-3.98 3.59c-.01.05-.01.1-.02.15C2.6 9.42 2 14.46 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.41-1.41A2 2 0 0 1 10.83 16h2.34a2 2 0 0 1 1.42.59L16 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.54-.6-6.58-.68-7.26-.01-.05-.01-.1-.02-.15A4 4 0 0 0 17.32 5z" />
+    </svg>
+  );
+}
+
 export function CategoryIcon({ category, className = "w-4 h-4" }: IconProps) {
   if (category === "transport") return <TransportIcon className={className} />;
   if (category === "music") return <MusicIcon className={className} />;
+  if (category === "gaming") return <GamingIcon className={className} />;
 
   return (
     <svg

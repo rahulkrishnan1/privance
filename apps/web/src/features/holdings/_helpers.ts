@@ -5,6 +5,18 @@ import type { FilterState, LocalHolding, SortState } from "./types";
 
 type PriceEntry = { ticker: string; price: string };
 
+/** A copy of `items` ordered by descending value, ties broken by name (ascending). */
+export function sortByValueDesc<T>(
+  items: readonly T[],
+  getValue: (item: T) => Decimal,
+  getName: (item: T) => string,
+): T[] {
+  return [...items].sort((a, b) => {
+    const byValue = getValue(b).cmp(getValue(a));
+    return byValue !== 0 ? byValue : getName(a).localeCompare(getName(b));
+  });
+}
+
 export function computeEffectivePrice(priceStr: string, scaleFactor?: string): Decimal | null {
   try {
     const p = Decimal.fromString(priceStr, SCALE_CRYPTO);

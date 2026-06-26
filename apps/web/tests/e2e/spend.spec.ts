@@ -43,7 +43,7 @@ test.describe("spend -- happy path", () => {
     await dialog.getByLabel("Interval unit").selectOption("month");
     await dialog.getByLabel("Name").fill("Rent");
     await dialog.getByLabel("Category").selectOption("housing");
-    await dialog.getByRole("button", { name: "Add", exact: true }).click();
+    await dialog.getByRole("button", { name: "Add expense", exact: true }).click();
 
     const rentRow = page.getByRole("button", { name: /Rent/ });
     await expect(rentRow).toBeVisible({ timeout: 10_000 });
@@ -61,15 +61,13 @@ test.describe("spend -- happy path", () => {
     await dialog.getByLabel("Interval unit").selectOption("year");
     await dialog.getByLabel("Name").fill("Prime");
     await dialog.getByLabel("Category").selectOption("shopping");
-    await dialog.getByRole("button", { name: "Add", exact: true }).click();
+    await dialog.getByRole("button", { name: "Add expense", exact: true }).click();
 
     const primeRow = page.getByRole("button", { name: /Prime/ });
     await expect(primeRow).toBeVisible({ timeout: 10_000 });
-    // The yearly item shows its cadence and the per-cycle billed amount ($139) in
-    // the sub-line, and the monthly equivalent ($139 / 12 = $11.58) as its figure.
-    // The headline total proves the monthly equivalent (not the raw $139) is
-    // counted: $1,450 + $11.58 = $1,461.58, rounded to $1,462.
-    await expect(primeRow).toContainText("billed yearly");
+    // The row shows the monthly equivalent ($139 / 12 = $11.58) as its figure. The
+    // headline total proves the monthly equivalent (not the raw $139) is counted:
+    // $1,450 + $11.58 = $1,461.58, rounded to $1,462.
     await expect(primeRow).toContainText("$11.58");
     await expect(page.getByTestId("spend-monthly-total")).toContainText("$1,462");
 

@@ -2,13 +2,14 @@
 
 import type { Decimal, HoldingId, InvestmentAccount, NetWorthBreakdown } from "@privance/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAccountsQuery } from "@/features/accounts/queries";
+import { centsToDecimal, useAccountsQuery } from "@/features/accounts/queries";
 import {
   computeAnchorScaleFactor,
   filterHoldings,
   getSavedSort,
   lookupProxyPrice,
   saveSort,
+  sortByValueDesc,
   sortHoldings,
 } from "@/features/holdings";
 import { GroupsManager } from "@/features/holdings/components/groups-manager";
@@ -113,6 +114,34 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
     }
     return { byAccount, byGroup };
   }, [holdings]);
+
+  // Values come from the canonical net-worth breakdown, not a second pipeline.
+  const scopeAccounts = useMemo(() => {
+    const zero = centsToDecimal("0");
+    const value = new Map<string, Decimal>();
+    for (const av of breakdown?.byAccount ?? []) value.set(av.accountId, av.value);
+    return sortByValueDesc(
+      investmentAccounts,
+      (a) => value.get(a.id) ?? zero,
+      (a) => a.payload.name,
+    );
+  }, [investmentAccounts, breakdown]);
+  const scopeGroups = useMemo(() => {
+    const zero = centsToDecimal("0");
+    const mv = new Map<string, Decimal>(
+      (breakdown?.byHolding ?? []).map((hv) => [hv.holdingId, hv.marketValue]),
+    );
+    const value = new Map<string, Decimal>();
+    for (const h of holdings) {
+      if (h.groupId === null) continue;
+      value.set(h.groupId, (value.get(h.groupId) ?? zero).add(mv.get(h.id) ?? zero));
+    }
+    return sortByValueDesc(
+      groups,
+      (g) => value.get(g.id) ?? zero,
+      (g) => g.name,
+    );
+  }, [groups, holdings, breakdown]);
 
   const totalInvestmentsCents = useMemo(
     () => breakdown?.byAccountKind?.investment ?? null,
@@ -306,8 +335,8 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
                 filter={filter}
                 label={filterLabel}
                 count={visibleHoldings.length}
-                accounts={investmentAccounts}
-                groups={groups}
+                accounts={scopeAccounts}
+                groups={scopeGroups}
                 accountCounts={scopeCounts.byAccount}
                 groupCounts={scopeCounts.byGroup}
                 totalCount={holdings.length}

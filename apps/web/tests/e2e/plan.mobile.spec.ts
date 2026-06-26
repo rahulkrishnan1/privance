@@ -63,7 +63,7 @@ async function createCashAccountMobile(
   await dialog.getByLabel("Account type").selectOption("checking");
   await dialog.getByLabel("Name").fill(name);
   await dialog.getByLabel("Current balance").fill(balance);
-  await dialog.getByRole("button", { name: "Create account" }).click();
+  await dialog.getByRole("button", { name: "Add account" }).click();
   await expect(dialog).not.toBeVisible({ timeout: SAVE_TIMEOUT });
   await expect(page.getByText(name)).toBeVisible({ timeout: SAVE_TIMEOUT });
 }

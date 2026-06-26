@@ -10,7 +10,7 @@ import {
 } from "@privance/core";
 import { useEffect, useRef, useState } from "react";
 import { Controller, type Resolver, useForm } from "react-hook-form";
-import { StyledSelect } from "@/components/index";
+import { Button, StyledSelect } from "@/components/index";
 import { Modal } from "@/components/Modal";
 import { BILLING_UNIT_LABELS, CATEGORY_LABELS, GROUP_LABELS } from "../_constants";
 import type { LocalSpendItem, SpendFormValues } from "../types";
@@ -330,7 +330,7 @@ export function SpendForm({
             htmlFor={`${formId}-renews`}
             className="block font-mono text-xs tracking-label uppercase text-faint mb-2"
           >
-            Next bill &middot; optional
+            Next bill (optional)
           </label>
           <Controller
             control={control}
@@ -339,17 +339,13 @@ export function SpendForm({
               <input
                 id={`${formId}-renews`}
                 type="date"
-                aria-label="Next renewal date"
                 value={field.value ?? ""}
                 onChange={(e) => field.onChange(e.target.value)}
                 onBlur={field.onBlur}
-                className="w-full bg-panel-2 border border-line rounded-[8px] text-cream font-mono text-base py-[13px] px-[14px] outline-none focus:border-accent/60 transition-colors [color-scheme:dark]"
+                className="w-full min-w-0 bg-panel-2 border border-line rounded-[8px] text-cream font-mono text-base py-[13px] px-[14px] outline-none focus:border-accent/60 transition-colors [color-scheme:dark]"
               />
             )}
           />
-          <p className="font-mono text-sm text-faint mt-1.5 tracking-[.04em]">
-            the date it next charges &middot; stays current automatically
-          </p>
           {errors.nextRenewalAt && (
             <p role="alert" className="font-mono text-xs text-signal mt-1">
               {errors.nextRenewalAt.message}
@@ -387,28 +383,28 @@ export function SpendForm({
                 </div>
               )}
             />
-            <p className="font-mono text-sm text-faint mt-1.5 tracking-[.04em]">
-              paused items stay in your list but drop out of the total
-            </p>
           </div>
         )}
 
         <div className="flex gap-2.5 mt-[26px]">
-          <button
+          <Button
             type="button"
+            variant="secondary"
             onClick={onClose}
-            className="font-mono text-xs tracking-button uppercase text-dim bg-transparent border border-line rounded-[8px] py-[15px] px-5 cursor-pointer hover:text-cream transition-colors"
+            disabled={submitting}
+            className="flex-1"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
             form={formId}
+            loading={submitting}
             disabled={submitting}
-            className="flex-1 font-mono text-xs tracking-button uppercase text-vault bg-accent rounded-[8px] py-[15px] cursor-pointer hover:bg-cream transition-colors font-medium disabled:opacity-50"
+            className="flex-1"
           >
-            {submitting ? "Saving..." : isEdit ? "Save changes" : "Add"}
-          </button>
+            {submitting ? "Saving..." : isEdit ? "Save changes" : "Add expense"}
+          </Button>
         </div>
 
         {isEdit && onDelete !== undefined && (
@@ -416,7 +412,7 @@ export function SpendForm({
             type="button"
             onClick={handleRemoveClick}
             disabled={deleting}
-            className="w-full mt-3.5 font-mono text-xs tracking-button uppercase text-down bg-transparent border border-down/35 rounded-[8px] py-[13px] cursor-pointer hover:bg-down/8 transition-colors disabled:opacity-50"
+            className="w-full mt-3.5 font-mono text-xs tracking-button uppercase text-down bg-transparent border border-down/35 rounded-md py-[13px] cursor-pointer hover:bg-down/8 transition-colors disabled:opacity-50"
           >
             {removeArmed
               ? "Tap again to remove this recurring expense"

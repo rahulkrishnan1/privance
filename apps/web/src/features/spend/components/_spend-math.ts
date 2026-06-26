@@ -75,20 +75,6 @@ export function billedAmountCents(
   return Decimal.fromMinorUnits(BigInt(amountCents), SCALE_CENTS);
 }
 
-const UNIT_ADVERB: Record<BillingUnit, string> = {
-  day: "daily",
-  week: "weekly",
-  month: "monthly",
-  year: "yearly",
-};
-
-// Human cadence phrase: "monthly" / "yearly" for a count of 1, otherwise
-// "every 2 years".
-export function cadenceLabel(intervalCount: number, intervalUnit: BillingUnit): string {
-  if (intervalCount === 1) return UNIT_ADVERB[intervalUnit];
-  return `every ${intervalCount} ${intervalUnit}s`;
-}
-
 // Suggested panel for a category when adding an item; the user can override.
 export function defaultGroupForCategory(category: SpendCategory): SpendGroup {
   return ESSENTIALS_CATEGORIES.has(category) ? "essentials" : "subscriptions";

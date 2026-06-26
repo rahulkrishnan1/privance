@@ -78,8 +78,8 @@ test.describe("holdings", () => {
       await dialog.getByLabel("Name").fill(INVESTMENT_ACCOUNT_NAME);
       await dialog.getByRole("button", { name: "Investment" }).click();
       await dialog.getByLabel("Account type").selectOption("brokerage");
-      await dialog.getByLabel("Cash balance / optional").fill("0.00");
-      await dialog.getByRole("button", { name: "Create account" }).click();
+      await dialog.getByLabel("Cash balance (optional)").fill("0.00");
+      await dialog.getByRole("button", { name: "Add account" }).click();
       // First write hits a cold OPFS store; the dev-mode round-trip can exceed
       // 10s before the SAH pool is warm.
       await expect(dialog).not.toBeVisible({ timeout: 30_000 });
@@ -147,7 +147,7 @@ test.describe("holdings", () => {
     await dialog.getByLabel("Account").selectOption({ label: INVESTMENT_ACCOUNT_NAME });
     await dialog.getByLabel("Quantity").fill("10");
     await dialog.getByLabel("Avg cost basis").fill("150.00");
-    await dialog.getByRole("button", { name: "Save holding" }).click();
+    await dialog.getByRole("button", { name: "Add holding" }).click();
 
     await expect(dialog).not.toBeVisible({ timeout: 15_000 });
 
@@ -186,7 +186,7 @@ test.describe("holdings", () => {
     await costInput.clear();
     await costInput.fill("160.00");
 
-    await editDialog.getByRole("button", { name: "Save holding" }).click();
+    await editDialog.getByRole("button", { name: "Save changes" }).click();
 
     await expect(editDialog).not.toBeVisible({ timeout: 15_000 });
     await expect(holdingsTable.getByText("AAPL").first()).toBeVisible();
@@ -209,7 +209,7 @@ test.describe("holdings", () => {
     await dialog.getByLabel("Account").selectOption({ label: INVESTMENT_ACCOUNT_NAME });
     await dialog.getByLabel("Quantity").fill("1.234");
     await dialog.getByLabel("Avg cost basis").fill("400.00");
-    await dialog.getByRole("button", { name: "Save holding" }).click();
+    await dialog.getByRole("button", { name: "Add holding" }).click();
 
     await expect(dialog).not.toBeVisible({ timeout: 15_000 });
 
@@ -238,7 +238,7 @@ test.describe("holdings", () => {
     await dialog.getByLabel("Account").selectOption({ label: INVESTMENT_ACCOUNT_NAME });
     await dialog.getByLabel("Quantity").fill("1");
     await dialog.getByLabel("Avg cost basis").fill("10.00");
-    await dialog.getByRole("button", { name: "Save holding" }).click();
+    await dialog.getByRole("button", { name: "Add holding" }).click();
     await expect(dialog).not.toBeVisible({ timeout: 15_000 });
 
     const holdingsTable = page.getByRole("table", { name: "Holdings" });
@@ -299,7 +299,7 @@ test.describe("holdings", () => {
     await expect(navInput).toBeVisible();
     await navInput.fill("310.00");
 
-    await dialog.getByRole("button", { name: "Save holding" }).click();
+    await dialog.getByRole("button", { name: "Add holding" }).click();
     await expect(dialog).not.toBeVisible({ timeout: 15_000 });
 
     // Regression: proxy holdings used to drop or zero-out on save when NAV wasn't
@@ -375,7 +375,7 @@ test.describe("holdings", () => {
     await dialog.getByLabel("Account").selectOption({ label: INVESTMENT_ACCOUNT_NAME });
     await dialog.getByLabel("Quantity").fill(opts.shares);
     await dialog.getByLabel("Avg cost basis").fill(opts.avgCost);
-    await dialog.getByRole("button", { name: "Save holding" }).click();
+    await dialog.getByRole("button", { name: "Add holding" }).click();
     await expect(dialog).not.toBeVisible({ timeout: 15_000 });
   }
 
@@ -432,7 +432,7 @@ test.describe("holdings", () => {
     await dialog.getByLabel("Account").selectOption({ label: INVESTMENT_ACCOUNT_NAME });
     await dialog.getByLabel("Quantity").fill("0.1");
     await dialog.getByLabel("Avg cost basis").fill("50000.00");
-    await dialog.getByRole("button", { name: "Save holding" }).click();
+    await dialog.getByRole("button", { name: "Add holding" }).click();
     await expect(dialog).not.toBeVisible({ timeout: 15_000 });
 
     // Regression: every ticker used to be routed to Yahoo, so crypto slugs
@@ -484,7 +484,7 @@ test.describe("holdings", () => {
     await expect(dialog.getByLabel("Current price per share")).toBeVisible();
     await dialog.getByLabel("Current price per share").fill("123.45");
 
-    await dialog.getByRole("button", { name: "Save holding" }).click();
+    await dialog.getByRole("button", { name: "Add holding" }).click();
 
     await expect(dialog.getByText(/couldn't get a current price for this proxy/i)).toBeVisible({
       timeout: 10_000,
@@ -559,7 +559,7 @@ test.describe("holdings", () => {
     await expect(addProxyInput).toHaveValue("VOO");
     await expect(navInput).toHaveValue("200.00");
 
-    await addDialog.getByRole("button", { name: "Save holding" }).click();
+    await addDialog.getByRole("button", { name: "Add holding" }).click();
     await expect(addDialog).not.toBeVisible({ timeout: 15_000 });
 
     const holdingsTable = page.getByRole("table", { name: "Holdings" });
@@ -587,7 +587,7 @@ test.describe("holdings", () => {
     await expect(proxyInput).toBeVisible();
     await proxyInput.clear();
 
-    await editDialog.getByRole("button", { name: "Save holding" }).click();
+    await editDialog.getByRole("button", { name: "Save changes" }).click();
     await expect(editDialog).not.toBeVisible({ timeout: 15_000 });
 
     // After un-anchoring: 10 * PRVT(300) = $3,000.
@@ -630,7 +630,7 @@ test.describe("holdings", () => {
     // Set a proxy but leave "Current price per share" blank, then save.
     await dialog.getByRole("button", { name: /advanced/i }).click();
     await dialog.getByLabel("Proxy ticker").fill("VOO");
-    await dialog.getByRole("button", { name: "Save holding" }).click();
+    await dialog.getByRole("button", { name: "Add holding" }).click();
 
     // Regression: the missing-NAV error used to throw to a banner rendered in
     // the page behind the open dialog, invisible to the user. It now surfaces
@@ -666,7 +666,7 @@ test.describe("holdings", () => {
     const navInput = addDialog.getByLabel("Current price per share");
     await expect(navInput).toBeVisible();
     await navInput.fill("250.00");
-    await addDialog.getByRole("button", { name: "Save holding" }).click();
+    await addDialog.getByRole("button", { name: "Add holding" }).click();
     await expect(addDialog).not.toBeVisible({ timeout: 15_000 });
 
     const holdingsTable = page.getByRole("table", { name: "Holdings" });
@@ -687,7 +687,7 @@ test.describe("holdings", () => {
     const sharesInput = editDialog.getByLabel("Quantity");
     await sharesInput.clear();
     await sharesInput.fill("8");
-    await editDialog.getByRole("button", { name: "Save holding" }).click();
+    await editDialog.getByRole("button", { name: "Save changes" }).click();
 
     // Regression: a NAV-required-whenever-proxy-set guard wrongly blocked this
     // save. The unchanged anchor must be reused so the value rescales cleanly.

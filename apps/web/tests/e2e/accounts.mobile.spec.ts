@@ -67,7 +67,7 @@ test.describe("accounts mobile", () => {
     await dialog.getByRole("button", { name: "Cash" }).click();
     await dialog.getByLabel("Account type").selectOption("checking");
     await dialog.getByLabel("Current balance").fill("1234.56");
-    await dialog.getByRole("button", { name: "Create account" }).click();
+    await dialog.getByRole("button", { name: "Add account" }).click();
 
     await expect(dialog).not.toBeVisible({ timeout: SAVE_TIMEOUT });
     await expect(page.getByText(name)).toBeVisible({ timeout: SAVE_TIMEOUT });
