@@ -12,7 +12,10 @@ type AllocationLegendProps = {
 
 export function AllocationLegend({ slices, colors, hoveredIndex, onHover }: AllocationLegendProps) {
   return (
-    <ul className="w-full list-none p-0 m-0" aria-label="Allocation legend">
+    <ul
+      className="grid w-full list-none grid-cols-[1fr_auto] gap-x-8 p-0 m-0 md:grid-cols-[1fr_auto_auto]"
+      aria-label="Allocation legend"
+    >
       {slices.map((slice, i) => {
         const color = colors[i];
         const isLast = i === slices.length - 1;
@@ -24,7 +27,7 @@ export function AllocationLegend({ slices, colors, hoveredIndex, onHover }: Allo
             onMouseEnter={() => onHover(i)}
             onMouseLeave={() => onHover(null)}
             className={[
-              "grid grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_auto] items-center gap-x-8 px-1 py-2 text-sm rounded-[5px] transition-[background-color,opacity] duration-100",
+              "col-span-2 md:col-span-3 grid grid-cols-subgrid items-center px-1 py-2 text-sm rounded-[5px] transition-[background-color,opacity] duration-100",
               isLast ? "" : "border-b border-line-soft",
               isActive ? "bg-panel-2" : "",
               isDim ? "opacity-50" : "",

@@ -11,11 +11,11 @@ import {
   saveSort,
   sortHoldings,
 } from "@/features/holdings";
-import { FilterChip } from "@/features/holdings/components/filter-chip";
 import { GroupsManager } from "@/features/holdings/components/groups-manager";
 import { HoldingDetailSheet } from "@/features/holdings/components/holding-detail-sheet";
 import { type DrawerMode, HoldingDrawer } from "@/features/holdings/components/holding-drawer";
 import { HoldingsTable } from "@/features/holdings/components/holdings-table";
+import { ScopeMenu } from "@/features/holdings/components/scope-menu";
 import { useGroupMutations, useHoldingMutations } from "@/features/holdings/mutations";
 import { useGroupsQuery, useHoldingsQuery } from "@/features/holdings/queries";
 import type {
@@ -103,6 +103,16 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
     () => sortHoldings(filterHoldings(holdings, filter), sort, pricesMap, dayChangeByHoldingId),
     [holdings, filter, sort, pricesMap, dayChangeByHoldingId],
   );
+
+  const scopeCounts = useMemo(() => {
+    const byAccount = new Map<string, number>();
+    const byGroup = new Map<string, number>();
+    for (const h of holdings) {
+      byAccount.set(h.accountId, (byAccount.get(h.accountId) ?? 0) + 1);
+      if (h.groupId !== null) byGroup.set(h.groupId, (byGroup.get(h.groupId) ?? 0) + 1);
+    }
+    return { byAccount, byGroup };
+  }, [holdings]);
 
   const totalInvestmentsCents = useMemo(
     () => breakdown?.byAccountKind?.investment ?? null,
@@ -288,49 +298,27 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
         </div>
       )}
 
-      {investmentAccounts.length > 0 && (
-        <div
-          role="toolbar"
-          aria-label="Filter holdings"
-          className="flex flex-wrap gap-2 mb-4 overflow-x-auto pb-1"
-        >
-          <FilterChip
-            label="All"
-            selected={filter.kind === "all"}
-            onPress={() => setFilter({ kind: "all" })}
-          />
-          {investmentAccounts.map((account) => (
-            <FilterChip
-              key={account.id}
-              label={account.payload.name}
-              selected={filter.kind === "account" && filter.accountId === account.id}
-              onPress={() => setFilter({ kind: "account", accountId: account.id })}
-            />
-          ))}
-          {groups.map((g) => (
-            <FilterChip
-              key={g.id}
-              label={g.name}
-              selected={filter.kind === "group" && filter.groupId === g.id}
-              onPress={() => setFilter({ kind: "group", groupId: g.id })}
-            />
-          ))}
-          <button
-            type="button"
-            onClick={() => setGroupsManagerOpen(true)}
-            className="ml-auto font-mono text-xs tracking-button uppercase text-faint border border-line rounded-full px-3.5 py-[7px] hover:text-accent hover:border-accent-dim transition cursor-pointer"
-          >
-            &#8862; Edit groups
-          </button>
-        </div>
-      )}
-
       <div className="bg-panel border border-line rounded-[10px] p-6">
         <div className="flex justify-between items-baseline mb-4 gap-2.5 max-[560px]:flex-col max-[560px]:items-start max-[560px]:gap-1.5">
           <div>
-            <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">
-              {filterLabel} &middot; {visibleHoldings.length}
-            </h3>
+            {investmentAccounts.length > 0 ? (
+              <ScopeMenu
+                filter={filter}
+                label={filterLabel}
+                count={visibleHoldings.length}
+                accounts={investmentAccounts}
+                groups={groups}
+                accountCounts={scopeCounts.byAccount}
+                groupCounts={scopeCounts.byGroup}
+                totalCount={holdings.length}
+                onSelect={setFilter}
+                onEditGroups={() => setGroupsManagerOpen(true)}
+              />
+            ) : (
+              <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">
+                {filterLabel} &middot; {visibleHoldings.length}
+              </h3>
+            )}
             {gain !== null && !gain.gainCents.isZero() && (
               <p
                 className={`vfig font-mono text-xs mt-[5px] ${!gain.gainCents.isNegative() ? "text-up" : "text-down"}`}

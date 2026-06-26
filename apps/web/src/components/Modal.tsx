@@ -17,6 +17,11 @@ type ModalProps = {
 
 const EXIT_MS = 300;
 
+// Ref-counted body scroll lock so a stacked modal (e.g. a sheet opening another)
+// keeps scroll locked until the last one closes, then restores the original.
+let scrollLockCount = 0;
+let savedBodyOverflow = "";
+
 /**
  * Shared modal/sheet primitive. Wraps a native <dialog> (showModal gives
  * focus-trap, ESC, return-focus, and an inert background for free) and adds:
@@ -46,6 +51,10 @@ export function Modal({
     if (!dialog) return;
     if (mounted && !dialog.open) {
       dialog.showModal();
+      // showModal() lands focus on the first focusable child (the close button),
+      // painting its focus ring on open. Focus the dialog instead: keyboard Tab
+      // still rings controls, and screen readers announce the title.
+      dialog.focus();
       requestAnimationFrame(() => setShown(true));
     }
   }, [mounted]);
@@ -63,10 +72,14 @@ export function Modal({
 
   useEffect(() => {
     if (!mounted) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (scrollLockCount === 0) {
+      savedBodyOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+    }
+    scrollLockCount++;
     return () => {
-      document.body.style.overflow = prev;
+      scrollLockCount--;
+      if (scrollLockCount === 0) document.body.style.overflow = savedBodyOverflow;
     };
   }, [mounted]);
 
@@ -99,6 +112,7 @@ export function Modal({
   return (
     <dialog
       ref={dialogRef}
+      tabIndex={-1}
       aria-modal="true"
       aria-labelledby={labelledBy}
       aria-describedby={describedBy}

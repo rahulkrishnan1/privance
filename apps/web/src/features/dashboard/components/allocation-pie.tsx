@@ -21,10 +21,10 @@ type PieEntry = {
   index: number;
 };
 
-const MODE_LABEL: Record<AllocationMode, string> = {
-  class: "By class",
-  sector: "By sector",
-};
+const MODES: { value: AllocationMode; label: string }[] = [
+  { value: "class", label: "Class" },
+  { value: "sector", label: "Sector" },
+];
 
 const REST_LABEL: Record<AllocationMode, string> = {
   class: "Total",
@@ -63,17 +63,25 @@ export function AllocationPie({ title, classSlices, sectorSlices }: AllocationPi
     >
       <div className="flex justify-between items-baseline mb-4 flex-wrap gap-x-3 gap-y-1">
         <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">{title}</h3>
-        <button
-          type="button"
-          onClick={() => {
-            setMode((m) => (m === "class" ? "sector" : "class"));
-            setHoveredIndex(null);
-          }}
-          aria-label={`Switch allocation view (currently ${MODE_LABEL[mode]})`}
-          className="font-mono text-xs tracking-button uppercase text-faint hover:text-accent transition-colors cursor-pointer"
-        >
-          {MODE_LABEL[mode]} <span aria-hidden="true">&#9662;</span>
-        </button>
+        <div className="inline-flex rounded-full border border-line bg-panel-2 p-[3px]">
+          {MODES.map((m) => (
+            <button
+              key={m.value}
+              type="button"
+              onClick={() => {
+                setMode(m.value);
+                setHoveredIndex(null);
+              }}
+              aria-pressed={mode === m.value}
+              className={[
+                "rounded-full px-3 py-1 font-mono text-[11px] tracking-button uppercase transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                mode === m.value ? "bg-cream text-vault" : "text-dim hover:text-cream",
+              ].join(" ")}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {isEmpty ? (
@@ -113,7 +121,9 @@ export function AllocationPie({ title, classSlices, sectorSlices }: AllocationPi
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-6 text-center">
-              <span className="font-mono text-xs tracking-label uppercase text-faint max-w-full truncate">
+              {/* Cap the width below the ring's inner chord so long names wrap to
+                  two balanced lines instead of one line spilling onto the ring. */}
+              <span className="font-mono text-xs tracking-[0.12em] uppercase text-faint max-w-[130px] text-balance leading-[1.15]">
                 {centerLabel}
               </span>
               <span className="vfig font-serif text-4xl leading-none mt-1">

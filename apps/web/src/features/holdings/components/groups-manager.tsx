@@ -86,9 +86,7 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
           </button>
         </div>
 
-        <p className="text-sm text-dim leading-[1.6]">
-          Your own buckets, your own taxonomy. Groups live encrypted with everything else.
-        </p>
+        <p className="text-sm text-dim leading-[1.6]">Your own buckets, your own taxonomy.</p>
 
         {groups.length === 0 && (
           <p className="text-sm text-faint text-center py-4">No groups yet</p>

@@ -138,4 +138,23 @@ test.describe("holdings mobile", () => {
     await expect(sheet.getByText("Quantity", { exact: true })).toBeVisible({ timeout: 5_000 });
     await expect(sheet.getByText("Account", { exact: true })).toBeVisible({ timeout: 5_000 });
   });
+
+  test("scope sheet filters holdings by account on mobile (regression)", async ({ page }) => {
+    await page.goto("/app/holdings/");
+    await expect(page).toHaveURL("/app/holdings/", { timeout: 10_000 });
+    await waitForSynced(page);
+
+    // The card heading doubles as the scope-menu trigger; on mobile it opens a bottom sheet.
+    await page.getByRole("button", { name: /All holdings/ }).click();
+    const sheet = page.getByRole("dialog", { name: /Filter holdings by scope/i });
+    await expect(sheet).toBeVisible({ timeout: 5_000 });
+
+    await sheet.getByRole("button", { name: new RegExp(INVESTMENT_ACCOUNT_NAME) }).click();
+
+    await expect(sheet).not.toBeVisible({ timeout: 5_000 });
+    await expect(
+      page.getByRole("heading", { name: new RegExp(INVESTMENT_ACCOUNT_NAME) }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: /All holdings/ })).not.toBeVisible();
+  });
 });

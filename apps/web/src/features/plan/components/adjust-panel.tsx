@@ -263,20 +263,17 @@ export function AdjustPanel({
 
   return (
     <div className="rounded-[10px] border border-line bg-panel p-6">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        {/* Readout sits inline beside the title on desktop, but drops to its own
-            line on mobile: the sooner/later delta changes width as levers move,
-            and an inline readout would reflow the title row on every drag. */}
-        <div className="flex min-w-0 flex-col sm:flex-row sm:items-baseline sm:gap-3">
-          <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">Adjust your plan</h3>
-          <div className="mt-2.5 sm:mt-0">
-            <FiReadout
-              currentFireAge={currentFireAge}
-              currentNeverFi={currentNeverFi}
-              baselineFireAge={baselineFireAge}
-              baselineNeverFi={baselineNeverFi}
-            />
-          </div>
+      {/* One wrapping row: on mobile the readout drops to its own full-width line
+          (order-3 + w-full) clear of Save; on desktop it sits inline by the title. */}
+      <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-2.5">
+        <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">Adjust your plan</h3>
+        <div className="order-3 w-full sm:order-2 sm:w-auto">
+          <FiReadout
+            currentFireAge={currentFireAge}
+            currentNeverFi={currentNeverFi}
+            baselineFireAge={baselineFireAge}
+            baselineNeverFi={baselineNeverFi}
+          />
         </div>
         <button
           type="button"
@@ -284,7 +281,7 @@ export function AdjustPanel({
           disabled={!canSave}
           aria-label={dirty ? "Save plan" : "Plan saved"}
           className={[
-            "shrink-0 whitespace-nowrap rounded-md border px-4 py-2 font-mono text-xs uppercase tracking-button transition-colors",
+            "order-2 ml-auto self-start shrink-0 whitespace-nowrap rounded-md border px-4 py-2 font-mono text-xs uppercase tracking-button transition-colors sm:order-3",
             // Saving keeps the accent fill (only the cursor/hover stop); a
             // save-blocking error or a clean plan reads as inert.
             dirty && !saveDisabled
