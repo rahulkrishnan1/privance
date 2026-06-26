@@ -345,7 +345,7 @@ export default function UnlockPage() {
                     Welcome back, <em className="text-accent">{hydrated ? username : ""}.</em>
                   </h1>
                   <p className="text-center text-dim text-sm mt-[10px]">
-                    The vault is sealed. Decryption happens here, on this device.
+                    The vault is sealed. Decryption happens on device.
                   </p>
                 </>
               ) : (
@@ -492,7 +492,7 @@ export default function UnlockPage() {
 
               {biometricRecord && (
                 <p className="text-center font-mono text-xs tracking-[0.08em] text-faint mt-[14px]">
-                  password still required every 14 days, by design
+                  password still required every 14 days
                 </p>
               )}
 

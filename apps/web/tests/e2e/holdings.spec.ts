@@ -104,11 +104,16 @@ test.describe("holdings", () => {
   test("filtering by account updates the holdings panel heading (regression)", async ({ page }) => {
     await goToHoldings(page);
 
-    await expect(page.getByRole("heading", { name: /All holdings/ })).toBeVisible({
-      timeout: 10_000,
-    });
+    // The card heading doubles as the scope-menu trigger; open it, then pick the account.
+    const scopeTrigger = page.getByRole("button", { name: /All holdings/ });
+    await expect(scopeTrigger).toBeVisible({ timeout: 10_000 });
 
-    await page.getByRole("button", { name: INVESTMENT_ACCOUNT_NAME }).click();
+    await scopeTrigger.click();
+    await page
+      .getByRole("dialog", { name: /Filter holdings by scope/i })
+      .getByRole("button", { name: new RegExp(INVESTMENT_ACCOUNT_NAME) })
+      .click();
+
     await expect(
       page.getByRole("heading", { name: new RegExp(INVESTMENT_ACCOUNT_NAME) }),
     ).toBeVisible();

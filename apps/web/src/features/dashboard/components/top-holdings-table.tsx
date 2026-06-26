@@ -147,7 +147,7 @@ export function TopHoldingsTable({
           fewer than the preview); mobile keeps the original in-flow scroll area. */}
       <div
         ref={areaRef}
-        className={isWide ? "flex-1 overflow-hidden" : "overflow-x-auto"}
+        className={isWide ? "flex-1 overflow-x-auto overflow-y-hidden" : "overflow-x-auto"}
         style={isWide ? { minHeight } : undefined}
       >
         {/* Holding column (w-full) absorbs the slack and truncates; numeric

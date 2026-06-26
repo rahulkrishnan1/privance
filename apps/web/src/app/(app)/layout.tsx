@@ -201,7 +201,7 @@ function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-30 hidden border-t border-line bg-[color-mix(in_srgb,var(--color-vault)_90%,transparent)] px-2.5 pt-2 backdrop-blur-[14px] max-[760px]:flex [padding-bottom:calc(0.5rem+env(safe-area-inset-bottom))]"
+      className="fixed inset-x-0 bottom-0 z-30 hidden border-t border-line bg-[color-mix(in_srgb,var(--color-vault)_90%,transparent)] px-2.5 backdrop-blur-[14px] max-[760px]:flex [padding-bottom:max(0.5rem,env(safe-area-inset-bottom))]"
       aria-label="Mobile navigation"
     >
       {NAV_ITEMS.map(({ label, href, Icon, match }) => {
@@ -268,7 +268,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <SyncStatus />
       {/* Clear the fixed bottom nav plus the iOS home-indicator safe area, so the
           last content is never hidden behind the nav. */}
-      <main className="[padding-bottom:calc(4.5rem+env(safe-area-inset-bottom))] min-[760px]:pb-4">
+      <main className="[padding-bottom:calc(4rem+env(safe-area-inset-bottom))] min-[760px]:pb-4">
         {children}
       </main>
       <BottomNav />

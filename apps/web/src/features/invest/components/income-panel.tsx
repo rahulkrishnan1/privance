@@ -10,7 +10,7 @@ type IncomePanelProps = {
   result: EstimatedIncomeResult;
 };
 
-const TOP_PAYERS = 5;
+const TOP_PAYERS = 3;
 
 export function IncomePanel({ result }: IncomePanelProps) {
   const { annualCents, portfolioYield, monthlyCents, payers } = result;
@@ -51,14 +51,17 @@ export function IncomePanel({ result }: IncomePanelProps) {
 
       <div
         ref={areaRef}
-        className={isWide && !expanded ? "mt-4 flex-1 overflow-hidden" : "mt-4"}
+        // Desktop scrolls sideways rather than clip a wide value in a narrow card.
+        className={`mt-4 grid grid-cols-[1fr_auto_auto] gap-x-8${
+          isWide && !expanded ? " flex-1 overflow-x-auto overflow-y-hidden" : ""
+        }`}
         style={isWide && !expanded ? { minHeight } : undefined}
       >
         {visiblePayers.map((payer, idx) => (
           <div
             key={payer.id}
             ref={idx === 0 ? rowRef : undefined}
-            className="grid grid-cols-[1fr_auto_auto] items-center gap-x-8 py-[11px] border-b border-line-soft last:border-b-0"
+            className="col-span-3 grid grid-cols-subgrid items-center py-[11px] border-b border-line-soft last:border-b-0"
           >
             <span className="justify-self-start font-mono text-xs tracking-[.06em] text-accent bg-panel-2 border border-line rounded-[5px] px-[9px] py-[5px]">
               {payer.ticker}
