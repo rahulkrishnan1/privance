@@ -16,6 +16,7 @@ type HoldingFormProps = {
   groups: LocalGroup[];
   isEdit: boolean;
   submitting: boolean;
+  onCancel: () => void;
   onSubmit: (values: HoldingFormValues, opts: { proxyPrice?: string }) => void | Promise<void>;
   onLookupProxyPrice?: (ticker: string) => Promise<string | null>;
   onCreateGroup: (name: string) => Promise<string>;
@@ -27,6 +28,7 @@ export function HoldingForm({
   groups,
   isEdit,
   submitting,
+  onCancel,
   onSubmit,
   onLookupProxyPrice,
   onCreateGroup,
@@ -422,17 +424,25 @@ export function HoldingForm({
         </div>
       )}
 
-      {/* Submit */}
-      <Button
-        type="submit"
-        disabled={submitting || lookingUp}
-        loading={submitting || lookingUp}
-        aria-label={submitting || lookingUp ? "Saving" : "Save holding"}
-        size="md"
-        className="w-full"
-      >
-        {submitting || lookingUp ? "Saving..." : "Save holding"}
-      </Button>
+      <div className="flex gap-2.5 pt-2">
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={onCancel}
+          disabled={submitting || lookingUp}
+          className="flex-1"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={submitting || lookingUp}
+          loading={submitting || lookingUp}
+          className="flex-1"
+        >
+          {submitting || lookingUp ? "Saving..." : isEdit ? "Save changes" : "Add holding"}
+        </Button>
+      </div>
     </form>
   );
 }

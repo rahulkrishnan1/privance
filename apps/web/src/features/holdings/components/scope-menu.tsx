@@ -131,7 +131,7 @@ export function ScopeMenu({
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search accounts & groups"
           aria-label="Search accounts and groups"
-          className="w-full bg-transparent text-sm text-cream placeholder:text-faint outline-none [&::-webkit-search-cancel-button]:hidden"
+          className="w-full bg-transparent text-base text-cream placeholder:text-faint outline-none [&::-webkit-search-cancel-button]:hidden"
         />
       </div>
 

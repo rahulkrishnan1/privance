@@ -76,7 +76,7 @@ test.describe("accounts", () => {
     await dialog.getByRole("button", { name: "Cash" }).click();
     await dialog.getByLabel("Account type").selectOption("checking");
     await dialog.getByLabel("Current balance").fill("1234.56");
-    await dialog.getByRole("button", { name: "Create account" }).click();
+    await dialog.getByRole("button", { name: "Add account" }).click();
 
     await expect(dialog).not.toBeVisible({ timeout: SAVE_TIMEOUT });
     await expect(page.getByText(`Cash-${RUN}`)).toBeVisible({ timeout: SAVE_TIMEOUT });
@@ -97,9 +97,9 @@ test.describe("accounts", () => {
     // Select investment kind (aria-pressed segmented button)
     await dialog.getByRole("button", { name: "Investment" }).click();
     await dialog.getByLabel("Account type").selectOption("brokerage");
-    // Investment accounts show "Cash balance / optional"
-    await dialog.getByLabel("Cash balance / optional").fill("5000.00");
-    await dialog.getByRole("button", { name: "Create account" }).click();
+    // Investment accounts show "Cash balance (optional)"
+    await dialog.getByLabel("Cash balance (optional)").fill("5000.00");
+    await dialog.getByRole("button", { name: "Add account" }).click();
 
     await expect(dialog).not.toBeVisible({ timeout: SAVE_TIMEOUT });
     await expect(page.getByText(`Brokerage-${RUN}`)).toBeVisible({ timeout: SAVE_TIMEOUT });
@@ -126,7 +126,7 @@ test.describe("accounts", () => {
       await d.getByRole("button", { name: "Cash" }).click();
       await d.getByLabel("Account type").selectOption("checking");
       await d.getByLabel("Current balance").fill("100.00");
-      await d.getByRole("button", { name: "Create account" }).click();
+      await d.getByRole("button", { name: "Add account" }).click();
       await expect(d).not.toBeVisible({ timeout: SAVE_TIMEOUT });
       await expect(page.getByText(existingName).first()).toBeVisible({ timeout: SAVE_TIMEOUT });
     }
@@ -198,7 +198,7 @@ test.describe("accounts", () => {
     // A negative stored balance is a credit balance (e.g. a card overpayment).
     // Liability balance label is "Amount owed"
     await dialog.getByLabel("Amount owed").fill("-5.00");
-    await dialog.getByRole("button", { name: "Create account" }).click();
+    await dialog.getByRole("button", { name: "Add account" }).click();
     await expect(dialog).not.toBeVisible({ timeout: SAVE_TIMEOUT });
 
     // Regression: liabilities unconditionally prepended "-" after abs(), so a
@@ -223,7 +223,7 @@ test.describe("accounts", () => {
     await d.getByRole("button", { name: "Cash" }).click();
     await d.getByLabel("Account type").selectOption("checking");
     await d.getByLabel("Current balance").fill("0.00");
-    await d.getByRole("button", { name: "Create account" }).click();
+    await d.getByRole("button", { name: "Add account" }).click();
     await expect(d).not.toBeVisible({ timeout: SAVE_TIMEOUT });
     await expect(page.getByText(deleteName)).toBeVisible({ timeout: SAVE_TIMEOUT });
 

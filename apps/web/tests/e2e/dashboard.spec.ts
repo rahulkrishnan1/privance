@@ -79,7 +79,7 @@ async function ensureDataSetup(browser: import("@playwright/test").Browser): Pro
   await d.getByRole("button", { name: "Cash" }).click();
   await d.getByLabel("Account type").selectOption("checking");
   await d.getByLabel("Current balance").fill("25000.00");
-  await d.getByRole("button", { name: "Create account" }).click();
+  await d.getByRole("button", { name: "Add account" }).click();
   await expect(d).not.toBeVisible({ timeout: 10_000 });
 
   dataSetupDone = true;

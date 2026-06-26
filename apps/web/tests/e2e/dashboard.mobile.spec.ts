@@ -68,7 +68,7 @@ test.describe("dashboard mobile", () => {
     await dialog.getByRole("button", { name: "Cash" }).click();
     await dialog.getByLabel("Account type").selectOption("checking");
     await dialog.getByLabel("Current balance").fill("4200.00");
-    await dialog.getByRole("button", { name: "Create account" }).click();
+    await dialog.getByRole("button", { name: "Add account" }).click();
     await expect(dialog).not.toBeVisible({ timeout: SAVE_TIMEOUT });
     // Let the sync push the new account to the server before closing: the test
     // runs in a fresh context with isolated OPFS, so it only sees server-synced

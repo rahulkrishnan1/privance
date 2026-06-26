@@ -64,8 +64,8 @@ test.describe("holdings mobile", () => {
     await dialog.getByLabel("Name").fill(INVESTMENT_ACCOUNT_NAME);
     await dialog.getByRole("button", { name: "Investment" }).click();
     await dialog.getByLabel("Account type").selectOption("brokerage");
-    await dialog.getByLabel("Cash balance / optional").fill("0.00");
-    await dialog.getByRole("button", { name: "Create account" }).click();
+    await dialog.getByLabel("Cash balance (optional)").fill("0.00");
+    await dialog.getByRole("button", { name: "Add account" }).click();
     await expect(dialog).not.toBeVisible({ timeout: 10_000 });
     accountReady = true;
 
@@ -105,7 +105,7 @@ test.describe("holdings mobile", () => {
     await addDialog.getByLabel("Account").selectOption({ label: INVESTMENT_ACCOUNT_NAME });
     await addDialog.getByLabel("Quantity").fill("5");
     await addDialog.getByLabel("Avg cost basis").fill("100.00");
-    await addDialog.getByRole("button", { name: "Save holding" }).click();
+    await addDialog.getByRole("button", { name: "Add holding" }).click();
     await expect(addDialog).not.toBeVisible({ timeout: 15_000 });
 
     const holdingsTable = page.getByRole("table", { name: "Holdings" });

@@ -5,7 +5,6 @@ import { describe, expect, test } from "vitest";
 import type { LocalSpendItem } from "../types";
 import {
   billedAmountCents,
-  cadenceLabel,
   dailyEquivalentCents,
   defaultGroupForCategory,
   monthlyEquivalentCents,
@@ -184,20 +183,6 @@ describe("subscriptionSharePct", () => {
 
   test("no spend -> 0 (no divide by zero)", () => {
     expect(subscriptionSharePct(monthly("0"), monthly("0"))).toBe(0);
-  });
-});
-
-describe("cadenceLabel", () => {
-  test("count of 1 reads as an adverb", () => {
-    expect(cadenceLabel(1, "day")).toBe("daily");
-    expect(cadenceLabel(1, "week")).toBe("weekly");
-    expect(cadenceLabel(1, "month")).toBe("monthly");
-    expect(cadenceLabel(1, "year")).toBe("yearly");
-  });
-
-  test("count above 1 reads as 'every N units'", () => {
-    expect(cadenceLabel(2, "year")).toBe("every 2 years");
-    expect(cadenceLabel(3, "month")).toBe("every 3 months");
   });
 });
 

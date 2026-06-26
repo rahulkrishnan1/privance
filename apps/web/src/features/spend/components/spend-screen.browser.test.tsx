@@ -171,7 +171,7 @@ test("paused item row swaps the cadence sub-line for a resume hint", async () =>
   await expect.element(screen.getByText(/resumes when you do/)).toBeVisible();
 });
 
-test("yearly item shows the cadence, billed amount, and monthly equivalent", async () => {
+test("yearly item shows the per-cycle amount with cadence and monthly equivalent", async () => {
   mockQueryReturn([
     makeTestItem({
       id: "1",
@@ -184,14 +184,13 @@ test("yearly item shows the cadence, billed amount, and monthly equivalent", asy
   ]);
   const screen = await render(<SpendScreen />);
   const row = screen.getByRole("button", { name: /Prime/ });
-  // Sub-line shows the cadence and the per-cycle billed amount ($139); the figure
-  // shows the monthly equivalent ($139 / 12 = $11.58), never the raw $139.
-  await expect.element(row).toHaveTextContent("billed yearly");
-  await expect.element(row).toHaveTextContent("$139");
+  // Sub-line shows the per-cycle billed amount with its cadence ($139/yr); the
+  // figure shows the monthly equivalent ($139 / 12 = $11.58), never the raw $139.
+  await expect.element(row).toHaveTextContent("$139/yr");
   await expect.element(row).toHaveTextContent("$11.58");
 });
 
-test("multi-unit cadence reads as 'every N units'", async () => {
+test("multi-unit cadence shows as '/2yr' on the per-cycle amount", async () => {
   mockQueryReturn([
     makeTestItem({
       id: "1",
@@ -205,10 +204,50 @@ test("multi-unit cadence reads as 'every N units'", async () => {
   ]);
   const screen = await render(<SpendScreen />);
   const row = screen.getByRole("button", { name: /Domain/ });
-  // $240 every 2 years = $120/yr = $10/mo.
-  await expect.element(row).toHaveTextContent("billed every 2 years");
-  await expect.element(row).toHaveTextContent("$240");
+  // $240 every 2 years = $120/yr = $10/mo; the sub-line reads "$240/2yr".
+  await expect.element(row).toHaveTextContent("$240/2yr");
   await expect.element(row).toHaveTextContent("$10");
+});
+
+test("non-monthly amount wraps in parens only when a bill date is set", async () => {
+  mockQueryReturn([
+    makeTestItem({
+      id: "1",
+      name: "Prime",
+      amountCents: "13900",
+      category: "shopping",
+      group: "subscriptions",
+      intervalUnit: "year",
+      nextRenewalAt: "2099-03-15",
+    }),
+    makeTestItem({
+      id: "2",
+      name: "Domain",
+      amountCents: "13900",
+      category: "software",
+      group: "subscriptions",
+      intervalUnit: "year",
+      nextRenewalAt: undefined,
+    }),
+  ]);
+  const screen = await render(<SpendScreen />);
+  // Dated: verb + always-year date + amount/cadence in parens.
+  await expect
+    .element(screen.getByRole("button", { name: /Prime/ }))
+    .toHaveTextContent("renews Mar 15, 2099 ($139/yr)");
+  // Dateless: bare amount/cadence, never an orphaned "($139/yr)" with no prefix.
+  const dateless = screen.getByRole("button", { name: /Domain/ });
+  await expect.element(dateless).toHaveTextContent("$139/yr");
+  await expect.element(dateless).not.toHaveTextContent("($139");
+});
+
+test("category stays in the row accessible name for screen readers", async () => {
+  mockQueryReturn([
+    makeTestItem({ id: "1", name: "Rent", category: "housing", group: "essentials" }),
+  ]);
+  const screen = await render(<SpendScreen />);
+  // The category icon is aria-hidden, so the category label lives in an sr-only span.
+  await expect.element(screen.getByRole("button", { name: /Rent.*Housing/i })).toBeVisible();
 });
 
 test("billed amount in the row sub-line is veil-blurred (no privacy leak)", async () => {
@@ -251,6 +290,8 @@ test("weekly item renders the rounded monthly equivalent ($43.33)", async () => 
   const screen = await render(<SpendScreen />);
   // $10/week * 52 / 12 = $43.33 (banker rounding), shown with cents.
   await expect.element(screen.getByText("$43.33")).toBeVisible();
+  // The per-cycle billed amount carries the "/wk" cadence suffix.
+  await expect.element(screen.getByRole("button", { name: /Locker/ })).toHaveTextContent("$10/wk");
 });
 
 test("sub-line shows 'due' for essentials and 'renews' for subscriptions with the next bill date", async () => {

@@ -13,7 +13,7 @@ type IncomePanelProps = {
 const TOP_PAYERS = 3;
 
 export function IncomePanel({ result }: IncomePanelProps) {
-  const { annualCents, portfolioYield, monthlyCents, payers } = result;
+  const { annualCents, portfolioYield, payers } = result;
   const [expanded, setExpanded] = useState(false);
 
   // Desktop fills the "Where it lives"-driven height; mobile shows a fixed preview.
@@ -45,35 +45,34 @@ export function IncomePanel({ result }: IncomePanelProps) {
         <span className="font-mono text-sm text-faint">/ yr forward</span>
       </p>
       <p className="font-mono text-xs text-dim mt-1">
-        {formatPercent(portfolioYield)} portfolio yield &middot;{" "}
-        <span className="vfig">&#8776;{formatCurrency(monthlyCents)}/mo</span>
+        {formatPercent(portfolioYield)} portfolio yield
       </p>
 
       <div
         ref={areaRef}
         // Desktop scrolls sideways rather than clip a wide value in a narrow card.
-        className={`mt-4 grid grid-cols-[1fr_auto_auto] gap-x-8${
-          isWide && !expanded ? " flex-1 overflow-x-auto overflow-y-hidden" : ""
-        }`}
+        className={`mt-4${isWide && !expanded ? " flex-1 overflow-x-auto overflow-y-hidden" : ""}`}
         style={isWide && !expanded ? { minHeight } : undefined}
       >
-        {visiblePayers.map((payer, idx) => (
-          <div
-            key={payer.id}
-            ref={idx === 0 ? rowRef : undefined}
-            className="col-span-3 grid grid-cols-subgrid items-center py-[11px] border-b border-line-soft last:border-b-0"
-          >
-            <span className="justify-self-start font-mono text-xs tracking-[.06em] text-accent bg-panel-2 border border-line rounded-[5px] px-[9px] py-[5px]">
-              {payer.ticker}
-            </span>
-            <span className="vfig font-mono text-sm text-cream-soft tabular-nums text-right">
-              {formatCurrency(payer.annualCents)}/yr
-            </span>
-            <span className="font-mono text-sm text-dim tabular-nums text-right">
-              {(payer.yield * 100).toFixed(2)}%
-            </span>
-          </div>
-        ))}
+        <div className="grid grid-cols-[1fr_auto_auto] gap-x-8">
+          {visiblePayers.map((payer, idx) => (
+            <div
+              key={payer.id}
+              ref={idx === 0 ? rowRef : undefined}
+              className="col-span-3 grid grid-cols-subgrid items-center py-[11px] border-b border-line-soft last:border-b-0"
+            >
+              <span className="justify-self-start font-mono text-xs tracking-[.06em] text-accent bg-panel-2 border border-line rounded-[5px] px-[9px] py-[5px]">
+                {payer.ticker}
+              </span>
+              <span className="vfig font-mono text-sm text-cream-soft tabular-nums text-right">
+                {formatCurrency(payer.annualCents)}/yr
+              </span>
+              <span className="font-mono text-sm text-dim tabular-nums text-right">
+                {(payer.yield * 100).toFixed(2)}%
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {hasMore && (

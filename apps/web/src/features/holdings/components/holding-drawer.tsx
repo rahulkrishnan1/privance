@@ -101,6 +101,7 @@ export function HoldingDrawer({
           groups={groups}
           isEdit={mode.kind === "edit"}
           submitting={submitting}
+          onCancel={onClose}
           onSubmit={(values, opts) => void onSubmit(values, mode, opts)}
           onLookupProxyPrice={onLookupProxyPrice}
           onCreateGroup={onCreateGroup}

@@ -246,13 +246,6 @@ export function AccountForm({
         ? "Amount owed"
         : "Current balance";
 
-  const balanceNote =
-    selectedKind === "manual_asset"
-      ? "your estimate for a home, car, or other asset, update it anytime"
-      : selectedKind === "liability"
-        ? "the balance you still owe, subtracted from net worth"
-        : "";
-
   // biome-ignore lint/correctness/useExhaustiveDependencies: open triggers reset
   useEffect(() => {
     reset({
@@ -381,7 +374,7 @@ export function AccountForm({
                 name="balance"
                 render={({ field }) => (
                   <Input
-                    label="Cash balance / optional"
+                    label="Cash balance (optional)"
                     {...field}
                     inputMode="decimal"
                     placeholder="0.00"
@@ -389,9 +382,6 @@ export function AccountForm({
                   />
                 )}
               />
-              <p className="font-mono text-xs text-faint tracking-[.04em]">
-                uninvested cash in this account, added to its total alongside holdings
-              </p>
             </div>
           )}
 
@@ -410,9 +400,6 @@ export function AccountForm({
                   />
                 )}
               />
-              {balanceNote && (
-                <p className="font-mono text-xs text-faint tracking-[.04em]">{balanceNote}</p>
-              )}
             </div>
           )}
 
@@ -435,8 +422,8 @@ export function AccountForm({
           )}
 
           {selectedKind === "liability" && (
-            <div className="flex gap-2.5">
-              <div className="flex flex-col gap-1 flex-1">
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-1">
                 <Controller
                   control={control}
                   name="interestRate"
@@ -451,7 +438,7 @@ export function AccountForm({
                   )}
                 />
               </div>
-              <div className="flex flex-col gap-1 flex-1">
+              <div className="flex flex-col gap-1">
                 <Controller
                   control={control}
                   name="termYears"
@@ -486,7 +473,7 @@ export function AccountForm({
                     type="date"
                     {...field}
                     value={field.value ?? ""}
-                    className="w-full bg-panel-2 border border-line rounded-lg text-cream font-mono text-base px-3.5 py-3 outline-none focus:border-accent-dim transition-colors"
+                    className="w-full min-w-0 bg-panel-2 border border-line rounded-lg text-cream font-mono text-base px-3.5 py-3 outline-none focus:border-accent-dim transition-colors [color-scheme:dark]"
                   />
                 )}
               />
@@ -510,7 +497,7 @@ export function AccountForm({
               Cancel
             </Button>
             <Button type="submit" loading={submitting} disabled={submitting} className="flex-1">
-              {submitting ? "Saving..." : isEditMode ? "Save changes" : "Create account"}
+              {submitting ? "Saving..." : isEditMode ? "Save changes" : "Add account"}
             </Button>
           </div>
         </form>

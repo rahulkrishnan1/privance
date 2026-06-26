@@ -30,7 +30,7 @@ test("surfaces an inline error when the save fails (no longer silently swallowed
   const screen = await render(<AccountForm open onClose={() => {}} onSubmit={onSubmit} />);
 
   await fillValidCashAccount(screen);
-  await screen.getByRole("button", { name: "Create account" }).click();
+  await screen.getByRole("button", { name: "Add account" }).click();
 
   await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
   await expect.element(screen.getByRole("alert")).toBeVisible();
@@ -42,7 +42,7 @@ test("submits the entered values and shows no error on success", async () => {
   const screen = await render(<AccountForm open onClose={() => {}} onSubmit={onSubmit} />);
 
   await fillValidCashAccount(screen);
-  await screen.getByRole("button", { name: "Create account" }).click();
+  await screen.getByRole("button", { name: "Add account" }).click();
 
   await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
   expect(onSubmit).toHaveBeenCalledWith(
@@ -62,8 +62,8 @@ test("first account (defaultKind investment) saves an investment subKind, not a 
 
   await screen.getByRole("textbox", { name: "Name" }).fill("Brokerage");
   await screen.getByRole("combobox", { name: "Account type" }).selectOptions("brokerage");
-  await screen.getByRole("textbox", { name: "Cash balance / optional" }).fill("12345.00");
-  await screen.getByRole("button", { name: "Create account" }).click();
+  await screen.getByRole("textbox", { name: "Cash balance (optional)" }).fill("12345.00");
+  await screen.getByRole("button", { name: "Add account" }).click();
 
   await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
   expect(onSubmit).toHaveBeenCalledWith(
@@ -77,7 +77,7 @@ test("blocks save until an account type is chosen", async () => {
 
   await screen.getByRole("textbox", { name: "Name" }).fill("No Type");
   await screen.getByRole("textbox", { name: "Current balance" }).fill("50.00");
-  await screen.getByRole("button", { name: "Create account" }).click();
+  await screen.getByRole("button", { name: "Add account" }).click();
 
   await expect.element(screen.getByRole("alert")).toHaveTextContent("Select an account type");
   expect(onSubmit).not.toHaveBeenCalled();

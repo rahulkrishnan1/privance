@@ -147,8 +147,8 @@ test.describe("AE2: enroll, lock, biometric unlock", () => {
         await dialog.getByLabel("Name").fill("AE2-Balance");
         // Default kind is Investment; its seed field is the optional cash balance.
         await dialog.getByLabel("Account type").selectOption("brokerage");
-        await dialog.getByLabel("Cash balance / optional").fill("12345.00");
-        await dialog.getByRole("button", { name: "Create account" }).click();
+        await dialog.getByLabel("Cash balance (optional)").fill("12345.00");
+        await dialog.getByRole("button", { name: "Add account" }).click();
         await expect(dialog).not.toBeVisible({ timeout: 30_000 });
         // The seeded balance surfaces in the net-worth hero on the Invest screen.
         await expect(page.getByTestId("invest-net-worth")).toContainText("$12,345", {

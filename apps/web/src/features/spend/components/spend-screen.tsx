@@ -1,5 +1,6 @@
 "use client";
 
+import type { BillingUnit } from "@privance/core";
 import { useMemo, useState } from "react";
 import { formatCurrency, formatCurrencyWhole } from "@/lib/format";
 import { useSync } from "@/providers";
@@ -9,7 +10,6 @@ import { useSpendItemsQuery } from "../queries";
 import type { LocalSpendItem, SpendFormValues } from "../types";
 import {
   billedAmountCents,
-  cadenceLabel,
   dailyEquivalentCents,
   monthlyEquivalentCents,
   nextBillDate,
@@ -23,10 +23,6 @@ import { SpendForm } from "./spend-form";
 
 const MAX_WIDTH = "max-w-[1120px] mx-auto px-7 max-[760px]:px-4";
 
-function isPlainMonthly(item: LocalSpendItem): boolean {
-  return item.intervalCount === 1 && item.intervalUnit === "month";
-}
-
 // Order a panel's rows by monthly-equivalent value, highest first, matching how
 // holdings and accounts sort by value.
 function byMonthlyDesc(a: LocalSpendItem, b: LocalSpendItem): number {
@@ -35,30 +31,19 @@ function byMonthlyDesc(a: LocalSpendItem, b: LocalSpendItem): number {
   );
 }
 
-// The next bill date, shown with the year only when it isn't the current one
-// (so an annual or every-2-years cadence reads unambiguously).
-function formatBillDate(date: Date, now: Date): string {
-  const options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
-  if (date.getFullYear() !== now.getFullYear()) options.year = "numeric";
-  return date.toLocaleDateString("en-US", options);
+// The next bill date, always with the year so any cadence reads unambiguously.
+function formatBillDate(date: Date): string {
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-// Sub-label below the item name. The billed amount (a money figure) is rendered
-// separately so it can carry `vfig`; the paused state is conveyed by the badge
-// and strikethrough, so neither is repeated here.
+// Category is shown by the icon and the amount is rendered separately (vfig), so
+// this line carries only the bill-date verb.
 function subLine(item: LocalSpendItem, now: Date): string {
-  const cat = CATEGORY_LABELS[item.category].toLowerCase();
-  if (item.status === "paused") return `${cat} · resumes when you do`;
-  const parts = [cat];
-  if (!isPlainMonthly(item)) {
-    parts.push(`billed ${cadenceLabel(item.intervalCount, item.intervalUnit)}`);
-  }
-  if (item.nextRenewalAt) {
-    const verb = item.group === "essentials" ? "due" : "renews";
-    const next = nextBillDate(item.nextRenewalAt, item.intervalCount, item.intervalUnit, now);
-    parts.push(`${verb} ${formatBillDate(next, now)}`);
-  }
-  return parts.join(" · ");
+  if (item.status === "paused") return "resumes when you do";
+  if (!item.nextRenewalAt) return "";
+  const verb = item.group === "essentials" ? "due" : "renews";
+  const next = nextBillDate(item.nextRenewalAt, item.intervalCount, item.intervalUnit, now);
+  return `${verb} ${formatBillDate(next)}`;
 }
 
 // Money figure shows cents only when the value is not a whole dollar, so
@@ -66,6 +51,13 @@ function subLine(item: LocalSpendItem, now: Date): string {
 // avoid any float comparison.
 function formatMoney(d: ReturnType<typeof monthlyEquivalentCents>): string {
   return d.toMinorUnits() % 100n === 0n ? formatCurrencyWhole(d) : formatCurrency(d);
+}
+
+const UNIT_ABBR: Record<BillingUnit, string> = { day: "day", week: "wk", month: "mo", year: "yr" };
+
+function cadenceSuffix(item: LocalSpendItem): string {
+  const unit = UNIT_ABBR[item.intervalUnit];
+  return item.intervalCount === 1 ? `/${unit}` : `/${item.intervalCount}${unit}`;
 }
 
 function RecurringRow({
@@ -80,6 +72,7 @@ function RecurringRow({
   const isPaused = item.status === "paused";
   const monthly = monthlyEquivalentCents(item.amountCents, item.intervalCount, item.intervalUnit);
   const billed = billedAmountCents(item.amountCents, item.intervalCount, item.intervalUnit);
+  const sub = subLine(item, now);
 
   return (
     <button
@@ -99,22 +92,29 @@ function RecurringRow({
       <span className="flex-1 min-w-0">
         <span className="block text-sm text-cream">
           {item.name}
+          {/* Category is icon-only visually; keep it in the accessible name for screen readers. */}
+          <span className="sr-only"> {CATEGORY_LABELS[item.category]}</span>
           {isPaused && (
             <span className="inline-block font-mono text-xs tracking-label uppercase text-faint border border-line rounded-full px-[7px] py-[2px] ml-[7px] align-[1px]">
               paused
             </span>
           )}
         </span>
-        <span className="block font-mono text-xs text-faint mt-[3px]">
-          {subLine(item, now)}
-          {!isPaused && billed !== null && (
-            <>
-              {" ("}
-              <span className="vfig">{formatMoney(billed)}</span>
-              {")"}
-            </>
-          )}
-        </span>
+        {(sub || (!isPaused && billed !== null)) && (
+          <span className="block font-mono text-xs text-faint mt-[3px]">
+            {sub}
+            {!isPaused && billed !== null && (
+              <>
+                {sub && " ("}
+                <span className="vfig">
+                  {formatMoney(billed)}
+                  {cadenceSuffix(item)}
+                </span>
+                {sub && ")"}
+              </>
+            )}
+          </span>
+        )}
       </span>
       <span
         className={[
