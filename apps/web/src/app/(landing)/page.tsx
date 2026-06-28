@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Logo } from "@/components/index";
+import { Button, Logo } from "@/components/index";
 import { useAuth } from "@/providers/auth-context";
 
 // useLayoutEffect on the server logs a warning; fall back to useEffect there.
@@ -51,12 +51,9 @@ function NavBar() {
           ))}
         </nav>
 
-        <Link
-          href="/auth/login"
-          className="font-mono text-xs tracking-button uppercase font-medium bg-accent text-vault no-underline px-5 py-[11px] rounded-[6px] hover:bg-cream transition-colors max-[560px]:px-[14px] max-[560px]:py-[10px] max-[560px]:text-xs max-[560px]:whitespace-nowrap"
-        >
-          Sign in
-        </Link>
+        <Button asChild variant="primary">
+          <Link href="/auth/login">Sign in</Link>
+        </Button>
       </div>
     </header>
   );
@@ -167,19 +164,12 @@ function Hero() {
           className="reveal-up flex gap-[14px] mt-[30px] justify-center flex-wrap"
           style={{ animationDelay: "0.34s" }}
         >
-          <a
-            href="/auth/signup/"
-            className="font-mono text-xs tracking-button uppercase font-medium bg-accent text-vault no-underline px-[30px] py-[17px] rounded-[7px] hover:bg-cream inline-block"
-            style={{ transition: "transform .15s, background .2s" }}
-          >
-            Have an invite?
-          </a>
-          <a
-            href="#deploy"
-            className="font-mono text-xs tracking-button uppercase text-cream-soft no-underline px-[26px] py-[17px] border border-line rounded-[7px] hover:border-accent-dim hover:text-accent transition-colors inline-block"
-          >
-            Self&#8209;host instead
-          </a>
+          <Button asChild variant="primary">
+            <Link href="/auth/signup/">Have an invite?</Link>
+          </Button>
+          <Button asChild variant="secondary">
+            <a href="#deploy">Self&#8209;host instead</a>
+          </Button>
         </div>
 
         <ScrambleWidget />
@@ -204,9 +194,9 @@ function AppFrame() {
           className="flex items-center gap-2 px-[18px] py-[13px] border-b border-line-soft"
           style={{ background: "rgba(235,235,230,.015)" }}
         >
-          <span className="w-[9px] h-[9px] rounded-full bg-[rgba(235,235,230,.12)]" />
-          <span className="w-[9px] h-[9px] rounded-full bg-[rgba(235,235,230,.12)]" />
-          <span className="w-[9px] h-[9px] rounded-full bg-[rgba(235,235,230,.12)]" />
+          <span className="w-[9px] h-[9px] rounded-full bg-cream/12" />
+          <span className="w-[9px] h-[9px] rounded-full bg-cream/12" />
+          <span className="w-[9px] h-[9px] rounded-full bg-cream/12" />
           <span className="mx-auto font-mono text-xs text-faint tracking-[0.06em] border border-line-soft rounded-[6px] px-[14px] py-[5px] flex items-center gap-[7px]">
             <svg
               width="10"
@@ -246,7 +236,7 @@ function AppFrame() {
               className={[
                 "flex items-center gap-2 border rounded-full px-4 py-2 font-mono text-xs tracking-button uppercase cursor-pointer transition-colors",
                 veiled
-                  ? "text-accent border-accent-dim bg-[rgba(127,196,198,.08)]"
+                  ? "text-accent border-accent-dim bg-accent/8"
                   : "text-dim border-line hover:text-accent hover:border-accent-dim",
               ].join(" ")}
             >
@@ -435,7 +425,7 @@ function Tenets() {
         <div className="mb-9">
           <p className="font-mono text-xs tracking-label uppercase text-accent-dim">Three tenets</p>
           <h2
-            className="font-serif font-normal leading-[1.03] tracking-[-0.015em] mt-[14px] max-w-[20ch]"
+            className="font-serif font-normal leading-[1.03] tracking-[-0.015em] mt-[14px]"
             style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
           >
             Privacy isn&rsquo;t a setting here.{" "}
@@ -446,7 +436,7 @@ function Tenets() {
           {items.map((t) => (
             <div
               key={t.idx}
-              className="border border-line rounded-[12px] px-[30px] py-[34px] bg-panel relative group transition-[transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-[rgba(127,196,198,.35)]"
+              className="border border-line rounded-[12px] px-[30px] py-[34px] bg-panel relative group transition-[transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-accent/35 motion-reduce:hover:translate-y-0 motion-reduce:transition-none"
             >
               <span className="absolute top-5 right-[22px] font-serif italic text-lg text-faint">
                 {t.idx}
@@ -455,7 +445,7 @@ function Tenets() {
                 className="w-[52px] h-[52px] border border-accent-dim rounded-full flex items-center justify-center text-accent font-mono text-xs tracking-[0.12em] relative mb-[26px]"
                 style={{ transform: "rotate(-8deg)" }}
               >
-                <span className="absolute inset-[4px] border border-dashed border-[rgba(127,196,198,.35)] rounded-full" />
+                <span className="absolute inset-[4px] border border-dashed border-accent/35 rounded-full" />
                 {t.seal}
               </div>
               <h3 className="font-serif font-normal text-3xl tracking-[-0.01em] leading-[1.12]">
@@ -493,7 +483,7 @@ function Protocol() {
           </p>
           <div className="mt-[34px]">
             <code
-              className="block font-mono text-sm text-accent border border-[rgba(127,196,198,.2)] rounded-[8px] px-[18px] py-[13px]"
+              className="block font-mono text-sm text-accent border border-accent/20 rounded-[8px] px-[18px] py-[13px]"
               style={{ background: "rgba(127,196,198,.06)" }}
             >
               github.com/rahulkrishnan1/privance
@@ -543,7 +533,7 @@ function Protocol() {
             </div>
           ))}
           <div className="grid grid-cols-2 gap-[14px] mt-[22px] max-[560px]:grid-cols-1">
-            <div className="rounded-[11px] px-[22px] py-5 border border-[rgba(127,196,198,.3)] bg-[rgba(127,196,198,.05)]">
+            <div className="rounded-[11px] px-[22px] py-5 border border-accent/30 bg-accent/5">
               <span className="font-mono text-xs tracking-label uppercase text-accent">
                 Server holds
               </span>
@@ -588,7 +578,7 @@ function Deploy() {
           </h2>
         </div>
         <div className="grid grid-cols-2 gap-4 max-[880px]:grid-cols-1">
-          <div className="border border-line rounded-[12px] px-[30px] py-[30px] bg-panel relative">
+          <div className="border border-line rounded-[12px] px-[30px] py-[30px] bg-panel relative group transition-[transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-accent/35 motion-reduce:hover:translate-y-0 motion-reduce:transition-none">
             <span className="absolute top-5 right-[22px] font-mono text-sm tracking-[0.18em] text-accent">
               INVITE&#8209;ONLY
             </span>
@@ -599,14 +589,11 @@ function Deploy() {
               Sign up and go. We run the servers and keep the backups, and all we ever hold is
               ciphertext. Zero knowledge means trusting the math, not us.
             </p>
-            <a
-              href="/auth/signup/"
-              className="font-mono text-xs tracking-button uppercase font-medium bg-accent text-vault no-underline px-[30px] py-[17px] rounded-[7px] hover:bg-cream transition-colors inline-block mt-[26px]"
-            >
-              Have an invite?
-            </a>
+            <Button asChild variant="primary" className="mt-[26px]">
+              <Link href="/auth/signup/">Have an invite?</Link>
+            </Button>
           </div>
-          <div className="border border-line rounded-[12px] px-[30px] py-[30px] bg-panel relative">
+          <div className="border border-line rounded-[12px] px-[30px] py-[30px] bg-panel relative group transition-[transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-accent/35 motion-reduce:hover:translate-y-0 motion-reduce:transition-none">
             <span className="absolute top-5 right-[22px] font-mono text-sm tracking-[0.18em] text-faint">
               FULL CONTROL
             </span>
@@ -618,7 +605,7 @@ function Deploy() {
               whole data path, end to end.
             </p>
             <code
-              className="block font-mono text-sm text-accent border border-[rgba(127,196,198,.2)] rounded-[8px] px-[18px] py-[13px] mt-[26px]"
+              className="block font-mono text-sm text-accent border border-accent/20 rounded-[8px] px-[18px] py-[13px] mt-[26px]"
               style={{ background: "rgba(127,196,198,.06)" }}
             >
               $ docker compose up -d
@@ -639,7 +626,7 @@ function Features() {
             Inside the vault
           </p>
           <h2
-            className="font-serif font-normal leading-[1.03] tracking-[-0.015em] mt-[14px] max-w-[24ch]"
+            className="font-serif font-normal leading-[1.03] tracking-[-0.015em] mt-[14px]"
             style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
           >
             What you own, what it earns, <em className="text-accent">where it&rsquo;s headed.</em>
@@ -791,7 +778,7 @@ function Features() {
           ].map((f) => (
             <div
               key={f.tag}
-              className={`${f.cls} border border-line rounded-[12px] p-[30px] bg-panel relative overflow-hidden transition-[transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-[rgba(127,196,198,.3)]`}
+              className={`${f.cls} border border-line rounded-[12px] p-[30px] bg-panel relative overflow-hidden transition-[transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-accent/35 motion-reduce:hover:translate-y-0 motion-reduce:transition-none`}
             >
               <span className="font-mono text-xs tracking-label uppercase text-accent">
                 {f.tag}
@@ -833,12 +820,9 @@ function LandingFooter() {
           Keep it <em className="text-accent">private.</em>
         </p>
         <div className="flex justify-center mt-7">
-          <a
-            href="/auth/signup/"
-            className="font-mono text-xs tracking-button uppercase font-medium bg-accent text-vault no-underline px-[30px] py-[17px] rounded-[7px] hover:bg-cream transition-colors inline-block"
-          >
-            Start with Privance
-          </a>
+          <Button asChild variant="primary">
+            <Link href="/auth/signup/">Start with Privance</Link>
+          </Button>
         </div>
         <div className="flex justify-between items-center gap-7 flex-wrap mt-[52px] pt-6 border-t border-line-soft">
           <span className="font-mono text-xs tracking-[0.08em] text-faint">

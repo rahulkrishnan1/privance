@@ -1,4 +1,7 @@
-import { X } from "lucide-react";
+import { CloseButton } from "@/components";
+import { DialogTitle } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 export function Row({
   icon,
@@ -44,7 +47,7 @@ export function Row({
       <button
         type="button"
         onClick={onClick}
-        className="flex w-full items-center gap-4 border-b border-line-soft px-[22px] py-[18px] last:border-b-0 cursor-pointer bg-transparent transition-colors hover:bg-[rgba(235,235,230,0.015)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
+        className="flex w-full items-center gap-4 border-b border-line-soft px-[22px] py-[18px] last:border-b-0 cursor-pointer bg-transparent transition-colors hover:bg-cream/2 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
       >
         {inner}
       </button>
@@ -65,8 +68,7 @@ export function Badge({
   label: string;
   variant?: "on" | "off" | "unavailable";
 }) {
-  const cls =
-    variant === "on" ? "text-accent border-[rgba(127,196,198,0.25)]" : "text-faint border-line";
+  const cls = variant === "on" ? "text-accent border-accent/25" : "text-faint border-line";
   return (
     <span
       className={[
@@ -90,9 +92,7 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function SettingsCard({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="overflow-hidden rounded-[10px] border border-line bg-panel">{children}</div>
-  );
+  return <div className="overflow-hidden glass rounded-[10px]">{children}</div>;
 }
 
 export function Toggle({
@@ -104,29 +104,10 @@ export function Toggle({
   onToggle: () => void;
   label: string;
 }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      onClick={onToggle}
-      className={[
-        "relative h-6 w-[42px] shrink-0 cursor-pointer rounded-full border-0 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-        on ? "bg-accent" : "bg-[rgba(235,235,230,0.12)]",
-      ].join(" ")}
-    >
-      <span
-        className={[
-          "absolute top-[3px] left-[3px] h-[18px] w-[18px] rounded-full bg-cream transition-transform",
-          on ? "translate-x-[18px]" : "",
-        ].join(" ")}
-      />
-    </button>
-  );
+  return <Switch checked={on} onCheckedChange={onToggle} aria-label={label} />;
 }
 
-export function DialogHeader({
+export function SettingsDialogHeader({
   title,
   titleId,
   onClose,
@@ -139,23 +120,18 @@ export function DialogHeader({
 }) {
   return (
     <div className="mb-[18px] flex items-center justify-between">
-      <h3
-        id={titleId}
-        className={[
-          "font-serif font-normal text-2xl tracking-[-0.01em]",
-          danger ? "text-down" : "",
-        ].join(" ")}
-      >
-        {title}
-      </h3>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close"
-        className="border-0 bg-transparent p-1 text-faint hover:text-cream cursor-pointer"
-      >
-        <X size={18} />
-      </button>
+      <DialogTitle asChild>
+        <h3
+          id={titleId}
+          className={cn(
+            "font-serif font-normal text-2xl tracking-[-0.01em]",
+            danger && "text-down",
+          )}
+        >
+          {title}
+        </h3>
+      </DialogTitle>
+      <CloseButton onClick={onClose} />
     </div>
   );
 }

@@ -161,7 +161,7 @@ test("Edit groups fires onEditGroups and closes", async () => {
   expect(onEditGroups).toHaveBeenCalledTimes(1);
 });
 
-test("mobile renders the Modal sheet; selecting fires onSelect and returns focus to the trigger", async () => {
+test("mobile renders the sheet; selecting fires onSelect and returns focus to the trigger", async () => {
   vi.mocked(useMediaQuery).mockReturnValue(true);
   const { screen, onSelect } = await renderMenu();
   const trigger = screen.getByRole("button", { name: /All holdings/ }).element();

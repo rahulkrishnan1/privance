@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CadenceSuffix } from "@/components";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { useFillCount } from "@/lib/use-fill-count";
 import { useMediaQuery } from "@/lib/use-media-query";
@@ -32,7 +33,7 @@ export function IncomePanel({ result }: IncomePanelProps) {
   const visiblePayers = expanded ? payers : payers.slice(0, count);
 
   return (
-    <div className="bg-panel border border-line rounded-[10px] p-6 h-full flex flex-col">
+    <div className="glass rounded-[10px] p-6 h-full flex flex-col">
       <div className="flex justify-between items-baseline mb-4 gap-2.5 flex-wrap">
         <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">Income</h3>
         <span className="font-mono text-xs tracking-label uppercase text-faint">
@@ -40,9 +41,9 @@ export function IncomePanel({ result }: IncomePanelProps) {
         </span>
       </div>
 
-      <p className="vfig font-serif text-3xl leading-none">
-        {formatCurrency(annualCents)}{" "}
-        <span className="font-mono text-sm text-faint">/ yr forward</span>
+      <p className="font-serif text-3xl leading-none">
+        <span className="vfig">{formatCurrency(annualCents)}</span>
+        <CadenceSuffix unit="year forward" className="font-mono text-sm text-faint" />
       </p>
       <p className="font-mono text-xs text-dim mt-1">
         {formatPercent(portfolioYield)} portfolio yield
@@ -64,8 +65,9 @@ export function IncomePanel({ result }: IncomePanelProps) {
               <span className="justify-self-start font-mono text-xs tracking-[.06em] text-accent bg-panel-2 border border-line rounded-[5px] px-[9px] py-[5px]">
                 {payer.ticker}
               </span>
-              <span className="vfig font-mono text-sm text-cream-soft tabular-nums text-right">
-                {formatCurrency(payer.annualCents)}/yr
+              <span className="font-mono text-sm text-cream-soft tabular-nums text-right">
+                <span className="vfig">{formatCurrency(payer.annualCents)}</span>
+                <CadenceSuffix unit="yr" className="text-faint" />
               </span>
               <span className="font-mono text-sm text-dim tabular-nums text-right">
                 {(payer.yield * 100).toFixed(2)}%

@@ -3,6 +3,7 @@
 import { type AllocationSlice, Decimal, SCALE_CENTS } from "@privance/core";
 import { useMemo, useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { formatCurrencyCompact, formatPercent } from "@/lib/format";
 import { assignColors, PALETTE_FALLBACK_GRAY } from "../palette";
 import { AllocationLegend } from "./allocation-legend";
@@ -57,31 +58,35 @@ export function AllocationPie({ title, classSlices, sectorSlices }: AllocationPi
 
   return (
     <div
-      className="bg-panel border border-line rounded-[10px] p-6 h-full"
+      className="glass rounded-[10px] p-6 h-full"
       role="img"
       aria-label={`${title} allocation chart`}
     >
       <div className="flex justify-between items-baseline mb-4 flex-wrap gap-x-3 gap-y-1">
         <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">{title}</h3>
-        <div className="inline-flex rounded-full border border-line bg-panel-2 p-[3px]">
+        <ToggleGroup
+          type="single"
+          value={mode}
+          onValueChange={(nv) => {
+            if (!nv) return;
+            setMode(nv as AllocationMode);
+            setHoveredIndex(null);
+          }}
+          aria-label="Allocation view"
+          className="rounded-full border border-line bg-panel-2 p-[3px] gap-0"
+        >
           {MODES.map((m) => (
-            <button
+            <ToggleGroupItem
               key={m.value}
-              type="button"
-              onClick={() => {
-                setMode(m.value);
-                setHoveredIndex(null);
-              }}
-              aria-pressed={mode === m.value}
-              className={[
-                "rounded-full px-3 py-1 font-mono text-[11px] tracking-button uppercase transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-                mode === m.value ? "bg-cream text-vault" : "text-dim hover:text-cream",
-              ].join(" ")}
+              value={m.value}
+              size="sm"
+              // Active fill matches the primary nav (cream, not the teal segment default).
+              className="rounded-full px-3 py-1 data-[state=on]:bg-cream data-[state=on]:hover:text-vault data-[state=checked]:bg-cream data-[state=checked]:hover:text-vault"
             >
               {m.label}
-            </button>
+            </ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
       </div>
 
       {isEmpty ? (

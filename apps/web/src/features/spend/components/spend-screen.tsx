@@ -2,6 +2,7 @@
 
 import type { BillingUnit } from "@privance/core";
 import { useMemo, useState } from "react";
+import { Button, CadenceSuffix } from "@/components";
 import { formatCurrency, formatCurrencyWhole } from "@/lib/format";
 import { useSync } from "@/providers";
 import { CATEGORY_LABELS } from "../_constants";
@@ -55,9 +56,9 @@ function formatMoney(d: ReturnType<typeof monthlyEquivalentCents>): string {
 
 const UNIT_ABBR: Record<BillingUnit, string> = { day: "day", week: "wk", month: "mo", year: "yr" };
 
-function cadenceSuffix(item: LocalSpendItem): string {
+function cadenceUnit(item: LocalSpendItem): string {
   const unit = UNIT_ABBR[item.intervalUnit];
-  return item.intervalCount === 1 ? `/${unit}` : `/${item.intervalCount}${unit}`;
+  return item.intervalCount === 1 ? unit : `${item.intervalCount}${unit}`;
 }
 
 function RecurringRow({
@@ -106,10 +107,8 @@ function RecurringRow({
             {!isPaused && billed !== null && (
               <>
                 {sub && " ("}
-                <span className="vfig">
-                  {formatMoney(billed)}
-                  {cadenceSuffix(item)}
-                </span>
+                <span className="vfig">{formatMoney(billed)}</span>
+                <CadenceSuffix unit={cadenceUnit(item)} />
                 {sub && ")"}
               </>
             )}
@@ -118,14 +117,14 @@ function RecurringRow({
       </span>
       <span
         className={[
-          "vfig font-mono text-sm tabular-nums text-right flex-none",
+          "font-mono text-sm tabular-nums text-right flex-none",
           isPaused ? "line-through" : "",
         ]
           .join(" ")
           .trim()}
       >
-        {formatMoney(monthly)}
-        <span className="text-xs text-faint">/mo</span>
+        <span className="vfig">{formatMoney(monthly)}</span>
+        <CadenceSuffix unit="mo" className="text-xs text-faint" />
       </span>
     </button>
   );
@@ -148,10 +147,11 @@ function SubtotalRow({ items }: { items: LocalSpendItem[] }) {
     <div className="flex justify-between flex-wrap gap-1 border-t border-line-soft mt-2.5 pt-3.5 font-mono text-xs tracking-[.06em] text-faint">
       <span>{countText}</span>
       <span>
-        <b className="vfig text-cream font-medium tabular-nums">{formatCurrencyWhole(monthly)}</b> /
-        mo &middot;{" "}
-        <b className="vfig text-cream font-medium tabular-nums">{formatCurrencyWhole(annual)}</b> /
-        yr
+        <b className="vfig text-cream font-medium tabular-nums">{formatCurrencyWhole(monthly)}</b>
+        <CadenceSuffix unit="mo" />
+        {" · "}
+        <b className="vfig text-cream font-medium tabular-nums">{formatCurrencyWhole(annual)}</b>
+        <CadenceSuffix unit="yr" />
       </span>
     </div>
   );
@@ -171,7 +171,7 @@ function Panel({
   className: string;
 }) {
   return (
-    <div className={`bg-panel border border-line rounded-[10px] p-6 ${className}`}>
+    <div className={`glass rounded-[10px] p-6 ${className}`}>
       <h3 className="font-serif text-2xl font-normal tracking-[-0.005em] mb-4">{title}</h3>
       {/* Rows wrapped so the last row is a real :last-child and drops its border,
           leaving the subtotal's top border as the only divider above it. */}
@@ -205,13 +205,13 @@ function LoadingSkeleton() {
       <div className="h-16 w-52 rounded bg-white/5 animate-pulse mb-2" />
       <div className="h-3 w-48 rounded bg-white/5 animate-pulse mb-8" />
       <div className="grid grid-cols-12 gap-4 mt-4">
-        <div className="col-span-7 max-[880px]:col-span-12 bg-panel border border-line rounded-[10px] p-6">
+        <div className="col-span-7 max-[880px]:col-span-12 glass rounded-[10px] p-6">
           {[...Array(4)].map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: skeleton rows
             <SkeletonRow key={i} />
           ))}
         </div>
-        <div className="col-span-5 max-[880px]:col-span-12 bg-panel border border-line rounded-[10px] p-6">
+        <div className="col-span-5 max-[880px]:col-span-12 glass rounded-[10px] p-6">
           {[...Array(3)].map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: skeleton rows
             <SkeletonRow key={i} />
@@ -334,13 +334,9 @@ export function SpendScreen() {
           Add the costs that hit every month, rent, utilities, insurance, subscriptions, and
           Privance keeps the running total. No bank linking, encrypted on this device.
         </p>
-        <button
-          type="button"
-          onClick={openAdd}
-          className="inline-block mt-7 font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[6px] px-[26px] py-[14px] cursor-pointer hover:bg-cream transition-colors"
-        >
+        <Button type="button" variant="primary" onClick={openAdd} className="mt-7">
           Add a recurring expense
-        </button>
+        </Button>
         <SpendForm
           open={formOpen}
           onClose={handleClose}
@@ -359,60 +355,59 @@ export function SpendScreen() {
         <div className="flex items-end gap-5 flex-wrap mt-3">
           <span
             data-testid="spend-monthly-total"
-            className="vfig font-serif text-[clamp(48px,7vw,76px)] leading-[.95] tracking-[-0.015em]"
+            className="font-serif text-[clamp(48px,7vw,76px)] leading-[.95] tracking-[-0.015em]"
           >
-            {formatCurrencyWhole(monthlyTotal)}
-            <span className="text-[.34em] text-dim tracking-[0]"> / month</span>
+            <span className="vfig">{formatCurrencyWhole(monthlyTotal)}</span>
+            <CadenceSuffix unit="month" className="text-[.34em] text-dim tracking-[0]" />
           </span>
-          <button
-            type="button"
-            onClick={openAdd}
-            className="mb-2.5 font-mono text-xs tracking-button uppercase text-vault bg-accent border-0 rounded-md px-4 py-2 cursor-pointer hover:bg-cream transition-colors"
-          >
+          <Button type="button" variant="primary" onClick={openAdd} className="mb-2.5">
             + Add expense
-          </button>
+          </Button>
         </div>
         <p className="font-mono text-sm text-dim mt-3.5 tracking-[.02em]">
           <b className="vfig text-cream-soft font-medium">{formatCurrencyWhole(annualTotal)}</b>
-          {` a year · ${activeCount} active ${activeCount === 1 ? "commitment" : "commitments"}`}
+          {`/year · ${activeCount} active ${activeCount === 1 ? "commitment" : "commitments"}`}
         </p>
       </section>
 
       <div className="grid grid-cols-4 gap-4 mt-4 max-[880px]:grid-cols-2">
-        <div className="bg-panel border border-line rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
+        <div className="glass rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
           <p className="font-mono text-xs tracking-label uppercase text-faint">Essentials</p>
-          <p className="vfig font-serif text-3xl mt-2 max-[480px]:text-2xl">
-            {formatCurrencyWhole(essentialMonthly)}
-            <span className="font-mono text-xs text-faint ml-1">/mo</span>
+          <p className="font-serif text-3xl mt-2 max-[480px]:text-2xl">
+            <span className="vfig">{formatCurrencyWhole(essentialMonthly)}</span>
+            <CadenceSuffix unit="month" className="font-mono text-xs text-faint" />
           </p>
           <p className="font-mono text-xs mt-1 text-dim">
-            <span className="vfig">{formatCurrencyWhole(essentialAnnual)} / yr</span>
+            <span className="vfig">{formatCurrencyWhole(essentialAnnual)}</span>
+            <CadenceSuffix unit="year" className="text-faint" />
           </p>
         </div>
-        <div className="bg-panel border border-line rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
+        <div className="glass rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
           <p className="font-mono text-xs tracking-label uppercase text-faint">Subscriptions</p>
-          <p className="vfig font-serif text-3xl mt-2 max-[480px]:text-2xl">
-            {formatCurrencyWhole(subscriptionMonthly)}
-            <span className="font-mono text-xs text-faint ml-1">/mo</span>
+          <p className="font-serif text-3xl mt-2 max-[480px]:text-2xl">
+            <span className="vfig">{formatCurrencyWhole(subscriptionMonthly)}</span>
+            <CadenceSuffix unit="month" className="font-mono text-xs text-faint" />
           </p>
           <p className="font-mono text-xs mt-1 text-dim">
-            <span className="vfig">{formatCurrencyWhole(subscriptionAnnual)} / yr</span>
+            <span className="vfig">{formatCurrencyWhole(subscriptionAnnual)}</span>
+            <CadenceSuffix unit="year" className="text-faint" />
           </p>
         </div>
-        <div className="bg-panel border border-line rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
+        <div className="glass rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
           <p className="font-mono text-xs tracking-label uppercase text-faint">Subs share</p>
           {/* A ratio, not a money figure, so it stays readable under the Veil. */}
           <p className="font-serif text-3xl mt-2 max-[480px]:text-2xl">{subscriptionShare}%</p>
           <p className="font-mono text-xs mt-1 text-dim">of monthly spend</p>
         </div>
-        <div className="bg-panel border border-line rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
+        <div className="glass rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
           <p className="font-mono text-xs tracking-label uppercase text-faint">Per day</p>
-          <p className="vfig font-serif text-3xl mt-2 max-[480px]:text-2xl">
-            {formatCurrencyWhole(dailyBurn)}
-            <span className="font-mono text-xs text-faint ml-1">/day</span>
+          <p className="font-serif text-3xl mt-2 max-[480px]:text-2xl">
+            <span className="vfig">{formatCurrencyWhole(dailyBurn)}</span>
+            <CadenceSuffix unit="day" className="font-mono text-xs text-faint" />
           </p>
           <p className="font-mono text-xs mt-1 text-dim">
-            <span className="vfig">{formatCurrencyWhole(weeklyBurn)} / wk</span>
+            <span className="vfig">{formatCurrencyWhole(weeklyBurn)}</span>
+            <CadenceSuffix unit="week" className="text-faint" />
           </p>
         </div>
       </div>

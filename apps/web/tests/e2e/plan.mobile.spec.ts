@@ -59,7 +59,7 @@ async function createCashAccountMobile(
   const dialog = page.getByRole("dialog", { name: /Add account/i });
   await expect(dialog).toBeVisible();
   // The form opens on Investment; pick Cash so the "Current balance" field shows.
-  await dialog.getByRole("button", { name: "Cash" }).click();
+  await dialog.getByRole("radio", { name: "Cash" }).click();
   await dialog.getByLabel("Account type").selectOption("checking");
   await dialog.getByLabel("Name").fill(name);
   await dialog.getByLabel("Current balance").fill(balance);
@@ -165,12 +165,12 @@ test.describe("plan mobile: F1 + AE6", () => {
     expect(fireAge).toBeLessThanOrEqual(95);
 
     // Confidence is a single toggle; read both methods' rates via `confidence-rate`.
-    const method = page.getByRole("group", { name: "Projection method" });
-    await method.getByRole("button", { name: "Monte Carlo" }).click();
+    const method = page.getByRole("radiogroup", { name: "Projection method" });
+    await method.getByRole("radio", { name: "Monte Carlo" }).click();
     const confidence = page.getByTestId("confidence-rate");
     await expect(confidence).toBeVisible({ timeout: 20_000 });
     expect((await confidence.textContent())?.trim()).toMatch(/%/);
-    await method.getByRole("button", { name: "Historical replay" }).click();
+    await method.getByRole("radio", { name: "Historical replay" }).click();
     expect((await confidence.textContent())?.trim()).toMatch(/%/);
 
     // Fan chart present; Recharts SVG is not in the ARIA tree so we assert the

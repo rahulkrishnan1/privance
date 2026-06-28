@@ -121,7 +121,7 @@ test("slider ranges reach realistic values from a default plan", async () => {
 test("starting-portfolio source switches to manual, prefilling from accounts", async () => {
   const onChange = vi.fn();
   const screen = await renderPanel({ onChange });
-  await screen.getByRole("button", { name: "Manual" }).click();
+  await screen.getByRole("radio", { name: "Manual" }).click();
   expect(onChange).toHaveBeenCalledWith({ manualStartingDollars: 500000 });
 });
 
@@ -131,7 +131,7 @@ test("switching the source back to accounts clears the manual amount", async () 
     values: { ...VALUES, manualStartingDollars: 12345 },
     onChange,
   });
-  await screen.getByRole("button", { name: "Accounts" }).click();
+  await screen.getByRole("radio", { name: "Accounts" }).click();
   expect(onChange).toHaveBeenCalledWith({ manualStartingDollars: undefined });
 });
 
@@ -165,7 +165,7 @@ test("a failed save surfaces a retry prompt", async () => {
 test("the Cautious snap selects the conservative preset", async () => {
   const onChange = vi.fn();
   const screen = await renderPanel({ onChange });
-  await screen.getByRole("button", { name: "Cautious" }).click();
+  await screen.getByRole("radio", { name: "Cautious" }).click();
   expect(onChange).toHaveBeenCalledWith({ preset: "conservative" });
 });
 
@@ -173,14 +173,14 @@ test("the Balanced snap selects the balanced preset", async () => {
   const onChange = vi.fn();
   // Start from a non-balanced plan so the Balanced snap is not already active.
   const screen = await renderPanel({ onChange, values: { ...VALUES, preset: "aggressive" } });
-  await screen.getByRole("button", { name: "Balanced" }).click();
+  await screen.getByRole("radio", { name: "Balanced" }).click();
   expect(onChange).toHaveBeenCalledWith({ preset: "balanced" });
 });
 
 test("the Aggressive snap selects the aggressive preset", async () => {
   const onChange = vi.fn();
   const screen = await renderPanel({ onChange });
-  await screen.getByRole("button", { name: "Aggressive" }).click();
+  await screen.getByRole("radio", { name: "Aggressive" }).click();
   expect(onChange).toHaveBeenCalledWith({ preset: "aggressive" });
 });
 

@@ -76,7 +76,7 @@ test.describe("holdings", () => {
       const dialog = page.getByRole("dialog", { name: /Add account/i });
       await expect(dialog).toBeVisible();
       await dialog.getByLabel("Name").fill(INVESTMENT_ACCOUNT_NAME);
-      await dialog.getByRole("button", { name: "Investment" }).click();
+      await dialog.getByRole("radio", { name: "Investment" }).click();
       await dialog.getByLabel("Account type").selectOption("brokerage");
       await dialog.getByLabel("Cash balance (optional)").fill("0.00");
       await dialog.getByRole("button", { name: "Add account" }).click();
@@ -167,7 +167,7 @@ test.describe("holdings", () => {
 
     // Click the AAPL row to open the detail sheet
     await page
-      .getByRole("row", { name: /AAPL.*open holding details/ })
+      .getByRole("button", { name: /AAPL.*open holding details/ })
       .first()
       .click();
 
@@ -246,7 +246,7 @@ test.describe("holdings", () => {
 
     // Open detail sheet and delete (two-tap)
     await page
-      .getByRole("row", { name: new RegExp(`${ticker}.*open holding details`) })
+      .getByRole("button", { name: new RegExp(`${ticker}.*open holding details`) })
       .first()
       .click();
     const sheet = page.getByRole("dialog");
@@ -322,7 +322,7 @@ test.describe("holdings", () => {
 
     // Open the AAPL detail sheet and delete (two-tap)
     await page
-      .getByRole("row", { name: /AAPL.*open holding details/ })
+      .getByRole("button", { name: /AAPL.*open holding details/ })
       .first()
       .click();
     const sheet = page.getByRole("dialog");
@@ -356,7 +356,7 @@ test.describe("holdings", () => {
   ): Promise<ReturnType<import("@playwright/test").Page["locator"]>> {
     // Rows have aria-label "{ticker}, open holding details"; the Value cell is the
     // last td (index 5 on desktop: Holding/Price/Day/Gain/Weight/Value).
-    const row = page.getByRole("row", { name: new RegExp(`${ticker}.*open holding details`) });
+    const row = page.getByRole("button", { name: new RegExp(`${ticker}.*open holding details`) });
     return row.locator("td").last();
   }
 
@@ -403,7 +403,7 @@ test.describe("holdings", () => {
     // Regression: pre-cache implementation rebuilt the prices map on every
     // query-key change, briefly emptying every row's price column on delete.
     await page
-      .getByRole("row", { name: /NVDA.*open holding details/ })
+      .getByRole("button", { name: /NVDA.*open holding details/ })
       .first()
       .click();
     const sheet = page.getByRole("dialog");
@@ -568,7 +568,7 @@ test.describe("holdings", () => {
     // Get the row for PRVT in this run's account. The row has aria-label
     // "PRVT, open holding details". Use the Value cell to verify the proxied price.
     // Scope further by filtering for the account name in the detail sheet later.
-    const prvtRows = page.getByRole("row", { name: /PRVT.*open holding details/ });
+    const prvtRows = page.getByRole("button", { name: /PRVT.*open holding details/ });
 
     // The anchored value cell (last td) should show $2,000.
     const valueCell = prvtRows.first().locator("td").last();
@@ -672,7 +672,9 @@ test.describe("holdings", () => {
     const holdingsTable = page.getByRole("table", { name: "Holdings" });
     await expect(holdingsTable.getByText(ticker).first()).toBeVisible({ timeout: 10_000 });
 
-    const anchRow = page.getByRole("row", { name: new RegExp(`${ticker}.*open holding details`) });
+    const anchRow = page.getByRole("button", {
+      name: new RegExp(`${ticker}.*open holding details`),
+    });
     const valueCell = anchRow.first().locator("td").last();
     await expect(valueCell).toContainText("$1,000", { timeout: 15_000 });
 

@@ -286,7 +286,7 @@ test("the Monte Carlo / Historical toggle switches the confidence figure", async
 
   expect(screen.getByTestId("confidence-rate").element().textContent).toContain("87%");
 
-  await screen.getByRole("button", { name: "Historical replay" }).click();
+  await screen.getByRole("radio", { name: "Historical replay" }).click();
   await expect.element(screen.getByTestId("confidence-rate")).toHaveTextContent("91%");
   expect(screen.container.textContent).toContain("of real markets since 1871 survived");
 });
@@ -421,7 +421,7 @@ test("a manual starting amount is saved as manualStartingPotCents", async () => 
   const screen = await render(<PlanScreen />);
   await waitForHeadline(screen);
 
-  await screen.getByRole("button", { name: "Manual" }).click();
+  await screen.getByRole("radio", { name: "Manual" }).click();
   await screen.getByRole("textbox", { name: "Starting portfolio" }).fill("500000");
   await screen.getByRole("button", { name: "Save plan" }).click();
 
@@ -468,7 +468,7 @@ test("a manual starting amount settles instead of re-simulating forever", async 
 
   const screen = await render(<PlanScreen />);
   await waitForHeadline(screen);
-  await screen.getByRole("button", { name: "Manual" }).click();
+  await screen.getByRole("radio", { name: "Manual" }).click();
   await screen.getByRole("textbox", { name: "Starting portfolio" }).fill("500000");
   await waitForHeadline(screen);
 

@@ -1,15 +1,25 @@
 "use client";
 
 import type { InputHTMLAttributes } from "react";
-import { useId } from "react";
+import { forwardRef, useId } from "react";
+import { Input as InputControl } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   error?: string;
-  mono?: boolean;
 };
 
-export function Input({ label, error, mono, className, id: propId, ...rest }: InputProps) {
+/**
+ * Labelled form field: the shared `ui/input` control plus a label and inline
+ * error, wired together for accessibility. The bare control lives in
+ * `ui/input`; this is the app-level field built on it. forwardRef so a
+ * react-hook-form Controller's `field.ref` reaches the input (focus-on-error).
+ */
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+  { label, error, id: propId, ...rest },
+  ref,
+) {
   const generatedId = useId();
   const id = propId ?? generatedId;
   const errorId = `${id}-error`;
@@ -17,31 +27,19 @@ export function Input({ label, error, mono, className, id: propId, ...rest }: In
 
   return (
     <div className="flex flex-col gap-2">
-      <label htmlFor={id} className="font-mono text-xs tracking-label uppercase text-dim">
-        {label}
-      </label>
-      <input
-        {...rest}
+      <Label htmlFor={id}>{label}</Label>
+      <InputControl
+        ref={ref}
         id={id}
         aria-invalid={hasError}
         aria-describedby={hasError ? errorId : undefined}
-        className={[
-          "min-h-11 bg-transparent border-b px-1 py-2.5 text-cream",
-          mono ? "font-mono text-base" : "text-base",
-          "placeholder:text-dim/70",
-          "transition-colors duration-150",
-          "focus:outline-none",
-          hasError ? "border-down focus:border-down" : "border-line focus:border-accent",
-          className,
-        ]
-          .filter(Boolean)
-          .join(" ")}
+        {...rest}
       />
       {hasError && (
-        <p id={errorId} role="alert" className="text-sm text-down">
+        <p id={errorId} role="alert" className="text-sm text-signal">
           {error}
         </p>
       )}
     </div>
   );
-}
+});

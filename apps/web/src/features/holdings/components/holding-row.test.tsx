@@ -1,8 +1,9 @@
 import { Decimal, SCALE_CENTS } from "@privance/core";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { LocalHolding } from "../types";
+import type { LocalHolding, SortState } from "../types";
 import { HoldingRow } from "./holding-row";
+import { HoldingsTable } from "./holdings-table";
 
 function makeHolding(overrides: Partial<LocalHolding> = {}): LocalHolding {
   return {
@@ -97,6 +98,11 @@ describe("HoldingRow interactivity", () => {
     expect(html).toContain("AAPL");
     expect(html).toContain("open holding details");
   });
+
+  it("carries role=button on the tr so assistive tech announces it as interactive", () => {
+    const html = renderRow();
+    expect(html).toMatch(/<tr[^>]*role="button"[^>]*>/i);
+  });
 });
 
 describe("HoldingRow weight display", () => {
@@ -174,5 +180,38 @@ describe("HoldingRow day change display", () => {
     const html = renderRow({ costBasisCents: "100000", sharesMajor: "10" }, prices, dayChange);
     expect(html).toContain("+$1.50");
     expect(html).toContain("+0.08%");
+  });
+});
+
+describe("HoldingsTable aria-sort", () => {
+  function renderTable(sort: SortState): string {
+    const holding = makeHolding();
+    return renderToStaticMarkup(
+      <HoldingsTable
+        holdings={[holding]}
+        prices={EMPTY_PRICES}
+        sort={sort}
+        loading={false}
+        onSortChange={vi.fn()}
+        onRowClick={vi.fn()}
+        onAdd={vi.fn()}
+        dayChangeByHoldingId={new Map()}
+        totalInvestmentsCents={null}
+      />,
+    );
+  }
+
+  it("sets aria-sort ascending on the active column when sorted asc", () => {
+    const html = renderTable({ column: "marketValue", direction: "asc" });
+    // The active column's <th> must carry aria-sort="ascending"
+    expect(html).toMatch(/aria-sort="ascending"/);
+    // An inactive column's <th> must carry aria-sort="none"
+    expect(html).toMatch(/aria-sort="none"/);
+  });
+
+  it("sets aria-sort descending on the active column when sorted desc", () => {
+    const html = renderTable({ column: "ticker", direction: "desc" });
+    expect(html).toMatch(/aria-sort="descending"/);
+    expect(html).toMatch(/aria-sort="none"/);
   });
 });

@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components";
 import { PasswordStrength } from "@/components/auth/PasswordStrength";
-import { Modal } from "@/components/index";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import * as authApi from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { deriveLoginCrypto, deriveNewCredsAfterRecovery } from "@/lib/auth-crypto";
 import { validatePassword } from "@/lib/validation";
 import { readItemsKey } from "@/providers/auth-context";
-import { CANCEL_BTN, FIELD_INPUT, FIELD_LABEL, SAVE_BTN } from "../types";
-import { DialogHeader, PhraseGrid } from "./_primitives";
+import { PhraseGrid, SettingsDialogHeader } from "./_primitives";
 
 export function ChangePasswordDialog({
   open,
@@ -93,77 +95,86 @@ export function ChangePasswordDialog({
   }
 
   return (
-    <Modal open={open} onClose={handleClose} labelledBy="change-password-title">
-      {newPhrase === null ? (
-        <form onSubmit={(e) => void onSubmit(e)} noValidate>
-          <DialogHeader
-            title="Change master password"
-            titleId="change-password-title"
-            onClose={handleClose}
-          />
-          <div className="mt-4">
-            <label htmlFor="cp-current" className={FIELD_LABEL}>
-              Current password
-            </label>
-            <input
-              id="cp-current"
-              type="password"
-              value={current}
-              onChange={(e) => setCurrent(e.target.value)}
-              autoComplete="current-password"
-              className={FIELD_INPUT}
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) handleClose();
+      }}
+    >
+      <DialogContent
+        aria-labelledby="change-password-title"
+        onEscapeKeyDown={(e) => {
+          if (newPhrase !== null || pending) e.preventDefault();
+        }}
+        onInteractOutside={(e) => {
+          if (newPhrase !== null || pending) e.preventDefault();
+        }}
+      >
+        {newPhrase === null ? (
+          <form onSubmit={(e) => void onSubmit(e)} noValidate>
+            <SettingsDialogHeader
+              title="Change master password"
+              titleId="change-password-title"
+              onClose={handleClose}
             />
-          </div>
-          <div className="mt-4">
-            <label htmlFor="cp-new" className={FIELD_LABEL}>
-              New password
-            </label>
-            <input
-              id="cp-new"
-              type="password"
-              value={next}
-              onChange={(e) => setNext(e.target.value)}
-              autoComplete="new-password"
-              placeholder="long and memorable beats short and clever"
-              className={FIELD_INPUT}
-            />
-            <PasswordStrength password={next} />
-          </div>
+            <div className="mt-4 flex flex-col gap-2">
+              <Label htmlFor="cp-current">Current password</Label>
+              <Input
+                id="cp-current"
+                type="password"
+                value={current}
+                onChange={(e) => setCurrent(e.target.value)}
+                autoComplete="current-password"
+              />
+            </div>
+            <div className="mt-4 flex flex-col gap-2">
+              <Label htmlFor="cp-new">New password</Label>
+              <Input
+                id="cp-new"
+                type="password"
+                value={next}
+                onChange={(e) => setNext(e.target.value)}
+                autoComplete="new-password"
+                placeholder="long and memorable beats short and clever"
+              />
+              <PasswordStrength password={next} />
+            </div>
 
-          {error && (
-            <p role="alert" className="mt-4 font-mono text-xs text-signal">
-              {error}
+            {error && (
+              <p role="alert" className="mt-4 font-mono text-xs text-signal">
+                {error}
+              </p>
+            )}
+
+            <DialogFooter className="mt-[26px]">
+              <Button type="button" variant="secondary" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" loading={pending}>
+                {pending ? "Changing…" : "Change password"}
+              </Button>
+            </DialogFooter>
+          </form>
+        ) : (
+          <div>
+            <SettingsDialogHeader
+              title="Save your new phrase"
+              titleId="change-password-title"
+              onClose={handleClose}
+            />
+            <p className="text-sm leading-[1.6] text-dim">
+              Your password changed, and that replaced your recovery phrase. The old twelve words
+              can never open this vault again. Write these down before you close.
             </p>
-          )}
-
-          <div className="mt-[26px] flex gap-[10px]">
-            <button type="button" onClick={handleClose} className={CANCEL_BTN}>
-              Cancel
-            </button>
-            <button type="submit" disabled={pending} aria-busy={pending} className={SAVE_BTN}>
-              {pending ? "Changing…" : "Change password"}
-            </button>
+            <PhraseGrid phrase={newPhrase} />
+            <DialogFooter className="mt-[26px]">
+              <Button type="button" variant="primary" onClick={handleClose}>
+                I saved the new phrase
+              </Button>
+            </DialogFooter>
           </div>
-        </form>
-      ) : (
-        <div>
-          <DialogHeader
-            title="Save your new phrase"
-            titleId="change-password-title"
-            onClose={handleClose}
-          />
-          <p className="text-sm leading-[1.6] text-cream-soft">
-            Your password changed, and that replaced your recovery phrase. The old twelve words can
-            never open this vault again. Write these down before you close.
-          </p>
-          <PhraseGrid phrase={newPhrase} />
-          <div className="mt-[26px] flex">
-            <button type="button" onClick={handleClose} className={SAVE_BTN}>
-              I saved the new phrase
-            </button>
-          </div>
-        </div>
-      )}
-    </Modal>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

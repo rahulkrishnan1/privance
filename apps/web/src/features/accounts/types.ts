@@ -70,18 +70,5 @@ export type AccountFormValues = z.infer<typeof accountFormSchema>;
 /** The cash subKind value typed for use in the form. */
 export type CashSubKindValue = CashAccountSubKind;
 
-export type KindMeta = {
-  label: string;
-  /** Label used on the section "add" ghost button. */
-  addLabel: string;
-};
-
-export const KIND_META: Record<AccountKind, KindMeta> = {
-  cash: { label: "Cash", addLabel: "Add cash account" },
-  investment: { label: "Investment", addLabel: "Add investment account" },
-  manual_asset: { label: "Manual Asset", addLabel: "Add manual asset" },
-  liability: { label: "Liability", addLabel: "Add liability account" },
-};
-
 /** The display order of sections: investments first, then cash, assets, liabilities. */
 export const SECTION_ORDER: AccountKind[] = ["investment", "cash", "manual_asset", "liability"];

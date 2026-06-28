@@ -51,7 +51,7 @@ test("renders ticker, name, and market value", async () => {
   await expect.element(screen.getByText("VTI")).toBeVisible();
   await expect.element(screen.getByText("Vanguard Total Market")).toBeVisible();
   // Fixture: 1000 shares × $278.14 = $278,140.00. Assert the actual formatted value renders.
-  const valueEl = screen.container.querySelector('[data-testid="holding-detail-value"]');
+  const valueEl = document.querySelector('[data-testid="holding-detail-value"]');
   expect(valueEl).not.toBeNull();
   expect(valueEl?.textContent).toContain("278,140");
 });
@@ -93,7 +93,7 @@ function dayValueText(container: Element): string {
 
 test("Day row shows a positive day change with a plus sign and percent", async () => {
   // MV $278,140; +$2,000 today -> prior $276,140, +0.72%.
-  const screen = await render(
+  await render(
     <HoldingDetailSheet
       holding={makeHolding()}
       prices={PRICE_MAP}
@@ -106,14 +106,14 @@ test("Day row shows a positive day change with a plus sign and percent", async (
     />,
   );
 
-  const text = dayValueText(screen.container);
+  const text = dayValueText(document.body);
   expect(text).toContain("+$2,000.00");
   expect(text).toContain("+0.72%");
 });
 
 test("Day row shows a negative day change with a minus sign and percent", async () => {
   // MV $278,140; -$2,000 today -> prior $280,140, -0.71%.
-  const screen = await render(
+  await render(
     <HoldingDetailSheet
       holding={makeHolding()}
       prices={PRICE_MAP}
@@ -126,13 +126,13 @@ test("Day row shows a negative day change with a minus sign and percent", async 
     />,
   );
 
-  const text = dayValueText(screen.container);
+  const text = dayValueText(document.body);
   expect(text).toContain("-$2,000.00");
   expect(text).toContain("-0.71%");
 });
 
 test("Day row shows a flat day change as +$0.00 without a misleading direction", async () => {
-  const screen = await render(
+  await render(
     <HoldingDetailSheet
       holding={makeHolding()}
       prices={PRICE_MAP}
@@ -145,7 +145,7 @@ test("Day row shows a flat day change as +$0.00 without a misleading direction",
     />,
   );
 
-  const text = dayValueText(screen.container);
+  const text = dayValueText(document.body);
   expect(text).toContain("$0.00");
   expect(text).toContain("0.00%");
 });

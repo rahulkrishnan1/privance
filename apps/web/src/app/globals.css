@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /* Class-based dark mode for Tailwind 4 */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -38,6 +39,48 @@
   --color-signal: #c8551f;
 }
 
+/* shadcn/ui semantic tokens mapped onto the Privance palette. Only names that
+   don't collide with our own utilities are bridged into Tailwind, so `accent`
+   stays our brand teal and shadcn's brand/action role maps to `primary`. This
+   is the shared foundation every shadcn component (Calendar, Dialog, ...) reuses. */
+:root {
+  --card: var(--color-panel);
+  --card-foreground: var(--color-cream);
+  --popover: var(--color-panel-2);
+  --popover-foreground: var(--color-cream);
+  --primary: var(--color-accent);
+  --primary-foreground: var(--color-vault);
+  --secondary: var(--color-panel-2);
+  --secondary-foreground: var(--color-cream);
+  --muted: var(--color-panel-2);
+  --muted-foreground: var(--color-dim);
+  --destructive: var(--color-signal);
+  --destructive-foreground: var(--color-cream);
+  --border: var(--color-line);
+  --input: var(--color-line);
+  --ring: var(--color-accent);
+  /* Readable text on the brand-teal accent surface (e.g. today / range cells). */
+  --accent-foreground: var(--color-vault);
+}
+@theme inline {
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-accent-foreground: var(--accent-foreground);
+}
+
 /* Type scale. One ladder; every step a canonical value (Tailwind / Material /
    iOS). The migration only ever lifts a size UP this ladder, never down, the
    app read too small before, so nothing ends smaller than it was. Apply by role
@@ -71,7 +114,10 @@
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
+  background-image:
+    radial-gradient(900px 520px at 82% 4%, rgba(127, 196, 198, 0.06), transparent 60%),
+    radial-gradient(820px 640px at 6% 94%, rgba(127, 196, 198, 0.035), transparent 55%);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
@@ -105,13 +151,6 @@ body::before {
   body::before {
     display: none;
   }
-}
-
-/* Native dialog modal backdrop */
-dialog::backdrop {
-  background: rgba(4, 6, 5, 0.72);
-  -webkit-backdrop-filter: blur(7px);
-  backdrop-filter: blur(7px);
 }
 
 /* Hide the native number-input spinner so number fields keep the same clean
@@ -222,19 +261,19 @@ html {
   outline: none;
 }
 
-/* Belt-and-suspenders: the UA stylesheet hides dialogs that aren't open via
-   `display: none`, but ANY utility class on the dialog element that sets
-   `display` (flex, grid, block) silently overrides that and leaks the dialog
-   into normal document flow. Enforce hidden-when-closed at the app level so
-   layout utilities are safe to add to <dialog> wrappers. */
-dialog:not([open]) {
-  display: none !important;
+/* Sets its own border; don't also add border-line. */
+@utility glass {
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+  box-shadow:
+    0 12px 32px -14px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 /* The Veil: frost every figure on the surface. Toggled by adding `veil-on` to a
    container; each masked value carries the `vfig` class. */
 .veil-on .vfig {
-  filter: blur(7px);
+  filter: blur(clamp(7px, 0.35em, 20px));
   opacity: 0.7;
   transition: filter 0.45s, opacity 0.45s;
 }

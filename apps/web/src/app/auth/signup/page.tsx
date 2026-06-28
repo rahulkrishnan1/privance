@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Button } from "@/components";
 import { AuthErrorBar } from "@/components/auth/AuthErrorBar";
 import { PasswordStrength } from "@/components/auth/PasswordStrength";
 import { useErrorShake } from "@/components/auth/use-error-shake";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import * as authApi from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { deriveSignupCrypto } from "@/lib/auth-crypto";
@@ -29,7 +32,7 @@ function StepDots({ current }: { current: number }) {
       {[1, 2, 3].map((i) => (
         <span
           key={i}
-          className={`w-[6px] h-[6px] rounded-full ${i <= current ? "bg-accent" : "bg-[rgba(235,235,230,.14)]"}`}
+          className={`w-[6px] h-[6px] rounded-full ${i <= current ? "bg-accent" : "bg-cream/14"}`}
         />
       ))}
     </div>
@@ -182,13 +185,8 @@ export default function SignupPage() {
         <form onSubmit={onVerify} className="flex flex-col mt-[26px]" noValidate>
           {VERIFY_INDICES.map((idx, i) => (
             <div key={idx} className={`flex flex-col gap-[9px]${i > 0 ? " mt-[26px]" : ""}`}>
-              <label
-                htmlFor={`verify-word-${idx}`}
-                className="font-mono text-xs tracking-label uppercase text-faint"
-              >
-                Word {idx + 1}
-              </label>
-              <input
+              <Label htmlFor={`verify-word-${idx}`}>Word {idx + 1}</Label>
+              <Input
                 id={`verify-word-${idx}`}
                 type="text"
                 value={verifyWords[i]}
@@ -205,22 +203,13 @@ export default function SignupPage() {
                 autoCorrect="off"
                 spellCheck={false}
                 aria-invalid={verifyError}
-                className={[
-                  "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em]",
-                  verifyError
-                    ? "border-[rgba(208,133,98,.55)]"
-                    : "border-line focus:border-accent-dim",
-                ].join(" ")}
               />
             </div>
           ))}
 
-          <button
-            type="submit"
-            className="w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream"
-          >
+          <Button type="submit" variant="primary" className="w-full mt-[26px]">
             Seal the vault
-          </button>
+          </Button>
         </form>
 
         <p className="text-center font-mono text-xs tracking-[0.04em] text-faint mt-[26px]">
@@ -287,14 +276,15 @@ export default function SignupPage() {
           <span>I wrote the phrase down, on paper, somewhere safe.</span>
         </label>
 
-        <button
+        <Button
           type="button"
+          variant="primary"
           onClick={() => setStage("verify")}
           disabled={!phraseAcknowledged}
-          className="w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full mt-[26px]"
         >
           I have it. Continue
-        </button>
+        </Button>
       </div>
     );
   }
@@ -323,13 +313,8 @@ export default function SignupPage() {
 
       <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col mt-[26px]" noValidate>
         <div className="flex flex-col gap-[9px]">
-          <label
-            htmlFor="signup-username"
-            className="font-mono text-xs tracking-label uppercase text-faint"
-          >
-            Username
-          </label>
-          <input
+          <Label htmlFor="signup-username">Username</Label>
+          <Input
             id="signup-username"
             type="text"
             value={username}
@@ -342,18 +327,12 @@ export default function SignupPage() {
             placeholder="alice"
             aria-invalid={errors.username !== undefined}
             aria-describedby={errors.username !== undefined ? "signup-username-error" : undefined}
-            className={[
-              "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
-              errors.username
-                ? "border-[rgba(208,133,98,.55)]"
-                : "border-line focus:border-accent-dim",
-            ].join(" ")}
           />
           {errors.usernameTaken ? (
             <p
               id="signup-username-error"
               role="alert"
-              className="font-mono text-xs text-down tracking-[0.04em]"
+              className="font-mono text-xs text-signal tracking-[0.04em]"
             >
               taken &middot; usernames are first come, first served
             </p>
@@ -361,7 +340,7 @@ export default function SignupPage() {
             <p
               id="signup-username-error"
               role="alert"
-              className="font-mono text-xs text-down tracking-[0.04em]"
+              className="font-mono text-xs text-signal tracking-[0.04em]"
             >
               {errors.username}
             </p>
@@ -369,13 +348,8 @@ export default function SignupPage() {
         </div>
 
         <div className="flex flex-col gap-[9px] mt-[26px]">
-          <label
-            htmlFor="signup-password"
-            className="font-mono text-xs tracking-label uppercase text-faint"
-          >
-            Master password
-          </label>
-          <input
+          <Label htmlFor="signup-password">Master password</Label>
+          <Input
             id="signup-password"
             type="password"
             value={password}
@@ -385,19 +359,13 @@ export default function SignupPage() {
             placeholder="long and memorable beats short and clever"
             aria-invalid={errors.password !== undefined}
             aria-describedby={errors.password !== undefined ? "signup-password-error" : undefined}
-            className={[
-              "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
-              errors.password
-                ? "border-[rgba(208,133,98,.55)]"
-                : "border-line focus:border-accent-dim",
-            ].join(" ")}
           />
           <PasswordStrength password={password} />
           {errors.password ? (
             <p
               id="signup-password-error"
               role="alert"
-              className="font-mono text-xs text-down tracking-[0.04em]"
+              className="font-mono text-xs text-signal tracking-[0.04em]"
             >
               {errors.password}
             </p>
@@ -405,31 +373,20 @@ export default function SignupPage() {
         </div>
 
         <div className="flex flex-col gap-[9px] mt-[26px]">
-          <label
-            htmlFor="signup-confirm"
-            className="font-mono text-xs tracking-label uppercase text-faint"
-          >
-            Confirm master password
-          </label>
-          <input
+          <Label htmlFor="signup-confirm">Confirm master password</Label>
+          <Input
             id="signup-confirm"
             type="password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             autoComplete="new-password"
             maxLength={PASSWORD_MAX}
-            className="w-full bg-panel border border-line focus:border-accent-dim rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em]"
           />
         </div>
 
         <div className="flex flex-col gap-[9px] mt-[26px]">
-          <label
-            htmlFor="signup-invite"
-            className="font-mono text-xs tracking-label uppercase text-faint"
-          >
-            Invite code
-          </label>
-          <input
+          <Label htmlFor="signup-invite">Invite code</Label>
+          <Input
             id="signup-invite"
             type="text"
             value={inviteToken}
@@ -441,12 +398,6 @@ export default function SignupPage() {
             placeholder="PRV-XXXX-XXXX"
             aria-invalid={errors.inviteToken !== undefined}
             aria-describedby={errors.inviteToken !== undefined ? "signup-invite-error" : undefined}
-            className={[
-              "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
-              errors.inviteToken
-                ? "border-[rgba(208,133,98,.55)]"
-                : "border-line focus:border-accent-dim",
-            ].join(" ")}
           />
           <p className="font-mono text-xs text-faint tracking-[0.04em]">
             invite&#8209;only for now &middot; self&#8209;hosters skip this
@@ -455,21 +406,22 @@ export default function SignupPage() {
             <p
               id="signup-invite-error"
               role="alert"
-              className="font-mono text-xs text-down tracking-[0.04em]"
+              className="font-mono text-xs text-signal tracking-[0.04em]"
             >
               {errors.inviteToken}
             </p>
           )}
         </div>
 
-        <button
+        <Button
           type="submit"
+          variant="primary"
           disabled={!hydrated || pending}
-          aria-busy={pending}
-          className="w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-50 disabled:cursor-not-allowed"
+          loading={pending}
+          className="w-full mt-[26px]"
         >
           {pending ? "Creating account…" : "Continue"}
-        </button>
+        </Button>
       </form>
 
       <p className="text-center font-mono text-xs tracking-[0.04em] text-faint mt-[26px]">

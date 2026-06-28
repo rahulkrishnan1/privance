@@ -65,7 +65,7 @@ test.describe("dashboard mobile", () => {
     await expect(dialog).toBeVisible();
     await dialog.getByLabel("Name").fill(`MobDash-${RUN}`);
     // Kind defaults to investment; select Cash so Current balance field appears.
-    await dialog.getByRole("button", { name: "Cash" }).click();
+    await dialog.getByRole("radio", { name: "Cash" }).click();
     await dialog.getByLabel("Account type").selectOption("checking");
     await dialog.getByLabel("Current balance").fill("4200.00");
     await dialog.getByRole("button", { name: "Add account" }).click();
@@ -107,8 +107,8 @@ test.describe("dashboard mobile", () => {
     });
 
     // The history range selector is reachable and switchable on touch.
-    await page.getByRole("button", { name: "1M range" }).click();
-    await expect(page.getByRole("button", { name: "1M range", pressed: true })).toBeVisible();
+    await page.getByRole("radio", { name: "1M range" }).click();
+    await expect(page.getByRole("radio", { name: "1M range", checked: true })).toBeVisible();
   });
 
   // Sideways scroll at a phone width makes iOS WebKit shrink-to-fit zoom on launch.

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode, SVGProps } from "react";
 import { useCallback, useEffect, useState } from "react";
-import { Logo } from "@/components/index";
+import { Logo, RoundIconButton } from "@/components/index";
 import { SyncStatus } from "@/components/SyncStatus";
 import { RefreshPricesButton } from "@/features/invest/components/refresh-prices-button";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -146,18 +146,11 @@ function TopBar({
 
         <div className="flex gap-2.5 items-center">
           <RefreshPricesButton />
-          <button
-            type="button"
+          <RoundIconButton
             onClick={onToggleVeil}
-            aria-pressed={veiled}
-            aria-label={veiled ? "Reveal figures" : "Veil figures"}
+            label={veiled ? "Reveal figures" : "Veil figures"}
             title={veiled ? "Reveal figures" : "Veil figures"}
-            className={[
-              "flex h-[38px] w-[38px] items-center justify-center rounded-full border transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-              veiled
-                ? "border-accent-dim text-accent"
-                : "border-line text-dim hover:border-accent-dim hover:text-accent",
-            ].join(" ")}
+            pressed={veiled}
           >
             <svg
               viewBox="0 0 24 24"
@@ -170,14 +163,8 @@ function TopBar({
               <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z" />
               <circle cx="12" cy="12" r="2.6" />
             </svg>
-          </button>
-          <button
-            type="button"
-            onClick={onLock}
-            aria-label="Lock"
-            title="Lock"
-            className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-line text-dim transition-colors cursor-pointer hover:border-accent-dim hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          >
+          </RoundIconButton>
+          <RoundIconButton onClick={onLock} label="Lock" title="Lock">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -189,7 +176,7 @@ function TopBar({
               <rect x="5" y="11" width="14" height="9" rx="2" />
               <path d="M8 11V8a4 4 0 0 1 8 0v3" />
             </svg>
-          </button>
+          </RoundIconButton>
         </div>
       </div>
     </header>

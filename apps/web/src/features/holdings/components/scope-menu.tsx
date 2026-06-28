@@ -3,7 +3,8 @@
 import type { InvestmentAccount } from "@privance/core";
 import { ChevronDown, Search } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { Modal } from "@/components/Modal";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useMediaQuery } from "@/lib/use-media-query";
 import type { FilterState, LocalGroup } from "../types";
 
@@ -43,18 +44,25 @@ export function ScopeMenu({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const isMobile = useMediaQuery("(max-width: 560px)");
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const headingId = useId();
 
-  // Desktop popover has no native focus restore, so return focus to the trigger
-  // ourselves; the mobile sheet's <dialog> does it on close. Outside-click
-  // dismissal skips this (focus has already moved off the trigger).
   const close = useCallback(() => {
     setOpen(false);
     setQuery("");
-    if (!isMobile) triggerRef.current?.focus();
+  }, []);
+
+  // Desktop renders a Popover, mobile a Sheet. If the viewport crosses the
+  // breakpoint while the menu is open, close it so `open` can't strand itself
+  // on the freshly-swapped primitive. Ref-guarded so it only fires on an actual
+  // breakpoint flip, never on a plain open/close.
+  const prevMobile = useRef(isMobile);
+  useEffect(() => {
+    if (prevMobile.current === isMobile) return;
+    prevMobile.current = isMobile;
+    setOpen(false);
+    setQuery("");
   }, [isMobile]);
 
   const pick = useCallback(
@@ -65,23 +73,10 @@ export function ScopeMenu({
     [onSelect, close],
   );
 
-  // Desktop popover only: dismiss on outside click and focus the search on open.
-  // The mobile sheet is a native <dialog> (focus-trap and ESC come for free).
-  useEffect(() => {
-    if (!open || isMobile) return;
-    searchRef.current?.focus();
-    const onPointerDown = (e: PointerEvent) => {
-      if (
-        !popoverRef.current?.contains(e.target as Node) &&
-        !triggerRef.current?.contains(e.target as Node)
-      ) {
-        setOpen(false);
-        setQuery("");
-      }
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [open, isMobile]);
+  const onOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) setQuery("");
+  };
 
   const q = query.trim().toLowerCase();
   const showAll = q === "" || "all holdings".includes(q);
@@ -95,16 +90,13 @@ export function ScopeMenu({
   );
   const noMatches = !showAll && visibleAccounts.length === 0 && visibleGroups.length === 0;
 
-  // Desktop popover keyboard handling: ESC closes; arrows rove the scope options.
-  const onPopoverKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      close();
-      return;
-    }
+  // Radix owns open/close, Esc, outside-click and focus return; this is the one
+  // keyboard nicety it doesn't give a free-form filter list: ArrowDown/Up rove
+  // from the search field into the scope options.
+  const onContentKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
     const opts = Array.from(
-      popoverRef.current?.querySelectorAll<HTMLButtonElement>("[data-scope-option]") ?? [],
+      contentRef.current?.querySelectorAll<HTMLButtonElement>("[data-scope-option]") ?? [],
     );
     if (opts.length === 0) return;
     const idx = opts.indexOf(document.activeElement as HTMLButtonElement);
@@ -146,7 +138,7 @@ export function ScopeMenu({
 
       {visibleAccounts.length > 0 && (
         <>
-          <p className="font-mono text-[10px] tracking-label uppercase text-faint px-3 pt-2.5 pb-1">
+          <p className="font-mono text-xs tracking-label uppercase text-faint px-3 pt-2.5 pb-1">
             Accounts
           </p>
           {visibleAccounts.map((a) => (
@@ -163,7 +155,7 @@ export function ScopeMenu({
 
       {visibleGroups.length > 0 && (
         <>
-          <p className="font-mono text-[10px] tracking-label uppercase text-faint px-3 pt-2.5 pb-1">
+          <p className="font-mono text-xs tracking-label uppercase text-faint px-3 pt-2.5 pb-1">
             Groups
           </p>
           {visibleGroups.map((g) => (
@@ -195,47 +187,51 @@ export function ScopeMenu({
     </div>
   );
 
+  const trigger = (
+    <button
+      type="button"
+      className="group inline-flex items-center gap-2 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded"
+    >
+      {label} &middot; {count}
+      <ChevronDown
+        size={18}
+        aria-hidden="true"
+        className={`text-faint group-hover:text-accent transition-[color,transform] ${open ? "rotate-180 text-accent" : ""}`}
+      />
+    </button>
+  );
+
   return (
-    <div className="relative inline-block">
-      <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">
-        <button
-          ref={triggerRef}
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape" && open) close();
-          }}
-          aria-expanded={open}
-          aria-haspopup="dialog"
-          className="group inline-flex items-center gap-2 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded"
-        >
-          {label} &middot; {count}
-          <ChevronDown
-            size={18}
-            aria-hidden="true"
-            className={`text-faint group-hover:text-accent transition-[color,transform] ${open ? "rotate-180 text-accent" : ""}`}
-          />
-        </button>
-      </h3>
-
-      {open && !isMobile && (
-        <div
-          ref={popoverRef}
-          role="dialog"
-          aria-labelledby={headingId}
-          onKeyDown={onPopoverKeyDown}
-          className="absolute left-0 top-full z-30 mt-2 w-[320px] max-w-[calc(100vw-3rem)] rounded-xl border border-line bg-panel-2 p-1.5 shadow-[0_26px_52px_-18px_rgba(0,0,0,0.78)]"
-        >
-          {list}
-        </div>
+    <h3 className="inline-block font-serif text-2xl font-normal tracking-[-0.005em]">
+      {isMobile ? (
+        <Sheet open={open} onOpenChange={onOpenChange}>
+          <SheetTrigger asChild>{trigger}</SheetTrigger>
+          <SheetContent>
+            <SheetTitle className="sr-only">Filter holdings by scope</SheetTitle>
+            {list}
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <Popover open={open} onOpenChange={onOpenChange}>
+          <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+          <PopoverContent
+            ref={contentRef}
+            role="dialog"
+            aria-labelledby={headingId}
+            align="start"
+            sideOffset={8}
+            onKeyDown={onContentKeyDown}
+            onOpenAutoFocus={(e) => {
+              e.preventDefault();
+              searchRef.current?.focus();
+            }}
+            className="w-[320px] max-w-[calc(100vw-3rem)] rounded-xl p-1.5 shadow-[0_26px_52px_-18px_rgba(0,0,0,0.78)]"
+          >
+            {list}
+          </PopoverContent>
+        </Popover>
       )}
-
-      {isMobile && (
-        <Modal open={open} onClose={close} variant="sheet" labelledBy={headingId}>
-          {list}
-        </Modal>
-      )}
-    </div>
+    </h3>
   );
 }
 

@@ -1,9 +1,8 @@
 "use client";
 
 import { Decimal, type InvestmentAccount } from "@privance/core";
-import { X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Modal } from "@/components/Modal";
+import { Dialog, DialogContent, DialogTitleRow } from "@/components/ui/dialog";
 import { parseCostBasisCents } from "../_helpers";
 import type { HoldingFormValues, LocalGroup, LocalHolding } from "../types";
 import { HoldingForm } from "./holding-form";
@@ -70,43 +69,34 @@ export function HoldingDrawer({
   }, [open]);
 
   return (
-    <Modal
+    <Dialog
       open={open}
-      onClose={onClose}
-      labelledBy="holding-drawer-title"
-      className="max-h-[88vh] overflow-y-auto"
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
     >
-      <div className="flex flex-col gap-5">
-        <div className="flex items-center justify-between">
-          <h2
-            id="holding-drawer-title"
-            className="font-serif text-2xl leading-tight font-light tracking-[-0.01em] text-cream"
-          >
-            {mode.kind === "add" ? "Add holding" : "Edit holding"}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="p-1 cursor-pointer text-faint hover:text-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          >
-            <X size={18} />
-          </button>
-        </div>
+      <DialogContent aria-labelledby="holding-drawer-title">
+        <div className="flex flex-col gap-5">
+          <DialogTitleRow
+            titleId="holding-drawer-title"
+            title={mode.kind === "add" ? "Add holding" : "Edit holding"}
+            onClose={onClose}
+          />
 
-        <HoldingForm
-          key={mode.kind === "edit" ? mode.holding.id : `new-${openVersion}`}
-          initialValues={deriveInitialValues(mode)}
-          investmentAccounts={investmentAccounts}
-          groups={groups}
-          isEdit={mode.kind === "edit"}
-          submitting={submitting}
-          onCancel={onClose}
-          onSubmit={(values, opts) => void onSubmit(values, mode, opts)}
-          onLookupProxyPrice={onLookupProxyPrice}
-          onCreateGroup={onCreateGroup}
-        />
-      </div>
-    </Modal>
+          <HoldingForm
+            key={mode.kind === "edit" ? mode.holding.id : `new-${openVersion}`}
+            initialValues={deriveInitialValues(mode)}
+            investmentAccounts={investmentAccounts}
+            groups={groups}
+            isEdit={mode.kind === "edit"}
+            submitting={submitting}
+            onCancel={onClose}
+            onSubmit={(values, opts) => void onSubmit(values, mode, opts)}
+            onLookupProxyPrice={onLookupProxyPrice}
+            onCreateGroup={onCreateGroup}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

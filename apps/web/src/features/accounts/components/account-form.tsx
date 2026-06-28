@@ -3,17 +3,19 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Account, AccountKind, InvestmentAccountSubKind } from "@privance/core";
 import { Decimal, SCALE_CENTS } from "@privance/core";
-import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Controller, type Resolver, useForm } from "react-hook-form";
-import { Button, Input, StyledSelect } from "@/components/index";
-import { Modal } from "@/components/Modal";
+import { DateField } from "@/components/DateField";
+import { Button, Input, Select } from "@/components/index";
+import { Dialog, DialogContent, DialogTitleRow } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   CASH_TYPE_OPTIONS,
   INVESTMENT_TYPE_OPTIONS,
 } from "@/features/accounts/_investment-constants";
 import type { CashSubKindValue } from "../types";
-import { type AccountFormValues, accountFormSchema, KIND_META, SECTION_ORDER } from "../types";
+import { type AccountFormValues, accountFormSchema, SECTION_ORDER } from "../types";
 
 function centsStringToDisplay(cents: string): string {
   return Decimal.fromMinorUnits(BigInt(cents), SCALE_CENTS).toString();
@@ -71,49 +73,12 @@ function initialSubKind(account: Account | undefined): AccountFormValues["subKin
   return undefined;
 }
 
-type KindSegmentProps = {
-  value: AccountKind;
-  onChange: (kind: AccountKind) => void;
-  disabled?: boolean;
-};
-
 const KIND_DISPLAY: Record<AccountKind, string> = {
   investment: "Investment",
   cash: "Cash",
   manual_asset: "Asset",
   liability: "Liability",
 };
-
-function KindSegmentControl({ value, onChange, disabled = false }: KindSegmentProps) {
-  return (
-    <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
-      <legend className="font-mono text-xs tracking-label uppercase text-faint mb-2">Kind</legend>
-      <div className="flex gap-1 bg-panel-2 border border-line rounded-lg p-1">
-        {SECTION_ORDER.map((k) => {
-          const active = k === value;
-          return (
-            <button
-              key={k}
-              type="button"
-              onClick={() => !disabled && onChange(k)}
-              aria-pressed={active}
-              aria-label={KIND_META[k].label}
-              disabled={disabled}
-              className={[
-                "flex-1 font-mono text-xs tracking-button uppercase rounded-md py-2.5 px-1 cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                active
-                  ? "bg-vault text-accent border border-line"
-                  : "text-faint hover:text-cream-soft",
-              ].join(" ")}
-            >
-              {KIND_DISPLAY[k]}
-            </button>
-          );
-        })}
-      </div>
-    </fieldset>
-  );
-}
 
 type SubKindSelectProps = {
   value: InvestmentAccountSubKind | "";
@@ -123,34 +88,21 @@ type SubKindSelectProps = {
 
 function SubKindSelect({ value, onChange, error }: SubKindSelectProps) {
   return (
-    <div className="flex flex-col gap-2">
-      <label
-        htmlFor="account-subkind"
-        className="font-mono text-xs tracking-label uppercase text-faint"
-      >
-        Account type
-      </label>
-      <StyledSelect
-        id="account-subkind"
-        value={value}
-        onChange={(e) => onChange(e.target.value as InvestmentAccountSubKind)}
-        invalid={error !== undefined}
-      >
-        <option value="" disabled>
-          Select an account type
+    <Select
+      label="Account type"
+      value={value}
+      onChange={(e) => onChange(e.target.value as InvestmentAccountSubKind)}
+      error={error}
+    >
+      <option value="" disabled>
+        Select an account type
+      </option>
+      {INVESTMENT_TYPE_OPTIONS.map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
         </option>
-        {INVESTMENT_TYPE_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </StyledSelect>
-      {error !== undefined && (
-        <p role="alert" className="text-sm text-signal">
-          {error}
-        </p>
-      )}
-    </div>
+      ))}
+    </Select>
   );
 }
 
@@ -162,34 +114,21 @@ type CashSubKindSelectProps = {
 
 function CashSubKindSelect({ value, onChange, error }: CashSubKindSelectProps) {
   return (
-    <div className="flex flex-col gap-2">
-      <label
-        htmlFor="cash-subkind"
-        className="font-mono text-xs tracking-label uppercase text-faint"
-      >
-        Account type
-      </label>
-      <StyledSelect
-        id="cash-subkind"
-        value={value}
-        onChange={(e) => onChange(e.target.value as CashSubKindValue)}
-        invalid={error !== undefined}
-      >
-        <option value="" disabled>
-          Select an account type
+    <Select
+      label="Account type"
+      value={value}
+      onChange={(e) => onChange(e.target.value as CashSubKindValue)}
+      error={error}
+    >
+      <option value="" disabled>
+        Select an account type
+      </option>
+      {CASH_TYPE_OPTIONS.map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
         </option>
-        {CASH_TYPE_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </StyledSelect>
-      {error !== undefined && (
-        <p role="alert" className="text-sm text-signal">
-          {error}
-        </p>
-      )}
-    </div>
+      ))}
+    </Select>
   );
 }
 
@@ -222,6 +161,7 @@ export function AccountForm({
     formState: { errors },
   } = useForm<AccountFormValues>({
     resolver: zodResolver(accountFormSchema) as Resolver<AccountFormValues>,
+    mode: "onBlur",
     defaultValues: {
       name: account?.payload.name ?? "",
       kind: account?.payload.kind ?? defaultKind,
@@ -272,236 +212,244 @@ export function AccountForm({
   });
 
   return (
-    <Modal
+    <Dialog
       open={open}
-      onClose={onClose}
-      labelledBy="account-form-title"
-      className="max-h-[88vh] overflow-y-auto"
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
     >
-      <div className="flex flex-col gap-5">
-        <div className="flex items-center justify-between">
-          <h2
-            id="account-form-title"
-            className="font-serif text-2xl leading-tight font-light tracking-[-0.01em] text-cream"
-          >
-            {isEditMode ? "Edit account" : "Add account"}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="p-1 cursor-pointer text-faint hover:text-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void submit();
-          }}
-          className="flex flex-col gap-5"
-          noValidate
-        >
-          <Controller
-            control={control}
-            name="kind"
-            render={({ field }) => (
-              <KindSegmentControl
-                value={field.value}
-                onChange={(k) => {
-                  field.onChange(k);
-                  // Clear the type so the placeholder shows and the user picks
-                  // one valid for the new kind.
-                  setValue("subKind", undefined);
-                }}
-                disabled={isEditMode}
-              />
-            )}
+      <DialogContent aria-labelledby="account-form-title">
+        <div className="flex flex-col gap-5">
+          <DialogTitleRow
+            titleId="account-form-title"
+            title={isEditMode ? "Edit account" : "Add account"}
+            onClose={onClose}
           />
 
-          {selectedKind === "investment" && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submit();
+            }}
+            className="flex flex-col gap-5"
+            noValidate
+          >
             <Controller
               control={control}
-              name="subKind"
+              name="kind"
               render={({ field }) => (
-                <SubKindSelect
-                  value={(field.value ?? "") as InvestmentAccountSubKind | ""}
-                  onChange={(v) => {
-                    field.onChange(v);
-                  }}
-                  error={errors.subKind?.message}
+                <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
+                  <legend className="font-mono text-xs tracking-label uppercase text-dim mb-2">
+                    Kind
+                  </legend>
+                  <RadioGroup
+                    value={field.value}
+                    onValueChange={(k) => {
+                      field.onChange(k);
+                      // Clear the type so the placeholder shows and the user picks
+                      // one valid for the new kind.
+                      setValue("subKind", undefined);
+                    }}
+                    disabled={isEditMode}
+                    className="bg-panel-2 border border-line rounded-lg p-1 w-full"
+                  >
+                    {SECTION_ORDER.map((k) => (
+                      <RadioGroupItem key={k} value={k} size="sm" className="flex-1">
+                        {KIND_DISPLAY[k]}
+                      </RadioGroupItem>
+                    ))}
+                  </RadioGroup>
+                </fieldset>
+              )}
+            />
+
+            {selectedKind === "investment" && (
+              <Controller
+                control={control}
+                name="subKind"
+                render={({ field }) => (
+                  <SubKindSelect
+                    value={(field.value ?? "") as InvestmentAccountSubKind | ""}
+                    onChange={(v) => {
+                      field.onChange(v);
+                    }}
+                    error={errors.subKind?.message}
+                  />
+                )}
+              />
+            )}
+
+            {selectedKind === "cash" && (
+              <Controller
+                control={control}
+                name="subKind"
+                render={({ field }) => (
+                  <CashSubKindSelect
+                    value={(field.value ?? "") as CashSubKindValue | ""}
+                    onChange={(v) => {
+                      field.onChange(v);
+                    }}
+                    error={errors.subKind?.message}
+                  />
+                )}
+              />
+            )}
+
+            <Controller
+              control={control}
+              name="name"
+              render={({ field }) => (
+                <Input
+                  label="Name"
+                  {...field}
+                  autoCapitalize="words"
+                  maxLength={64}
+                  error={errors.name?.message}
                 />
               )}
             />
-          )}
 
-          {selectedKind === "cash" && (
-            <Controller
-              control={control}
-              name="subKind"
-              render={({ field }) => (
-                <CashSubKindSelect
-                  value={(field.value ?? "") as CashSubKindValue | ""}
-                  onChange={(v) => {
-                    field.onChange(v);
-                  }}
-                  error={errors.subKind?.message}
-                />
-              )}
-            />
-          )}
-
-          <Controller
-            control={control}
-            name="name"
-            render={({ field }) => (
-              <Input
-                label="Name"
-                {...field}
-                autoCapitalize="words"
-                maxLength={64}
-                error={errors.name?.message}
-              />
-            )}
-          />
-
-          {showSweepField && (
-            <div className="flex flex-col gap-1">
-              <Controller
-                control={control}
-                name="balance"
-                render={({ field }) => (
-                  <Input
-                    label="Cash balance (optional)"
-                    {...field}
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    error={errors.balance?.message}
-                  />
-                )}
-              />
-            </div>
-          )}
-
-          {showBalanceField && (
-            <div className="flex flex-col gap-1">
-              <Controller
-                control={control}
-                name="balance"
-                render={({ field }) => (
-                  <Input
-                    label={balanceLabel}
-                    {...field}
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    error={errors.balance?.message}
-                  />
-                )}
-              />
-            </div>
-          )}
-
-          {(selectedKind === "cash" || selectedKind === "investment") && (
-            <div className="flex flex-col gap-1">
-              <Controller
-                control={control}
-                name="apy"
-                render={({ field }) => (
-                  <Input
-                    label={selectedKind === "investment" ? "Cash APY (optional)" : "APY (optional)"}
-                    {...field}
-                    value={field.value ?? ""}
-                    inputMode="decimal"
-                    placeholder="e.g. 4.10"
-                  />
-                )}
-              />
-            </div>
-          )}
-
-          {selectedKind === "liability" && (
-            <div className="flex flex-col gap-5">
+            {showSweepField && (
               <div className="flex flex-col gap-1">
                 <Controller
                   control={control}
-                  name="interestRate"
+                  name="balance"
                   render={({ field }) => (
                     <Input
-                      label="Rate (optional)"
+                      label="Cash balance (optional)"
                       {...field}
-                      value={field.value ?? ""}
                       inputMode="decimal"
-                      placeholder="e.g. 6.25"
+                      placeholder="0.00"
+                      error={errors.balance?.message}
                     />
                   )}
                 />
               </div>
+            )}
+
+            {showBalanceField && (
               <div className="flex flex-col gap-1">
                 <Controller
                   control={control}
-                  name="termYears"
+                  name="balance"
                   render={({ field }) => (
                     <Input
-                      label="Years left (optional)"
+                      label={balanceLabel}
                       {...field}
-                      value={field.value ?? ""}
                       inputMode="decimal"
-                      placeholder="e.g. 22"
+                      placeholder="0.00"
+                      error={errors.balance?.message}
                     />
                   )}
                 />
               </div>
-            </div>
-          )}
+            )}
 
-          {selectedKind === "manual_asset" && (
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="valued-at"
-                className="font-mono text-xs tracking-label uppercase text-faint"
+            {(selectedKind === "cash" || selectedKind === "investment") && (
+              <div className="flex flex-col gap-1">
+                <Controller
+                  control={control}
+                  name="apy"
+                  render={({ field }) => (
+                    <Input
+                      label={
+                        selectedKind === "investment" ? "Cash APY (optional)" : "APY (optional)"
+                      }
+                      {...field}
+                      value={field.value ?? ""}
+                      inputMode="decimal"
+                      placeholder="e.g. 4.10"
+                    />
+                  )}
+                />
+              </div>
+            )}
+
+            {selectedKind === "liability" && (
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-1">
+                  <Controller
+                    control={control}
+                    name="interestRate"
+                    render={({ field }) => (
+                      <Input
+                        label="Rate (optional)"
+                        {...field}
+                        value={field.value ?? ""}
+                        inputMode="decimal"
+                        placeholder="e.g. 6.25"
+                      />
+                    )}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Controller
+                    control={control}
+                    name="termYears"
+                    render={({ field }) => (
+                      <Input
+                        label="Years left (optional)"
+                        {...field}
+                        value={field.value ?? ""}
+                        inputMode="decimal"
+                        placeholder="e.g. 22"
+                      />
+                    )}
+                  />
+                </div>
+              </div>
+            )}
+
+            {selectedKind === "manual_asset" && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="valued-at">Valued date (optional)</Label>
+                <Controller
+                  control={control}
+                  name="valuedAt"
+                  render={({ field }) => (
+                    <DateField
+                      id="valued-at"
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                    />
+                  )}
+                />
+              </div>
+            )}
+
+            {saveError !== null && (
+              <div
+                role="alert"
+                className="rounded-lg border border-signal/40 bg-signal/10 px-4 py-3"
               >
-                Valued date (optional)
-              </label>
-              <Controller
-                control={control}
-                name="valuedAt"
-                render={({ field }) => (
-                  <input
-                    id="valued-at"
-                    type="date"
-                    {...field}
-                    value={field.value ?? ""}
-                    className="w-full min-w-0 bg-panel-2 border border-line rounded-lg text-cream font-mono text-base px-3.5 py-3 outline-none focus:border-accent-dim transition-colors [color-scheme:dark]"
-                  />
-                )}
-              />
-            </div>
-          )}
+                <p className="text-sm text-signal">{saveError}</p>
+              </div>
+            )}
 
-          {saveError !== null && (
-            <div role="alert" className="rounded-lg border border-signal/40 bg-signal/10 px-4 py-3">
-              <p className="text-sm text-signal">{saveError}</p>
+            <div className="flex gap-2.5 pt-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onClose}
+                disabled={submitting}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                loading={submitting}
+                disabled={submitting}
+                className="flex-1"
+              >
+                {submitting ? "Saving..." : isEditMode ? "Save changes" : "Add account"}
+              </Button>
             </div>
-          )}
-
-          <div className="flex gap-2.5 pt-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={onClose}
-              disabled={submitting}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button type="submit" loading={submitting} disabled={submitting} className="flex-1">
-              {submitting ? "Saving..." : isEditMode ? "Save changes" : "Add account"}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </Modal>
+          </form>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

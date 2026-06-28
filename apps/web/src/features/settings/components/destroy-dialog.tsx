@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Modal } from "@/components/index";
+import { Button } from "@/components";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import * as accountApi from "@/lib/api/account";
 import * as authApi from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { deriveLoginCrypto } from "@/lib/auth-crypto";
 import { hardRedirect } from "@/lib/navigate";
-import { CANCEL_BTN, FIELD_INPUT, FIELD_LABEL, SAVE_BTN_RED } from "../types";
-import { DialogHeader } from "./_primitives";
+import { SettingsDialogHeader } from "./_primitives";
 
 export function DestroyDialog({
   open,
@@ -70,71 +72,66 @@ export function DestroyDialog({
   }
 
   return (
-    <Modal
+    <Dialog
       open={open}
-      onClose={handleClose}
-      labelledBy="destroy-title"
-      className="border-[rgba(208,133,98,0.4)]"
+      onOpenChange={(o) => {
+        if (!o) handleClose();
+      }}
     >
-      <DialogHeader title="Destroy vault" titleId="destroy-title" onClose={handleClose} danger />
-      <p className="text-sm leading-[1.6] text-cream-soft">
-        Every ciphertext record is erased from the server and this device. There is no backup, no
-        grace period, no undo. This is the whole point of Privance, which is why we make you type
-        it.
-      </p>
+      <DialogContent aria-labelledby="destroy-title" className="border-down/40">
+        <SettingsDialogHeader
+          title="Destroy vault"
+          titleId="destroy-title"
+          onClose={handleClose}
+          danger
+        />
+        <p className="text-sm leading-[1.6] text-dim">
+          Erases every record from the server and this device. No backup, no undo. That's the point
+          of Privance, so we make you type it.
+        </p>
 
-      <form onSubmit={(e) => void onDestroy(e)} noValidate>
-        <div className="mt-4">
-          <label htmlFor="dv-username" className={FIELD_LABEL}>
-            Type your username to arm
-          </label>
-          <input
-            id="dv-username"
-            type="text"
-            value={confirmName}
-            onChange={(e) => setConfirmName(e.target.value)}
-            autoComplete="off"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            placeholder={username ?? ""}
-            className={FIELD_INPUT}
-          />
-        </div>
-        <div className="mt-4">
-          <label htmlFor="dv-password" className={FIELD_LABEL}>
-            Master password
-          </label>
-          <input
-            id="dv-password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            className={FIELD_INPUT}
-          />
-        </div>
+        <form onSubmit={(e) => void onDestroy(e)} noValidate>
+          <div className="mt-4 flex flex-col gap-2">
+            <Label htmlFor="dv-username">Type your username to arm</Label>
+            <Input
+              id="dv-username"
+              type="text"
+              value={confirmName}
+              onChange={(e) => setConfirmName(e.target.value)}
+              autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder={username ?? ""}
+            />
+          </div>
+          <div className="mt-4 flex flex-col gap-2">
+            <Label htmlFor="dv-password">Master password</Label>
+            <Input
+              id="dv-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          </div>
 
-        {error && (
-          <p role="alert" className="mt-4 font-mono text-xs text-signal">
-            {error}
-          </p>
-        )}
+          {error && (
+            <p role="alert" className="mt-4 font-mono text-xs text-signal">
+              {error}
+            </p>
+          )}
 
-        <div className="mt-[26px] flex gap-[10px]">
-          <button type="button" onClick={handleClose} className={CANCEL_BTN}>
-            Keep my vault
-          </button>
-          <button
-            type="submit"
-            disabled={!armed || pending}
-            aria-busy={pending}
-            className={SAVE_BTN_RED}
-          >
-            {pending ? "Destroying…" : "Destroy forever"}
-          </button>
-        </div>
-      </form>
-    </Modal>
+          <DialogFooter className="mt-[26px]">
+            <Button type="button" variant="secondary" onClick={handleClose}>
+              Keep my vault
+            </Button>
+            <Button type="submit" variant="danger" disabled={!armed} loading={pending}>
+              {pending ? "Destroying…" : "Destroy forever"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

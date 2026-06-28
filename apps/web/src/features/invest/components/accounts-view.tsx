@@ -92,7 +92,7 @@ function AccountRow({ account, displayValue, holdingsCount, onClick }: AccountRo
     <button
       type="button"
       onClick={onClick}
-      className="w-full flex items-center gap-3.5 bg-panel border border-line rounded-[10px] px-5 py-[18px] text-left cursor-pointer hover:border-[rgba(235,235,230,0.2)] hover:-translate-y-px transition-[border-color,transform] duration-200"
+      className="w-full flex items-center gap-3.5 glass rounded-[10px] px-5 py-[18px] text-left cursor-pointer hover:border-cream/20 hover:-translate-y-px transition-[border-color,transform] duration-200 motion-reduce:hover:translate-y-0 motion-reduce:transition-none"
       aria-label={`${account.payload.name}, ${balanceText}`}
     >
       <div

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { ChartRange } from "../types";
 
 type RangeSelectorProps = {
@@ -23,26 +24,25 @@ export function RangeSelector({ selected, onChange, ranges }: RangeSelectorProps
   }, [selected]);
 
   return (
-    <div className="flex gap-0.5 overflow-x-auto">
-      {ranges.map((range) => {
-        const isSelected = range === selected;
-        return (
-          <button
-            key={range}
-            ref={isSelected ? selectedRef : undefined}
-            type="button"
-            onClick={() => onChange(range)}
-            aria-pressed={isSelected}
-            aria-label={`${range} range`}
-            className={[
-              "shrink-0 whitespace-nowrap rounded-[5px] px-3 py-[7px] font-mono text-xs tracking-button cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent focus-visible:rounded-[inherit]",
-              isSelected ? "text-cream bg-panel-2" : "text-faint hover:text-cream-soft",
-            ].join(" ")}
-          >
-            {range}
-          </button>
-        );
-      })}
-    </div>
+    <ToggleGroup
+      type="single"
+      value={selected}
+      onValueChange={(nv) => nv && onChange(nv as ChartRange)}
+      aria-label="Chart range"
+      className="flex gap-0.5 overflow-x-auto"
+    >
+      {ranges.map((range) => (
+        <ToggleGroupItem
+          key={range}
+          value={range}
+          size="sm"
+          ref={range === selected ? selectedRef : undefined}
+          aria-label={`${range} range`}
+          className="shrink-0 whitespace-nowrap rounded-[5px] px-3 py-[7px]"
+        >
+          {range}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
   );
 }

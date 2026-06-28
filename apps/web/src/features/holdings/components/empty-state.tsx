@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import { Button } from "@/components/index";
 
 type EmptyStateProps = {
   onAdd: () => void;
@@ -19,14 +20,9 @@ export function EmptyState({ onAdd }: EmptyStateProps) {
         Add a holding to track individual stock or crypto positions across your investment accounts.
         Live prices, day deltas, and your real cost basis.
       </p>
-      <button
-        type="button"
-        onClick={onAdd}
-        aria-label="Add holding"
-        className="inline-block mt-7 font-mono text-xs tracking-button uppercase bg-accent text-vault rounded-md px-[26px] py-3.5 cursor-pointer hover:bg-cream transition-colors"
-      >
+      <Button type="button" variant="primary" onClick={onAdd} className="mt-7">
         Add holding
-      </button>
+      </Button>
     </div>
   );
 }

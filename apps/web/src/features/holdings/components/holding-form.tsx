@@ -5,7 +5,8 @@ import type { InvestmentAccount } from "@privance/core";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Button, Input } from "@/components/index";
+import { Button, Input, Select } from "@/components/index";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { HoldingFormValues, LocalGroup } from "../types";
 import { groupFormSchema, holdingFormSchema } from "../types";
 import { GroupChip } from "./group-chips";
@@ -50,6 +51,7 @@ export function HoldingForm({
     formState: { errors },
   } = useForm<HoldingFormValues>({
     resolver: zodResolver(holdingFormSchema),
+    mode: "onBlur",
     defaultValues: {
       assetType: "stock",
       ticker: "",
@@ -147,36 +149,20 @@ export function HoldingForm({
         name="assetType"
         render={({ field }) => (
           <div className="flex flex-col gap-2">
-            <span className="font-mono text-xs tracking-label uppercase text-faint">
-              Asset type
-            </span>
-            <div
-              role="radiogroup"
+            <span className="font-mono text-xs tracking-label uppercase text-dim">Asset type</span>
+            <RadioGroup
+              value={field.value}
+              onValueChange={field.onChange}
               aria-label="Asset type"
-              className="flex gap-1 bg-panel-2 border border-line rounded-lg p-1 self-start"
+              className="w-full bg-panel-2 border border-line rounded-lg p-1"
             >
-              {(["stock", "crypto"] as const).map((type) => {
-                const active = field.value === type;
-                return (
-                  // biome-ignore lint/a11y/useSemanticElements: styled segmented control needs button, role+aria provide radio semantics
-                  <button
-                    key={type}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() => field.onChange(type)}
-                    className={[
-                      "font-mono text-xs tracking-button uppercase rounded-md py-2.5 px-4 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-                      active
-                        ? "bg-vault text-accent border border-line"
-                        : "text-faint hover:text-cream-soft",
-                    ].join(" ")}
-                  >
-                    {type === "stock" ? "Stock" : "Crypto"}
-                  </button>
-                );
-              })}
-            </div>
+              <RadioGroupItem value="stock" size="sm" className="flex-1">
+                Stock
+              </RadioGroupItem>
+              <RadioGroupItem value="crypto" size="sm" className="flex-1">
+                Crypto
+              </RadioGroupItem>
+            </RadioGroup>
           </div>
         )}
       />
@@ -194,7 +180,6 @@ export function HoldingForm({
               onChange={(e) => field.onChange(e.target.value.toUpperCase())}
               autoCapitalize="characters"
               autoCorrect="off"
-              mono
               placeholder="e.g. AAPL"
               error={errors.ticker?.message}
             />
@@ -217,7 +202,7 @@ export function HoldingForm({
                 error={errors.ticker?.message}
               />
               <p className="font-mono text-xs text-faint tracking-[.04em]">
-                Find IDs at coingecko.com (URL ends with the ID).
+                It's at the end of the coingecko.com URL.
               </p>
             </div>
           )}
@@ -225,54 +210,33 @@ export function HoldingForm({
       )}
 
       {/* Account */}
-      <div className="flex flex-col gap-2">
-        <label
-          htmlFor="holding-account"
-          className="font-mono text-xs tracking-label uppercase text-faint"
-        >
-          Account
-        </label>
-        <Controller
-          control={control}
-          name="accountId"
-          render={({ field }) => (
-            <select
-              id="holding-account"
-              {...field}
-              className={[
-                "w-full bg-panel-2 border border-line rounded-lg text-cream font-mono text-base px-3.5 py-3 outline-none focus:border-accent-dim transition-colors cursor-pointer appearance-none",
-                "bg-[length:14px] bg-[right_12px_center] bg-no-repeat pr-9",
-                errors.accountId ? "border-signal" : "",
-              ].join(" ")}
-              style={{
-                backgroundImage:
-                  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%235e5e5a'><path d='M5.5 7.5l4.5 4.5 4.5-4.5' stroke='%235e5e5a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
-              }}
-              disabled={investmentAccounts.length === 0}
-            >
-              {investmentAccounts.length === 0 ? (
-                <option value="">No investment accounts, add one first</option>
-              ) : (
-                <>
-                  <option value="" disabled>
-                    Select an account
+      <Controller
+        control={control}
+        name="accountId"
+        render={({ field }) => (
+          <Select
+            label="Account"
+            {...field}
+            error={errors.accountId?.message}
+            disabled={investmentAccounts.length === 0}
+          >
+            {investmentAccounts.length === 0 ? (
+              <option value="">No investment accounts, add one first</option>
+            ) : (
+              <>
+                <option value="" disabled>
+                  Select an account
+                </option>
+                {investmentAccounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.payload.name}
                   </option>
-                  {investmentAccounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.payload.name}
-                    </option>
-                  ))}
-                </>
-              )}
-            </select>
-          )}
-        />
-        {errors.accountId && (
-          <p role="alert" className="text-sm text-signal">
-            {errors.accountId.message}
-          </p>
+                ))}
+              </>
+            )}
+          </Select>
         )}
-      </div>
+      />
 
       {/* Quantity */}
       <Controller
@@ -321,8 +285,8 @@ export function HoldingForm({
                 error={errors.nav?.message}
               />
               <p className="font-mono text-xs text-faint tracking-[.04em]">
-                Today's per-share price of your actual asset (not the proxy). We anchor the proxy to
-                this so your market value tracks reality. Re-anchor anytime by editing this holding.
+                Your asset's price today (not the proxy's), so we can anchor the proxy to it.
+                Re-anchor anytime by editing.
               </p>
             </div>
           )}
@@ -332,7 +296,7 @@ export function HoldingForm({
       {/* Group picker, edit-only */}
       {isEdit && (
         <div className="flex flex-col gap-2">
-          <span className="font-mono text-xs tracking-label uppercase text-faint">
+          <span className="font-mono text-xs tracking-label uppercase text-dim">
             Group (optional)
           </span>
           <div className="flex flex-wrap gap-2">
@@ -362,6 +326,7 @@ export function HoldingForm({
               />
               <Button
                 type="button"
+                variant="secondary"
                 onClick={() => void handleCreateGroup()}
                 disabled={creatingGroup || newGroupName.trim().length === 0}
                 loading={creatingGroup}
@@ -392,6 +357,7 @@ export function HoldingForm({
         onClick={() => setAdvancedOpen((o) => !o)}
         aria-label={advancedOpen ? "Collapse advanced options" : "Expand advanced options"}
         aria-expanded={advancedOpen}
+        aria-controls="holding-advanced-panel"
         className="flex items-center gap-1 font-mono text-xs tracking-button uppercase text-accent-dim hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent focus-visible:rounded rounded min-h-9 cursor-pointer transition-colors"
       >
         <span>No public ticker? Use a price proxy</span>
@@ -399,7 +365,7 @@ export function HoldingForm({
       </button>
 
       {advancedOpen && (
-        <div className="flex flex-col gap-4 pl-3 border-l border-line">
+        <div id="holding-advanced-panel" className="flex flex-col gap-4 pl-3 border-l border-line">
           <Controller
             control={control}
             name="proxyTicker"
@@ -415,8 +381,8 @@ export function HoldingForm({
                   error={errors.proxyTicker?.message}
                 />
                 <p className="font-mono text-xs text-faint tracking-[.04em]">
-                  Use a public ticker to track an asset we can't price directly (mutual funds,
-                  private holdings). Leave blank if your ticker already has a live price.
+                  For holdings we can't price directly (CITs, private assets). Leave blank if your
+                  ticker already has a price.
                 </p>
               </div>
             )}
@@ -436,6 +402,7 @@ export function HoldingForm({
         </Button>
         <Button
           type="submit"
+          variant="primary"
           disabled={submitting || lookingUp}
           loading={submitting || lookingUp}
           className="flex-1"

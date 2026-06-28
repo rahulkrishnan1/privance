@@ -76,7 +76,7 @@ async function ensureDataSetup(browser: import("@playwright/test").Browser): Pro
   const d = page.getByRole("dialog", { name: /Add account/i });
   await expect(d).toBeVisible();
   await d.getByLabel("Name").fill(`Dashboard-Cash-${RUN}`);
-  await d.getByRole("button", { name: "Cash" }).click();
+  await d.getByRole("radio", { name: "Cash" }).click();
   await d.getByLabel("Account type").selectOption("checking");
   await d.getByLabel("Current balance").fill("25000.00");
   await d.getByRole("button", { name: "Add account" }).click();
@@ -131,9 +131,9 @@ test.describe("dashboard - with data", () => {
 
     const ranges = ["1M", "3M", "1Y", "All"] as const;
     for (const range of ranges) {
-      await page.getByRole("button", { name: `${range} range` }).click();
+      await page.getByRole("radio", { name: `${range} range` }).click();
       await expect(
-        page.getByRole("button", { name: `${range} range`, pressed: true }),
+        page.getByRole("radio", { name: `${range} range`, checked: true }),
       ).toBeVisible();
     }
   });

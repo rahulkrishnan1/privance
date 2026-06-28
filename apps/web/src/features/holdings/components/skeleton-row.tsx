@@ -1,29 +1,31 @@
 "use client";
 
+// Mirrors HoldingRow's cell layout so columns don't shift when data loads.
 export function SkeletonRow() {
   return (
-    <tr className="border-b border-line-soft">
-      <td className="px-3 py-3">
+    <tr>
+      <td className="border-t border-line-soft py-[13px] text-left">
         <div className="flex flex-col gap-1">
           <div className="h-4 w-14 rounded bg-white/[0.07] animate-pulse" />
           <div className="h-3 w-24 rounded bg-white/[0.04] animate-pulse" />
         </div>
       </td>
-      <td className="hidden md:table-cell px-3 py-3 text-right">
+      <td className="hidden md:table-cell border-t border-line-soft py-[13px] pl-8 text-right">
         <div className="h-4 w-14 rounded bg-white/[0.07] animate-pulse ml-auto" />
       </td>
       {/* Day -- desktop only, matching the real table (mobile shows G/L instead) */}
-      <td className="hidden md:table-cell px-3 py-3 text-right">
+      <td className="hidden md:table-cell border-t border-line-soft py-[13px] pl-8 text-right">
         <div className="h-4 w-10 rounded bg-white/[0.04] animate-pulse ml-auto" />
       </td>
       {/* G/L -- always visible, matching the real table */}
-      <td className="px-3 py-3 text-right">
+      <td className="border-t border-line-soft py-[13px] pl-8 text-right">
         <div className="h-4 w-16 rounded bg-white/[0.04] animate-pulse ml-auto" />
       </td>
-      <td className="hidden md:table-cell px-3 py-3 text-right">
+      {/* Weight -- desktop only */}
+      <td className="hidden md:table-cell border-t border-line-soft py-[13px] pl-8 text-right">
         <div className="h-4 w-20 rounded bg-white/[0.04] animate-pulse ml-auto" />
       </td>
-      <td className="px-3 py-3 text-right">
+      <td className="border-t border-line-soft py-[13px] pl-8 text-right">
         <div className="h-4 w-20 rounded bg-white/[0.07] animate-pulse ml-auto" />
       </td>
     </tr>

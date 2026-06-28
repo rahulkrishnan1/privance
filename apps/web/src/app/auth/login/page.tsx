@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Button } from "@/components";
 import { AuthErrorBar } from "@/components/auth/AuthErrorBar";
 import { useErrorShake } from "@/components/auth/use-error-shake";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import * as authApi from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { deriveLoginCrypto, unwrapDek } from "@/lib/auth-crypto";
@@ -30,10 +33,14 @@ export default function LoginPage() {
   const [errorSeq, setErrorSeq] = useState(0);
   const hydrated = useHydrated();
   const shaking = useErrorShake(errorSeq);
+  const usernameRef = useRef<HTMLInputElement>(null);
 
   function raiseError(next: NonNullable<LoginBanner>) {
     setError(next);
     setErrorSeq((n) => n + 1);
+    // Move focus back to the username field so screen readers land on the start
+    // of the form with the error banner in context.
+    usernameRef.current?.focus();
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -94,7 +101,7 @@ export default function LoginPage() {
   return (
     <div className={`flex flex-col gap-0${shaking ? " auth-shake" : ""}`}>
       <div className="w-[74px] h-[74px] rounded-full border border-accent-dim mx-auto mb-[30px] flex items-center justify-center text-accent relative">
-        <span className="absolute inset-[6px] border border-dashed border-[rgba(127,196,198,.3)] rounded-full" />
+        <span className="absolute inset-[6px] border border-dashed border-accent/30 rounded-full" />
         <svg
           viewBox="0 0 24 24"
           width="26"
@@ -114,31 +121,31 @@ export default function LoginPage() {
       </h1>
 
       {error?.kind === "wrong" && (
-        <AuthErrorBar lead="That key didn&rsquo;t turn.">
+        <AuthErrorBar id="login-cred-error" lead="That key didn&rsquo;t turn.">
           Wrong password. Forgot it? Your recovery phrase still works.
         </AuthErrorBar>
       )}
       {error?.kind === "limit" && (
-        <AuthErrorBar lead="The lock is cooling down.">
+        <AuthErrorBar id="login-cred-error" lead="The lock is cooling down.">
           Too many attempts. Try again in a moment.
         </AuthErrorBar>
       )}
       {error?.kind === "net" && (
-        <AuthErrorBar lead="Can&rsquo;t reach your vault host.">
+        <AuthErrorBar id="login-cred-error" lead="Can&rsquo;t reach your vault host.">
           Check the connection and try again. Nothing you typed left this device.
         </AuthErrorBar>
       )}
-      {error?.kind === "generic" && <AuthErrorBar lead="Sign in failed.">Try again.</AuthErrorBar>}
+      {error?.kind === "generic" && (
+        <AuthErrorBar id="login-cred-error" lead="Sign in failed.">
+          Try again.
+        </AuthErrorBar>
+      )}
 
       <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col mt-[26px]" noValidate>
         <div className="flex flex-col gap-[9px]">
-          <label
-            htmlFor="login-username"
-            className="font-mono text-xs tracking-label uppercase text-faint"
-          >
-            Username
-          </label>
-          <input
+          <Label htmlFor="login-username">Username</Label>
+          <Input
+            ref={usernameRef}
             id="login-username"
             type="text"
             value={username}
@@ -152,21 +159,13 @@ export default function LoginPage() {
             spellCheck={false}
             maxLength={USERNAME_MAX}
             aria-invalid={credInvalid}
-            className={[
-              "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em]",
-              credInvalid ? "border-[rgba(208,133,98,.55)]" : "border-line focus:border-accent-dim",
-            ].join(" ")}
+            aria-describedby={credInvalid ? "login-cred-error" : undefined}
           />
         </div>
 
         <div className="flex flex-col gap-[9px] mt-[26px]">
-          <label
-            htmlFor="login-password"
-            className="font-mono text-xs tracking-label uppercase text-faint"
-          >
-            Master password
-          </label>
-          <input
+          <Label htmlFor="login-password">Master password</Label>
+          <Input
             id="login-password"
             type="password"
             value={password}
@@ -178,21 +177,19 @@ export default function LoginPage() {
             maxLength={PASSWORD_MAX}
             placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;"
             aria-invalid={credInvalid}
-            className={[
-              "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
-              credInvalid ? "border-[rgba(208,133,98,.55)]" : "border-line focus:border-accent-dim",
-            ].join(" ")}
+            aria-describedby={credInvalid ? "login-cred-error" : undefined}
           />
         </div>
 
-        <button
+        <Button
           type="submit"
+          variant="primary"
           disabled={!hydrated || pending || rateLimited}
-          aria-busy={pending}
-          className="w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-50 disabled:cursor-not-allowed"
+          loading={pending}
+          className="w-full mt-[26px]"
         >
           {pending ? "Signing in…" : "Sign in"}
-        </button>
+        </Button>
       </form>
 
       <p className="text-center font-mono text-xs tracking-[0.04em] text-faint mt-[26px]">

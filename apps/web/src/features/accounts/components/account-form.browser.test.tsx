@@ -107,8 +107,8 @@ test("edit mode prefills the existing cash account and keeps its kind locked", a
   // Stored APY fraction renders as a percent input.
   await expect.element(screen.getByRole("textbox", { name: "APY (optional)" })).toHaveValue("4.10");
   // Kind cannot change in edit mode (changing kind would break the encrypted shape).
-  await expect.element(screen.getByRole("button", { name: "Cash" })).toBeDisabled();
-  await expect.element(screen.getByRole("button", { name: "Investment" })).toBeDisabled();
+  await expect.element(screen.getByRole("radio", { name: "Cash" })).toBeDisabled();
+  await expect.element(screen.getByRole("radio", { name: "Investment" })).toBeDisabled();
 });
 
 test("edit mode submits the edited values under Save changes", async () => {
