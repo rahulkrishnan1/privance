@@ -251,10 +251,10 @@ export function AccountForm({
                       setValue("subKind", undefined);
                     }}
                     disabled={isEditMode}
-                    className="bg-panel-2 border border-line rounded-lg p-1 w-full"
+                    className="grid grid-cols-4 max-[560px]:grid-cols-2 bg-panel-2 border border-line rounded-lg p-1 w-full"
                   >
                     {SECTION_ORDER.map((k) => (
-                      <RadioGroupItem key={k} value={k} size="sm" className="flex-1">
+                      <RadioGroupItem key={k} value={k} size="sm">
                         {KIND_DISPLAY[k]}
                       </RadioGroupItem>
                     ))}
