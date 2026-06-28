@@ -149,7 +149,7 @@ test.describe("holdings mobile", () => {
     const sheet = page.getByRole("dialog", { name: /Filter holdings by scope/i });
     await expect(sheet).toBeVisible({ timeout: 5_000 });
 
-    await sheet.getByRole("button", { name: new RegExp(INVESTMENT_ACCOUNT_NAME) }).click();
+    await sheet.getByRole("option", { name: new RegExp(INVESTMENT_ACCOUNT_NAME) }).click();
 
     await expect(sheet).not.toBeVisible({ timeout: 5_000 });
     await expect(

@@ -111,7 +111,7 @@ test.describe("holdings", () => {
     await scopeTrigger.click();
     await page
       .getByRole("dialog", { name: /Filter holdings by scope/i })
-      .getByRole("button", { name: new RegExp(INVESTMENT_ACCOUNT_NAME) })
+      .getByRole("option", { name: new RegExp(INVESTMENT_ACCOUNT_NAME) })
       .click();
 
     await expect(

@@ -2,7 +2,7 @@
 
 import type { Account, Decimal, HoldingValuation } from "@privance/core";
 import { useState } from "react";
-import { Button, CloseButton } from "@/components";
+import { Button, CloseButton, ConfirmDeleteButton } from "@/components";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { CASH_TYPE_LABEL, SUBKIND_TYPE_LABEL } from "@/features/accounts";
 import { formatAccountBalanceWhole } from "@/features/accounts/balance";
@@ -50,7 +50,6 @@ export function AccountDetailSheet({
   onEdit,
   onDelete,
 }: AccountDetailSheetProps) {
-  const [deleteArmed, setDeleteArmed] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const isInvestment = account.payload.kind === "investment";
@@ -69,11 +68,6 @@ export function AccountDetailSheet({
     : accountGainCents.toFloat() / accountCostBasis.toFloat();
 
   async function handleDelete() {
-    if (!deleteArmed) {
-      setDeleteArmed(true);
-      setTimeout(() => setDeleteArmed(false), 3500);
-      return;
-    }
     setDeleting(true);
     try {
       await onDelete(account);
@@ -197,14 +191,11 @@ export function AccountDetailSheet({
           <Button variant="secondary" onClick={() => onEdit(account)} className="flex-1">
             Edit account
           </Button>
-          <Button
-            variant={deleteArmed ? "danger" : "dangerOutline"}
-            onClick={() => void handleDelete()}
-            disabled={deleting}
+          <ConfirmDeleteButton
+            onConfirm={() => void handleDelete()}
+            pending={deleting}
             className="flex-1"
-          >
-            {deleteArmed ? "Tap again to delete" : "Delete"}
-          </Button>
+          />
         </div>
       </SheetContent>
     </Sheet>

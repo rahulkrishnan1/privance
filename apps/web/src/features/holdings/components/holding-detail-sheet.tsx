@@ -2,7 +2,7 @@
 
 import { Decimal } from "@privance/core";
 import { useState } from "react";
-import { Button, CloseButton } from "@/components";
+import { Button, CloseButton, ConfirmDeleteButton } from "@/components";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { formatCurrency } from "@/lib/format";
 import { computeEffectivePrice, computeMarketValue, parseCostBasisCents } from "../_helpers";
@@ -55,7 +55,6 @@ export function HoldingDetailSheet({
   onEdit,
   onDelete,
 }: HoldingDetailSheetProps) {
-  const [deleteArmed, setDeleteArmed] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const priceTicker = holding.proxyTicker ?? holding.ticker;
@@ -127,11 +126,6 @@ export function HoldingDetailSheet({
       : null;
 
   async function handleDelete() {
-    if (!deleteArmed) {
-      setDeleteArmed(true);
-      setTimeout(() => setDeleteArmed(false), 3500);
-      return;
-    }
     setDeleting(true);
     try {
       await onDelete(holding);
@@ -259,14 +253,11 @@ export function HoldingDetailSheet({
           <Button variant="secondary" onClick={() => onEdit(holding)} className="flex-1">
             Edit holding
           </Button>
-          <Button
-            variant={deleteArmed ? "danger" : "dangerOutline"}
-            onClick={() => void handleDelete()}
-            disabled={deleting}
+          <ConfirmDeleteButton
+            onConfirm={() => void handleDelete()}
+            pending={deleting}
             className="flex-1"
-          >
-            {deleteArmed ? "Tap again to delete" : "Delete"}
-          </Button>
+          />
         </div>
       </SheetContent>
     </Sheet>

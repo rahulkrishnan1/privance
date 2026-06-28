@@ -6,7 +6,7 @@ import { useMediaQuery } from "@/lib/use-media-query";
 import type { FilterState, LocalGroup } from "../types";
 import { ScopeMenu } from "./scope-menu";
 
-// Mock the media query so each test picks the popover (false) or sheet (true)
+// Mock the media query so each test picks the popover (false) or drawer (true)
 // branch deterministically, independent of the browser-mode viewport.
 vi.mock("@/lib/use-media-query", () => ({ useMediaQuery: vi.fn(() => false) }));
 
@@ -74,12 +74,12 @@ test("opens on the heading trigger, lists every scope, and shows per-scope count
 
   await screen.getByRole("button", { name: /All holdings/ }).click();
 
-  const fidelity = screen.getByRole("button", { name: /Fidelity Brokerage/ });
-  const core = screen.getByRole("button", { name: /Core/ });
+  const fidelity = screen.getByRole("option", { name: /Fidelity Brokerage/ });
+  const core = screen.getByRole("option", { name: /Core/ });
   await expect.element(fidelity).toBeVisible();
-  await expect.element(screen.getByRole("button", { name: /Roth IRA/ })).toBeVisible();
+  await expect.element(screen.getByRole("option", { name: /Roth IRA/ })).toBeVisible();
   await expect.element(core).toBeVisible();
-  // counts come from accountCounts/groupCounts, rendered as a badge in each row
+  // counts come from accountCounts/groupCounts, rendered beside each option
   expect(fidelity.element().textContent).toContain("5");
   expect(core.element().textContent).toContain("3");
 });
@@ -88,37 +88,49 @@ test("search filters to matching accounts and groups", async () => {
   const { screen } = await renderMenu();
   await screen.getByRole("button", { name: /All holdings/ }).click();
 
-  await screen.getByRole("searchbox", SEARCH).fill("roth");
+  await screen.getByRole("combobox", SEARCH).fill("roth");
 
-  await expect.element(screen.getByRole("button", { name: /Roth IRA/ })).toBeVisible();
-  expect(screen.getByRole("button", { name: /Fidelity Brokerage/ }).elements()).toHaveLength(0);
-  expect(screen.getByRole("button", { name: /Core/ }).elements()).toHaveLength(0);
+  await expect.element(screen.getByRole("option", { name: /Roth IRA/ })).toBeVisible();
+  expect(screen.getByRole("option", { name: /Fidelity Brokerage/ }).elements()).toHaveLength(0);
+  expect(screen.getByRole("option", { name: /Core/ }).elements()).toHaveLength(0);
 });
 
 test("a query matching nothing shows the empty-state message and no scope options", async () => {
   const { screen } = await renderMenu();
   await screen.getByRole("button", { name: /All holdings/ }).click();
 
-  await screen.getByRole("searchbox", SEARCH).fill("zzz");
+  await screen.getByRole("combobox", SEARCH).fill("zzz");
 
   await expect.element(screen.getByText(/No matching accounts or groups/)).toBeVisible();
-  expect(screen.getByRole("button", { name: /Fidelity Brokerage/ }).elements()).toHaveLength(0);
+  expect(screen.getByRole("option", { name: /Fidelity Brokerage/ }).elements()).toHaveLength(0);
 });
 
 test("selecting an account fires onSelect with that account scope", async () => {
   const { screen, onSelect } = await renderMenu();
   await screen.getByRole("button", { name: /All holdings/ }).click();
 
-  await screen.getByRole("button", { name: /Roth IRA/ }).click();
+  await screen.getByRole("option", { name: /Roth IRA/ }).click();
 
   expect(onSelect).toHaveBeenCalledWith({ kind: "account", accountId: "a2" });
+});
+
+test("typing then pressing Enter selects the matched scope", async () => {
+  const { screen, onSelect } = await renderMenu();
+  await screen.getByRole("button", { name: /All holdings/ }).click();
+
+  await screen.getByRole("combobox", SEARCH).fill("roth");
+  pressActive("Enter");
+
+  await vi.waitFor(() =>
+    expect(onSelect).toHaveBeenCalledWith({ kind: "account", accountId: "a2" }),
+  );
 });
 
 test("the active scope is marked with aria-current", async () => {
   const { screen } = await renderMenu({ filter: { kind: "group", groupId: "g1" } });
   await screen.getByRole("button", { name: /All holdings/ }).click();
 
-  const core = screen.getByRole("button", { name: /Core/ }).element();
+  const core = screen.getByRole("option", { name: /Core/ }).element();
   expect(core.getAttribute("aria-current")).toBe("true");
 });
 
@@ -127,29 +139,15 @@ test("Escape closes the desktop popover and returns focus to the trigger", async
   const trigger = screen.getByRole("button", { name: /All holdings/ }).element();
 
   await screen.getByRole("button", { name: /All holdings/ }).click();
-  // search auto-focuses on open
+  // the combobox auto-focuses on open (desktop popover)
   await expect
     .poll(() => document.activeElement?.getAttribute("aria-label"))
     .toBe("Search accounts and groups");
 
   pressActive("Escape");
 
-  await expect.poll(() => screen.getByRole("dialog").elements().length).toBe(0);
+  await expect.poll(() => screen.getByRole("combobox", SEARCH).elements().length).toBe(0);
   await expect.poll(() => document.activeElement === trigger).toBe(true);
-});
-
-test("ArrowDown roves focus from the search field into the scope options", async () => {
-  const { screen } = await renderMenu();
-  await screen.getByRole("button", { name: /All holdings/ }).click();
-  await expect
-    .poll(() => document.activeElement?.getAttribute("aria-label"))
-    .toBe("Search accounts and groups");
-
-  pressActive("ArrowDown");
-  await expect.poll(() => document.activeElement?.textContent).toContain("All holdings");
-
-  pressActive("ArrowDown");
-  await expect.poll(() => document.activeElement?.textContent).toContain("Fidelity Brokerage");
 });
 
 test("Edit groups fires onEditGroups and closes", async () => {
@@ -161,19 +159,19 @@ test("Edit groups fires onEditGroups and closes", async () => {
   expect(onEditGroups).toHaveBeenCalledTimes(1);
 });
 
-test("mobile renders the sheet; selecting fires onSelect and returns focus to the trigger", async () => {
+test("mobile renders a drawer that does not auto-focus search (no keyboard on open)", async () => {
   vi.mocked(useMediaQuery).mockReturnValue(true);
   const { screen, onSelect } = await renderMenu();
-  const trigger = screen.getByRole("button", { name: /All holdings/ }).element();
 
+  const trigger = screen.getByRole("button", { name: /All holdings/ }).element();
   await screen.getByRole("button", { name: /All holdings/ }).click();
   await expect.element(screen.getByRole("dialog")).toBeVisible();
 
-  await screen
-    .getByRole("dialog")
-    .getByRole("button", { name: /Roth IRA/ })
-    .click();
+  // Opening the drawer must not focus the search field (that would raise the
+  // mobile keyboard before the user asks for it).
+  expect(document.activeElement?.getAttribute("aria-label")).not.toBe("Search accounts and groups");
 
+  await screen.getByRole("option", { name: /Roth IRA/ }).click();
   expect(onSelect).toHaveBeenCalledWith({ kind: "account", accountId: "a2" });
   await expect.poll(() => screen.getByRole("dialog").elements().length).toBe(0);
   await expect.poll(() => document.activeElement === trigger).toBe(true);
