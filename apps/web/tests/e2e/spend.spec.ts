@@ -100,8 +100,8 @@ test.describe("spend -- happy path", () => {
     await expect(dialog.getByRole("heading", { name: "Edit Prime" })).toBeVisible({
       timeout: 5_000,
     });
-    await dialog.getByRole("button", { name: "Remove" }).click();
-    let armed = dialog.getByRole("button", { name: "Tap again to remove this recurring expense" });
+    await dialog.getByRole("button", { name: "Delete" }).click();
+    let armed = dialog.getByRole("button", { name: "Tap again to delete" });
     await expect(armed).toBeVisible({ timeout: 3_000 });
     await armed.click();
     await expect(page.getByRole("button", { name: /Prime/ })).not.toBeVisible({ timeout: 10_000 });
@@ -112,8 +112,8 @@ test.describe("spend -- happy path", () => {
     await expect(dialog.getByRole("heading", { name: "Edit Rent" })).toBeVisible({
       timeout: 5_000,
     });
-    await dialog.getByRole("button", { name: "Remove" }).click();
-    armed = dialog.getByRole("button", { name: "Tap again to remove this recurring expense" });
+    await dialog.getByRole("button", { name: "Delete" }).click();
+    armed = dialog.getByRole("button", { name: "Tap again to delete" });
     await expect(armed).toBeVisible({ timeout: 3_000 });
     await armed.click();
     await expect(page.getByRole("heading", { name: /Nothing recurring/ })).toBeVisible({

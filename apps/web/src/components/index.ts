@@ -1,6 +1,7 @@
 export { CadenceSuffix } from "./CadenceSuffix";
 export { Card } from "./Card";
 export { CloseButton } from "./CloseButton";
+export { ConfirmDeleteButton } from "./ConfirmDeleteButton";
 export { ErrorBoundary } from "./ErrorBoundary";
 export { Input } from "./Input";
 export { Logo } from "./Logo";

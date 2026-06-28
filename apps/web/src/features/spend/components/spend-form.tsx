@@ -8,10 +8,10 @@ import {
   type SpendCategory,
   type SpendGroup,
 } from "@privance/core";
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import { Controller, type Resolver, useForm } from "react-hook-form";
 import { DateField } from "@/components/DateField";
-import { Button, CloseButton, Input, Select } from "@/components/index";
+import { Button, CloseButton, ConfirmDeleteButton, Input, Select } from "@/components/index";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -63,9 +63,6 @@ export function SpendForm({
   const isEdit = item !== undefined;
   const formId = "spend-form";
 
-  const [removeArmed, setRemoveArmed] = useState(false);
-  const disarmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const {
     control,
     handleSubmit,
@@ -94,26 +91,8 @@ export function SpendForm({
             }
           : EMPTY_FORM,
       );
-      setRemoveArmed(false);
     }
-    return () => {
-      if (disarmTimer.current !== null) clearTimeout(disarmTimer.current);
-    };
   }, [open, item, reset]);
-
-  function handleRemoveClick() {
-    if (!isEdit || onDelete === undefined) return;
-    if (removeArmed) {
-      if (disarmTimer.current !== null) clearTimeout(disarmTimer.current);
-      setRemoveArmed(false);
-      void onDelete();
-      return;
-    }
-    setRemoveArmed(true);
-    disarmTimer.current = setTimeout(() => {
-      setRemoveArmed(false);
-    }, 3500);
-  }
 
   const onSubmit = handleSubmit(async (values: SpendFormValues) => {
     await onSave(values);
@@ -367,19 +346,11 @@ export function SpendForm({
           </div>
 
           {isEdit && onDelete !== undefined && (
-            <Button
-              type="button"
-              variant={removeArmed ? "danger" : "dangerOutline"}
-              onClick={handleRemoveClick}
-              disabled={deleting}
+            <ConfirmDeleteButton
+              onConfirm={() => void onDelete()}
+              pending={deleting}
               className="w-full mt-3.5"
-            >
-              {removeArmed
-                ? "Tap again to remove this recurring expense"
-                : deleting
-                  ? "Removing..."
-                  : "Remove"}
-            </Button>
+            />
           )}
         </form>
       </DialogContent>
