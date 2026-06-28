@@ -294,6 +294,31 @@ test("weekly item renders the rounded monthly equivalent ($43.33)", async () => 
   await expect.element(screen.getByRole("button", { name: /Locker/ })).toHaveTextContent("$10/wk");
 });
 
+test("cadence units render with a tight slash; the summary cards spell out the period", async () => {
+  mockQueryReturn([
+    makeTestItem({
+      id: "1",
+      name: "Rent",
+      amountCents: "150000",
+      category: "housing",
+      group: "essentials",
+      intervalUnit: "month",
+    }),
+  ]);
+  const screen = await render(<SpendScreen />);
+  const text = (screen.container.textContent ?? "").replace(/\s+/g, " ");
+  // Hero + Essentials card spell out the period, slash tight against the figure.
+  expect(text).toContain("$1,500/month");
+  // Annual restatement (card sub-line + subtitle) and the per-day card spell out too.
+  expect(text).toContain("$18,000/year");
+  expect(text).toContain("/day");
+  expect(text).toContain("/week");
+  // The compact item row keeps the abbreviation, same tight slash.
+  await expect.element(screen.getByRole("button", { name: /Rent/ })).toHaveTextContent("$1,500/mo");
+  // Guards the spacing: no figure may render the spaced "$1,500 / mo" form.
+  expect(text).not.toMatch(/ \/ /);
+});
+
 test("sub-line shows 'due' for essentials and 'renews' for subscriptions with the next bill date", async () => {
   // Far-future anchors stay put (no roll-forward), so the rendered date is stable.
   // A non-current year is shown in full.

@@ -73,7 +73,7 @@ test.describe("accounts", () => {
 
     await dialog.getByLabel("Name").fill(`Cash-${RUN}`);
     // Kind defaults to investment; select Cash first so the "Current balance" field appears.
-    await dialog.getByRole("button", { name: "Cash" }).click();
+    await dialog.getByRole("radio", { name: "Cash" }).click();
     await dialog.getByLabel("Account type").selectOption("checking");
     await dialog.getByLabel("Current balance").fill("1234.56");
     await dialog.getByRole("button", { name: "Add account" }).click();
@@ -94,8 +94,8 @@ test.describe("accounts", () => {
     await expect(dialog).toBeVisible();
 
     await dialog.getByLabel("Name").fill(`Brokerage-${RUN}`);
-    // Select investment kind (aria-pressed segmented button)
-    await dialog.getByRole("button", { name: "Investment" }).click();
+    // Select investment kind (Radix radio segmented control)
+    await dialog.getByRole("radio", { name: "Investment" }).click();
     await dialog.getByLabel("Account type").selectOption("brokerage");
     // Investment accounts show "Cash balance (optional)"
     await dialog.getByLabel("Cash balance (optional)").fill("5000.00");
@@ -123,7 +123,7 @@ test.describe("accounts", () => {
         .click();
       const d = page.getByRole("dialog", { name: /Add account/i });
       await d.getByLabel("Name").fill(existingName);
-      await d.getByRole("button", { name: "Cash" }).click();
+      await d.getByRole("radio", { name: "Cash" }).click();
       await d.getByLabel("Account type").selectOption("checking");
       await d.getByLabel("Current balance").fill("100.00");
       await d.getByRole("button", { name: "Add account" }).click();
@@ -194,7 +194,7 @@ test.describe("accounts", () => {
 
     const name = `Credit-${RUN}`;
     await dialog.getByLabel("Name").fill(name);
-    await dialog.getByRole("button", { name: "Liability" }).click();
+    await dialog.getByRole("radio", { name: "Liability" }).click();
     // A negative stored balance is a credit balance (e.g. a card overpayment).
     // Liability balance label is "Amount owed"
     await dialog.getByLabel("Amount owed").fill("-5.00");
@@ -220,7 +220,7 @@ test.describe("accounts", () => {
     await expect(d).toBeVisible();
     await d.getByLabel("Name").fill(deleteName);
     // Kind defaults to investment; select Cash so Current balance field appears.
-    await d.getByRole("button", { name: "Cash" }).click();
+    await d.getByRole("radio", { name: "Cash" }).click();
     await d.getByLabel("Account type").selectOption("checking");
     await d.getByLabel("Current balance").fill("0.00");
     await d.getByRole("button", { name: "Add account" }).click();

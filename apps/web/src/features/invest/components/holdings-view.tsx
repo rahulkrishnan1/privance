@@ -327,7 +327,7 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
         </div>
       )}
 
-      <div className="bg-panel border border-line rounded-[10px] p-6">
+      <div className="glass rounded-[10px] p-6">
         <div className="flex justify-between items-baseline mb-4 gap-2.5 max-[560px]:flex-col max-[560px]:items-start max-[560px]:gap-1.5">
           <div>
             {investmentAccounts.length > 0 ? (
@@ -350,11 +350,13 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
             )}
             {gain !== null && !gain.gainCents.isZero() && (
               <p
-                className={`vfig font-mono text-xs mt-[5px] ${!gain.gainCents.isNegative() ? "text-up" : "text-down"}`}
+                className={`font-mono text-xs mt-[5px] ${!gain.gainCents.isNegative() ? "text-up" : "text-down"}`}
               >
-                {!gain.gainCents.isNegative() ? "+" : ""}
-                {formatCurrencyWhole(gain.gainCents)} unrealized &middot;{" "}
-                {formatPercent(gain.gainPct, { signed: true })} on cost
+                <span className="vfig">
+                  {!gain.gainCents.isNegative() ? "+" : ""}
+                  {formatCurrencyWhole(gain.gainCents)}
+                </span>{" "}
+                unrealized &middot; {formatPercent(gain.gainPct, { signed: true })} on cost
               </p>
             )}
           </div>

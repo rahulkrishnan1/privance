@@ -126,7 +126,9 @@ export function HoldingRow({
   };
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: <tr> must stay for table layout; role=button adds AT announcement for the interactive row
     <tr
+      role="button"
       className="hover:bg-white/[0.015] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
       onClick={handleClick}
       onKeyDown={onRowKeyDown}
@@ -204,7 +206,7 @@ export function HoldingRow({
           <span className="text-faint">—</span>
         ) : (
           <span className="h-wt inline-flex items-center gap-[10px] justify-end">
-            <span className="wt-bar w-[74px] h-1 rounded-[2px] bg-[rgba(235,235,230,0.08)] overflow-hidden">
+            <span className="wt-bar w-[74px] h-1 rounded-[2px] bg-cream/8 overflow-hidden">
               <span
                 className="block h-full bg-accent rounded-[2px]"
                 style={{ width: `${Math.min(100, weightPct).toFixed(1)}%` }}

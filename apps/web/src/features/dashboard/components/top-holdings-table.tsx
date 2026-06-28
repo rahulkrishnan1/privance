@@ -121,7 +121,7 @@ export function TopHoldingsTable({
 
   if (aggregated.length === 0) {
     return (
-      <div className="bg-panel border border-line rounded-[10px] p-6 h-full">
+      <div className="glass rounded-[10px] p-6 h-full">
         <h3 className="font-serif text-2xl font-normal tracking-[-0.005em] mb-4">Top holdings</h3>
         <p className="text-sm text-dim">No holdings yet.</p>
       </div>
@@ -131,7 +131,7 @@ export function TopHoldingsTable({
   const totalFloat = totalInvestments.toFloat();
 
   return (
-    <div className="bg-panel border border-line rounded-[10px] p-6 h-full flex flex-col">
+    <div className="glass rounded-[10px] p-6 h-full flex flex-col">
       <div className="flex items-baseline justify-between mb-4 gap-2.5">
         <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">Top holdings</h3>
         <Link
@@ -230,11 +230,12 @@ export function TopHoldingsTable({
                         }
                       : undefined
                   }
+                  role={handleClick ? "button" : undefined}
                   tabIndex={handleClick ? 0 : undefined}
                   aria-label={handleClick ? `${h.ticker}, open holding details` : undefined}
                   className={
                     handleClick
-                      ? "cursor-pointer hover:bg-[rgba(235,235,230,0.015)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
+                      ? "cursor-pointer hover:bg-cream/2 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
                       : undefined
                   }
                 >
@@ -255,10 +256,11 @@ export function TopHoldingsTable({
                   <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
                     <span className="inline-flex items-center gap-2.5 justify-end">
                       <span
-                        className="w-[74px] h-1 rounded-[2px] bg-[rgba(235,235,230,0.08)] overflow-hidden"
+                        className="w-[74px] h-1 rounded-[2px] bg-cream/8 overflow-hidden"
                         aria-hidden="true"
                       >
-                        <i
+                        <span
+                          aria-hidden="true"
                           className="block h-full bg-accent rounded-[2px]"
                           style={{ width: `${Math.min(100, weightPct).toFixed(1)}%` }}
                         />

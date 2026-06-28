@@ -4,9 +4,13 @@ import { countRecognizedWords, validatePhrase } from "@privance/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Button } from "@/components";
 import { AuthErrorBar } from "@/components/auth/AuthErrorBar";
 import { PasswordStrength } from "@/components/auth/PasswordStrength";
 import { useErrorShake } from "@/components/auth/use-error-shake";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import * as authApi from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -179,7 +183,7 @@ export default function RecoveryPage() {
     return (
       <div className="flex flex-col">
         <div className="w-[74px] h-[74px] rounded-full border border-accent-dim mx-auto mb-[30px] flex items-center justify-center text-accent relative">
-          <span className="absolute inset-[6px] border border-dashed border-[rgba(127,196,198,.3)] rounded-full" />
+          <span className="absolute inset-[6px] border border-dashed border-accent/30 rounded-full" />
           <svg
             viewBox="0 0 24 24"
             width="26"
@@ -236,14 +240,15 @@ export default function RecoveryPage() {
           <span>I replaced the paper. The old phrase is in the shredder.</span>
         </label>
 
-        <button
+        <Button
           type="button"
+          variant="primary"
           onClick={() => void onContinue()}
           disabled={!newPhraseAcknowledged}
-          className="w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full mt-[26px]"
         >
           Enter the vault
-        </button>
+        </Button>
       </div>
     );
   }
@@ -251,7 +256,7 @@ export default function RecoveryPage() {
   return (
     <div className={`flex flex-col${shaking ? " auth-shake" : ""}`}>
       <div className="w-[74px] h-[74px] rounded-full border border-accent-dim mx-auto mb-[30px] flex items-center justify-center text-accent relative">
-        <span className="absolute inset-[6px] border border-dashed border-[rgba(127,196,198,.3)] rounded-full" />
+        <span className="absolute inset-[6px] border border-dashed border-accent/30 rounded-full" />
         <svg
           viewBox="0 0 24 24"
           width="26"
@@ -273,7 +278,7 @@ export default function RecoveryPage() {
       </p>
 
       {phraseError && (
-        <AuthErrorBar lead="Those words don&rsquo;t derive the key.">
+        <AuthErrorBar id="recovery-phrase-error" lead="Those words don&rsquo;t derive the key.">
           Check the order and spelling of all 12. The phrase is unforgiving on purpose.
         </AuthErrorBar>
       )}
@@ -291,13 +296,8 @@ export default function RecoveryPage() {
 
       <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col mt-[26px]" noValidate>
         <div className="flex flex-col gap-[9px]">
-          <label
-            htmlFor="recovery-username"
-            className="font-mono text-xs tracking-label uppercase text-faint"
-          >
-            Username
-          </label>
-          <input
+          <Label htmlFor="recovery-username">Username</Label>
+          <Input
             id="recovery-username"
             type="text"
             value={username}
@@ -309,18 +309,12 @@ export default function RecoveryPage() {
             maxLength={USERNAME_MAX}
             aria-invalid={usernameError !== undefined}
             aria-describedby={usernameError !== undefined ? "recovery-username-error" : undefined}
-            className={[
-              "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
-              usernameError
-                ? "border-[rgba(208,133,98,.55)]"
-                : "border-line focus:border-accent-dim",
-            ].join(" ")}
           />
           {usernameError && (
             <p
               id="recovery-username-error"
               role="alert"
-              className="font-mono text-xs text-down tracking-[0.04em]"
+              className="font-mono text-xs text-signal tracking-[0.04em]"
             >
               {usernameError}
             </p>
@@ -328,13 +322,8 @@ export default function RecoveryPage() {
         </div>
 
         <div className="flex flex-col gap-[9px] mt-[26px]">
-          <label
-            htmlFor="recovery-phrase"
-            className="font-mono text-xs tracking-label uppercase text-faint"
-          >
-            Recovery phrase (12 words)
-          </label>
-          <textarea
+          <Label htmlFor="recovery-phrase">Recovery phrase (12 words)</Label>
+          <Textarea
             id="recovery-phrase"
             value={phrase}
             onChange={(e) => setPhrase(e.target.value)}
@@ -345,14 +334,10 @@ export default function RecoveryPage() {
             maxLength={200}
             placeholder="word word word ..."
             aria-invalid={phraseError}
-            className={[
-              "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.04em] placeholder:text-faint placeholder:tracking-[0.02em] resize-y min-h-[84px] leading-[1.7]",
-              phraseError
-                ? "border-[rgba(208,133,98,.55)]"
-                : phrase.length > 0 && phraseValid
-                  ? "border-accent-dim"
-                  : "border-line focus:border-accent-dim",
-            ].join(" ")}
+            aria-describedby={phraseError ? "recovery-phrase-error" : undefined}
+            className={`min-h-[84px] resize-y leading-[1.7] tracking-[0.04em] ${
+              !phraseError && phrase.length > 0 && phraseValid ? "border-accent-dim" : ""
+            }`}
           />
           {phrase.trim().length > 0 && (
             <p
@@ -367,13 +352,8 @@ export default function RecoveryPage() {
         </div>
 
         <div className="flex flex-col gap-[9px] mt-[26px]">
-          <label
-            htmlFor="recovery-newpassword"
-            className="font-mono text-xs tracking-label uppercase text-faint"
-          >
-            New master password
-          </label>
-          <input
+          <Label htmlFor="recovery-newpassword">New master password</Label>
+          <Input
             id="recovery-newpassword"
             type="password"
             value={newPassword}
@@ -383,19 +363,13 @@ export default function RecoveryPage() {
             placeholder="a fresh one, not the forgotten one"
             aria-invalid={passwordError !== undefined}
             aria-describedby={passwordError !== undefined ? "recovery-password-error" : undefined}
-            className={[
-              "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
-              passwordError
-                ? "border-[rgba(208,133,98,.55)]"
-                : "border-line focus:border-accent-dim",
-            ].join(" ")}
           />
           <PasswordStrength password={newPassword} />
           {passwordError && (
             <p
               id="recovery-password-error"
               role="alert"
-              className="font-mono text-xs text-down tracking-[0.04em]"
+              className="font-mono text-xs text-signal tracking-[0.04em]"
             >
               {passwordError}
             </p>
@@ -403,31 +377,26 @@ export default function RecoveryPage() {
         </div>
 
         <div className="flex flex-col gap-[9px] mt-[26px]">
-          <label
-            htmlFor="recovery-confirmpassword"
-            className="font-mono text-xs tracking-label uppercase text-faint"
-          >
-            Confirm new master password
-          </label>
-          <input
+          <Label htmlFor="recovery-confirmpassword">Confirm new master password</Label>
+          <Input
             id="recovery-confirmpassword"
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             autoComplete="new-password"
             maxLength={PASSWORD_MAX}
-            className="w-full bg-panel border border-line focus:border-accent-dim rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em]"
           />
         </div>
 
-        <button
+        <Button
           type="submit"
+          variant="primary"
           disabled={!hydrated || pending}
-          aria-busy={pending}
-          className="w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-50 disabled:cursor-not-allowed"
+          loading={pending}
+          className="w-full mt-[26px]"
         >
           {pending ? "Recovering account…" : "Derive new keys & continue"}
-        </button>
+        </Button>
       </form>
 
       <p className="text-center font-mono text-xs tracking-[0.04em] text-faint mt-[26px]">

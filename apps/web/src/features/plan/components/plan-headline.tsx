@@ -2,6 +2,7 @@
 
 import { Decimal } from "@privance/core";
 import { DATASET_START_YEAR } from "@privance/core/projection";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { formatCurrencyWhole } from "@/lib/format";
 
 export type SimMethod = "mc" | "hist";
@@ -47,7 +48,7 @@ function Progress({ potCents, fireNumber }: { potCents: Decimal; fireNumber: Dec
           </span>
         </span>
       </div>
-      <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-[rgba(235,235,230,0.08)]">
+      <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-cream/8">
         <div
           className="h-full rounded-full bg-gradient-to-r from-accent-dim to-accent"
           style={{ width: `${pct}%` }}
@@ -72,37 +73,23 @@ function Confidence({
   const pct = Math.round(value * 100);
   return (
     <div className="mt-6 flex flex-wrap items-center gap-3.5">
-      {/* biome-ignore lint/a11y/useSemanticElements: a labelled toggle-button
-          group is the correct ARIA pattern here; <fieldset> would impose its own
-          box model on this inline segmented control. */}
-      <div
-        className="flex gap-0.5 rounded-lg border border-line bg-panel p-[3px]"
-        role="group"
+      <ToggleGroup
+        type="single"
+        value={method}
+        onValueChange={(nv) => nv && onMethodChange(nv as SimMethod)}
         aria-label="Projection method"
+        className="rounded-lg border border-line bg-panel p-[3px] gap-0.5"
       >
-        {(
-          [
-            ["mc", "Monte Carlo"],
-            ["hist", "Historical replay"],
-          ] as const
-        ).map(([m, label]) => (
-          <button
-            key={m}
-            type="button"
-            aria-pressed={method === m}
-            onClick={() => onMethodChange(m)}
-            className={[
-              "rounded-md px-3.5 py-[7px] font-mono text-xs uppercase tracking-button transition-colors cursor-pointer",
-              method === m ? "bg-panel-2 text-cream" : "text-faint hover:text-cream",
-            ].join(" ")}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      <div className="h-1.5 min-w-[160px] max-w-[240px] flex-1 overflow-hidden rounded-full bg-[rgba(235,235,230,0.08)]">
+        <ToggleGroupItem value="mc" size="sm">
+          Monte Carlo
+        </ToggleGroupItem>
+        <ToggleGroupItem value="hist" size="sm">
+          Historical replay
+        </ToggleGroupItem>
+      </ToggleGroup>
+      <div className="h-1.5 min-w-[160px] max-w-[240px] flex-1 overflow-hidden rounded-full bg-cream/8">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-accent-dim to-accent transition-[width] duration-[400ms] ease-out"
+          className="h-full rounded-full bg-gradient-to-r from-accent-dim to-accent transition-[width] duration-[400ms] ease-out motion-reduce:transition-none"
           style={{ width: `${pct}%` }}
         />
       </div>

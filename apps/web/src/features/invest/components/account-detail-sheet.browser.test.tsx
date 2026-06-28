@@ -75,7 +75,7 @@ test("renders account type tag, name, and value for an investment account", asyn
 
   await expect.element(screen.getByText(/401\(K\)\s*·\s*PRE-TAX/)).toBeVisible();
   await expect.element(screen.getByText("Fidelity 401(k)")).toBeVisible();
-  const valueEl = screen.container.querySelector('[data-testid="account-detail-value"]');
+  const valueEl = document.querySelector('[data-testid="account-detail-value"]');
   expect(valueEl).not.toBeNull();
   expect(valueEl?.textContent).toContain("5,000");
 });
@@ -100,7 +100,7 @@ test("renders the cash sub-type as the blue type tag", async () => {
 
 test("shows a positive unrealized gain with the dollar amount and percent", async () => {
   const account = makeInvestAccount();
-  const screen = await render(
+  await render(
     <AccountDetailSheet
       account={account}
       totalValue={dec(1_200_000n)}
@@ -115,7 +115,7 @@ test("shows a positive unrealized gain with the dollar amount and percent", asyn
     />,
   );
 
-  const gain = [...screen.container.querySelectorAll("p")].find((p) =>
+  const gain = [...document.querySelectorAll("p")].find((p) =>
     p.textContent?.includes("unrealized"),
   );
   expect(gain).toBeDefined();
@@ -126,7 +126,7 @@ test("shows a positive unrealized gain with the dollar amount and percent", asyn
 
 test("shows a negative unrealized loss with a minus sign and negative percent", async () => {
   const account = makeInvestAccount();
-  const screen = await render(
+  await render(
     <AccountDetailSheet
       account={account}
       totalValue={dec(850_000n)}
@@ -138,7 +138,7 @@ test("shows a negative unrealized loss with a minus sign and negative percent", 
     />,
   );
 
-  const loss = [...screen.container.querySelectorAll("p")].find((p) =>
+  const loss = [...document.querySelectorAll("p")].find((p) =>
     p.textContent?.includes("unrealized"),
   );
   expect(loss).toBeDefined();

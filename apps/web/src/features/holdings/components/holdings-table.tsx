@@ -40,8 +40,11 @@ function SortableHeader({ column, label, sort, onPress, align = "left" }: Sortab
     <button
       type="button"
       onClick={() => onPress(column)}
-      aria-label={`Sort by ${label}`}
-      aria-pressed={active}
+      aria-label={
+        active
+          ? `Sort by ${label}, currently ${sort.direction === "asc" ? "ascending" : "descending"}`
+          : `Sort by ${label}`
+      }
       className={[
         "flex items-center gap-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent focus-visible:rounded-[inherit] rounded cursor-pointer w-full min-h-[44px] md:min-h-0",
         isRight ? "justify-end" : "justify-start",
@@ -62,6 +65,11 @@ function SortableHeader({ column, label, sort, onPress, align = "left" }: Sortab
       ) : null}
     </button>
   );
+}
+
+function ariaSort(column: SortColumn, sort: SortState): "ascending" | "descending" | "none" {
+  if (sort.column !== column) return "none";
+  return sort.direction === "asc" ? "ascending" : "descending";
 }
 
 export function HoldingsTable({
@@ -96,10 +104,14 @@ export function HoldingsTable({
       <table aria-label="Holdings" className="w-full">
         <thead>
           <tr>
-            <th scope="col" className="w-full text-left pb-3">
+            <th scope="col" className="w-full text-left pb-3" aria-sort={ariaSort("ticker", sort)}>
               <SortableHeader column="ticker" label="Holding" sort={sort} onPress={onSortChange} />
             </th>
-            <th scope="col" className="hidden md:table-cell text-right pb-3 pl-8 whitespace-nowrap">
+            <th
+              scope="col"
+              className="hidden md:table-cell text-right pb-3 pl-8 whitespace-nowrap"
+              aria-sort={ariaSort("currentPrice", sort)}
+            >
               <SortableHeader
                 column="currentPrice"
                 label="Price"
@@ -108,7 +120,11 @@ export function HoldingsTable({
                 align="right"
               />
             </th>
-            <th scope="col" className="hidden md:table-cell text-right pb-3 pl-8 whitespace-nowrap">
+            <th
+              scope="col"
+              className="hidden md:table-cell text-right pb-3 pl-8 whitespace-nowrap"
+              aria-sort={ariaSort("dayPct", sort)}
+            >
               <SortableHeader
                 column="dayPct"
                 label="Day"
@@ -117,7 +133,11 @@ export function HoldingsTable({
                 align="right"
               />
             </th>
-            <th scope="col" className="text-right pb-3 pl-8 whitespace-nowrap">
+            <th
+              scope="col"
+              className="text-right pb-3 pl-8 whitespace-nowrap"
+              aria-sort={ariaSort("gainDollar", sort)}
+            >
               <SortableHeader
                 column="gainDollar"
                 label="G/L"
@@ -126,7 +146,11 @@ export function HoldingsTable({
                 align="right"
               />
             </th>
-            <th scope="col" className="hidden md:table-cell text-right pb-3 pl-8 whitespace-nowrap">
+            <th
+              scope="col"
+              className="hidden md:table-cell text-right pb-3 pl-8 whitespace-nowrap"
+              aria-sort={ariaSort("weight", sort)}
+            >
               <SortableHeader
                 column="weight"
                 label="Weight"
@@ -135,7 +159,11 @@ export function HoldingsTable({
                 align="right"
               />
             </th>
-            <th scope="col" className="text-right pb-3 pl-8 whitespace-nowrap">
+            <th
+              scope="col"
+              className="text-right pb-3 pl-8 whitespace-nowrap"
+              aria-sort={ariaSort("marketValue", sort)}
+            >
               <SortableHeader
                 column="marketValue"
                 label="Value"

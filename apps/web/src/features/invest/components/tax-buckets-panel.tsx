@@ -23,7 +23,7 @@ export function TaxBucketsPanel({
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   return (
-    <div className="bg-panel border border-line rounded-[10px] p-6 h-full">
+    <div className="glass rounded-[10px] p-6 h-full">
       <div className="flex justify-between items-baseline mb-4 gap-2.5 flex-wrap">
         <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">Where it lives</h3>
         <span className="font-mono text-xs tracking-label uppercase text-faint">
@@ -71,7 +71,7 @@ export function TaxBucketsPanel({
               onMouseEnter={() => setHoveredIndex(i)}
               onMouseLeave={() => setHoveredIndex(null)}
               className={[
-                "col-span-2 md:col-span-3 grid grid-cols-subgrid items-center text-sm py-[11px] px-1 rounded-[5px] border-b border-line-soft last:border-b-0 transition-[background-color,opacity] duration-100",
+                "col-span-2 md:col-span-3 grid grid-cols-subgrid items-center text-sm py-[11px] px-1 rounded-[5px] border-b border-line-soft last:border-b-0 transition-[background-color,opacity] duration-100 motion-reduce:transition-none",
                 isActive ? "bg-panel-2" : "",
                 isDim ? "opacity-50" : "",
               ]

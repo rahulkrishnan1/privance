@@ -62,7 +62,7 @@ test.describe("holdings mobile", () => {
     const dialog = page.getByRole("dialog", { name: /Add account/i });
     await expect(dialog).toBeVisible();
     await dialog.getByLabel("Name").fill(INVESTMENT_ACCOUNT_NAME);
-    await dialog.getByRole("button", { name: "Investment" }).click();
+    await dialog.getByRole("radio", { name: "Investment" }).click();
     await dialog.getByLabel("Account type").selectOption("brokerage");
     await dialog.getByLabel("Cash balance (optional)").fill("0.00");
     await dialog.getByRole("button", { name: "Add account" }).click();
@@ -117,7 +117,7 @@ test.describe("holdings mobile", () => {
     //
     // locator.tap() fires the full pointer+touch sequence AND the synthetic
     // click event React's onClick listens for.
-    const holdingRow = page.getByRole("row", {
+    const holdingRow = page.getByRole("button", {
       name: new RegExp(`${ticker}.*open holding details`),
     });
     await expect(holdingRow).toBeVisible({ timeout: 5_000 });

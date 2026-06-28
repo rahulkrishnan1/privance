@@ -433,13 +433,14 @@ export function PlanScreen() {
               Privance models your future from what you have today. Add accounts and it pulls your
               balance in automatically.
             </p>
-            <button
+            <Button
               type="button"
+              variant="primary"
               onClick={() => router.push("/app/accounts/")}
-              className="mt-7 inline-block cursor-pointer rounded-md bg-accent px-[26px] py-3.5 font-mono text-xs uppercase tracking-button text-vault transition-colors hover:bg-cream"
+              className="mt-7"
             >
               Add accounts
-            </button>
+            </Button>
           </section>
         )}
 

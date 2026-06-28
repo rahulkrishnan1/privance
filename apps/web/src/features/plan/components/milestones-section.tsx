@@ -110,7 +110,7 @@ export function MilestonesSection({ result, input, currentYear, neverFi }: Miles
   const successPct = Math.round(result.mc.successRate * 100);
 
   return (
-    <div className="rounded-[10px] border border-line bg-panel p-6">
+    <div className="glass rounded-[10px] p-6">
       <h3 className="mb-4 font-serif text-2xl font-normal tracking-[-0.005em]">Milestones</h3>
       {milestones.map((m, i) => (
         <MilestoneRow

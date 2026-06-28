@@ -1,9 +1,9 @@
 "use client";
 
-import { Modal } from "@/components/index";
+import { Button } from "@/components";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import type { BiometricMessage, BiometricPhase } from "../types";
-import { CANCEL_BTN, SAVE_BTN, SAVE_BTN_RED } from "../types";
-import { DialogHeader } from "./_primitives";
+import { SettingsDialogHeader } from "./_primitives";
 
 export function BiometricDialog({
   open,
@@ -22,78 +22,89 @@ export function BiometricDialog({
 }) {
   const enrolled = phase === "enrolled" || phase === "disabling";
   return (
-    <Modal open={open} onClose={onClose} labelledBy="biometric-title">
-      <DialogHeader title="Biometric unlock" titleId="biometric-title" onClose={onClose} />
-      {enrolled ? (
-        <p className="text-sm leading-[1.6] text-cream-soft">
-          Face ID or Touch ID opens the vault on this device. The master password is still demanded
-          every 14 days, so it never fades from memory.
-        </p>
-      ) : (
-        <p className="text-sm leading-[1.6] text-cream-soft">
-          Enable Face ID or Touch ID to unlock without typing the master password. Your OS will
-          prompt for the gesture.
-        </p>
-      )}
-
-      {message && (
-        <div className="mt-4 flex flex-col gap-2">
-          {message.kind === "cancelled" && (
-            <p role="alert" className="font-mono text-xs text-signal">
-              Enrollment was cancelled.
-            </p>
-          )}
-          {message.kind === "unsupported" && (
-            <p role="alert" className="font-mono text-xs text-signal">
-              This device does not support biometric unlock.
-            </p>
-          )}
-          {message.kind === "other" && (
-            <p role="alert" className="font-mono text-xs text-signal">
-              {message.text}
-            </p>
-          )}
-          {message.kind === "save-failed-with-orphan" && (
-            <p role="alert" className="font-mono text-xs text-signal">
-              Enrollment failed to save. A passkey was created and may appear in your OS passkey
-              manager. You can remove it there.
-            </p>
-          )}
-          {(message.kind === "os-passkey-notice" ||
-            message.kind === "save-failed-with-orphan" ||
-            message.kind === "unsupported") && (
-            <p className="font-mono text-xs text-faint">
-              The associated passkey remains in your device credential manager. You can remove it
-              from your OS settings.
-            </p>
-          )}
-        </div>
-      )}
-
-      <div className="mt-[26px] flex gap-[10px]">
-        <button type="button" onClick={onClose} className={CANCEL_BTN}>
-          Close
-        </button>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+    >
+      <DialogContent aria-labelledby="biometric-title">
+        <SettingsDialogHeader
+          title="Biometric unlock"
+          titleId="biometric-title"
+          onClose={onClose}
+        />
         {enrolled ? (
-          <button
-            type="button"
-            onClick={() => void onDisable()}
-            disabled={phase === "disabling"}
-            className={SAVE_BTN_RED}
-          >
-            {phase === "disabling" ? "Disabling…" : "Disable biometric unlock"}
-          </button>
+          <p className="text-sm leading-[1.6] text-dim">
+            Face ID or Touch ID opens the vault on this device. The master password is still
+            demanded every 14 days, so it never fades from memory.
+          </p>
         ) : (
-          <button
-            type="button"
-            onClick={() => void onEnroll()}
-            disabled={phase === "enrolling"}
-            className={SAVE_BTN}
-          >
-            {phase === "enrolling" ? "Enabling…" : "Enable biometric unlock"}
-          </button>
+          <p className="text-sm leading-[1.6] text-dim">
+            Enable Face ID or Touch ID to unlock without typing the master password. Your OS will
+            prompt for the gesture.
+          </p>
         )}
-      </div>
-    </Modal>
+
+        {message && (
+          <div className="mt-4 flex flex-col gap-2">
+            {message.kind === "cancelled" && (
+              <p role="alert" className="font-mono text-xs text-signal">
+                Enrollment was cancelled.
+              </p>
+            )}
+            {message.kind === "unsupported" && (
+              <p role="alert" className="font-mono text-xs text-signal">
+                This device does not support biometric unlock.
+              </p>
+            )}
+            {message.kind === "other" && (
+              <p role="alert" className="font-mono text-xs text-signal">
+                {message.text}
+              </p>
+            )}
+            {message.kind === "save-failed-with-orphan" && (
+              <p role="alert" className="font-mono text-xs text-signal">
+                Enrollment failed to save. A passkey was created and may appear in your OS passkey
+                manager. You can remove it there.
+              </p>
+            )}
+            {(message.kind === "os-passkey-notice" ||
+              message.kind === "save-failed-with-orphan" ||
+              message.kind === "unsupported") && (
+              <p className="font-mono text-xs text-faint">
+                The associated passkey remains in your device credential manager. You can remove it
+                from your OS settings.
+              </p>
+            )}
+          </div>
+        )}
+
+        <DialogFooter className="mt-[26px]">
+          <Button variant="secondary" onClick={onClose}>
+            Close
+          </Button>
+          {enrolled ? (
+            <Button
+              variant="danger"
+              onClick={() => void onDisable()}
+              loading={phase === "disabling"}
+              aria-label="Disable biometric unlock"
+            >
+              {phase === "disabling" ? "Disabling…" : "Disable"}
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              onClick={() => void onEnroll()}
+              loading={phase === "enrolling"}
+              aria-label="Enable biometric unlock"
+            >
+              {phase === "enrolling" ? "Enabling…" : "Enable"}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

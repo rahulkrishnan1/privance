@@ -2,11 +2,13 @@
 
 import { countRecognizedWords, validatePhrase } from "@privance/core";
 import { useState } from "react";
-import { Modal } from "@/components/index";
+import { Button } from "@/components";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import * as authApi from "@/lib/api/auth";
 import { DecryptionError, deriveRecoveryUnwrap } from "@/lib/auth-crypto";
-import { CANCEL_BTN, FIELD_INPUT, FIELD_LABEL, SAVE_BTN } from "../types";
-import { DialogHeader } from "./_primitives";
+import { SettingsDialogHeader } from "./_primitives";
 
 export function PhraseCheckDialog({
   open,
@@ -67,69 +69,74 @@ export function PhraseCheckDialog({
   }
 
   return (
-    <Modal open={open} onClose={handleClose} labelledBy="phrase-title">
-      <DialogHeader title="Phrase check" titleId="phrase-title" onClose={handleClose} />
-      <p className="text-sm leading-[1.6] text-dim">
-        Fetch the paper and type all twelve words, in order, to confirm your spare key is intact.
-        Nothing you type leaves this device.
-      </p>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) handleClose();
+      }}
+    >
+      <DialogContent aria-labelledby="phrase-title">
+        <SettingsDialogHeader title="Phrase check" titleId="phrase-title" onClose={handleClose} />
+        <p className="text-sm leading-[1.6] text-dim">
+          Type all twelve words in order to confirm your spare key still works. Nothing leaves this
+          device.
+        </p>
 
-      <form onSubmit={(e) => void onVerify(e)} noValidate>
-        <div className="mt-4">
-          <label htmlFor="pc-phrase" className={FIELD_LABEL}>
-            Recovery phrase (12 words)
-          </label>
-          <textarea
-            id="pc-phrase"
-            value={phrase}
-            onChange={(e) => {
-              setResult(null);
-              setPhrase(e.target.value);
-            }}
-            rows={3}
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            placeholder="word word word ..."
-            className={`${FIELD_INPUT} min-h-[84px] resize-y leading-[1.7]`}
-          />
-          {phrase.trim().length > 0 && result === null && (
-            <p
-              className={[
-                "mt-[7px] font-mono text-xs tracking-[0.04em]",
-                recognized === 12 ? "text-accent-dim" : "text-faint",
-              ].join(" ")}
-            >
-              {recognized} of 12 words recognized
+        <form onSubmit={(e) => void onVerify(e)} noValidate>
+          <div className="mt-4 flex flex-col gap-2">
+            <Label htmlFor="pc-phrase">Recovery phrase (12 words)</Label>
+            <Textarea
+              id="pc-phrase"
+              value={phrase}
+              onChange={(e) => {
+                setResult(null);
+                setPhrase(e.target.value);
+              }}
+              rows={3}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="word word word ..."
+              className="min-h-[84px] resize-y leading-[1.7]"
+            />
+            {phrase.trim().length > 0 && result === null && (
+              <p
+                className={[
+                  "font-mono text-xs tracking-[0.04em]",
+                  recognized === 12 ? "text-accent-dim" : "text-faint",
+                ].join(" ")}
+              >
+                {recognized} of 12 words recognized
+              </p>
+            )}
+          </div>
+
+          {result === "ok" && (
+            <p role="status" className="mt-4 font-mono text-xs text-accent">
+              Verified, your recovery phrase still opens the vault.
             </p>
           )}
-        </div>
+          {result === "fail" && (
+            <p role="alert" className="mt-4 font-mono text-xs text-signal">
+              That phrase doesn&rsquo;t match. Check the words and spacing.
+            </p>
+          )}
+          {result === "error" && (
+            <p role="alert" className="mt-4 font-mono text-xs text-signal">
+              Couldn&rsquo;t run the check. Try again.
+            </p>
+          )}
 
-        {result === "ok" && (
-          <p role="status" className="mt-4 font-mono text-xs text-accent">
-            Verified, your recovery phrase still opens the vault.
-          </p>
-        )}
-        {result === "fail" && (
-          <p role="alert" className="mt-4 font-mono text-xs text-signal">
-            That phrase doesn&rsquo;t match. Check the words and spacing.
-          </p>
-        )}
-        {result === "error" && (
-          <p role="alert" className="mt-4 font-mono text-xs text-signal">
-            Couldn&rsquo;t run the check. Try again.
-          </p>
-        )}
-
-        <div className="mt-[26px] flex gap-[10px]">
-          <button type="button" onClick={handleClose} className={CANCEL_BTN}>
-            {result === "ok" ? "Done" : "Later"}
-          </button>
-          <button type="submit" disabled={pending} aria-busy={pending} className={SAVE_BTN}>
-            {pending ? "Verifying…" : "Verify"}
-          </button>
-        </div>
-      </form>
-    </Modal>
+          <DialogFooter className="mt-[26px]">
+            <Button type="button" variant="secondary" onClick={handleClose}>
+              {result === "ok" ? "Done" : "Later"}
+            </Button>
+            <Button type="submit" variant="primary" loading={pending}>
+              {pending ? "Verifying…" : "Verify"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

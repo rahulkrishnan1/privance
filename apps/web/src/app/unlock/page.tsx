@@ -3,9 +3,12 @@
 import { deriveBiometricKek, openProtectorKey } from "@privance/core";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components";
 import { AuthBackdrop } from "@/components/auth/AuthBackdrop";
 import { AuthErrorBar } from "@/components/auth/AuthErrorBar";
 import { useErrorShake } from "@/components/auth/use-error-shake";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import * as authApi from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { deriveLoginCrypto, unwrapDek } from "@/lib/auth-crypto";
@@ -49,6 +52,7 @@ export default function UnlockPage() {
   const shaking = useErrorShake(errorSeq);
   // Holds a prefetch of kdfParams so derivation can start sooner on submit.
   const kdfPrefetch = useRef<Promise<KdfParamsResponse | null> | null>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   // Biometric unlock: enrollment record present when the device is enrolled and cadence fresh.
   // null = not enrolled or unsupported; undefined = still checking.
@@ -64,6 +68,7 @@ export default function UnlockPage() {
   function raiseError(kind: UnlockBanner) {
     setError(kind);
     setErrorSeq((n) => n + 1);
+    if (kind === "wrong") passwordRef.current?.focus();
   }
   // Enrolled devices lead with the biometric action; the password form stays
   // one tap away (origin R7 requires the password path always reachable).
@@ -273,8 +278,8 @@ export default function UnlockPage() {
         <div className={`auth-rise w-full max-w-[440px]${shaking ? " auth-shake" : ""}`}>
           {sessionExpired ? (
             <>
-              <div className="w-[74px] h-[74px] rounded-full border border-[rgba(235,235,230,.18)] mx-auto mb-[30px] flex items-center justify-center text-dim relative">
-                <span className="absolute inset-[6px] border border-dashed border-[rgba(235,235,230,.12)] rounded-full" />
+              <div className="w-[74px] h-[74px] rounded-full border border-cream/18 mx-auto mb-[30px] flex items-center justify-center text-dim relative">
+                <span className="absolute inset-[6px] border border-dashed border-cream/12 rounded-full" />
                 <svg
                   viewBox="0 0 24 24"
                   width="26"
@@ -295,16 +300,17 @@ export default function UnlockPage() {
                 You were away long enough that the session key was discarded. That&rsquo;s the deal:
                 idle means locked.
               </p>
-              <button
+              <Button
                 type="button"
+                variant="primary"
                 onClick={() => {
                   setSessionExpired(false);
                   setShowPasswordForm(true);
                 }}
-                className="w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream"
+                className="w-full mt-[26px]"
               >
                 Sign back in
-              </button>
+              </Button>
               <p className="text-center font-mono text-xs tracking-[0.04em] text-faint mt-[26px]">
                 Not{" "}
                 <span className="text-cream-soft font-mono">{hydrated ? expiredUsername : ""}</span>
@@ -326,7 +332,7 @@ export default function UnlockPage() {
                     className="bio-emblem w-[74px] h-[74px] rounded-full border border-accent-dim mx-auto mb-[30px] flex items-center justify-center text-accent relative"
                     style={{ animation: biometricPending ? "pulse 2.4s ease infinite" : undefined }}
                   >
-                    <span className="absolute inset-[6px] border border-dashed border-[rgba(127,196,198,.3)] rounded-full" />
+                    <span className="absolute inset-[6px] border border-dashed border-accent/30 rounded-full" />
                     <svg
                       viewBox="0 0 24 24"
                       width="26"
@@ -351,7 +357,7 @@ export default function UnlockPage() {
               ) : (
                 <>
                   <div className="w-[74px] h-[74px] rounded-full border border-accent-dim mx-auto mb-[30px] flex items-center justify-center text-accent relative">
-                    <span className="absolute inset-[6px] border border-dashed border-[rgba(127,196,198,.3)] rounded-full" />
+                    <span className="absolute inset-[6px] border border-dashed border-accent/30 rounded-full" />
                     <svg
                       viewBox="0 0 24 24"
                       width="26"
@@ -383,34 +389,39 @@ export default function UnlockPage() {
                 </AuthErrorBar>
               )}
               {error === "wrong" && (
-                <AuthErrorBar lead="That key didn&rsquo;t turn.">
+                <AuthErrorBar id="unlock-cred-error" lead="That key didn&rsquo;t turn.">
                   Wrong password. Forgot it? Your recovery phrase still works.
                 </AuthErrorBar>
               )}
               {error === "limit" && (
-                <AuthErrorBar lead="The lock is cooling down.">
+                <AuthErrorBar id="unlock-cred-error" lead="The lock is cooling down.">
                   Too many attempts. Try again in a moment.
                 </AuthErrorBar>
               )}
               {error === "net" && (
-                <AuthErrorBar lead="Can&rsquo;t reach your vault host.">
+                <AuthErrorBar id="unlock-cred-error" lead="Can&rsquo;t reach your vault host.">
                   Check the connection and try again. Nothing you typed left this device.
                 </AuthErrorBar>
               )}
               {error === "bio-purged" && (
-                <AuthErrorBar lead="Biometric unlock failed.">
+                <AuthErrorBar id="unlock-cred-error" lead="Biometric unlock failed.">
                   Unlock with your password and re&#8209;enable biometrics in Settings.
                 </AuthErrorBar>
               )}
-              {error === "generic" && <AuthErrorBar lead="Unlock failed.">Try again.</AuthErrorBar>}
+              {error === "generic" && (
+                <AuthErrorBar id="unlock-cred-error" lead="Unlock failed.">
+                  Try again.
+                </AuthErrorBar>
+              )}
 
               {biometricRecord && !softBioError && (
-                <button
+                <Button
                   type="button"
-                  aria-busy={biometricPending}
+                  variant="primary"
+                  loading={biometricPending}
                   disabled={!hydrated || biometricPending}
                   onClick={() => void handleBiometric()}
-                  className="w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-[11px]"
+                  className="w-full mt-[26px] gap-[11px]"
                 >
                   <svg
                     viewBox="0 0 24 24"
@@ -424,7 +435,7 @@ export default function UnlockPage() {
                     <path d="M7 4.5h-.5A2.5 2.5 0 0 0 4 7v.5M17 4.5h.5A2.5 2.5 0 0 1 20 7v.5M7 19.5h-.5A2.5 2.5 0 0 1 4 17v-.5M17 19.5h.5a2.5 2.5 0 0 0 2.5-2.5v-.5M9 9.5v1M15 9.5v1M9.5 14.5c.7.7 1.5 1 2.5 1s1.8-.3 2.5-1" />
                   </svg>
                   {biometricPending ? "Verifying…" : "Unlock with biometrics"}
-                </button>
+                </Button>
               )}
 
               {(biometricRecord === null || showPasswordForm) && (
@@ -434,13 +445,9 @@ export default function UnlockPage() {
                   noValidate
                 >
                   <div className="flex flex-col gap-[9px]">
-                    <label
-                      htmlFor="unlock-password"
-                      className="font-mono text-xs tracking-label uppercase text-faint"
-                    >
-                      Master password
-                    </label>
-                    <input
+                    <Label htmlFor="unlock-password">Master password</Label>
+                    <Input
+                      ref={passwordRef}
                       id="unlock-password"
                       type="password"
                       value={password}
@@ -452,42 +459,34 @@ export default function UnlockPage() {
                       maxLength={PASSWORD_MAX}
                       placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;"
                       aria-invalid={error === "wrong"}
-                      className={[
-                        "w-full bg-panel border rounded-[8px] text-cream font-mono text-base px-4 py-[15px] outline-none transition-colors tracking-[0.06em] placeholder:text-faint placeholder:tracking-[0.02em]",
-                        error === "wrong"
-                          ? "border-[rgba(208,133,98,.55)]"
-                          : "border-line focus:border-accent-dim",
-                      ].join(" ")}
+                      aria-describedby={error !== undefined ? "unlock-cred-error" : undefined}
                     />
                   </div>
 
-                  <button
+                  <Button
                     type="submit"
+                    variant="primary"
                     disabled={!hydrated || pending || error === "limit"}
-                    aria-busy={pending}
-                    className={[
-                      "w-full mt-[26px] font-mono text-xs tracking-button uppercase bg-accent text-vault border-0 rounded-[8px] py-[17px] cursor-pointer transition-[background,opacity] hover:bg-cream disabled:opacity-50 disabled:cursor-not-allowed",
-                      error === "limit" ? "opacity-40 pointer-events-none" : "",
-                    ].join(" ")}
+                    loading={pending}
+                    className="w-full mt-[26px]"
                   >
                     {pending ? "Unlocking…" : "Unlock"}
-                  </button>
+                  </Button>
                 </form>
               )}
 
               {biometricRecord && !showPasswordForm && (
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
                   onClick={() => setShowPasswordForm(true)}
                   className={[
-                    "w-full mt-3 font-mono text-xs tracking-button uppercase bg-transparent rounded-[8px] py-[15px] cursor-pointer transition-colors flex items-center justify-center",
-                    softBioError
-                      ? "border border-accent-dim text-accent"
-                      : "border border-line text-dim hover:text-accent hover:border-accent-dim",
+                    "w-full mt-3",
+                    softBioError ? "border-accent-dim text-accent" : "",
                   ].join(" ")}
                 >
                   Use master password instead
-                </button>
+                </Button>
               )}
 
               {biometricRecord && (
@@ -497,13 +496,14 @@ export default function UnlockPage() {
               )}
 
               <p className="mt-6 text-center font-mono text-xs tracking-label uppercase text-faint opacity-60">
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => void handleSignOut()}
-                  className="inline-block py-3 px-2 -my-3 -mx-2 hover:text-cream transition-colors cursor-pointer focus-visible:outline-none focus-visible:text-accent"
+                  className="py-3 px-2 -my-3 -mx-2 text-faint"
                 >
                   Sign out
-                </button>
+                </Button>
               </p>
             </>
           )}

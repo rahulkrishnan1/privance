@@ -19,7 +19,7 @@ function SplitTile({
   sublineColor = "text-dim",
 }: SplitTileProps) {
   return (
-    <div className="bg-panel border border-line rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
+    <div className="glass rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
       <p className="font-mono text-xs tracking-label uppercase text-faint">{label}</p>
       <p className={`vfig font-serif text-3xl mt-2 max-[480px]:text-2xl ${valueColor}`}>{value}</p>
       <p className={`vfig font-mono text-xs mt-1 max-[480px]:text-xs ${sublineColor}`}>{subline}</p>

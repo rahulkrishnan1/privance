@@ -3,6 +3,8 @@
 import type { Decimal } from "@privance/core";
 import { deriveAllocationParams } from "@privance/core/projection";
 import { useEffect, useId, useRef, useState } from "react";
+import { Button } from "@/components";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ALLOCATION_SNAPS, type PlanFormValues, resolveStockPct, swrWarning } from "../types";
 
 type AdjustPanelProps = {
@@ -262,7 +264,7 @@ export function AdjustPanel({
   const canSave = dirty && !saving && !saveDisabled;
 
   return (
-    <div className="rounded-[10px] border border-line bg-panel p-6">
+    <div className="glass rounded-[10px] p-6">
       {/* One wrapping row: on mobile the readout drops to its own full-width line
           (order-3 + w-full) clear of Save; on desktop it sits inline by the title. */}
       <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-2.5">
@@ -275,23 +277,17 @@ export function AdjustPanel({
             baselineNeverFi={baselineNeverFi}
           />
         </div>
-        <button
-          type="button"
+        <Button
           onClick={onSave}
           disabled={!canSave}
           aria-label={dirty ? "Save plan" : "Plan saved"}
-          className={[
-            "order-2 ml-auto self-start shrink-0 whitespace-nowrap rounded-md border px-4 py-2 font-mono text-xs uppercase tracking-button transition-colors sm:order-3",
-            // Saving keeps the accent fill (only the cursor/hover stop); a
-            // save-blocking error or a clean plan reads as inert.
-            dirty && !saveDisabled
-              ? "border-accent bg-accent text-vault"
-              : "border-transparent bg-transparent text-faint",
-            canSave ? "cursor-pointer hover:bg-cream" : "cursor-default",
-          ].join(" ")}
+          variant={dirty && !saveDisabled ? "primary" : "ghost"}
+          size="sm"
+          loading={saving}
+          className="order-2 ml-auto self-start shrink-0 whitespace-nowrap sm:order-3"
         >
           {saveLabel}
-        </button>
+        </Button>
       </div>
 
       {saveError && (
@@ -334,39 +330,27 @@ export function AdjustPanel({
           // input rather than under it.
           className="col-span-2 max-[430px]:col-span-1"
         >
-          {/* biome-ignore lint/a11y/useSemanticElements: a labelled toggle-button
-              group is the correct ARIA pattern; <fieldset> would impose its own
-              box model on this inline segmented control. */}
-          <div
-            className="inline-flex shrink-0 gap-0.5 rounded-lg border border-line bg-panel p-[3px]"
-            role="group"
+          <ToggleGroup
+            type="single"
+            value={manual ? "manual" : "accounts"}
+            onValueChange={(nv) => {
+              if (!nv) return;
+              const toManual = nv === "manual";
+              if (toManual === manual) return;
+              onChange({
+                manualStartingDollars: toManual ? Math.round(accountDollars) : undefined,
+              });
+            }}
             aria-label="Starting portfolio source"
+            className="shrink-0 rounded-lg border border-line bg-panel p-[3px] gap-0.5"
           >
-            {(
-              [
-                [false, "Accounts"],
-                [true, "Manual"],
-              ] as const
-            ).map(([isManual, label]) => (
-              <button
-                key={label}
-                type="button"
-                aria-pressed={manual === isManual}
-                onClick={() => {
-                  if (manual === isManual) return;
-                  onChange({
-                    manualStartingDollars: isManual ? Math.round(accountDollars) : undefined,
-                  });
-                }}
-                className={[
-                  "rounded-md px-3 py-[6px] font-mono text-xs uppercase tracking-button transition-colors cursor-pointer",
-                  manual === isManual ? "bg-panel-2 text-cream" : "text-faint hover:text-cream",
-                ].join(" ")}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+            <ToggleGroupItem value="accounts" size="sm">
+              Accounts
+            </ToggleGroupItem>
+            <ToggleGroupItem value="manual" size="sm">
+              Manual
+            </ToggleGroupItem>
+          </ToggleGroup>
         </FactInput>
       </div>
 
@@ -421,27 +405,29 @@ export function AdjustPanel({
           <>~{expectedReturn}% / yr expected real return · return and volatility follow the mix</>
         }
       >
-        <div className="mt-3 flex gap-2">
-          {ALLOCATION_SNAPS.map((s) => {
-            const active = stockPct === s.pct;
-            return (
-              <button
-                key={s.pct}
-                type="button"
-                aria-pressed={active}
-                onClick={() => onChange({ preset: s.preset })}
-                className={[
-                  "rounded-full border px-3 py-1 font-mono text-xs uppercase tracking-button transition-colors cursor-pointer",
-                  active
-                    ? "border-accent bg-accent/10 text-accent"
-                    : "border-line text-dim hover:text-cream",
-                ].join(" ")}
-              >
-                {s.label}
-              </button>
-            );
-          })}
-        </div>
+        {/* Filter-pill pattern: rounded-full tinted active, not the filled segmented-control style from segmentItemVariants. */}
+        <ToggleGroup
+          type="single"
+          value={ALLOCATION_SNAPS.find((s) => s.pct === stockPct)?.preset ?? ""}
+          onValueChange={(nv) => {
+            if (!nv) return;
+            const snap = ALLOCATION_SNAPS.find((s) => s.preset === nv);
+            if (snap) onChange({ preset: snap.preset });
+          }}
+          aria-label="Allocation preset"
+          className="mt-3 gap-2"
+        >
+          {ALLOCATION_SNAPS.map((s) => (
+            <ToggleGroupItem
+              key={s.pct}
+              value={s.preset}
+              size="sm"
+              className="rounded-full border border-line px-3 py-1 data-[state=on]:border-accent data-[state=on]:bg-accent/10 data-[state=on]:text-accent"
+            >
+              {s.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
       </Lever>
     </div>
   );

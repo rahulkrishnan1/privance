@@ -71,7 +71,7 @@ async function createCashAccount(
   const dialog = page.getByRole("dialog", { name: /Add account/i });
   await expect(dialog).toBeVisible();
   // Select Cash kind so the Current balance field appears (form opens as Investment by default)
-  await dialog.getByRole("button", { name: "Cash" }).click();
+  await dialog.getByRole("radio", { name: "Cash" }).click();
   await dialog.getByLabel("Account type").selectOption("checking");
   await dialog.getByLabel("Name").fill(name);
   await dialog.getByLabel("Current balance").fill(balance);
@@ -192,17 +192,17 @@ test.describe
 
       // Confidence is a single toggle between Monte Carlo and Historical replay;
       // the active method's percentage renders in `confidence-rate`. Read both.
-      const method = page.getByRole("group", { name: "Projection method" });
+      const method = page.getByRole("radiogroup", { name: "Projection method" });
       await expect(method).toBeVisible({ timeout: SIM_TIMEOUT });
 
-      await method.getByRole("button", { name: "Monte Carlo" }).click();
+      await method.getByRole("radio", { name: "Monte Carlo" }).click();
       const mcRate = page.getByTestId("confidence-rate");
       await expect(mcRate).toBeVisible({ timeout: SIM_TIMEOUT });
       const mcPct = Number((await mcRate.textContent())?.replace(/[^0-9.]/g, ""));
       expect(mcPct).toBeGreaterThanOrEqual(1);
       expect(mcPct).toBeLessThanOrEqual(100);
 
-      await method.getByRole("button", { name: "Historical replay" }).click();
+      await method.getByRole("radio", { name: "Historical replay" }).click();
       const replayRate = page.getByTestId("confidence-rate");
       await expect(replayRate).toBeVisible({ timeout: SIM_TIMEOUT });
       const replayPct = Number((await replayRate.textContent())?.replace(/[^0-9.]/g, ""));
@@ -235,7 +235,7 @@ test.describe
       // (more stocks change the expected return), proving levers drive the
       // live plan.
       const headlineAge = Number((await page.getByTestId("fire-age-value").textContent())?.trim());
-      await page.getByRole("button", { name: "Aggressive" }).click();
+      await page.getByRole("radio", { name: "Aggressive" }).click();
       await expect(async () => {
         const t = Number((await page.getByTestId("fire-age-value").textContent())?.trim());
         expect(t).not.toBe(headlineAge);

@@ -27,7 +27,7 @@ export function AllocationLegend({ slices, colors, hoveredIndex, onHover }: Allo
             onMouseEnter={() => onHover(i)}
             onMouseLeave={() => onHover(null)}
             className={[
-              "col-span-2 md:col-span-3 grid grid-cols-subgrid items-center px-1 py-2 text-sm rounded-[5px] transition-[background-color,opacity] duration-100",
+              "col-span-2 md:col-span-3 grid grid-cols-subgrid items-center px-1 py-2 text-sm rounded-[5px] transition-[background-color,opacity] duration-100 motion-reduce:transition-none",
               isLast ? "" : "border-b border-line-soft",
               isActive ? "bg-panel-2" : "",
               isDim ? "opacity-50" : "",
@@ -43,7 +43,7 @@ export function AllocationLegend({ slices, colors, hoveredIndex, onHover }: Allo
               />
               <span className="text-cream truncate">{slice.label}</span>
             </span>
-            <span className="hidden md:block font-mono text-cream-soft tabular-nums text-right">
+            <span className="vfig hidden md:block font-mono text-cream-soft tabular-nums text-right">
               {formatCurrencyWhole(slice.value)}
             </span>
             <span className="font-mono text-dim tabular-nums text-right">

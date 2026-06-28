@@ -96,7 +96,7 @@ test("a range with too few points reports the range is short, not that history i
     </div>,
   );
 
-  await screen.getByRole("button", { name: "1M range" }).click();
+  await screen.getByRole("radio", { name: "1M range" }).click();
 
   // The either/or copy lives in one node, so the range-short message being
   // visible proves the cold-start message is not shown.

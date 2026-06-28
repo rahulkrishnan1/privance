@@ -64,7 +64,7 @@ test.describe("accounts mobile", () => {
     const name = `MobCash-${RUN}`;
     await dialog.getByLabel("Name").fill(name);
     // Kind defaults to investment; select Cash so Current balance field appears.
-    await dialog.getByRole("button", { name: "Cash" }).click();
+    await dialog.getByRole("radio", { name: "Cash" }).click();
     await dialog.getByLabel("Account type").selectOption("checking");
     await dialog.getByLabel("Current balance").fill("1234.56");
     await dialog.getByRole("button", { name: "Add account" }).click();

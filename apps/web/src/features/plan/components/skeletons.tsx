@@ -32,11 +32,7 @@ export function PlanHeadlineSkeleton() {
 
 export function FanChartSkeleton() {
   return (
-    <div
-      className="rounded-[10px] border border-line bg-panel p-6"
-      role="status"
-      aria-label="Loading projection chart"
-    >
+    <div className="glass rounded-[10px] p-6" role="status" aria-label="Loading projection chart">
       <SkeletonBox className="h-3 w-32 mb-3" />
       <SkeletonBox className="h-80 w-full" />
     </div>
