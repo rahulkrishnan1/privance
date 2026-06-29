@@ -26,7 +26,7 @@
     "@hookform/resolvers": "5.4.0",
     "@privance/core": "workspace:*",
     "@sqlite.org/sqlite-wasm": "3.53.0-build1",
-    "@tanstack/react-query": "5.101.0",
+    "@tanstack/react-query": "5.101.2",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "1.1.1",
