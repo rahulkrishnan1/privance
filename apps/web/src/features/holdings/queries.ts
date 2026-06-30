@@ -46,7 +46,7 @@ function parseGroup(objectId: string, bytes: Uint8Array, updatedAt: number): Loc
   }
 }
 
-export type HoldingsQueryResult = {
+type HoldingsQueryResult = {
   holdings: LocalHolding[];
   loading: boolean;
   error: Error | null;
@@ -137,7 +137,7 @@ export function useHoldingsQuery(): HoldingsQueryResult {
   return { holdings, loading, error };
 }
 
-export type GroupsQueryResult = {
+type GroupsQueryResult = {
   groups: LocalGroup[];
   loading: boolean;
   error: Error | null;

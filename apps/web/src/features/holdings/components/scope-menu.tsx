@@ -66,7 +66,7 @@ export function ScopeMenu({
     [onSelect, onOpenChange],
   );
 
-  // Desktop renders a Popover, mobile a Drawer. If the viewport crosses the
+  // Desktop renders a Popover, mobile a Dialog. If the viewport crosses the
   // breakpoint while the menu is open, close it so `open` can't strand itself on
   // the freshly-swapped primitive.
   const prevMobile = useRef(isMobile);

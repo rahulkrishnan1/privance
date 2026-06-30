@@ -38,7 +38,7 @@ function newObjectId(): string {
   return crypto.randomUUID();
 }
 
-export type CreateHoldingInput = {
+type CreateHoldingInput = {
   accountId: string;
   groupId: string | null;
   ticker: string;
@@ -51,9 +51,9 @@ export type CreateHoldingInput = {
   proxyAnchoredAt?: string;
   name?: string;
 };
-export type UpdateHoldingInput = Partial<CreateHoldingInput> & { id: string };
+type UpdateHoldingInput = Partial<CreateHoldingInput> & { id: string };
 
-export type HoldingMutationResult = {
+type HoldingMutationResult = {
   creating: boolean;
   updating: boolean;
   deleting: boolean;
@@ -195,10 +195,10 @@ export function useHoldingMutations(): HoldingMutationResult {
   return { creating, updating, deleting, createHolding, updateHolding, deleteHolding };
 }
 
-export type CreateGroupInput = HoldingGroupPayload;
-export type UpdateGroupInput = HoldingGroupPayload & { id: string };
+type CreateGroupInput = HoldingGroupPayload;
+type UpdateGroupInput = HoldingGroupPayload & { id: string };
 
-export type GroupMutationResult = {
+type GroupMutationResult = {
   creating: boolean;
   updating: boolean;
   deleting: boolean;

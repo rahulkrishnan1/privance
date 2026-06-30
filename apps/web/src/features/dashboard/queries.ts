@@ -83,7 +83,7 @@ function parseSnapshot(raw: unknown, objectId: string): NetWorthSnapshot {
   } as NetWorthSnapshot;
 }
 
-export type DashboardData =
+type DashboardData =
   | { status: "loading" }
   | { status: "error"; error: Error }
   | { status: "empty" }
@@ -436,5 +436,4 @@ export function useDashboardData(): DashboardData {
   return data;
 }
 
-export type { Delta } from "./_math";
-export { deriveAggregateDeltas, splitCashAndInvestments } from "./_math";
+export { deriveAggregateDeltas } from "./_math";

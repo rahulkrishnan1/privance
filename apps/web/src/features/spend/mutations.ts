@@ -46,7 +46,7 @@ function dollarsToCents(amount: string): string {
   return Decimal.fromString(amount, SCALE_CENTS).toMinorUnits().toString();
 }
 
-export type SpendMutationResult = {
+type SpendMutationResult = {
   creating: boolean;
   updating: boolean;
   deleting: boolean;

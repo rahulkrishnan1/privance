@@ -17,9 +17,7 @@ import {
 } from "@privance/core";
 import { stretchMasterPasswordInWorker as stretchMasterPassword } from "@/lib/crypto/kdf";
 
-export type { ItemsKey };
-
-export type SignupCryptoResult = {
+type SignupCryptoResult = {
   authHash: string;
   kdfSalt: string;
   kdfParams: KdfParams;
@@ -37,13 +35,13 @@ export type SignupCryptoResult = {
   phrase: string;
 };
 
-export type LoginCryptoResult = {
+type LoginCryptoResult = {
   authHash: string;
   kek: KEK;
   kdfParamVersion: KdfParamVersion;
 };
 
-export type RecoveryNewCredsResult = {
+type RecoveryNewCredsResult = {
   newAuthHash: string;
   newKdfSalt: string;
   newKdfParams: KdfParams;

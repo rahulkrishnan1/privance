@@ -7,7 +7,7 @@
 
 export const USERNAME_MIN = 3;
 export const USERNAME_MAX = 32;
-export const USERNAME_CHARSET = /^[a-z0-9._-]+$/;
+const USERNAME_CHARSET = /^[a-z0-9._-]+$/;
 
 export const PASSWORD_MIN = 12;
 // 256 bytes is well above any human-typed password and well below the argon2id

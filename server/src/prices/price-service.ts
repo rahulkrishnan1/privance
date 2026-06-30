@@ -24,7 +24,7 @@ type PricesRepoLike = {
   upsertMany(rows: CachedPriceRow[]): Promise<void>;
 };
 
-export type PriceServiceOptions = {
+type PriceServiceOptions = {
   pricesRepo: PricesRepoLike;
   fetcher?: FetchLike;
   cooldownMs?: number;

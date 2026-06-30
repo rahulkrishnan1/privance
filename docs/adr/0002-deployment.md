@@ -6,7 +6,7 @@
 
 ## Context
 
-Privance needs a live, reachable, backed-up instance at `https://privance.app` that a single operator can stand up, run, and maintain. The deployment architecture decisions are separate from the stack decisions in ADR-0001 (Bun + Hono + Next.js + Capacitor); this ADR records what runs WHERE and how it gets there.
+Privance needs a live, reachable, backed-up instance at `https://privance.app` that a single operator can stand up, run, and maintain. The deployment architecture decisions are separate from the stack decisions in ADR-0001 (Bun + Hono + Next.js); this ADR records what runs WHERE and how it gets there.
 
 Constraints that shaped the deployment:
 
@@ -31,7 +31,7 @@ Constraints that shaped the deployment:
 | Migrations | `server-migrate` one-shot Compose service runs `bun run db:migrate` before the API container accepts traffic. Failed migrations halt boot. |
 | Signup gating | Invite-only via the `InviteService` module. `INVITE_REQUIRED=true` enforced server-side; operator mints tokens via `docker compose -f compose.prod.yaml exec server bun dist/mint-invite.js` from the deploy directory on the VPS over SSH. Tokens are hashed at rest with SHA-256 and single-use via atomic UPDATE. |
 | Backups | Nightly `pg_dump --format=custom` piped to `restic backup --stdin-from-command`, encrypted and stored in Backblaze B2 (EU Central). Retention: 7 daily / 4 weekly / 6 monthly. Weekly structural `restic check`. In-place restore drill required during bring-up. |
-| PWA | Hand-rolled `apps/web/public/sw.js` (no Workbox dependency), manifest + icons in `public/`, registration via `ServiceWorkerRegistration.tsx` skipped in Capacitor builds. Cache strategy: cache-first for static assets, stale-while-revalidate-with-offline-fallback for navigation, pass-through for `/api/*` and cross-origin. |
+| PWA | Hand-rolled `apps/web/public/sw.js` (no Workbox dependency), manifest + icons in `public/`, registration via `ServiceWorkerRegistration.tsx`. Cache strategy: cache-first for static assets, stale-while-revalidate-with-offline-fallback for navigation, pass-through for `/api/*` and cross-origin. |
 | Deploys | Operator-initiated, image-based: GitHub Actions builds and pushes versioned images to GHCR on `v*` tags; the operator runs `infra/deploy.sh <version>` from the workstation, which makes the VPS pull the pinned images and recreate containers. No CI runner has VPS credentials; CI holds only GHCR `packages: write`. |
 
 ## Consequences
@@ -49,7 +49,6 @@ Constraints that shaped the deployment:
 - Operator-typed deploys still carry fat-finger risk. Mitigation: `infra/deploy.sh` wraps the whole sequence (tag check, release-workflow check, pull, recreate, health check) in one command; the bring-up runbook in `infra/README.md` covers the rest.
 - Single VPS has no failover. A Hetzner host outage means downtime until Hetzner recovers or the operator stands up a replacement from backups. Acceptable at current scale; revisit if uptime SLA changes.
 - Vertical-only scale ceiling. The small-VPS sizing handles low-hundreds of users; growth past that requires either a bigger box or a small architectural change (separate Postgres, CDN for the static export). Both reversible.
-- Today only the PWA ships (web at privance.app). If the scaffolded Capacitor native builds are ever published, the operator would keep two ship surfaces in sync. Mitigation: both come from the same static-export build artefact, so divergence is bounded to native shells only.
 
 **Locked out of (until reversed):**
 

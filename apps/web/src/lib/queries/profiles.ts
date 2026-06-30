@@ -8,9 +8,9 @@ import {
   type SymbolProfileEntry,
 } from "@/lib/api/symbol-profiles";
 
-export type ProfilesMap = Map<string, SymbolProfileEntry>;
+type ProfilesMap = Map<string, SymbolProfileEntry>;
 
-export type ProfilesQueryResult = {
+type ProfilesQueryResult = {
   profilesByTicker: ProfilesMap;
   isLoading: boolean;
 };

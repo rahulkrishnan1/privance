@@ -46,11 +46,11 @@ function clearDekStore(): void {
 /** `loading` is the transient boot state while the session vault is read
  *  asynchronously; the app shell holds (no redirect) until it resolves to
  *  `unlocked` or `locked`. */
-export type AuthState = "loading" | "unauthenticated" | "locked" | "unlocked";
+type AuthState = "loading" | "unauthenticated" | "locked" | "unlocked";
 
-export type PersistenceLevel = "memory" | "session" | "biometric";
+type PersistenceLevel = "memory" | "session" | "biometric";
 
-export type AuthUser = {
+type AuthUser = {
   /** Absent when the auth state was rehydrated in `locked` state; only the
    *  username is needed to render the unlock screen. login()/unlock() and a
    *  fresh-vault rehydrate populate this. */
@@ -58,13 +58,13 @@ export type AuthUser = {
   username: string;
 };
 
-export type AuthPayload = {
+type AuthPayload = {
   user: AuthUser;
   itemsKey: ItemsKey;
   persistence: PersistenceLevel;
 };
 
-export type AuthContextValue = {
+type AuthContextValue = {
   state: AuthState;
   user: AuthUser | null;
   persistence: PersistenceLevel;

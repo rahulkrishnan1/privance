@@ -31,7 +31,7 @@ function parseSpendItem(
   }
 }
 
-export type SpendItemsQueryResult = {
+type SpendItemsQueryResult = {
   items: LocalSpendItem[];
   loading: boolean;
   error: Error | null;

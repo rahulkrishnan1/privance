@@ -1,4 +1,4 @@
-export class AuthError extends Error {
+class AuthError extends Error {
   readonly code: string;
   constructor(code: string, message: string) {
     super(message);
@@ -102,3 +102,6 @@ export type AuthenticatedSession = {
   sessionId: string;
   expiresAt: Date;
 };
+
+// Session cookie name; shared by the auth and account routes.
+export const SESSION_COOKIE = "privance_session";

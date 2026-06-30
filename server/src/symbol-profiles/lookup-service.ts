@@ -22,7 +22,7 @@ function fillRegion(profile: SymbolProfile): SymbolProfile {
   return { ...profile, region };
 }
 
-export type LookupServiceOptions = {
+type LookupServiceOptions = {
   repo: SymbolProfileRepo;
   fetcher?: FetchLike;
 };

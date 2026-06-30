@@ -23,12 +23,12 @@ import {
   InvalidInviteError,
   RateLimitedError,
   RecoveryFailedError,
+  SESSION_COOKIE,
   SessionExpiredError,
   UnauthenticatedError,
   UsernameTakenError,
 } from "./types.js";
 
-const SESSION_COOKIE = "privance_session";
 const SECURE_COOKIE = process.env.NODE_ENV !== "test";
 
 let _enumerationSecret: Buffer | null = null;
@@ -507,5 +507,3 @@ export const featureRouter: FeatureRouter = {
   basePath: "/api/auth",
   router,
 };
-
-export { SESSION_COOKIE };

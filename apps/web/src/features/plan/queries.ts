@@ -17,7 +17,7 @@ function parsePlan(raw: unknown, objectId: string): Plan {
   } as Plan;
 }
 
-export type PlanQueryState =
+type PlanQueryState =
   | { status: "initialising" }
   | { status: "error"; error: Error }
   | { status: "none" }

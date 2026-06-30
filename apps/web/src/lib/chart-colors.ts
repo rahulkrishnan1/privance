@@ -1,6 +1,6 @@
 "use client";
 
-export type ChartColors = {
+type ChartColors = {
   grid: string;
   text: string;
   line: string;

@@ -8,9 +8,6 @@ nodeLinker: hoisted
 overrides:
   postcss@<8.5.10: "8.5.15"
   esbuild@<0.24.3: "0.25.12"
-  # @capacitor/cli's latest (8.4.1) still bundles tar 7.5.15; its ^7.5.3 range
-  # allows the patched 7.5.16, but no upstream release pulls it, so pin it here.
-  tar@<7.5.16: "7.5.16"
 
 allowBuilds:
   esbuild: true

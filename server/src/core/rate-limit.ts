@@ -8,7 +8,7 @@
 
 const EVICT_MULTIPLIER = 2;
 
-export type RateLimitBucket = {
+type RateLimitBucket = {
   record(userId: string, cooldownMs: number): void;
   msRemaining(userId: string, cooldownMs: number): number;
   gate(userId: string, cooldownMs: number, throwFn: (ms: number) => never): void;

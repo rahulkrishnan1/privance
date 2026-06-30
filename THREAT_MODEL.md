@@ -113,7 +113,7 @@ This document covers the assets Privance protects, the actors that might threate
 
 ### 3.9 Operational bound
 
-The zero-knowledge guarantee protects data **at rest**. Server-side records are ciphertext only and a database or filesystem grab reveals only ciphertext, salts, hashed session and invite tokens, and audit-event metadata. The guarantee does NOT extend to a user's NEXT interaction with a compromised host: the browser executes whatever JS the host serves, so an attacker with control of the served bundle can exfiltrate the master password on the next login. A packaged Capacitor build reduces this risk because the JS is bundled into the app binary instead of fetched per session.
+The zero-knowledge guarantee protects data **at rest**. Server-side records are ciphertext only and a database or filesystem grab reveals only ciphertext, salts, hashed session and invite tokens, and audit-event metadata. The guarantee does NOT extend to a user's NEXT interaction with a compromised host: the browser executes whatever JS the host serves, so an attacker with control of the served bundle can exfiltrate the master password on the next login.
 
 ### 3.10 Plan record and sim worker
 

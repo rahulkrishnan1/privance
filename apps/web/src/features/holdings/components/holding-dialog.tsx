@@ -7,17 +7,17 @@ import { parseCostBasisCents } from "../_helpers";
 import type { HoldingFormValues, LocalGroup, LocalHolding } from "../types";
 import { HoldingForm } from "./holding-form";
 
-export type DrawerMode = { kind: "add" } | { kind: "edit"; holding: LocalHolding };
+export type HoldingDialogMode = { kind: "add" } | { kind: "edit"; holding: LocalHolding };
 
-type HoldingDrawerProps = {
+type HoldingDialogProps = {
   open: boolean;
-  mode: DrawerMode;
+  mode: HoldingDialogMode;
   investmentAccounts: InvestmentAccount[];
   groups: LocalGroup[];
   onClose: () => void;
   onSubmit: (
     values: HoldingFormValues,
-    mode: DrawerMode,
+    mode: HoldingDialogMode,
     opts: { proxyPrice?: string },
   ) => Promise<void>;
   onLookupProxyPrice?: (ticker: string) => Promise<string | null>;
@@ -25,7 +25,7 @@ type HoldingDrawerProps = {
   submitting: boolean;
 };
 
-function deriveInitialValues(mode: DrawerMode): Partial<HoldingFormValues> {
+function deriveInitialValues(mode: HoldingDialogMode): Partial<HoldingFormValues> {
   if (mode.kind === "add") return {};
   const { holding } = mode;
   // The form takes avg cost per share; stored value is the total, so divide back.
@@ -51,7 +51,7 @@ function deriveInitialValues(mode: DrawerMode): Partial<HoldingFormValues> {
   };
 }
 
-export function HoldingDrawer({
+export function HoldingDialog({
   open,
   mode,
   investmentAccounts,
@@ -61,7 +61,7 @@ export function HoldingDrawer({
   onLookupProxyPrice,
   onCreateGroup,
   submitting,
-}: HoldingDrawerProps) {
+}: HoldingDialogProps) {
   const [openVersion, setOpenVersion] = useState(0);
 
   useEffect(() => {
@@ -75,10 +75,10 @@ export function HoldingDrawer({
         if (!o) onClose();
       }}
     >
-      <DialogContent aria-labelledby="holding-drawer-title">
+      <DialogContent aria-labelledby="holding-dialog-title">
         <div className="flex flex-col gap-5">
           <DialogTitleRow
-            titleId="holding-drawer-title"
+            titleId="holding-dialog-title"
             title={mode.kind === "add" ? "Add holding" : "Edit holding"}
             onClose={onClose}
           />

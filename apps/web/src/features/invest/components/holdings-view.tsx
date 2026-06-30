@@ -14,7 +14,10 @@ import {
 } from "@/features/holdings";
 import { GroupsManager } from "@/features/holdings/components/groups-manager";
 import { HoldingDetailSheet } from "@/features/holdings/components/holding-detail-sheet";
-import { type DrawerMode, HoldingDrawer } from "@/features/holdings/components/holding-drawer";
+import {
+  HoldingDialog,
+  type HoldingDialogMode,
+} from "@/features/holdings/components/holding-dialog";
 import { HoldingsTable } from "@/features/holdings/components/holdings-table";
 import { ScopeMenu } from "@/features/holdings/components/scope-menu";
 import { useGroupMutations, useHoldingMutations } from "@/features/holdings/mutations";
@@ -38,7 +41,7 @@ import { OPEN_ADD_HOLDING_KEY } from "../types";
 type HoldingsViewProps = {
   breakdown: NetWorthBreakdown | null;
   dayChangeByHoldingId: ReadonlyMap<HoldingId, Decimal>;
-  /** Incremented by the parent subnav "+ holding" button to open the add drawer. */
+  /** Incremented by the parent subnav "+ holding" button to open the add dialog. */
   addSignal?: number;
 };
 
@@ -47,8 +50,8 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
   const userId = user?.userId;
   const [sort, setSort] = useState<SortState>(() => getSavedSort(userId));
   const [filter, setFilter] = useState<FilterState>({ kind: "all" });
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState<DrawerMode>({ kind: "add" });
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<HoldingDialogMode>({ kind: "add" });
   const [detailHolding, setDetailHolding] = useState<LocalHolding | null>(null);
   const [groupsManagerOpen, setGroupsManagerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -183,32 +186,32 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
     [pricesMap],
   );
 
-  const openDrawer = useCallback((mode: DrawerMode) => {
-    setDrawerMode(mode);
-    setDrawerOpen(true);
+  const openDialog = useCallback((mode: HoldingDialogMode) => {
+    setDialogMode(mode);
+    setDialogOpen(true);
   }, []);
 
-  const closeDrawer = useCallback(() => {
-    setDrawerOpen(false);
+  const closeDialog = useCallback(() => {
+    setDialogOpen(false);
   }, []);
 
-  // Open the add drawer when the parent subnav "+ holding" button fires. The
+  // Open the add dialog when the parent subnav "+ holding" button fires. The
   // signal starts at 0 (falsy) so the initial render does not auto-open.
   useEffect(() => {
-    if (addSignal) openDrawer({ kind: "add" });
-  }, [addSignal, openDrawer]);
+    if (addSignal) openDialog({ kind: "add" });
+  }, [addSignal, openDialog]);
 
   // Overview's "+ Add holding" routes here and leaves a one-shot flag to open
-  // the add drawer (the drawer lives on this view, not on Overview).
+  // the add dialog (the dialog lives on this view, not on Overview).
   useEffect(() => {
     if (sessionStorage.getItem(OPEN_ADD_HOLDING_KEY)) {
       sessionStorage.removeItem(OPEN_ADD_HOLDING_KEY);
-      openDrawer({ kind: "add" });
+      openDialog({ kind: "add" });
     }
-  }, [openDrawer]);
+  }, [openDialog]);
 
   const handleSubmit = useCallback(
-    async (values: HoldingFormValues, mode: DrawerMode, opts: { proxyPrice?: string }) => {
+    async (values: HoldingFormValues, mode: HoldingDialogMode, opts: { proxyPrice?: string }) => {
       setError(null);
       try {
         const sharesScale = 8;
@@ -268,12 +271,12 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
         } else {
           await holdingMutations.updateHolding({ id: mode.holding.id, ...baseInput });
         }
-        closeDrawer();
+        closeDialog();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to save holding");
       }
     },
-    [holdingMutations, closeDrawer],
+    [holdingMutations, closeDialog],
   );
 
   const handleCreateGroup = useCallback(
@@ -369,7 +372,7 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
           loading={loading}
           onSortChange={handleSortChange}
           onRowClick={setDetailHolding}
-          onAdd={() => openDrawer({ kind: "add" })}
+          onAdd={() => openDialog({ kind: "add" })}
           dayChangeByHoldingId={dayChangeByHoldingId}
           totalInvestmentsCents={totalInvestmentsCents}
         />
@@ -385,18 +388,18 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
           onClose={() => setDetailHolding(null)}
           onEdit={(h) => {
             setDetailHolding(null);
-            openDrawer({ kind: "edit", holding: h });
+            openDialog({ kind: "edit", holding: h });
           }}
           onDelete={handleDeleteHolding}
         />
       )}
 
-      <HoldingDrawer
-        open={drawerOpen}
-        mode={drawerMode}
+      <HoldingDialog
+        open={dialogOpen}
+        mode={dialogMode}
         investmentAccounts={investmentAccounts}
         groups={groups}
-        onClose={closeDrawer}
+        onClose={closeDialog}
         onSubmit={handleSubmit}
         onLookupProxyPrice={handleLookupProxyPrice}
         onCreateGroup={handleCreateGroup}

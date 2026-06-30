@@ -2,7 +2,7 @@ import type { Account, Holding } from "@privance/core";
 import { CURRENCY_MISMATCH_PREFIX, computeNetWorth, Decimal, SCALE_CENTS } from "@privance/core";
 
 /** Summary of a non-primary-currency account excluded from the pot. */
-export interface ExcludedAccount {
+interface ExcludedAccount {
   readonly name: string;
   readonly currency: string;
 }
@@ -17,7 +17,7 @@ export interface ExcludedAccount {
  * - liabilitiesCents: total liabilities (shown as context; not in pot).
  * - primaryCurrency: the mode currency across all accounts; null when empty.
  */
-export interface PotResult {
+interface PotResult {
   readonly potCents: Decimal;
   readonly excludedAccounts: readonly ExcludedAccount[];
   readonly manualAssetsCents: Decimal;

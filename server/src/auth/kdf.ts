@@ -104,4 +104,4 @@ export function deriveFakeWrappedDekRecovery(
   return { wrappedDekRecovery: Buffer.from(wrapped), wrappedDekRecoveryIv: Buffer.from(iv) };
 }
 
-export { CLIENT_KDF_PARAMS, SERVER_KDF_PARAMS };
+export { CLIENT_KDF_PARAMS };

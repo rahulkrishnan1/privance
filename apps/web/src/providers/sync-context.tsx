@@ -36,7 +36,7 @@ type StoreState = {
   }) => Uint8Array;
 };
 
-export type SyncContextValue = StoreState & {
+type SyncContextValue = StoreState & {
   /** Monotonically-increasing counter. Increments after every local mutation so
    *  queries can add it to their useEffect dep array to re-run after a write. */
   storeClock: number;

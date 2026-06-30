@@ -10,7 +10,7 @@ import type { SymbolProfileEntry } from "@/lib/api/symbol-profiles";
 import { TAX_TREATMENT_BY_SUBKIND, TAX_TREATMENT_LABEL } from "./_constants";
 import type { EstimatedIncomeResult, IncomePayer, TaxBucket, TaxBucketsResult } from "./types";
 
-export type { EstimatedIncomeResult, IncomePayer, TaxBucket, TaxBucketsResult };
+export type { EstimatedIncomeResult, TaxBucket };
 
 /**
  * Sum unrealizedPnl across all holdings in the breakdown.

@@ -1,23 +1,3 @@
 export { requireSession } from "./middleware.js";
 export { purgeUserData } from "./repo.js";
-export type {
-  AuthenticatedSession,
-  KdfParamsJson,
-  LoginResult,
-  PasswordChangeResult,
-  RecoveryResult,
-  SignupResult,
-} from "./types.js";
-export {
-  AllowlistDeniedError,
-  AuthError,
-  InvalidCredentialsError,
-  InvalidInviteError,
-  RateLimitedError,
-  RecoveryFailedError,
-  SESSION_LIFETIME_MS,
-  SessionExpiredError,
-  UnauthenticatedError,
-  UsernameTakenError,
-} from "./types.js";
 export { featureRouter, getAuthRepo, initAuthServices } from "./wire.js";

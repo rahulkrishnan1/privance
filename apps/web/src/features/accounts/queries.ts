@@ -22,7 +22,7 @@ function parseAccount(
   } as Account;
 }
 
-export type AccountsQueryState =
+type AccountsQueryState =
   | { status: "initialising" }
   | { status: "error"; error: Error }
   | { status: "success"; data: Account[] };

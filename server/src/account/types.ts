@@ -1,4 +1,4 @@
-export class AccountError extends Error {
+class AccountError extends Error {
   readonly code: string;
   constructor(code: string, message: string) {
     super(message);

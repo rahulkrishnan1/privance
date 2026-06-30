@@ -1,7 +1,7 @@
 import type { AccountKind, CashAccountSubKind } from "@privance/core";
 import { z } from "zod";
 
-export const accountKindValues: [AccountKind, ...AccountKind[]] = [
+const accountKindValues: [AccountKind, ...AccountKind[]] = [
   "cash",
   "investment",
   "liability",

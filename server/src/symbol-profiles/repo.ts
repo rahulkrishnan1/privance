@@ -125,5 +125,3 @@ export class SymbolProfileRepo {
     await this.db.delete(symbolProfiles).where(inArray(symbolProfiles.ticker, tickers));
   }
 }
-
-export type { SymbolProfile };

@@ -2,7 +2,7 @@ export type DataSource = "yahoo" | "coingecko";
 
 export type { FetchLike } from "../core/fetch.js";
 
-export class PriceError extends Error {
+class PriceError extends Error {
   readonly code: string;
   constructor(code: string, message: string) {
     super(message);
