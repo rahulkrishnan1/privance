@@ -159,7 +159,7 @@ test("Edit groups fires onEditGroups and closes", async () => {
   expect(onEditGroups).toHaveBeenCalledTimes(1);
 });
 
-test("mobile renders a drawer that does not auto-focus search (no keyboard on open)", async () => {
+test("mobile renders a drawer with no search field (no keyboard) and tappable options", async () => {
   vi.mocked(useMediaQuery).mockReturnValue(true);
   const { screen, onSelect } = await renderMenu();
 
@@ -167,9 +167,11 @@ test("mobile renders a drawer that does not auto-focus search (no keyboard on op
   await screen.getByRole("button", { name: /All holdings/ }).click();
   await expect.element(screen.getByRole("dialog")).toBeVisible();
 
-  // Opening the drawer must not focus the search field (that would raise the
-  // mobile keyboard before the user asks for it).
-  expect(document.activeElement?.getAttribute("aria-label")).not.toBe("Search accounts and groups");
+  expect(screen.getByRole("combobox", SEARCH).elements()).toHaveLength(0);
+
+  // Tripwire for the drag-suppression attribute; the drag behavior itself is
+  // only verifiable on real touch hardware, not in Chromium.
+  expect(document.querySelector("[data-vaul-no-drag]")).not.toBeNull();
 
   await screen.getByRole("option", { name: /Roth IRA/ }).click();
   expect(onSelect).toHaveBeenCalledWith({ kind: "account", accountId: "a2" });
