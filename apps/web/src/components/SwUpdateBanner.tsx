@@ -2,7 +2,6 @@
 
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { isCapacitor } from "./capacitor";
 
 export function SwUpdateBanner() {
   const [waiting, setWaiting] = useState<ServiceWorker | null>(null);
@@ -10,7 +9,6 @@ export function SwUpdateBanner() {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") return;
     if (!("serviceWorker" in navigator)) return;
-    if (isCapacitor()) return;
 
     navigator.serviceWorker
       .getRegistration()

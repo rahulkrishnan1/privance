@@ -41,7 +41,7 @@ Biometric unlock (WebAuthn PRF) is out of scope here and is decided in ADR-0005;
 
 ## Alternatives considered
 
-**SharedWorker holding the key in memory.** Keeps the key out of storage entirely, survives a refresh because the worker outlives page navigation, and dies when all tabs close. Rejected because SharedWorker support is absent or unreliable in Safari on iOS and in the Capacitor WebView, which fails the requirement to work on every browser and device.
+**SharedWorker holding the key in memory.** Keeps the key out of storage entirely, survives a refresh because the worker outlives page navigation, and dies when all tabs close. Rejected because SharedWorker support is absent or unreliable in Safari on iOS, which fails the requirement to work on every browser and device.
 
 **Raw DEK in `sessionStorage`.** Simplest possible survive-refresh. Rejected: raw key bytes in a script-readable store are a one-line XSS exfiltration, and `sessionStorage` is not a dependable close boundary because session restore resurrects it.
 

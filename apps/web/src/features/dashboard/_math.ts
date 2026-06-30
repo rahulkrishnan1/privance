@@ -7,7 +7,7 @@ import {
   SCALE_CRYPTO,
 } from "@privance/core";
 
-export type Delta = { dollar: Decimal; pct: number };
+type Delta = { dollar: Decimal; pct: number };
 
 type Breakdown = ReturnType<typeof computeNetWorth>;
 

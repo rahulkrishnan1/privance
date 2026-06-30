@@ -59,7 +59,6 @@ describe("normal sampler statistical properties", () => {
         samples.sort((a, b) => a - b);
         const median = samples[Math.floor(n / 2)] ?? 0;
         const q975 = samples[Math.floor(n * 0.975)] ?? 0;
-        // With n=20k the sampling error is ~5x tighter than the n=2k version.
         // The median must sit near 0 and the 97.5th quantile near +1.96, which a
         // shifted or clipped sampler cannot satisfy.
         return (
@@ -148,5 +147,65 @@ describe("normal sampler clamping", () => {
     const z = normalSample(fakeRng);
     expect(Number.isFinite(z)).toBe(true);
     expect(z).toBeCloseTo(-2, 0);
+  });
+});
+
+// Reference [p, z] pairs computed offline with Python's stdlib
+// NormalDist().inv_cdf (Wichura AS 241, accurate to ~1e-16). Points sit at
+// region interiors, the central/tail split (p = 0.02275), and the empirically
+// measured worst-case points in each region. Driving normalSample with a fake
+// RNG returning p evaluates probit(p) directly (p is inside [U_MIN, U_MAX], so
+// the clamp is a no-op). Measured peak error: 3.19e-8 central, 0.0641 tail; the
+// thresholds below leave headroom and fail if the approximation regresses.
+const CENTRAL_REFERENCE: readonly [number, number][] = [
+  [0.022797725, -1.9991192757419964],
+  [0.0228, -1.9990772149717697],
+  [0.02425, -1.9729610513118845],
+  [0.03, -1.8807936081512509],
+  [0.05, -1.6448536269514722],
+  [0.1, -1.2815515655446006],
+  [0.25, -0.6744897501960817],
+  [0.5, 0.0],
+  [0.75, 0.6744897501960817],
+  [0.9, 1.2815515655446006],
+  [0.95, 1.6448536269514715],
+  [0.97, 1.8807936081512504],
+  [0.97575, 1.972961051311885],
+  [0.9772, 1.9990772149717688],
+  [0.977202275, 1.9991192757419967],
+];
+const TAIL_REFERENCE: readonly [number, number][] = [
+  [2.3e-10, -6.232176082280632],
+  [1e-9, -5.997807015007685],
+  [1.7782814863761166e-9, -5.9035988780503414],
+  [1e-8, -5.612001244174788],
+  [1e-7, -5.199337582192818],
+  [1e-6, -4.753424308822899],
+  [1e-5, -4.264890793922825],
+  [1e-4, -3.71901648545568],
+  [0.001, -3.090232306167813],
+  [0.005, -2.5758293035489],
+  [0.01, -2.3263478740408408],
+  [0.02274, -2.000187695289251],
+  [0.97726, 2.000187695289251],
+  [0.99, 2.3263478740408408],
+  [0.999, 3.090232306167813],
+];
+const MAX_ABS_ERROR_CENTRAL = 4e-8;
+const MAX_ABS_ERROR_TAIL = 0.065;
+
+describe("normal sampler approximation accuracy", () => {
+  it("central region |z| <= 2 stays within the documented error bound", () => {
+    for (const [p, z] of CENTRAL_REFERENCE) {
+      const err = Math.abs(normalSample({ next: () => p }) - z);
+      expect(err).toBeLessThanOrEqual(MAX_ABS_ERROR_CENTRAL);
+    }
+  });
+
+  it("tail region |z| > 2 stays within the documented error bound", () => {
+    for (const [p, z] of TAIL_REFERENCE) {
+      const err = Math.abs(normalSample({ next: () => p }) - z);
+      expect(err).toBeLessThanOrEqual(MAX_ABS_ERROR_TAIL);
+    }
   });
 });

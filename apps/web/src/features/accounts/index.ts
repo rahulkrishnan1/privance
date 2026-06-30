@@ -6,4 +6,3 @@ export {
   SUBKIND_TYPE_LABEL,
 } from "./_investment-constants";
 export { AccountForm } from "./components/account-form";
-export type { AccountFormValues } from "./types";

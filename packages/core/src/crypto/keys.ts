@@ -1,5 +1,5 @@
 import { deriveKey } from "./hkdf.js";
-import { LABEL_VERSION, LABELS } from "./labels.js";
+import { LABELS } from "./labels.js";
 import type { AuthHash, KEK, RecoverySeed, StretchedMasterKey } from "./types.js";
 import { AUTH_HASH_BYTES } from "./types.js";
 
@@ -29,5 +29,3 @@ export function deriveRecoverySeed(stretchedKey: StretchedMasterKey): RecoverySe
   });
   return raw as RecoverySeed;
 }
-
-export { LABEL_VERSION };

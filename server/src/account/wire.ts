@@ -3,7 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import type { MiddlewareHandler } from "hono/types";
 
 import * as rateLimit from "../auth/rate-limit.js";
-import { RateLimitedError } from "../auth/types.js";
+import { RateLimitedError, SESSION_COOKIE } from "../auth/types.js";
 import type { FeatureRouter } from "../core/app.js";
 import { db } from "../core/db.js";
 import { parseB64Buf } from "../core/wire-parse.js";
@@ -11,7 +11,6 @@ import { AccountService } from "./account-service.js";
 import { AccountRepo } from "./repo.js";
 import { InvalidPasswordError } from "./types.js";
 
-const SESSION_COOKIE = "privance_session";
 const SECURE_COOKIE = process.env.NODE_ENV !== "test";
 
 // auth_hash is AUTH_HASH_BYTES (@privance/core).

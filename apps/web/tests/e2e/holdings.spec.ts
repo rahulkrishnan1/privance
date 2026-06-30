@@ -35,7 +35,7 @@ async function goToHoldings(page: import("@playwright/test").Page): Promise<void
   await waitForSynced(page);
 }
 
-async function openAddHoldingDrawer(page: import("@playwright/test").Page): Promise<void> {
+async function openAddHoldingDialog(page: import("@playwright/test").Page): Promise<void> {
   // Match both the subnav "+ holding" button and the empty-state "Add holding" button.
   await page
     .getByRole("button", { name: /Add holding|\+ holding/i })
@@ -123,7 +123,7 @@ test.describe("holdings", () => {
   test("creates a holding via ticker and sees it in the table", async ({ page }) => {
     await goToHoldings(page);
 
-    await openAddHoldingDrawer(page);
+    await openAddHoldingDialog(page);
 
     const dialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(dialog).toBeVisible();
@@ -174,7 +174,7 @@ test.describe("holdings", () => {
     const sheet = page.getByRole("dialog");
     await expect(sheet).toBeVisible();
     await sheet.getByRole("button", { name: "Edit holding" }).click();
-    // Sheet has a 300ms exit animation; wait for the edit drawer by name instead.
+    // Sheet has a 300ms exit animation; wait for the edit dialog by name instead.
     const editDialog = page.getByRole("dialog", { name: /Edit holding/i });
     await expect(editDialog).toBeVisible({ timeout: 5_000 });
 
@@ -195,7 +195,7 @@ test.describe("holdings", () => {
   test("persists a holding with fractional shares (>2 decimal places)", async ({ page }) => {
     await goToHoldings(page);
 
-    await openAddHoldingDrawer(page);
+    await openAddHoldingDialog(page);
     const dialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(dialog).toBeVisible();
 
@@ -226,7 +226,7 @@ test.describe("holdings", () => {
   test("deleted holding stays deleted after a page reload", async ({ page }) => {
     await goToHoldings(page);
 
-    await openAddHoldingDrawer(page);
+    await openAddHoldingDialog(page);
     const dialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(dialog).toBeVisible();
     const ticker = `TST${RUN.slice(-4).toUpperCase()}`;
@@ -276,7 +276,7 @@ test.describe("holdings", () => {
   test("creates a proxy holding with NAV anchor", async ({ page }) => {
     await goToHoldings(page);
 
-    await openAddHoldingDrawer(page);
+    await openAddHoldingDialog(page);
     const dialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(dialog).toBeVisible();
 
@@ -364,7 +364,7 @@ test.describe("holdings", () => {
     page: import("@playwright/test").Page,
     opts: { ticker: string; shares: string; avgCost: string },
   ): Promise<void> {
-    await openAddHoldingDrawer(page);
+    await openAddHoldingDialog(page);
     const dialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(dialog).toBeVisible();
     await dialog.getByLabel("Ticker").fill(opts.ticker);
@@ -422,7 +422,7 @@ test.describe("holdings", () => {
   test("crypto asset type routes through CoinGecko (regression)", async ({ page }) => {
     await goToHoldings(page);
 
-    await openAddHoldingDrawer(page);
+    await openAddHoldingDialog(page);
     const dialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(dialog).toBeVisible();
 
@@ -459,12 +459,12 @@ test.describe("holdings", () => {
     await expect(googCell).toContainText("$", { timeout: 5_000 });
   });
 
-  test("Add holding with unpriceable proxy shows inline error and keeps drawer open", async ({
+  test("Add holding with unpriceable proxy shows inline error and keeps dialog open", async ({
     page,
   }) => {
     await goToHoldings(page);
 
-    await openAddHoldingDrawer(page);
+    await openAddHoldingDialog(page);
     const dialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(dialog).toBeVisible();
 
@@ -495,14 +495,14 @@ test.describe("holdings", () => {
   test("Add holding form clears between opens", async ({ page }) => {
     await goToHoldings(page);
 
-    await openAddHoldingDrawer(page);
+    await openAddHoldingDialog(page);
     let dialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(dialog).toBeVisible();
     await dialog.getByLabel("Ticker").fill("WILLBEDISCARDED");
     await page.getByRole("button", { name: "Close" }).click();
     await expect(dialog).not.toBeVisible({ timeout: 5_000 });
 
-    await openAddHoldingDrawer(page);
+    await openAddHoldingDialog(page);
     dialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByLabel("Ticker")).toHaveValue("");
@@ -523,7 +523,7 @@ test.describe("holdings", () => {
     await goToHoldings(page);
 
     // Add PRVT with proxyTicker=VOO and NAV="200.00".
-    await openAddHoldingDrawer(page);
+    await openAddHoldingDialog(page);
     const addDialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(addDialog).toBeVisible();
 
@@ -579,7 +579,7 @@ test.describe("holdings", () => {
     const sheet = page.getByRole("dialog");
     await expect(sheet).toBeVisible();
     await sheet.getByRole("button", { name: "Edit holding" }).click();
-    // Sheet has a 300ms exit animation; wait for the edit drawer by name instead.
+    // Sheet has a 300ms exit animation; wait for the edit dialog by name instead.
     const editDialog = page.getByRole("dialog", { name: /Edit holding/i });
     await expect(editDialog).toBeVisible({ timeout: 5_000 });
 
@@ -608,12 +608,12 @@ test.describe("holdings", () => {
     await expect(cleanupSheet).not.toBeVisible({ timeout: 10_000 });
   });
 
-  test("a proxy ticker with a blank current price surfaces an inline error inside the drawer (regression)", async ({
+  test("a proxy ticker with a blank current price surfaces an inline error inside the dialog (regression)", async ({
     page,
   }) => {
     await goToHoldings(page);
 
-    await openAddHoldingDrawer(page);
+    await openAddHoldingDialog(page);
     const dialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(dialog).toBeVisible();
 
@@ -634,7 +634,7 @@ test.describe("holdings", () => {
 
     // Regression: the missing-NAV error used to throw to a banner rendered in
     // the page behind the open dialog, invisible to the user. It now surfaces
-    // inline next to the NAV field and the drawer stays open.
+    // inline next to the NAV field and the dialog stays open.
     await expect(
       dialog.getByText("Enter the current price per share for the proxy ticker."),
     ).toBeVisible({ timeout: 10_000 });
@@ -650,7 +650,7 @@ test.describe("holdings", () => {
     const ticker = `ANCH${RUN.slice(-4).toUpperCase()}`;
     await goToHoldings(page);
 
-    await openAddHoldingDrawer(page);
+    await openAddHoldingDialog(page);
     const addDialog = page.getByRole("dialog", { name: /Add holding/i });
     await expect(addDialog).toBeVisible();
     await addDialog.getByLabel("Ticker").fill(ticker);
@@ -683,7 +683,7 @@ test.describe("holdings", () => {
     const sheet = page.getByRole("dialog");
     await expect(sheet).toBeVisible();
     await sheet.getByRole("button", { name: "Edit holding" }).click();
-    // Sheet has a 300ms exit animation; wait for the edit drawer by name instead.
+    // Sheet has a 300ms exit animation; wait for the edit dialog by name instead.
     const editDialog = page.getByRole("dialog", { name: /Edit holding/i });
     await expect(editDialog).toBeVisible({ timeout: 5_000 });
     const sharesInput = editDialog.getByLabel("Quantity");

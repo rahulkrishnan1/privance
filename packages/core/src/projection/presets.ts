@@ -88,7 +88,7 @@ export function getPreset(id: PresetId): Preset {
 }
 
 /** Return parameters for an arbitrary stock/bond allocation. */
-export interface AllocationParams {
+interface AllocationParams {
   /** Arithmetic mean annual real return in integer basis points. */
   readonly muBps: number;
   /** Sample standard deviation in integer basis points. */

@@ -5,8 +5,7 @@ import { HTTPException } from "hono/http-exception";
 import { db } from "../core/db.js";
 import { AuthRepo } from "./repo.js";
 import { SessionService } from "./session-service.js";
-
-const SESSION_COOKIE = "privance_session";
+import { SESSION_COOKIE } from "./types.js";
 
 declare module "hono" {
   interface ContextVariableMap {

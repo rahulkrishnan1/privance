@@ -9,16 +9,16 @@ const KdfParamsSchema = z.object({
   parallelism: z.number(),
   hashLength: z.number(),
 });
-export type KdfParams = z.infer<typeof KdfParamsSchema>;
+type KdfParams = z.infer<typeof KdfParamsSchema>;
 
 const KdfParamsResponseSchema = z.object({
   kdf_algo: z.literal("argon2id"),
   kdf_params: KdfParamsSchema,
   kdf_salt: z.string(),
 });
-export type KdfParamsResponse = z.infer<typeof KdfParamsResponseSchema>;
+type KdfParamsResponse = z.infer<typeof KdfParamsResponseSchema>;
 
-export type SignupRequest = {
+type SignupRequest = {
   username: string;
   auth_hash: string;
   kdf_salt: string;
@@ -36,9 +36,9 @@ export type SignupRequest = {
 const SignupResponseSchema = z.object({
   user_id: z.string(),
 });
-export type SignupResponse = z.infer<typeof SignupResponseSchema>;
+type SignupResponse = z.infer<typeof SignupResponseSchema>;
 
-export type LoginRequest = {
+type LoginRequest = {
   username: string;
   auth_hash: string;
 };
@@ -48,20 +48,20 @@ const LoginResponseSchema = z.object({
   wrapped_dek: z.string(),
   wrapped_dek_iv: z.string(),
 });
-export type LoginResponse = z.infer<typeof LoginResponseSchema>;
+type LoginResponse = z.infer<typeof LoginResponseSchema>;
 
 const LogoutResponseSchema = z.object({
   status: z.literal("ok"),
 });
-export type LogoutResponse = z.infer<typeof LogoutResponseSchema>;
+type LogoutResponse = z.infer<typeof LogoutResponseSchema>;
 
 const SessionResponseSchema = z.object({
   user_id: z.string(),
   expires_at: z.string(),
 });
-export type SessionResponse = z.infer<typeof SessionResponseSchema>;
+type SessionResponse = z.infer<typeof SessionResponseSchema>;
 
-export type RecoveryDeriveParamsRequest = {
+type RecoveryDeriveParamsRequest = {
   username: string;
 };
 
@@ -75,9 +75,9 @@ const RecoveryDeriveParamsResponseSchema = z.object({
   wrapped_dek_recovery: z.string(),
   wrapped_dek_recovery_iv: z.string(),
 });
-export type RecoveryDeriveParamsResponse = z.infer<typeof RecoveryDeriveParamsResponseSchema>;
+type RecoveryDeriveParamsResponse = z.infer<typeof RecoveryDeriveParamsResponseSchema>;
 
-export type RecoveryResetRequest = {
+type RecoveryResetRequest = {
   username: string;
   recovery_proof: string;
   new_auth_hash: string;
@@ -95,9 +95,9 @@ export type RecoveryResetRequest = {
 const RecoveryResetResponseSchema = z.object({
   user_id: z.string(),
 });
-export type RecoveryResetResponse = z.infer<typeof RecoveryResetResponseSchema>;
+type RecoveryResetResponse = z.infer<typeof RecoveryResetResponseSchema>;
 
-export type PasswordChangeRequest = {
+type PasswordChangeRequest = {
   current_auth_hash: string;
   new_auth_hash: string;
   new_kdf_salt: string;

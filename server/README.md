@@ -50,7 +50,7 @@ bun run typecheck
 | `PORT` | No | Defaults to 3000 |
 | `SIGNUP_ALLOWLIST` | No | Comma-separated usernames allowed to sign up; empty = open registration |
 | `INVITE_REQUIRED` | No | Set to `"true"` to require invite tokens on signup. Any other value (including empty/unset) leaves signup open (subject to `SIGNUP_ALLOWLIST`). Mint tokens via `server/scripts/mint-invite.ts`. |
-| `ALLOWED_ORIGINS` | No | Comma-separated origins for CORS. No code default; `server/.env.example` ships `http://localhost:8081` for local dev. Production must set explicitly. For Capacitor native builds, include `capacitor://localhost` (iOS) and `https://localhost` (Android). |
+| `ALLOWED_ORIGINS` | No | Comma-separated origins for CORS. No code default; `server/.env.example` ships `http://localhost:8081` for local dev. Production must set explicitly. |
 | `PRIVANCE_SECRETS_DIR` | No | Directory to read `postgres_password` secret file from (Docker secrets pattern) |
 | `PRICE_PROVIDER` | No | Set to `fake` to use deterministic in-process prices instead of hitting Yahoo / CoinGecko. Used in E2E and local dev. |
 | `PRICE_FAKE_UNKNOWN` | No | Comma-separated tickers the fake upstream treats as unknown (no price returned). Only meaningful when `PRICE_PROVIDER=fake`. Used in E2E to exercise the proxy-failure path without touching real upstream quotas. |

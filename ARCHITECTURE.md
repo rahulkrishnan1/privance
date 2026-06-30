@@ -3,7 +3,7 @@
 ## High-level diagram
 
 ```
-User's device  (browser or Capacitor WKWebView / Android WebView)
+User's device  (browser)
 │
 ├─ apps/web  ── Next.js 16 static export
 │   ├─ React 19 + Tailwind 4 + TanStack Query 5 + Zod
@@ -53,10 +53,6 @@ PostgreSQL 17
 ├─ auth schema   users, sessions, audit_events, invite_tokens
 └─ sync schema   sync_objects  (kind, object_id, ciphertext, nonce)
 ```
-
-### Capacitor
-
-The Next.js static export (`output: "export"` in `apps/web/next.config.ts`) produces an `out/` directory that Capacitor wraps inside a WKWebView (iOS) or Android WebView. iOS and Android projects live under `apps/web/ios/` and `apps/web/android/` and share the exact same build artefact as the web app. No native-specific code paths exist.
 
 ---
 
@@ -363,7 +359,7 @@ app/
 pnpm --filter @privance/web build
 ```
 
-Produces a static site in `apps/web/out/`. Deploy to any static host (Caddy, nginx, S3, etc.). The `trailingSlash: true` setting ensures routes work when served from `file://` by Capacitor.
+Produces a static site in `apps/web/out/`. Deploy to any static host (Caddy, nginx, S3, etc.). The `trailingSlash: true` setting makes routes resolve as directories on static hosts.
 
 ### Server (`server`)
 
@@ -372,14 +368,3 @@ pnpm --filter @privance/server build
 ```
 
 Produces `server/dist/server.js` , a single Bun bundle. Run with `bun server/dist/server.js`.
-
-### Mobile (iOS + Android)
-
-Capacitor 8 wraps the `apps/web/out/` static export inside a WKWebView (iOS) and Android WebView. The native projects live under `apps/web/ios/` and `apps/web/android/` and use the exact same build artefact as the web app.
-
-```sh
-pnpm --filter @privance/web build           # produces apps/web/out/
-pnpm --filter @privance/web exec cap sync   # copies the export into both native projects
-```
-
-Open `apps/web/ios/App/App.xcworkspace` in Xcode or `apps/web/android/` in Android Studio to build for the respective platform. There are no native-specific code paths; debug a feature in the browser first.

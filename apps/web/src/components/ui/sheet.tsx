@@ -8,8 +8,6 @@ import { cn } from "@/lib/utils";
 import { overlayClassName } from "./overlay";
 
 const Sheet = SheetPrimitive.Root;
-const SheetTrigger = SheetPrimitive.Trigger;
-const SheetClose = SheetPrimitive.Close;
 const SheetPortal = SheetPrimitive.Portal;
 
 const SheetOverlay = React.forwardRef<
@@ -67,21 +65,4 @@ const SheetTitle = React.forwardRef<
 ));
 SheetTitle.displayName = SheetPrimitive.Title.displayName;
 
-const SheetDescription = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Description>,
-  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Description>
->(({ className, ...props }, ref) => (
-  <SheetPrimitive.Description ref={ref} className={cn("text-sm text-dim", className)} {...props} />
-));
-SheetDescription.displayName = SheetPrimitive.Description.displayName;
-
-export {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetOverlay,
-  SheetPortal,
-  SheetTitle,
-  SheetTrigger,
-};
+export { Sheet, SheetContent, SheetTitle };

@@ -5,16 +5,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
 import { refreshPrices } from "@/lib/api/prices";
 
-export type PricesMap = Map<string, Decimal>;
+type PricesMap = Map<string, Decimal>;
 
-export type PricesQueryInput = {
+type PricesQueryInput = {
   /** Yahoo tickers (stocks, ETFs, mutual funds, public proxies). */
   yahooTickers: string[];
   /** CoinGecko slugs (e.g. "bitcoin", "ethereum"), not exchange symbols. */
   coingeckoTickers: string[];
 };
 
-export type PricesQueryResult = {
+type PricesQueryResult = {
   prices: PricesMap;
   /** Prior session close per ticker. Absent when upstream didn't provide it. */
   previousPrices: PricesMap;

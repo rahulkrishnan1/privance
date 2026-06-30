@@ -10,9 +10,7 @@ const PriceEntrySchema = z.object({
   previousPrice: z.string().nullable(),
   fetchedAt: z.string(),
 });
-export type PriceEntry = z.infer<typeof PriceEntrySchema>;
-
-export type RefreshPricesRequest = {
+type RefreshPricesRequest = {
   tickers: string[];
   source: "yahoo" | "coingecko";
 };
@@ -26,7 +24,7 @@ export type RefreshPricesResponse = z.infer<typeof RefreshPricesResponseSchema>;
 const CooldownResponseSchema = z.object({
   msUntilNextRefresh: z.number(),
 });
-export type CooldownResponse = z.infer<typeof CooldownResponseSchema>;
+type CooldownResponse = z.infer<typeof CooldownResponseSchema>;
 
 export async function refreshPrices(
   tickers: string[],

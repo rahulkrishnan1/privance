@@ -63,8 +63,6 @@ The indirection exists to satisfy the re-arm requirement without a biometric pro
 
 **Private browsing and IDB-disabled hosts.** In private browsing, site storage including the biometric store is wiped when the session ends; biometric unlock degrades to password-only on reopen with no special handling needed. On hosts where IDB is disabled (certain restricted WKWebView configurations), the store degrades to null silently and the app behaves as password-only.
 
-**Capacitor iOS and Android surfaces.** The enrolled passkey RP ID is bound to the web origin and does not match the native WebView. Native biometric unlock for the Capacitor builds is a separate decision for a future ADR when that surface ships.
-
 ## Alternatives considered
 
 **`largeBlob` credential extension.** Stores arbitrary bytes on the authenticator rather than deriving a key via PRF. Rejected because `largeBlob` has storage semantics rather than key-gate semantics (the bytes are retrieved, not derived), support is materially narrower than PRF across the target device matrix, and it is not available in Safari at all.

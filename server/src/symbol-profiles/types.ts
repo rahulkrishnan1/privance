@@ -3,7 +3,7 @@ import type { AssetType, SymbolProfile } from "@privance/core/domain";
 
 export type { AssetType, SymbolProfile };
 
-export class SymbolProfileError extends Error {
+class SymbolProfileError extends Error {
   readonly code: string;
   constructor(code: string, message: string) {
     super(message);

@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 // toolbar), not a keyboard; real soft keyboards are far taller.
 const KEYBOARD_MIN_PX = 100;
 
-export type KeyboardInset = {
+type KeyboardInset = {
   /** Height of the on-screen keyboard in px, 0 when none is shown. */
   height: number;
   /** Visible height above the keyboard in px, null when no keyboard. */

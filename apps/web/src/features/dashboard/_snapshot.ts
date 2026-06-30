@@ -38,7 +38,7 @@ export function existingSnapshotLooksUnpriced(
   return existing.payload.investmentCents === "0" && breakdown.byHolding.length > 0;
 }
 
-export type SnapshotAction =
+type SnapshotAction =
   | { type: "skip" }
   | { type: "create" }
   | { type: "update"; existingId: NetWorthSnapshotId };

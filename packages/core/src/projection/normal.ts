@@ -26,10 +26,9 @@
  *   The p^(1/4) transform provides more uniform spacing across the tail range
  *   than p^(1/2) or linear-p, reducing interpolation error.
  *
- * Approximation error bounds:
- *   MAX_ABS_ERROR_CENTRAL: 1.15e-9  (|z| <= 2, Acklam rational polynomial)
- *   MAX_ABS_ERROR_TAIL_MID: 0.065   (|z| in (2, 5))
- *   MAX_ABS_ERROR_TAIL_DEEP: 0.065  (|z| in (5, 6.2), p in (2.3e-10, 1e-7))
+ * Approximation error bounds (enforced in normal.test.ts against an AS 241 oracle):
+ *   Central |z| <= 2:  max abs error 3.2e-8 (Acklam rational polynomial)
+ *   Tail    |z| > 2:   max abs error 0.065  (lookup table + linear interpolation)
  *
  *   The tail error of 0.065 in z units is acceptable for FIRE simulation:
  *   with a 15% real sigma, a 0.065 sigma error on a deep-tail draw changes
@@ -58,16 +57,6 @@
  */
 
 import type { Sfc32 } from "./random.js";
-
-/** Max absolute error |approx(z) - true(z)| for |z| <= 2 (central region). */
-export const MAX_ABS_ERROR_CENTRAL = 1.15e-9;
-
-/**
- * Max absolute error |approx(z) - true(z)| for |z| in (2, 6.2) (tail region).
- * Worst case is in the extreme tail (|z| near 6); the mid-tail (|z| near 2-4)
- * error is typically < 0.01. See module docstring for impact analysis.
- */
-export const MAX_ABS_ERROR_TAIL = 6.5e-2;
 
 /** Minimum u (maps to z ~ -6.2). */
 const U_MIN = 2.3e-10;

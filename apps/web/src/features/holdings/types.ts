@@ -129,8 +129,6 @@ export const groupFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(64, "Name must be 64 characters or fewer"),
 });
 
-export type GroupFormValues = z.infer<typeof groupFormSchema>;
-
 export type LocalHolding = {
   id: string;
   accountId: string;

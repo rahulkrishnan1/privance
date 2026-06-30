@@ -1,7 +1,6 @@
 # @privance/web
 
-Next.js 16 static-export PWA for Privance. The same build artifact is wrapped by
-Capacitor for native iOS and Android builds.
+Next.js 16 static-export PWA for Privance.
 
 All crypto runs in the browser. This workspace has no server-side rendering; the
 `output: "export"` Next.js config produces a static `/out` directory.
@@ -38,7 +37,7 @@ WASM, icons) is pre-cached on first load; data sync requires network.
 
 **Offline behavior:** The app shell loads offline after first visit. Account data is stored locally via SQLite-WASM, OPFS-backed where the browser allows it and in-memory when it does not (Safari Private Browsing, restricted WKWebView hosts). In the in-memory mode the local store re-populates from the server on every session; the server holds ciphertext only. A full offline experience (no network ever) is not supported because authentication and initial sync require connectivity.
 
-**Service worker:** `/public/sw.js` is a hand-written service worker (no Workbox or next-pwa). It is registered only in production builds and skipped inside Capacitor WebViews (which manage their own asset caching).
+**Service worker:** `/public/sw.js` is a hand-written service worker (no Workbox or next-pwa). It is registered only in production builds.
 
 ## Development
 
@@ -47,90 +46,6 @@ pnpm dev          # starts on http://localhost:8081
 pnpm build        # static export to /out
 pnpm typecheck    # tsc --noEmit
 pnpm test         # vitest unit tests
-```
-
-## Running on iOS
-
-### Prerequisites
-
-- **Xcode** (latest stable) from the Mac App Store
-- **An Apple Developer signing identity**, a free Apple ID is sufficient for
-  Simulator builds; a paid membership is required for installing on a physical device
-- Capacitor 8 uses Swift Package Manager, so CocoaPods is not required
-
-### Environment
-
-The iOS Capacitor WebView serves the app from the `capacitor://localhost` origin.
-The Privance API server must list that origin in `ALLOWED_ORIGINS` (see
-`server/.env.example`). Set the API URL before building:
-
-```sh
-# Simulator pointing at local bun server (port 3000)
-NEXT_PUBLIC_SERVER_URL=http://localhost:3000 pnpm -F @privance/web build
-
-# Production build
-NEXT_PUBLIC_SERVER_URL=https://privance.app pnpm -F @privance/web build
-```
-
-### First-time setup (Xcode project already scaffolded)
-
-```sh
-pnpm -F @privance/web build
-pnpm -F @privance/web exec cap sync ios
-```
-
-### Re-syncing after web changes
-
-```sh
-pnpm -F @privance/web cap:ios   # build + sync + open Xcode in one step
-```
-
-Or individually:
-
-```sh
-pnpm -F @privance/web build
-pnpm -F @privance/web exec cap sync ios
-pnpm -F @privance/web exec cap open ios
-```
-
-### Build and run in Xcode
-
-Open the project:
-
-```sh
-open apps/web/ios/App/App.xcodeproj
-```
-
-Select a simulator target from the scheme menu and press `Cmd+R`.
-
-## Running on Android
-
-### Prerequisites
-
-- **Android Studio** (latest stable) with JDK 17 configured
-- An Android emulator or physical device
-
-### Environment
-
-The Android Capacitor WebView uses the `https://localhost` origin. Add it to
-`ALLOWED_ORIGINS` alongside the iOS origin:
-
-```
-ALLOWED_ORIGINS=http://localhost:8081,capacitor://localhost,https://localhost
-```
-
-### Re-syncing after web changes
-
-```sh
-pnpm -F @privance/web cap:android   # build + sync + open Android Studio
-```
-
-Or individually:
-
-```sh
-pnpm -F @privance/web build
-pnpm -F @privance/web exec cap sync android
-pnpm -F @privance/web exec cap open android
 ```
 
 ## Running E2E tests

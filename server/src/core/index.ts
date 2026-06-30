@@ -3,5 +3,4 @@ export { createApp } from "./app.js";
 export type { FetchLike } from "./fetch.js";
 export { logger } from "./logger.js";
 export { requireCsrfHeader } from "./middleware.js";
-export type { RateLimitBucket } from "./rate-limit.js";
 export { createRateLimitBucket } from "./rate-limit.js";

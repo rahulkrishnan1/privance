@@ -1,4 +1,4 @@
-export class SyncError extends Error {
+class SyncError extends Error {
   readonly code: string;
   constructor(code: string, message: string) {
     super(message);
@@ -24,18 +24,6 @@ export class NotFoundError extends SyncError {
   }
 }
 
-export type SyncObject = {
-  userId: string;
-  objectId: string;
-  kind: string;
-  ciphertext: Buffer;
-  nonce: Buffer;
-  version: bigint;
-  serverSeq: bigint;
-  updatedAt: Date;
-  tombstone: boolean;
-};
-
 export type PutInput = {
   userId: string;
   objectId: string;
@@ -59,12 +47,6 @@ export type GetResult = {
   version: bigint;
   serverSeq: bigint;
   tombstone: boolean;
-};
-
-export type ChangesQuery = {
-  userId: string;
-  since: bigint;
-  limit: number;
 };
 
 export type ChangeRecord = {

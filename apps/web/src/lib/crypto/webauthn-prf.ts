@@ -35,7 +35,7 @@ export class BiometricFailureError extends Error {
   }
 }
 
-export type EnrollResult = {
+type EnrollResult = {
   credentialId: Uint8Array;
   prfOutput: Uint8Array;
   salt: Uint8Array;

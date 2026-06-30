@@ -4,9 +4,6 @@ import { WebSqliteAdapter } from "./web-adapter.js";
 /**
  * Create a LocalStore backed by sqlite-wasm running in a dedicated Worker.
  *
- * The same adapter powers PWA and Capacitor builds, Capacitor's WebView is a
- * browser, so OPFS + WebAssembly are available everywhere we ship.
- *
  * Callers must call `store.init()` before any data operations.
  *
  * @param options.workerUrl  - Absolute URL where the sqlite worker is served,

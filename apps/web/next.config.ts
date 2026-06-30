@@ -7,15 +7,15 @@ const nextConfig: NextConfig = {
   // local/dev builds fall back to package.json so there's no manual bump to forget.
   env: { NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION || pkg.version },
 
-  // Static export so Capacitor can wrap the same bundle into iOS/Android shells.
   // Server-side rendering is incompatible with our zero-knowledge model
-  // (the DEK never leaves the browser), so static is the correct mode.
+  // (the DEK never leaves the browser), so static export is the correct mode.
   output: "export",
 
   // Next.js only transpiles JS by default; workspace TS packages need this.
   transpilePackages: ["@privance/core"],
 
-  // Capacitor serves files via file://; avoid trailingSlash mismatches in routes.
+  // Serve route paths with a trailing slash so static hosts resolve them as
+  // directories (e.g. /app/holdings/ -> .../index.html).
   trailingSlash: true,
 
   // Disable Next.js image optimization: it requires a server, which static

@@ -11,7 +11,6 @@ import { overlayClassName } from "./overlay";
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
 const DialogPortal = DialogPrimitive.Portal;
-const DialogClose = DialogPrimitive.Close;
 
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
@@ -75,14 +74,6 @@ const DialogTitle = React.forwardRef<
 ));
 DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
-const DialogDescription = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Description>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Description ref={ref} className={cn("text-sm text-dim", className)} {...props} />
-));
-DialogDescription.displayName = DialogPrimitive.Description.displayName;
-
 const DialogTitleRow = ({
   title,
   titleId,
@@ -106,15 +97,4 @@ const DialogTitleRow = ({
 );
 DialogTitleRow.displayName = "DialogTitleRow";
 
-export {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogOverlay,
-  DialogPortal,
-  DialogTitle,
-  DialogTitleRow,
-  DialogTrigger,
-};
+export { Dialog, DialogContent, DialogFooter, DialogTitle, DialogTitleRow, DialogTrigger };

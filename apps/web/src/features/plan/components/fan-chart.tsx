@@ -19,7 +19,7 @@ import { useChartColors } from "@/lib/chart-colors";
 import { formatCurrencyCompact, formatCurrencyWhole } from "@/lib/format";
 import { useMediaQuery } from "@/lib/use-media-query";
 
-export interface FanChartPoint {
+interface FanChartPoint {
   age: number;
   // Two uncertainty bands as [low, high] pairs, drawn as nested fills.
   outer: [number, number]; // p10..p90

@@ -3,7 +3,7 @@
 import type { Decimal } from "@privance/core";
 import { formatCurrency, formatDate } from "@/lib/format";
 
-export type TooltipPayloadEntry = {
+type TooltipPayloadEntry = {
   value?: number;
   payload?: {
     date?: string;
