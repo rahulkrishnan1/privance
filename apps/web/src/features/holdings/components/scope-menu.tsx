@@ -77,13 +77,16 @@ export function ScopeMenu({
   }, [isMobile, onOpenChange]);
 
   const body = (
-    <Command>
-      <CommandInput
-        value={query}
-        onValueChange={setQuery}
-        placeholder="Search accounts & groups"
-        aria-label="Search accounts and groups"
-      />
+    // Stop the Vaul drawer reading option taps as drag-to-dismiss.
+    <Command data-vaul-no-drag="">
+      {!isMobile && (
+        <CommandInput
+          value={query}
+          onValueChange={setQuery}
+          placeholder="Search accounts & groups"
+          aria-label="Search accounts and groups"
+        />
+      )}
       <CommandList>
         <CommandEmpty>No matching accounts or groups</CommandEmpty>
         <CommandGroup>
