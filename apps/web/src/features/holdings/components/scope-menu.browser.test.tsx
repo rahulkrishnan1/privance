@@ -159,7 +159,7 @@ test("Edit groups fires onEditGroups and closes", async () => {
   expect(onEditGroups).toHaveBeenCalledTimes(1);
 });
 
-test("mobile renders a drawer with no search field (no keyboard) and tappable options", async () => {
+test("mobile renders a dialog sheet with no search field (no keyboard) and tappable options", async () => {
   vi.mocked(useMediaQuery).mockReturnValue(true);
   const { screen, onSelect } = await renderMenu();
 
@@ -168,10 +168,6 @@ test("mobile renders a drawer with no search field (no keyboard) and tappable op
   await expect.element(screen.getByRole("dialog")).toBeVisible();
 
   expect(screen.getByRole("combobox", SEARCH).elements()).toHaveLength(0);
-
-  // Tripwire for the drag-suppression attribute; the drag behavior itself is
-  // only verifiable on real touch hardware, not in Chromium.
-  expect(document.querySelector("[data-vaul-no-drag]")).not.toBeNull();
 
   await screen.getByRole("option", { name: /Roth IRA/ }).click();
   expect(onSelect).toHaveBeenCalledWith({ kind: "account", accountId: "a2" });

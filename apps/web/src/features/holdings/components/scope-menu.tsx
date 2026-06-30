@@ -11,7 +11,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMediaQuery } from "@/lib/use-media-query";
 import type { FilterState, LocalGroup } from "../types";
@@ -77,8 +77,7 @@ export function ScopeMenu({
   }, [isMobile, onOpenChange]);
 
   const body = (
-    // Stop the Vaul drawer reading option taps as drag-to-dismiss.
-    <Command data-vaul-no-drag="">
+    <Command>
       {!isMobile && (
         <CommandInput
           value={query}
@@ -159,13 +158,13 @@ export function ScopeMenu({
   return (
     <h3 className="inline-block font-serif text-2xl font-normal tracking-[-0.005em]">
       {isMobile ? (
-        <Drawer open={open} onOpenChange={onOpenChange}>
-          <DrawerTrigger asChild>{trigger}</DrawerTrigger>
-          <DrawerContent>
-            <DrawerTitle className="sr-only">Filter holdings by scope</DrawerTitle>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogTrigger asChild>{trigger}</DialogTrigger>
+          <DialogContent aria-label="Filter holdings by scope">
+            <DialogTitle className="sr-only">Filter holdings by scope</DialogTitle>
             {body}
-          </DrawerContent>
-        </Drawer>
+          </DialogContent>
+        </Dialog>
       ) : (
         <Popover open={open} onOpenChange={onOpenChange}>
           <PopoverTrigger asChild>{trigger}</PopoverTrigger>
