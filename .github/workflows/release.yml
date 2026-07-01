@@ -72,8 +72,9 @@ jobs:
           outputs: type=image,name=ghcr.io/${{ github.repository_owner }}/${{ matrix.name }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=${{ matrix.name }}-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}-${{ matrix.arch }}
-          # Provenance attestations add an extra manifest entry that breaks
-          # push-by-digest; disable here and re-attach attestation in a follow-up.
+          # Provenance attestations here would add an extra manifest entry that
+          # breaks push-by-digest; attested separately below against the final
+          # multi-arch manifest instead.
           provenance: false
 
       - name: Export digest
@@ -97,6 +98,11 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
     strategy:
       fail-fast: false
       matrix:
@@ -135,6 +141,22 @@ jobs:
           docker buildx imagetools create \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf 'ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}@sha256:%s ' *)
+
+      - name: Get manifest digest
+        id: manifest
+        run: |
+          digest=$(docker buildx imagetools inspect "ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}:${{ steps.meta.outputs.version }}" --format '{{json .Manifest}}' | jq -r '.digest')
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      # Attest against the final multi-arch manifest digest, not the per-arch
+      # build digests: provenance was dropped from the per-arch build step
+      # because it broke push-by-digest, so it re-attaches here instead.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-name: ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}
+          subject-digest: ${{ steps.manifest.outputs.digest }}
+          push-to-registry: true
 
       - name: Inspect manifest
         run: docker buildx imagetools inspect "ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}:${{ steps.meta.outputs.version }}"
