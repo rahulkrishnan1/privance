@@ -29,9 +29,9 @@ export function InvestHero({ breakdown, delta, historyPoints }: InvestHeroProps)
 
   const deltaColor = isPositive ? "text-up" : isNegative ? "text-down" : "text-dim";
   const deltaBorder = isPositive
-    ? "border-up/25 bg-up/7"
+    ? "border-up/25 bg-up/12"
     : isNegative
-      ? "border-down/25 bg-down/7"
+      ? "border-down/25 bg-down/12"
       : "border-line bg-panel-2";
 
   return (
@@ -49,14 +49,13 @@ export function InvestHero({ breakdown, delta, historyPoints }: InvestHeroProps)
         {delta !== null && (
           <span
             className={[
-              "vfig flex items-center gap-2 font-mono text-sm border rounded-full px-3.5 py-1.5 mb-2.5",
+              "vfig font-mono text-sm border rounded-full px-3.5 py-1.5 mb-2.5",
               deltaColor,
               deltaBorder,
             ].join(" ")}
           >
             {isPositive ? "+" : ""}
-            {formatCurrencyWhole(delta.dollar)}
-            <span className="text-dim"> &middot; {formatPercent(delta.pct, { signed: true })}</span>
+            {formatCurrencyWhole(delta.dollar)} ({formatPercent(delta.pct, { signed: true })})
           </span>
         )}
       </div>

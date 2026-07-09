@@ -9,9 +9,9 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-7FC4C6"></a>
-  <img alt="Zero-knowledge" src="https://img.shields.io/badge/encryption-zero--knowledge-7FC4C6">
-  <img alt="PWA installable" src="https://img.shields.io/badge/PWA-installable-7FC4C6">
+  <a href="LICENSE"><img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-5EEAD4"></a>
+  <img alt="Zero-knowledge" src="https://img.shields.io/badge/encryption-zero--knowledge-5EEAD4">
+  <img alt="PWA installable" src="https://img.shields.io/badge/PWA-installable-5EEAD4">
 </p>
 
 <p align="center">

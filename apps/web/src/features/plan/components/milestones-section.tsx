@@ -76,15 +76,15 @@ function MilestoneRow({
           {label}
           {milestone.amountCents !== null && (
             <>
-              {" · "}
-              <span className="vfig text-cream-soft">
+              {", "}
+              <span className="vfig text-accent">
                 {formatCurrencyCompact(milestone.amountCents)}
               </span>
             </>
           )}
         </span>
         <span className="mt-[3px] block font-mono text-xs text-faint">
-          {status} · {desc}
+          {status}, {desc}
         </span>
       </span>
     </div>

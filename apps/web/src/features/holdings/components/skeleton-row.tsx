@@ -10,23 +10,32 @@ export function SkeletonRow() {
           <div className="h-3 w-24 rounded bg-white/[0.04] animate-pulse" />
         </div>
       </td>
-      <td className="hidden md:table-cell border-t border-line-soft py-[13px] pl-8 text-right">
-        <div className="h-4 w-14 rounded bg-white/[0.07] animate-pulse ml-auto" />
-      </td>
       {/* Day -- desktop only, matching the real table (mobile shows G/L instead) */}
       <td className="hidden md:table-cell border-t border-line-soft py-[13px] pl-8 text-right">
         <div className="h-4 w-10 rounded bg-white/[0.04] animate-pulse ml-auto" />
+      </td>
+      {/* Price -- desktop only */}
+      <td className="hidden md:table-cell border-t border-line-soft py-[13px] pl-8 text-right">
+        <div className="h-4 w-14 rounded bg-white/[0.07] animate-pulse ml-auto" />
+      </td>
+      {/* Avg cost -- desktop only */}
+      <td className="hidden md:table-cell border-t border-line-soft py-[13px] pl-8 text-right">
+        <div className="h-4 w-14 rounded bg-white/[0.07] animate-pulse ml-auto" />
       </td>
       {/* G/L -- always visible, matching the real table */}
       <td className="border-t border-line-soft py-[13px] pl-8 text-right">
         <div className="h-4 w-16 rounded bg-white/[0.04] animate-pulse ml-auto" />
       </td>
-      {/* Weight -- desktop only */}
+      {/* Total cost -- desktop only */}
       <td className="hidden md:table-cell border-t border-line-soft py-[13px] pl-8 text-right">
-        <div className="h-4 w-20 rounded bg-white/[0.04] animate-pulse ml-auto" />
+        <div className="h-4 w-14 rounded bg-white/[0.07] animate-pulse ml-auto" />
       </td>
       <td className="border-t border-line-soft py-[13px] pl-8 text-right">
         <div className="h-4 w-20 rounded bg-white/[0.07] animate-pulse ml-auto" />
+      </td>
+      {/* Weight -- desktop only, last column */}
+      <td className="hidden md:table-cell border-t border-line-soft py-[13px] pl-8 text-right">
+        <div className="h-4 w-10 rounded bg-white/[0.04] animate-pulse ml-auto" />
       </td>
     </tr>
   );

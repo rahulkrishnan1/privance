@@ -12,7 +12,7 @@ export function AuthBackdrop() {
           left: "50%",
           top: -480,
           transform: "translateX(-50%)",
-          background: "radial-gradient(circle, rgba(127,196,198,.07), transparent 62%)",
+          background: "radial-gradient(circle, rgba(94,234,212,.07), transparent 62%)",
           zIndex: 0,
         }}
       />

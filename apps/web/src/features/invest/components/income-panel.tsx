@@ -65,7 +65,7 @@ export function IncomePanel({ result }: IncomePanelProps) {
               <span className="justify-self-start font-mono text-xs tracking-[.06em] text-accent bg-panel-2 border border-line rounded-[5px] px-[9px] py-[5px]">
                 {payer.ticker}
               </span>
-              <span className="font-mono text-sm text-cream-soft tabular-nums text-right">
+              <span className="font-mono text-sm text-cream tabular-nums text-right">
                 <span className="vfig">{formatCurrency(payer.annualCents)}</span>
                 <CadenceSuffix unit="yr" className="text-faint" />
               </span>

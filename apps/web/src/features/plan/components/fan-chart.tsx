@@ -246,7 +246,7 @@ export function FanChart({
             </defs>
             {/* Barely-there horizontal rules; the dollar labels at the right edge
                 carry the scale and keep the plot airy. */}
-            <CartesianGrid vertical={false} stroke="rgba(235,235,230,0.05)" strokeWidth={1} />
+            <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
             <XAxis
               dataKey="age"
               type="number"
@@ -337,12 +337,12 @@ export function FanChart({
             )}
 
             {/* Median FIRE-age marker: a signal dot where the median crosses the
-                target, a short faint drop-line to the age axis, and a "FI · YEAR"
+                target, a short faint drop-line to the age axis, and a "FI YEAR"
                 label (the milestone ages live in their own section). */}
             {showFireMarker && fireNumberDisplay !== undefined && (
               <>
                 <ReferenceLine
-                  stroke="rgba(235,235,230,0.14)"
+                  stroke="rgba(255,255,255,0.14)"
                   strokeDasharray="2 4"
                   segment={[
                     { x: medianFireAge, y: 0 },
@@ -354,10 +354,10 @@ export function FanChart({
                   y={fireNumberDisplay}
                   r={5}
                   fill={signal}
-                  stroke="#0e0f11"
+                  stroke="#07080a"
                   strokeWidth={2}
                   label={{
-                    value: fireYear !== undefined ? `FI · ${fireYear}` : "FI",
+                    value: fireYear !== undefined ? `FI ${fireYear}` : "FI",
                     position: "top",
                     fontSize: 9.5,
                     fill: signal,
@@ -393,14 +393,14 @@ export function FanChart({
         <span className="flex items-center gap-2">
           <span
             className="inline-block h-[3px] w-4 rounded-sm"
-            style={{ background: "rgba(127,196,198,0.3)" }}
+            style={{ background: "rgba(94,234,212,0.3)" }}
           />
           Likely range (25 to 75)
         </span>
         <span className="flex items-center gap-2">
           <span
             className="inline-block h-[3px] w-4 rounded-sm"
-            style={{ background: "rgba(127,196,198,0.12)" }}
+            style={{ background: "rgba(94,234,212,0.12)" }}
           />
           Possible range (10 to 90)
         </span>

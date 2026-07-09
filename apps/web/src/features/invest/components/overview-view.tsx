@@ -87,7 +87,6 @@ export function OverviewView({
             byHolding={breakdown.byHolding}
             tickerById={priceTickerById}
             groupKeyById={priceTickerById}
-            totalInvestments={breakdown.byAccountKind.investment}
             dayChangeByHoldingId={dayChangeByHoldingId}
             holdings={holdings}
             onRowClick={() => router.push("/app/holdings/")}

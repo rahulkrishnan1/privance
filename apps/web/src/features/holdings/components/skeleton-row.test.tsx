@@ -60,7 +60,7 @@ describe("SkeletonRow column parity with the real holding row", () => {
     const skeletonCols = (skeletonHtml().match(/<td/g) ?? []).length;
     const realCols = (realRowHtml().match(/<td/g) ?? []).length;
     expect(skeletonCols).toBe(realCols);
-    expect(skeletonCols).toBe(6);
+    expect(skeletonCols).toBe(8);
   });
 
   it("hides exactly the same columns on mobile as the real row", () => {
@@ -70,8 +70,8 @@ describe("SkeletonRow column parity with the real holding row", () => {
     const skeletonPattern = columnHiddenPattern(skeletonHtml());
     const realPattern = columnHiddenPattern(realRowHtml());
     expect(skeletonPattern).toEqual(realPattern);
-    // Holding, G/L, and Value stay visible on mobile; Price, Day, Weight hide.
-    expect(skeletonPattern).toEqual([false, true, true, false, true, false]);
+    // Holding, G/L, and Value stay visible on mobile; Day, Price, Avg cost, Total cost, Weight hide.
+    expect(skeletonPattern).toEqual([false, true, true, true, false, true, false, true]);
   });
 
   it("SkeletonRows renders the requested count of rows", () => {

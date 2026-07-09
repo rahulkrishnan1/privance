@@ -206,7 +206,7 @@ export default function RecoveryPage() {
 
         <div
           className="mt-6 border rounded-[8px] px-[17px] py-[15px] text-sm text-cream-soft leading-[1.6]"
-          style={{ borderColor: "rgba(127,196,198,.3)", background: "rgba(127,196,198,.05)" }}
+          style={{ borderColor: "rgba(94,234,212,.3)", background: "rgba(94,234,212,.05)" }}
         >
           <strong className="text-accent font-medium">Your old phrase is void.</strong> It can never
           open this vault again. Only the words below can.

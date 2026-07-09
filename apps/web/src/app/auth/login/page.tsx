@@ -199,7 +199,7 @@ export default function LoginPage() {
         >
           Create account
         </Link>
-        <span className="px-3">&middot;</span>
+        <span className="px-3 text-faint">/</span>
         <Link
           href="/auth/recovery"
           className="text-accent-dim no-underline hover:text-accent transition-colors"

@@ -13,7 +13,10 @@ type AllocationLegendProps = {
 export function AllocationLegend({ slices, colors, hoveredIndex, onHover }: AllocationLegendProps) {
   return (
     <ul
-      className="grid w-full list-none grid-cols-[1fr_auto] gap-x-8 p-0 m-0 md:grid-cols-[1fr_auto_auto]"
+      // -mx-1 (with the matching width bump, since the flex parent centers
+      // shrink-to-fit children) cancels the rows' px-1 so text aligns with the
+      // card's other tables while the hover highlight bleeds past the text edge.
+      className="grid w-[calc(100%+8px)] list-none grid-cols-[1fr_auto] gap-x-8 p-0 my-0 -mx-1 md:grid-cols-[1fr_auto_auto]"
       aria-label="Allocation legend"
     >
       {slices.map((slice, i) => {
@@ -43,10 +46,10 @@ export function AllocationLegend({ slices, colors, hoveredIndex, onHover }: Allo
               />
               <span className="text-cream truncate">{slice.label}</span>
             </span>
-            <span className="vfig hidden md:block font-mono text-cream-soft tabular-nums text-right">
+            <span className="vfig hidden md:block font-mono text-cream tabular-nums text-right">
               {formatCurrencyWhole(slice.value)}
             </span>
-            <span className="font-mono text-dim tabular-nums text-right">
+            <span className="font-mono text-cream md:text-dim tabular-nums text-right">
               {formatPercent(slice.share)}
             </span>
           </li>

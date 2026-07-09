@@ -72,7 +72,9 @@ export function SplitsRow({ breakdown, delta, portfolioGain }: SplitsRowProps) {
           delta === null ? "-" : `${deltaPositive ? "+" : ""}${formatCurrencyWhole(delta.dollar)}`
         }
         valueColor={deltaPositive ? "text-up" : deltaNegative ? "text-down" : ""}
-        subline={delta === null ? "no price data" : formatPercent(delta.pct, { signed: true })}
+        subline={
+          delta === null ? "no price data" : `${formatPercent(delta.pct, { signed: true })} today`
+        }
         sublineColor={deltaPositive ? "text-up" : deltaNegative ? "text-down" : "text-dim"}
       />
     </div>

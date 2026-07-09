@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description:
     "A self-hostable, zero-knowledge personal finance app. Your money, your math. The server never sees your data.",
   openGraph: {
-    title: "Privance · personal finance, encrypted on your device",
+    title: "Privance: personal finance, encrypted on your device",
     description:
       "A self-hostable, zero-knowledge personal finance app. Open source, end-to-end encrypted, yours.",
     type: "website",
@@ -27,7 +27,7 @@ export default function LandingLayout({ children }: { children: ReactNode }) {
 
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[60vh] bg-[radial-gradient(ellipse_at_top,_rgba(127,196,198,0.10),_transparent_60%)]"
+        className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[60vh] bg-[radial-gradient(ellipse_at_top,_rgba(94,234,212,0.10),_transparent_60%)]"
       />
 
       <div className="relative z-10">{children}</div>

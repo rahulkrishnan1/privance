@@ -278,6 +278,67 @@ describe("sortHoldings", () => {
     expect(result[0]?.ticker).toBe("VXUS");
     expect(result[1]?.ticker).toBe("AAPL");
   });
+
+  // Distinct avg cost per share: HI = $1,000/10 = $100, LO = $1,000/100 = $10.
+  const hiAvg = makeHolding({ ticker: "HI", costBasisCents: "100000", sharesMajor: "10" });
+  const loAvg = makeHolding({ ticker: "LO", costBasisCents: "100000", sharesMajor: "100" });
+  const badCost = makeHolding({ ticker: "BAD", costBasisCents: "not-a-number" });
+
+  it("sorts by avg cost ascending, with malformed cost basis last", () => {
+    const result = sortHoldings(
+      [hiAvg, badCost, loAvg],
+      { column: "avgCost", direction: "asc" },
+      EMPTY_PRICES,
+    );
+    expect(result.map((h) => h.ticker)).toEqual(["LO", "HI", "BAD"]);
+  });
+
+  it("sorts by avg cost descending, still keeping malformed cost basis last", () => {
+    const result = sortHoldings(
+      [loAvg, badCost, hiAvg],
+      { column: "avgCost", direction: "desc" },
+      EMPTY_PRICES,
+    );
+    expect(result.map((h) => h.ticker)).toEqual(["HI", "LO", "BAD"]);
+  });
+
+  // Distinct total cost basis: BIG = $5,000, SML = $1,000.
+  const bigCost = makeHolding({ ticker: "BIG", costBasisCents: "500000" });
+  const smlCost = makeHolding({ ticker: "SML", costBasisCents: "100000" });
+
+  it("sorts by total cost ascending, with malformed cost basis last", () => {
+    const result = sortHoldings(
+      [bigCost, badCost, smlCost],
+      { column: "totalCost", direction: "asc" },
+      EMPTY_PRICES,
+    );
+    expect(result.map((h) => h.ticker)).toEqual(["SML", "BIG", "BAD"]);
+  });
+
+  it("sorts by total cost descending, still keeping malformed cost basis last", () => {
+    const result = sortHoldings(
+      [smlCost, badCost, bigCost],
+      { column: "totalCost", direction: "desc" },
+      EMPTY_PRICES,
+    );
+    expect(result.map((h) => h.ticker)).toEqual(["BIG", "SML", "BAD"]);
+  });
+
+  it("sorts by gain dollar without throwing on a malformed cost basis (nulls last)", () => {
+    const good = makeHolding({ ticker: "GOOD", costBasisCents: "100000" });
+    const asc = sortHoldings(
+      [badCost, good],
+      { column: "gainDollar", direction: "asc" },
+      EMPTY_PRICES,
+    );
+    expect(asc.map((h) => h.ticker)).toEqual(["GOOD", "BAD"]);
+    const desc = sortHoldings(
+      [good, badCost],
+      { column: "gainDollar", direction: "desc" },
+      EMPTY_PRICES,
+    );
+    expect(desc.map((h) => h.ticker)).toEqual(["GOOD", "BAD"]);
+  });
 });
 
 describe("computeAnchorScaleFactor", () => {

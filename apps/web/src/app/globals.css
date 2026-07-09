@@ -5,8 +5,8 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #0e0f11;
-  --foreground: #eceae3;
+  --background: #07080a;
+  --foreground: #f2f4f5;
 }
 
 @theme inline {
@@ -20,23 +20,24 @@
   --font-serif: var(--font-instrument-serif);
   --font-editorial: var(--font-instrument-serif);
 
-  /* Privance 2026 palette. Graphite vault + Tide teal accent. These names
-     mirror the design mocks one-to-one. */
-  --color-vault: #0e0f11;
-  --color-panel: #15161a;
-  --color-panel-2: #1b1c21;
-  --color-cream: #eceae3;
-  --color-cream-soft: #c7c5bc;
-  --color-dim: #8e8e88;
-  --color-faint: #5e5e5a;
-  --color-line: rgba(235, 235, 230, 0.08);
-  --color-line-soft: rgba(235, 235, 230, 0.045);
-  --color-accent: #7fc4c6;
-  --color-accent-dim: #4f898c;
-  --color-accent-hover: #9bd2d4;
-  --color-up: #7cc08d;
-  --color-down: #d08562;
-  --color-signal: #c8551f;
+  /* Privance 2026 palette, "Signal". Near-black vault + luminous mint accent,
+     violet as the secondary data hue. These names mirror the design mocks
+     one-to-one. */
+  --color-vault: #07080a;
+  --color-panel: #101216;
+  --color-panel-2: #171a20;
+  --color-cream: #f2f4f5;
+  --color-cream-soft: #c9ced2;
+  --color-dim: #8b939b;
+  --color-faint: #5b636b;
+  --color-line: rgba(255, 255, 255, 0.09);
+  --color-line-soft: rgba(255, 255, 255, 0.05);
+  --color-accent: #5eead4;
+  --color-accent-dim: #2dd4bf;
+  --color-accent-hover: #8cf5e4;
+  --color-up: #4ade80;
+  --color-down: #fb7185;
+  --color-signal: #fb923c;
 }
 
 /* shadcn/ui semantic tokens mapped onto the Privance palette. Only names that
@@ -116,8 +117,8 @@
 body {
   background-color: var(--background);
   background-image:
-    radial-gradient(900px 520px at 82% 4%, rgba(127, 196, 198, 0.06), transparent 60%),
-    radial-gradient(820px 640px at 6% 94%, rgba(127, 196, 198, 0.035), transparent 55%);
+    radial-gradient(900px 520px at 82% 4%, rgba(94, 234, 212, 0.06), transparent 60%),
+    radial-gradient(820px 640px at 6% 94%, rgba(94, 234, 212, 0.035), transparent 55%);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
@@ -196,8 +197,8 @@ input[type="range"].plan-range {
   background-position: 0 center;
   background-image: linear-gradient(
     90deg,
-    rgba(235, 235, 230, 0.1) 0%,
-    rgba(235, 235, 230, 0.1) 100%
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.1) 100%
   );
 }
 input[type="range"].plan-range::-webkit-slider-runnable-track {
@@ -239,12 +240,12 @@ input[type="range"].plan-range:focus-visible {
 }
 input[type="range"].plan-range:focus-visible::-webkit-slider-thumb {
   box-shadow:
-    0 0 0 5px rgba(127, 196, 198, 0.22),
+    0 0 0 5px rgba(94, 234, 212, 0.22),
     0 0 0 1px var(--color-accent);
 }
 input[type="range"].plan-range:focus-visible::-moz-range-thumb {
   box-shadow:
-    0 0 0 5px rgba(127, 196, 198, 0.22),
+    0 0 0 5px rgba(94, 234, 212, 0.22),
     0 0 0 1px var(--color-accent);
 }
 

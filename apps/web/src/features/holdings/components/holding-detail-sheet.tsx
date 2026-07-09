@@ -5,7 +5,12 @@ import { useState } from "react";
 import { Button, CloseButton, ConfirmDeleteButton } from "@/components";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { formatCurrency } from "@/lib/format";
-import { computeEffectivePrice, computeMarketValue, parseCostBasisCents } from "../_helpers";
+import {
+  computeAvgCost,
+  computeEffectivePrice,
+  computeMarketValue,
+  parseCostBasisCents,
+} from "../_helpers";
 import type { LocalHolding } from "../types";
 
 type PriceEntry = {
@@ -81,16 +86,7 @@ export function HoldingDetailSheet({
     }
   })();
 
-  // Avg cost basis per share = total cost / shares.
-  const avgCostBasis = (() => {
-    if (costBasis === null) return null;
-    try {
-      const shares = Decimal.fromString(holding.sharesMajor, holding.sharesScale);
-      return shares.isZero() ? null : costBasis.toFloat() / shares.toFloat();
-    } catch {
-      return null;
-    }
-  })();
+  const avgCostBasis = computeAvgCost(holding);
 
   const unrealizedGain =
     marketValue !== null && costBasis !== null ? marketValue.sub(costBasis) : null;
@@ -150,7 +146,7 @@ export function HoldingDetailSheet({
             </SheetTitle>
             {holding.proxyTicker ? (
               <p className="font-mono text-sm text-dim tracking-[.04em] mt-1.5">
-                Proxy &middot; {holding.proxyTicker}
+                Proxy: {holding.proxyTicker}
               </p>
             ) : (
               holding.name !== undefined && (
@@ -171,18 +167,18 @@ export function HoldingDetailSheet({
             {formatCurrency(marketValue, "USD")}
           </p>
         ) : (
-          <p className="font-mono text-xs text-faint mt-4">no price, set one</p>
+          <p className="font-mono text-sm text-faint mt-4">no price, set one</p>
         )}
 
         {unrealizedGain !== null && (
-          <p className={`font-mono text-xs mt-1.5 ${gainTone}`}>
+          <p className={`font-mono text-sm mt-1.5 ${gainTone}`}>
             <span className="vfig">
               {unrealizedGain.isNegative() ? "" : "+"}
               {formatCurrency(unrealizedGain, "USD")}
-            </span>{" "}
-            unrealized
-            {unrealizedPct !== null &&
-              ` · ${unrealizedPct >= 0 ? "+" : ""}${(unrealizedPct * 100).toFixed(1)}%`}
+            </span>
+            {unrealizedPct !== null
+              ? ` (${unrealizedPct >= 0 ? "+" : ""}${(unrealizedPct * 100).toFixed(1)}%) unrealized`
+              : " unrealized"}
           </p>
         )}
 
@@ -215,7 +211,7 @@ export function HoldingDetailSheet({
                   {dayChangeCents.isNegative() ? "" : "+"}
                   {formatCurrency(dayChangeCents, "USD")}
                 </span>
-                {dayPct !== null && ` · ${dayPct >= 0 ? "+" : ""}${(dayPct * 100).toFixed(2)}%`}
+                {dayPct !== null && ` (${dayPct >= 0 ? "+" : ""}${(dayPct * 100).toFixed(2)}%)`}
               </>
             )}
           </span>

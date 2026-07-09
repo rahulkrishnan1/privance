@@ -39,7 +39,7 @@ function clamp(value: number, lo: number, hi: number): number {
 function fillStyle(value: number, min: number, max: number): React.CSSProperties {
   const pct = max <= min ? 0 : ((Math.min(max, Math.max(min, value)) - min) / (max - min)) * 100;
   return {
-    backgroundImage: `linear-gradient(90deg, var(--color-accent) ${pct}%, rgba(235,235,230,0.10) ${pct}%)`,
+    backgroundImage: `linear-gradient(90deg, var(--color-accent) ${pct}%, rgba(255,255,255,0.10) ${pct}%)`,
   };
 }
 
@@ -392,7 +392,7 @@ export function AdjustPanel({
       />
       <Lever
         name="Stock allocation"
-        readout={`${allocName} · ${stockPct}/${100 - stockPct}`}
+        readout={`${allocName}, ${stockPct}/${100 - stockPct}`}
         veiled={false}
         min={0}
         max={100}
@@ -402,7 +402,7 @@ export function AdjustPanel({
         ariaLabel="Stock allocation (percent stocks)"
         ariaValueText={`${stockPct}% stocks, ${100 - stockPct}% bonds`}
         impact={
-          <>~{expectedReturn}% / yr expected real return · return and volatility follow the mix</>
+          <>~{expectedReturn}% / yr expected real return, return and volatility follow the mix</>
         }
       >
         {/* Filter-pill pattern: rounded-full tinted active, not the filled segmented-control style from segmentItemVariants. */}

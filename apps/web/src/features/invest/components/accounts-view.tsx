@@ -51,14 +51,14 @@ function accountSubLine(account: Account, holdingsCount: number): string {
     case "investment": {
       const tag = SUBKIND_TAG[account.payload.subKind] ?? account.payload.subKind;
       const holdingsLabel = `${holdingsCount} holding${holdingsCount === 1 ? "" : "s"}`;
-      return `${holdingsLabel} · ${tag}`;
+      return `${holdingsLabel}, ${tag}`;
     }
     case "cash": {
       const { apy, subKind } = account.payload;
       const typeLabel = CASH_TYPE_LABEL[subKind] ?? "Other";
       if (apy) {
         const apyPct = (Number(apy) * 100).toFixed(2);
-        return `${typeLabel} · ${apyPct}% APY`;
+        return `${typeLabel}, ${apyPct}% APY`;
       }
       return typeLabel;
     }
@@ -71,7 +71,7 @@ function accountSubLine(account: Account, holdingsCount: number): string {
       const parts: string[] = [];
       if (interestRate) parts.push(`${(Number(interestRate) * 100).toFixed(2)}%`);
       if (termYearsRemaining) parts.push(`${Number(termYearsRemaining)}y left`);
-      return parts.length > 0 ? parts.join(" · ") : "liability";
+      return parts.length > 0 ? parts.join(", ") : "liability";
     }
   }
 }

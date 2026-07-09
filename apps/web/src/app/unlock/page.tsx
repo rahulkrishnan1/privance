@@ -511,7 +511,7 @@ export default function UnlockPage() {
       </div>
 
       <style>{`
-        @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(127,196,198,.25)}50%{box-shadow:0 0 0 16px rgba(127,196,198,0)}}
+        @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(94,234,212,.25)}50%{box-shadow:0 0 0 16px rgba(94,234,212,0)}}
         @media(prefers-reduced-motion:reduce){.bio-emblem{animation:none!important}}
       `}</style>
     </main>

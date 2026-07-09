@@ -334,7 +334,7 @@ export default function SignupPage() {
               role="alert"
               className="font-mono text-xs text-signal tracking-[0.04em]"
             >
-              taken &middot; usernames are first come, first served
+              taken, usernames are first come, first served
             </p>
           ) : errors.username ? (
             <p
@@ -400,7 +400,7 @@ export default function SignupPage() {
             aria-describedby={errors.inviteToken !== undefined ? "signup-invite-error" : undefined}
           />
           <p className="font-mono text-xs text-faint tracking-[0.04em]">
-            invite&#8209;only for now &middot; self&#8209;hosters skip this
+            invite&#8209;only for now, self&#8209;hosters skip this
           </p>
           {errors.inviteToken && (
             <p

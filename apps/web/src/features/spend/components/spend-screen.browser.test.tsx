@@ -152,7 +152,7 @@ test("paused items are excluded from the monthly total", async () => {
   await expect.element(total).toHaveTextContent("$1,000");
   await expect.element(total).not.toHaveTextContent("$1,500");
   // The subscriptions subtotal reflects the active/paused split.
-  await expect.element(screen.getByText("0 active · 1 paused")).toBeVisible();
+  await expect.element(screen.getByText("0 active, 1 paused")).toBeVisible();
 });
 
 test("paused item row swaps the cadence sub-line for a resume hint", async () => {

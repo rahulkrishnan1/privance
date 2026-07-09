@@ -348,18 +348,18 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
               />
             ) : (
               <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">
-                {filterLabel} &middot; {visibleHoldings.length}
+                {filterLabel} ({visibleHoldings.length})
               </h3>
             )}
             {gain !== null && !gain.gainCents.isZero() && (
               <p
-                className={`font-mono text-xs mt-[5px] ${!gain.gainCents.isNegative() ? "text-up" : "text-down"}`}
+                className={`font-mono text-sm mt-[5px] ${!gain.gainCents.isNegative() ? "text-up" : "text-down"}`}
               >
                 <span className="vfig">
                   {!gain.gainCents.isNegative() ? "+" : ""}
                   {formatCurrencyWhole(gain.gainCents)}
                 </span>{" "}
-                unrealized &middot; {formatPercent(gain.gainPct, { signed: true })} on cost
+                ({formatPercent(gain.gainPct, { signed: true })}) unrealized
               </p>
             )}
           </div>

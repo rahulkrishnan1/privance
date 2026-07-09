@@ -1,7 +1,8 @@
 "use client";
 
-import type { Decimal, Holding, HoldingId, HoldingValuation } from "@privance/core";
+import { Decimal, type Holding, type HoldingId, type HoldingValuation } from "@privance/core";
 import Link from "next/link";
+import { ChangePill } from "@/components/ui/change-pill";
 import type { LocalHolding } from "@/features/holdings/types";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { useFillCount } from "@/lib/use-fill-count";
@@ -13,8 +14,6 @@ type TopHoldingsTableProps = {
   /** Composite key (ticker + proxyTicker) so holdings sharing a display ticker
    *  but priced via different proxies don't collapse into one row. */
   groupKeyById: ReadonlyMap<HoldingId, string>;
-  /** Sum of all holding market values; used as the alloc denominator. */
-  totalInvestments: Decimal;
   /** Per-holding day change in cents; absent when prior price isn't available. */
   dayChangeByHoldingId: ReadonlyMap<HoldingId, Decimal>;
   /** Full holding records for the detail sheet. */
@@ -97,12 +96,14 @@ export function TopHoldingsTable({
   byHolding,
   tickerById,
   groupKeyById,
-  totalInvestments,
   dayChangeByHoldingId,
   holdings,
   onRowClick,
 }: TopHoldingsTableProps) {
   const holdingById = new Map<HoldingId, Holding>(holdings.map((h) => [h.id, h]));
+  const marketValueByHolding = new Map<HoldingId, Decimal>(
+    byHolding.map((h) => [h.holdingId, h.marketValue]),
+  );
 
   const aggregated = aggregateByTicker(
     byHolding,
@@ -127,8 +128,6 @@ export function TopHoldingsTable({
       </div>
     );
   }
-
-  const totalFloat = totalInvestments.toFloat();
 
   return (
     <div className="glass rounded-[10px] p-6 h-full flex flex-col">
@@ -169,13 +168,13 @@ export function TopHoldingsTable({
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell font-mono text-xs tracking-label uppercase text-faint font-normal text-right pb-3 pl-8 whitespace-nowrap"
+                className="font-mono text-xs tracking-label uppercase text-faint font-normal text-right pb-3 pl-8 whitespace-nowrap"
               >
-                Weight
+                Price
               </th>
               <th
                 scope="col"
-                className="font-mono text-xs tracking-label uppercase text-faint font-normal text-right pb-3 pl-8 whitespace-nowrap"
+                className="hidden md:table-cell font-mono text-xs tracking-label uppercase text-faint font-normal text-right pb-3 pl-8 whitespace-nowrap"
               >
                 Value
               </th>
@@ -183,10 +182,22 @@ export function TopHoldingsTable({
           </thead>
           <tbody>
             {sorted.map((h, idx) => {
-              const allocShare = totalInvestments.isZero()
-                ? 0
-                : h.marketValue.toFloat() / totalFloat;
-              const weightPct = allocShare * 100;
+              // Per-share price = primary holding's market value / its shares (all
+              // holdings sharing a ticker price identically, so the primary stands in).
+              const price = (() => {
+                const primary = holdingById.get(h.primaryHoldingId);
+                const primaryValue = marketValueByHolding.get(h.primaryHoldingId);
+                if (primary === undefined || primaryValue === undefined) return null;
+                try {
+                  const shares = Decimal.fromString(
+                    primary.payload.sharesMajor,
+                    primary.payload.sharesScale,
+                  );
+                  return shares.isZero() ? null : primaryValue.div(shares);
+                } catch {
+                  return null;
+                }
+              })();
 
               // Day % vs prior: change / (marketValue - change). Guard against zero/negative prior.
               const prior = h.dayChange !== null ? h.marketValue.sub(h.dayChange) : null;
@@ -201,14 +212,6 @@ export function TopHoldingsTable({
               const dayPositive =
                 h.dayChange !== null && !h.dayChange.isNegative() && !h.dayChange.isZero();
               const dayZero = h.dayChange === null || h.dayChange.isZero();
-              const dayColor =
-                h.dayChange === null
-                  ? "text-dim"
-                  : dayZero
-                    ? "text-dim"
-                    : dayPositive
-                      ? "text-up"
-                      : "text-down";
 
               const primaryHolding = holdingById.get(h.primaryHoldingId);
               const handleClick = primaryHolding
@@ -245,33 +248,25 @@ export function TopHoldingsTable({
                     </p>
                   </td>
 
-                  <td
-                    className={`border-t border-line-soft py-[13px] tabular-nums text-right font-mono text-sm whitespace-nowrap pl-8 ${dayColor}`}
-                  >
-                    {h.dayChange === null || dayPct === null
-                      ? "-"
-                      : formatPercent(dayPct, { signed: true })}
-                  </td>
-
-                  <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
-                    <span className="inline-flex items-center gap-2.5 justify-end">
-                      <span
-                        className="w-[74px] h-1 rounded-[2px] bg-cream/8 overflow-hidden"
-                        aria-hidden="true"
-                      >
-                        <span
-                          aria-hidden="true"
-                          className="block h-full bg-accent rounded-[2px]"
-                          style={{ width: `${Math.min(100, weightPct).toFixed(1)}%` }}
-                        />
-                      </span>
-                      <span className="font-mono text-xs text-dim w-11 text-right">
-                        {formatPercent(allocShare)}
-                      </span>
-                    </span>
+                  <td className="border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
+                    {h.dayChange === null || dayPct === null ? (
+                      <span className="font-mono text-sm text-dim">-</span>
+                    ) : (
+                      <ChangePill tone={dayZero ? "flat" : dayPositive ? "up" : "down"} pad="roomy">
+                        {formatPercent(dayPct, { signed: true })}
+                      </ChangePill>
+                    )}
                   </td>
 
                   <td className="border-t border-line-soft py-[13px] tabular-nums text-right font-mono text-sm text-cream whitespace-nowrap pl-8">
+                    {price !== null ? (
+                      <span className="vfig">{formatCurrency(price)}</span>
+                    ) : (
+                      <span className="text-faint">—</span>
+                    )}
+                  </td>
+
+                  <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right font-mono text-sm text-cream whitespace-nowrap pl-8">
                     <span className="vfig">{formatCurrency(h.marketValue)}</span>
                   </td>
                 </tr>
