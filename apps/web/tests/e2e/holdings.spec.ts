@@ -354,10 +354,12 @@ test.describe("holdings", () => {
     page: import("@playwright/test").Page,
     ticker: string,
   ): Promise<ReturnType<import("@playwright/test").Page["locator"]>> {
-    // Rows have aria-label "{ticker}, open holding details"; the Value cell is
-    // tagged data-testid="holding-value" so the lookup survives column reorders.
+    // Rows carry aria-label "{ticker}, open holding details" and tag the value
+    // cell with data-testid="holding-value". Scope to the last matching row: the
+    // E2E DB can hold several rows for one ticker (they accumulate across browser
+    // projects), so an unscoped lookup would be ambiguous.
     const row = page.getByRole("button", { name: new RegExp(`${ticker}.*open holding details`) });
-    return row.getByTestId("holding-value");
+    return row.last().getByTestId("holding-value");
   }
 
   async function addStockHolding(
