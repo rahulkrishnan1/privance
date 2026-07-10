@@ -2,15 +2,20 @@
 // given position is identical across the allocation donut (class + sector) and
 // the "Where it lives" bar, so the three views share one color order.
 const allocationPalette = [
-  "#7fc4c6", // teal (brand)
-  "#c9a86b", // gold
-  "#c8551f", // clay
-  "#4f898c", // teal-dim
-  "#8e9bc4", // slate-blue
-  "#b0879b", // mauve
-  "#9bb0a6", // sage
-  "#5e7e80", // deep teal-gray
-  "#c7c5bc", // cream-soft
+  "#5eead4", // mint (brand)
+  "#a78bfa", // violet
+  "#fbbf24", // amber
+  "#7dd3fc", // sky
+  "#f0abfc", // orchid
+  "#86efac", // green
+  "#fdba74", // soft orange
+  "#67e8f9", // cyan
+  "#f9a8d4", // rose-pink
+  "#d9f99d", // lime
+  "#c4b5fd", // lavender
+  "#94a3b8", // slate
+  "#fde68a", // pale yellow
+  "#c9ced2", // cream-soft
 ] as const;
 
 // Defensive fallback. The palette is non-empty so this almost never renders.

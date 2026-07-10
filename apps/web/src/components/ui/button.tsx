@@ -12,7 +12,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-accent text-vault hover:bg-cream focus-visible:outline-accent",
+        primary:
+          "bg-accent text-vault shadow-[0_6px_24px_-6px_rgba(94,234,212,0.45)] hover:bg-accent-hover hover:shadow-[0_8px_30px_-6px_rgba(94,234,212,0.6)] focus-visible:outline-accent",
         secondary:
           "border border-line bg-transparent text-cream hover:border-cream-soft/40 hover:bg-white/[0.03] focus-visible:outline-accent",
         danger: "bg-down text-vault hover:bg-down/90 active:bg-down focus-visible:outline-down",

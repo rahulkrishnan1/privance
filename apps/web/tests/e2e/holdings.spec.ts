@@ -354,10 +354,12 @@ test.describe("holdings", () => {
     page: import("@playwright/test").Page,
     ticker: string,
   ): Promise<ReturnType<import("@playwright/test").Page["locator"]>> {
-    // Rows have aria-label "{ticker}, open holding details"; the Value cell is the
-    // last td (index 5 on desktop: Holding/Price/Day/Gain/Weight/Value).
+    // Rows carry aria-label "{ticker}, open holding details" and tag the value
+    // cell with data-testid="holding-value". Scope to the last matching row: the
+    // E2E DB can hold several rows for one ticker (they accumulate across browser
+    // projects), so an unscoped lookup would be ambiguous.
     const row = page.getByRole("button", { name: new RegExp(`${ticker}.*open holding details`) });
-    return row.locator("td").last();
+    return row.last().getByTestId("holding-value");
   }
 
   async function addStockHolding(
@@ -570,8 +572,8 @@ test.describe("holdings", () => {
     // Scope further by filtering for the account name in the detail sheet later.
     const prvtRows = page.getByRole("button", { name: /PRVT.*open holding details/ });
 
-    // The anchored value cell (last td) should show $2,000.
-    const valueCell = prvtRows.first().locator("td").last();
+    // The anchored value cell should show $2,000.
+    const valueCell = prvtRows.first().getByTestId("holding-value");
     await expect(valueCell).toContainText("$2,000", { timeout: 15_000 });
 
     // Open detail sheet and edit to clear the proxy ticker
@@ -675,7 +677,7 @@ test.describe("holdings", () => {
     const anchRow = page.getByRole("button", {
       name: new RegExp(`${ticker}.*open holding details`),
     });
-    const valueCell = anchRow.first().locator("td").last();
+    const valueCell = anchRow.first().getByTestId("holding-value");
     await expect(valueCell).toContainText("$1,000", { timeout: 15_000 });
 
     // Open detail sheet, then edit shares only; the (blank) NAV field is left untouched.

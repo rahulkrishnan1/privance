@@ -33,7 +33,7 @@ function AccountTypeTag({ account }: { account: Account }) {
     const { subKind } = account.payload;
     const tag = SUBKIND_TAG[subKind];
     const typeLabel = SUBKIND_TYPE_LABEL[subKind] ?? "Investment";
-    label = `${typeLabel} · ${tag}`;
+    label = `${typeLabel}, ${tag}`;
   } else if (account.payload.kind === "cash") {
     label = CASH_TYPE_LABEL[account.payload.subKind] ?? null;
   }
@@ -66,6 +66,11 @@ export function AccountDetailSheet({
   const gainPct = accountCostBasis.isZero()
     ? 0
     : accountGainCents.toFloat() / accountCostBasis.toFloat();
+
+  const sweepApy =
+    isInvestment && account.payload.apy
+      ? `${(Number(account.payload.apy) * 100).toFixed(2)}%`
+      : null;
 
   async function handleDelete() {
     setDeleting(true);
@@ -105,25 +110,16 @@ export function AccountDetailSheet({
         </p>
 
         {hasGain && (
-          <p className={`font-mono text-xs mt-1.5 ${gainPositive ? "text-up" : "text-down"}`}>
+          <p className={`font-mono text-sm mt-1.5 ${gainPositive ? "text-up" : "text-down"}`}>
             {gainPositive ? "+" : ""}
-            {formatCurrencyWhole(accountGainCents)} unrealized &middot;{" "}
-            {formatPercent(gainPct, { signed: true })}
+            {formatCurrencyWhole(accountGainCents)} ({formatPercent(gainPct, { signed: true })}){" "}
+            unrealized
           </p>
         )}
 
         {account.payload.kind === "cash" && account.payload.apy && (
           <div className="flex justify-between items-center mt-3">
             <span className="font-mono text-xs text-faint tracking-[.06em]">APY</span>
-            <span className="font-mono text-sm text-cream tabular-nums">
-              {(Number(account.payload.apy) * 100).toFixed(2)}%
-            </span>
-          </div>
-        )}
-
-        {account.payload.kind === "investment" && account.payload.apy && (
-          <div className="flex justify-between items-center mt-3">
-            <span className="font-mono text-xs text-faint tracking-[.06em]">Cash APY</span>
             <span className="font-mono text-sm text-cream tabular-nums">
               {(Number(account.payload.apy) * 100).toFixed(2)}%
             </span>
@@ -162,7 +158,7 @@ export function AccountDetailSheet({
         {holdingsByAccount.length > 0 && (
           <>
             <p className="font-mono text-xs tracking-label uppercase text-faint mt-6 mb-0.5">
-              Holdings &middot; {holdingsByAccount.length}
+              Holdings ({holdingsByAccount.length})
               {sweepCents !== null && !sweepCents.isZero() ? " + cash" : ""}
             </p>
             {holdingsByAccount.map((h) => (
@@ -177,8 +173,15 @@ export function AccountDetailSheet({
               </div>
             ))}
             {sweepCents !== null && !sweepCents.isZero() && (
-              <div className="flex justify-between py-2.5 border-b border-line-soft text-sm">
-                <span className="text-dim">Cash</span>
+              <div className="flex justify-between items-baseline py-2.5 border-b border-line-soft text-sm">
+                <span className="text-dim">
+                  Cash
+                  {sweepApy !== null && (
+                    <span className="font-mono text-xs text-faint tabular-nums ml-2">
+                      {sweepApy} APY
+                    </span>
+                  )}
+                </span>
                 <span className="vfig font-mono text-sm tabular-nums">
                   {formatCurrencyWhole(sweepCents)}
                 </span>

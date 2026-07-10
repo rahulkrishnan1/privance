@@ -65,15 +65,15 @@ describe("HoldingRow columns", () => {
 });
 
 describe("HoldingRow no-price row", () => {
-  it("shows 'no price · set one' in the Value cell when no price available", () => {
+  it("shows 'no price, set one' in the Value cell when no price available", () => {
     const html = renderRow();
-    expect(html).toContain("no price · set one");
+    expect(html).toContain("no price, set one");
   });
 
-  it("does not show 'no price · set one' when a price is available", () => {
+  it("does not show 'no price, set one' when a price is available", () => {
     const prices = new Map([["AAPL", { ticker: "AAPL", price: "15000000000" }]]);
     const html = renderRow({}, prices);
-    expect(html).not.toContain("no price · set one");
+    expect(html).not.toContain("no price, set one");
   });
 });
 
@@ -83,7 +83,7 @@ describe("HoldingRow gain display", () => {
     const prices = new Map([["AAPL", { ticker: "AAPL", price: "200.00000000" }]]);
     const html = renderRow({ costBasisCents: "100000", sharesMajor: "10" }, prices);
     expect(html).toContain("+");
-    expect(html).not.toContain("no price · set one");
+    expect(html).not.toContain("no price, set one");
   });
 });
 
@@ -106,7 +106,7 @@ describe("HoldingRow interactivity", () => {
 });
 
 describe("HoldingRow weight display", () => {
-  it("shows the weight bar when totalInvestmentsCents is provided and price available", () => {
+  it("shows the weight percentage when totalInvestmentsCents is provided and price available", () => {
     // 10 shares @ $200.00 = $2,000; total = $10,000; weight = 20.0%
     const prices = new Map([["AAPL", { ticker: "AAPL", price: "200.00000000" }]]);
     const total = Decimal.fromMinorUnits(1000000n, SCALE_CENTS); // $10,000
@@ -167,6 +167,34 @@ describe("HoldingRow exact gain $ and %", () => {
     expect(html).toContain("+$1,000.00");
     // A percentage is meaningless with no cost basis, so no percent figure is shown.
     expect(html).not.toMatch(/[\d.]+%/);
+  });
+});
+
+describe("HoldingRow avg cost and total cost cells", () => {
+  it("renders formatted avg cost and total cost for a valid cost basis", () => {
+    // $500 cost over 10 shares -> $50.00 avg, $500.00 total (distinct from the
+    // $2,000.00 value and +$1,500.00 gain so each assertion targets its own cell).
+    const prices = new Map([["AAPL", { ticker: "AAPL", price: "200.00000000" }]]);
+    const html = renderRow({ costBasisCents: "50000", sharesMajor: "10" }, prices);
+    expect(html).toContain("$50.00");
+    expect(html).toContain("$500.00");
+  });
+
+  it("renders an em-dash in both cells when the cost basis is malformed", () => {
+    const html = renderRow({ costBasisCents: "not-a-number" });
+    // No price and no parseable cost basis: no currency figure renders anywhere.
+    expect(html).not.toMatch(/\$[\d,]+\.\d{2}/);
+    expect(html).toContain("—");
+  });
+});
+
+describe("HoldingRow value cell selector contract", () => {
+  it("tags the market-value cell with data-testid so E2E lookups survive column reorders", () => {
+    // The holdings E2E suite locates the Value cell by this testid; a rename or a
+    // column reorder that drops it must fail here, not only in the 60s Playwright run.
+    const prices = new Map([["AAPL", { ticker: "AAPL", price: "200.00000000" }]]);
+    const html = renderRow({ costBasisCents: "100000", sharesMajor: "10" }, prices);
+    expect(html).toMatch(/data-testid="holding-value"[^>]*>[^<]*<span[^>]*>\$2,000\.00/);
   });
 });
 

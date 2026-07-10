@@ -72,12 +72,12 @@ test("shows unrealized gain line when price and cost basis available", async () 
 
   // Fixture: 1000 shares × $278.14 = $278,140 MV; cost = $315,886.
   // unrealizedGain = -$37,746.00; pct = -11.9%.
-  // The source emits: formatCurrency(gain) + " unrealized · " + pct%
+  // The source emits: formatCurrency(gain) + " (" + pct% + ") unrealized".
   // Since gain is negative, no "+" prefix; the formatted loss is "-$37,746.00".
   const gainLine = screen.getByText(/unrealized/);
   await expect.element(gainLine).toBeVisible();
   expect(gainLine.element().textContent).toContain("37,746");
-  expect(gainLine.element().textContent).toContain("-11.9%");
+  expect(gainLine.element().textContent).toContain("(-11.9%)");
   // Negative gain: no "+" sign at the start
   expect(gainLine.element().textContent).not.toMatch(/^\+/);
 });
@@ -108,7 +108,7 @@ test("Day row shows a positive day change with a plus sign and percent", async (
 
   const text = dayValueText(document.body);
   expect(text).toContain("+$2,000.00");
-  expect(text).toContain("+0.72%");
+  expect(text).toContain("(+0.72%)");
 });
 
 test("Day row shows a negative day change with a minus sign and percent", async () => {
@@ -128,7 +128,7 @@ test("Day row shows a negative day change with a minus sign and percent", async 
 
   const text = dayValueText(document.body);
   expect(text).toContain("-$2,000.00");
-  expect(text).toContain("-0.71%");
+  expect(text).toContain("(-0.71%)");
 });
 
 test("Day row shows a flat day change as +$0.00 without a misleading direction", async () => {

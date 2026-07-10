@@ -192,7 +192,7 @@ test("when the median crosses the target within the horizon, an FI marker is lab
   const markerText = await vi.waitFor(
     () => {
       const texts = [...container.querySelectorAll("svg text")].map((el) => el.textContent ?? "");
-      const hit = texts.find((t) => t.includes("FI ·"));
+      const hit = texts.find((t) => /^FI \d{4}$/.test(t.trim()));
       if (hit === undefined) throw new Error("FI marker not drawn yet");
       return hit;
     },

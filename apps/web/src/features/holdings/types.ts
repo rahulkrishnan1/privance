@@ -157,9 +157,10 @@ export type LocalGroup = {
 export const SORT_COLUMNS = [
   "ticker",
   "currentPrice",
+  "avgCost",
+  "totalCost",
   "dayPct",
   "gainDollar",
-  "gainPct",
   "weight",
   "marketValue",
 ] as const;

@@ -140,7 +140,7 @@ function SubtotalRow({ items }: { items: LocalSpendItem[] }) {
 
   const countText =
     paused.length > 0
-      ? `${active.length} active · ${paused.length} paused`
+      ? `${active.length} active, ${paused.length} paused`
       : `${active.length} active`;
 
   return (
@@ -149,7 +149,7 @@ function SubtotalRow({ items }: { items: LocalSpendItem[] }) {
       <span>
         <b className="vfig text-cream font-medium tabular-nums">{formatCurrencyWhole(monthly)}</b>
         <CadenceSuffix unit="mo" />
-        {" · "}
+        {", "}
         <b className="vfig text-cream font-medium tabular-nums">{formatCurrencyWhole(annual)}</b>
         <CadenceSuffix unit="yr" />
       </span>
@@ -366,7 +366,7 @@ export function SpendScreen() {
         </div>
         <p className="font-mono text-sm text-dim mt-3.5 tracking-[.02em]">
           <b className="vfig text-cream-soft font-medium">{formatCurrencyWhole(annualTotal)}</b>
-          {`/year · ${activeCount} active ${activeCount === 1 ? "commitment" : "commitments"}`}
+          {`/year, ${activeCount} active ${activeCount === 1 ? "commitment" : "commitments"}`}
         </p>
       </section>
 

@@ -61,7 +61,7 @@ function NavBar() {
 
 function ScrambleWidget() {
   const [who, setWho] = useState("What you see");
-  const [val, setVal] = useState("$1,248,392 · +1.9% this month");
+  const [val, setVal] = useState("$1,248,392 (+1.9%) this month");
   const [youSide, setYouSide] = useState(true);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -69,7 +69,7 @@ function ScrambleWidget() {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced) return;
 
-    const PLAIN = "$1,248,392 · +1.9% this month";
+    const PLAIN = "$1,248,392 (+1.9%) this month";
 
     function morph(target: string, nextWho: string, nextYouSide: boolean) {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -107,7 +107,7 @@ function ScrambleWidget() {
     <div
       className="reveal-up mt-10 mx-auto border border-line rounded-[10px] flex items-center gap-[18px] justify-between px-[26px] py-[18px] max-[560px]:flex-col max-[560px]:gap-2 max-[560px]:items-start"
       style={{
-        background: "rgba(235,235,230,.02)",
+        background: "rgba(255,255,255,.02)",
         animationDelay: "0.48s",
         maxWidth: 720,
       }}
@@ -135,12 +135,12 @@ function Hero() {
       className="relative pt-[78px] pb-[60px] text-center"
       style={{
         background:
-          "radial-gradient(490px 490px at 50% 150px, rgba(127,196,198,.10), rgba(127,196,198,.03) 45%, transparent 65%)",
+          "radial-gradient(490px 490px at 50% 150px, rgba(94,234,212,.10), rgba(94,234,212,.03) 45%, transparent 65%)",
       }}
     >
       <div className="max-w-[1160px] mx-auto px-8">
         <p className="reveal-up font-mono text-xs tracking-label uppercase text-accent-dim whitespace-nowrap max-[480px]:text-xs max-[480px]:tracking-[0.18em]">
-          Open source &middot; zero&#8209;knowledge &middot; yours
+          Open source, zero&#8209;knowledge, yours
         </p>
         <h1
           className="reveal-up font-serif font-normal leading-[0.98] tracking-[-0.015em] mt-6 relative"
@@ -185,14 +185,14 @@ function AppFrame() {
       <div
         className="border border-line rounded-[14px] overflow-hidden"
         style={{
-          background: "#121317",
+          background: "#101216",
           boxShadow:
-            "0 50px 120px -30px rgba(0,0,0,.8), 0 0 0 1px rgba(127,196,198,.05), 0 -1px 0 rgba(235,235,230,.06) inset",
+            "0 50px 120px -30px rgba(0,0,0,.8), 0 0 0 1px rgba(94,234,212,.05), 0 -1px 0 rgba(255,255,255,.06) inset",
         }}
       >
         <div
           className="flex items-center gap-2 px-[18px] py-[13px] border-b border-line-soft"
-          style={{ background: "rgba(235,235,230,.015)" }}
+          style={{ background: "rgba(255,255,255,.015)" }}
         >
           <span className="w-[9px] h-[9px] rounded-full bg-cream/12" />
           <span className="w-[9px] h-[9px] rounded-full bg-cream/12" />
@@ -220,13 +220,13 @@ function AppFrame() {
           <div className="flex justify-between items-end flex-wrap gap-4">
             <div>
               <p className="font-mono text-xs tracking-[0.24em] uppercase text-faint">
-                Net worth &middot; today
+                Net worth, today
               </p>
               <p className="vfig font-serif text-[clamp(40px,6vw,62px)] leading-none mt-[10px] tracking-[-0.01em] transition-[filter,opacity] duration-[450ms]">
                 $1,248,392
               </p>
               <p className="vfig font-mono text-sm text-up mt-[9px] transition-[filter,opacity] duration-[450ms]">
-                &#9650; $23,847 <span className="text-faint">&middot; 1.9% &middot; 30 days</span>
+                &#9650; $23,847 <span className="text-faint">(+1.9%) 30 days</span>
               </p>
             </div>
             <button
@@ -263,8 +263,8 @@ function AppFrame() {
           >
             <defs>
               <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor="#7FC4C6" stopOpacity=".2" />
-                <stop offset="1" stopColor="#7FC4C6" stopOpacity="0" />
+                <stop offset="0" stopColor="#5EEAD4" stopOpacity=".2" />
+                <stop offset="1" stopColor="#5EEAD4" stopOpacity="0" />
               </linearGradient>
             </defs>
             <path
@@ -275,10 +275,10 @@ function AppFrame() {
               className="trendline"
               d="M0,122 C70,114 120,120 190,106 C260,92 320,98 400,84 C470,72 530,78 610,62 C680,50 740,56 820,38 C880,26 940,30 1000,16"
               fill="none"
-              stroke="#7FC4C6"
+              stroke="#5EEAD4"
               strokeWidth="2"
             />
-            <circle cx="1000" cy="16" r="4" fill="#7FC4C6" />
+            <circle cx="1000" cy="16" r="4" fill="#5EEAD4" />
           </svg>
           <div className="grid gap-[30px] mt-2 grid-cols-[1.2fr_.8fr] max-[680px]:grid-cols-1">
             <div>
@@ -307,17 +307,17 @@ function AppFrame() {
                 Allocation
               </p>
               <div className="flex h-[7px] rounded-full overflow-hidden mt-[14px]">
-                <span style={{ width: "60%", background: "#7FC4C6" }} />
-                <span style={{ width: "20%", background: "#4F898C" }} />
-                <span style={{ width: "10%", background: "#C8551F" }} />
-                <span style={{ flex: 1, background: "rgba(235,235,230,.2)" }} />
+                <span style={{ width: "60%", background: "#5EEAD4" }} />
+                <span style={{ width: "20%", background: "#2DD4BF" }} />
+                <span style={{ width: "10%", background: "#FB923C" }} />
+                <span style={{ flex: 1, background: "rgba(255,255,255,.2)" }} />
               </div>
               <div className="flex gap-[18px] mt-3 flex-wrap">
                 {[
-                  ["#7FC4C6", "Equities 60"],
-                  ["#4F898C", "Bonds 20"],
-                  ["#C8551F", "Crypto 10"],
-                  ["rgba(235,235,230,.4)", "Cash 10"],
+                  ["#5EEAD4", "Equities 60"],
+                  ["#2DD4BF", "Bonds 20"],
+                  ["#FB923C", "Crypto 10"],
+                  ["rgba(255,255,255,.4)", "Cash 10"],
                 ].map(([color, label]) => (
                   <span
                     key={label}
@@ -364,13 +364,13 @@ function CipherBelt() {
     <div
       aria-hidden="true"
       className="border-t border-b border-line-soft overflow-hidden py-[15px] relative"
-      style={{ background: "#121317" }}
+      style={{ background: "#101216" }}
     >
       <span
         className="absolute left-0 top-0 bottom-0 z-[2] flex items-center font-mono text-xs tracking-label uppercase text-accent"
         style={{
           padding: "0 22px 0 32px",
-          background: "linear-gradient(to right, #121317 72%, transparent)",
+          background: "linear-gradient(to right, #101216 72%, transparent)",
         }}
       >
         What our servers see
@@ -466,7 +466,7 @@ function Protocol() {
       <div
         aria-hidden="true"
         className="absolute pointer-events-none w-[760px] h-[760px] rounded-full right-[-300px] top-[-200px]"
-        style={{ background: "radial-gradient(circle, rgba(127,196,198,.07), transparent 62%)" }}
+        style={{ background: "radial-gradient(circle, rgba(94,234,212,.07), transparent 62%)" }}
       />
       <div className="max-w-[1160px] mx-auto px-8 grid gap-12 items-start grid-cols-[.9fr_1.1fr] max-[920px]:grid-cols-1 max-[920px]:gap-11">
         <div>
@@ -484,7 +484,7 @@ function Protocol() {
           <div className="mt-[34px]">
             <code
               className="block font-mono text-sm text-accent border border-accent/20 rounded-[8px] px-[18px] py-[13px]"
-              style={{ background: "rgba(127,196,198,.06)" }}
+              style={{ background: "rgba(94,234,212,.06)" }}
             >
               github.com/rahulkrishnan1/privance
             </code>
@@ -606,7 +606,7 @@ function Deploy() {
             </p>
             <code
               className="block font-mono text-sm text-accent border border-accent/20 rounded-[8px] px-[18px] py-[13px] mt-[26px]"
-              style={{ background: "rgba(127,196,198,.06)" }}
+              style={{ background: "rgba(94,234,212,.06)" }}
             >
               $ docker compose up -d
             </code>
@@ -644,12 +644,12 @@ function Features() {
                   <path
                     d="M0,70 C60,62 90,68 140,54 C190,40 230,48 280,34 C330,24 370,30 420,16 C460,8 490,12 520,4"
                     fill="none"
-                    stroke="#7FC4C6"
+                    stroke="#5EEAD4"
                     strokeWidth="2"
                   />
                   <path
                     d="M0,70 C60,62 90,68 140,54 C190,40 230,48 280,34 C330,24 370,30 420,16 C460,8 490,12 520,4 L520,84 L0,84 Z"
-                    fill="#7FC4C6"
+                    fill="#5EEAD4"
                     opacity=".07"
                   />
                 </svg>
@@ -673,10 +673,10 @@ function Features() {
               body: "By class, by sector, by single‑name weight, plus where every dollar lives by tax. Catch concentration before it bites.",
               art: (
                 <svg viewBox="0 0 200 36" aria-hidden="true" className="w-full">
-                  <rect x="0" y="14" width="200" height="8" rx="4" fill="rgba(235,235,230,.08)" />
-                  <rect x="0" y="14" width="118" height="8" rx="4" fill="#7FC4C6" />
-                  <rect x="118" y="14" width="42" height="8" fill="#4F898C" />
-                  <rect x="160" y="14" width="20" height="8" fill="#C8551F" />
+                  <rect x="0" y="14" width="200" height="8" rx="4" fill="rgba(255,255,255,.08)" />
+                  <rect x="0" y="14" width="118" height="8" rx="4" fill="#5EEAD4" />
+                  <rect x="118" y="14" width="42" height="8" fill="#2DD4BF" />
+                  <rect x="160" y="14" width="20" height="8" fill="#FB923C" />
                 </svg>
               ),
             },
@@ -687,7 +687,7 @@ function Features() {
               body: "Rent, utilities, insurance, subscriptions, logged by hand. No bank linking; the server never learns where the money went.",
               art: (
                 <div className="font-mono text-xs text-faint tracking-[0.06em]">
-                  12 recurring &middot; $2,140 / mo
+                  12 recurring, $2,140 / mo
                 </div>
               ),
             },
@@ -698,19 +698,19 @@ function Features() {
               body: "Monte Carlo and historical replay run in a worker on your machine. Retirement math that never phones home.",
               art: (
                 <svg viewBox="0 0 200 56" aria-hidden="true" className="w-full">
-                  <path d="M0,50 C50,44 90,32 200,2 L200,56 L0,56 Z" fill="#7FC4C6" opacity=".08" />
+                  <path d="M0,50 C50,44 90,32 200,2 L200,56 L0,56 Z" fill="#5EEAD4" opacity=".08" />
                   <path
                     d="M0,50 C50,46 90,38 200,16 L200,56 L0,56 Z"
-                    fill="#7FC4C6"
+                    fill="#5EEAD4"
                     opacity=".12"
                   />
                   <path
                     d="M0,50 C50,47 100,42 200,30"
                     fill="none"
-                    stroke="#7FC4C6"
+                    stroke="#5EEAD4"
                     strokeWidth="1.8"
                   />
-                  <circle cx="146" cy="37" r="3.2" fill="#C8551F" />
+                  <circle cx="146" cy="37" r="3.2" fill="#FB923C" />
                 </svg>
               ),
             },
@@ -721,7 +721,7 @@ function Features() {
               body: "Stocks, funds, and crypto with fractional shares and your real cost basis. Price lookups go out anonymously, never tied to you.",
               art: (
                 <div className="font-mono text-xs text-faint tracking-[0.06em]">
-                  VTI &middot; 1,482.214 sh &middot; <span className="text-up">+30.5%</span>
+                  VTI, 1,482.214 sh, <span className="text-up">+30.5%</span>
                 </div>
               ),
             },
@@ -732,7 +732,7 @@ function Features() {
               body: "Biometric unlock via passkeys on devices you trust. The recovery phrase stays on paper, where it belongs.",
               art: (
                 <div className="font-mono text-xs text-faint tracking-[0.06em]">
-                  salt &middot; ember &middot; quiet &middot; harbor &middot; &hellip;
+                  salt, ember, quiet, harbor, &hellip;
                 </div>
               ),
             },
@@ -750,7 +750,7 @@ function Features() {
                     height="40"
                     rx="4"
                     fill="none"
-                    stroke="#4F898C"
+                    stroke="#2DD4BF"
                     strokeWidth="1.5"
                   />
                   <rect
@@ -760,7 +760,7 @@ function Features() {
                     height="44"
                     rx="5"
                     fill="none"
-                    stroke="#7FC4C6"
+                    stroke="#5EEAD4"
                     strokeWidth="1.5"
                   />
                   <line
@@ -768,7 +768,7 @@ function Features() {
                     y1="22"
                     x2="162"
                     y2="22"
-                    stroke="#C8551F"
+                    stroke="#FB923C"
                     strokeWidth="1.5"
                     strokeDasharray="3 4"
                   />
@@ -809,7 +809,7 @@ function LandingFooter() {
           width: 900,
           height: 700,
           borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(127,196,198,.08), transparent 60%)",
+          background: "radial-gradient(circle, rgba(94,234,212,.08), transparent 60%)",
         }}
       />
       <div className="max-w-[1160px] mx-auto px-8 relative">
@@ -826,7 +826,7 @@ function LandingFooter() {
         </div>
         <div className="flex justify-between items-center gap-7 flex-wrap mt-[52px] pt-6 border-t border-line-soft">
           <span className="font-mono text-xs tracking-[0.08em] text-faint">
-            Privance &middot; zero&#8209;knowledge personal finance
+            Privance, zero&#8209;knowledge personal finance
           </span>
           <div className="flex gap-[26px] flex-wrap">
             {[

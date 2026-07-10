@@ -73,7 +73,7 @@ test("renders account type tag, name, and value for an investment account", asyn
     />,
   );
 
-  await expect.element(screen.getByText(/401\(K\)\s*·\s*PRE-TAX/)).toBeVisible();
+  await expect.element(screen.getByText(/401\(K\),\s*PRE-TAX/)).toBeVisible();
   await expect.element(screen.getByText("Fidelity 401(k)")).toBeVisible();
   const valueEl = document.querySelector('[data-testid="account-detail-value"]');
   expect(valueEl).not.toBeNull();
@@ -121,7 +121,7 @@ test("shows a positive unrealized gain with the dollar amount and percent", asyn
   expect(gain).toBeDefined();
   const text = gain?.textContent ?? "";
   expect(text).toContain("+$2,000");
-  expect(text).toContain("+20.00%");
+  expect(text).toContain("(+20.00%)");
 });
 
 test("shows a negative unrealized loss with a minus sign and negative percent", async () => {
@@ -144,8 +144,31 @@ test("shows a negative unrealized loss with a minus sign and negative percent", 
   expect(loss).toBeDefined();
   const text = loss?.textContent ?? "";
   expect(text).toContain("-$1,500");
-  expect(text).toContain("-15.00%");
+  expect(text).toContain("(-15.00%)");
   expect(text).not.toContain("+");
+});
+
+test("shows the cash APY inline on the Cash row, not as a separate Cash APY row", async () => {
+  const base = makeInvestAccount();
+  const account = {
+    ...base,
+    payload: { ...base.payload, cashBalanceCents: "250000", apy: "0.04" },
+  } as Account;
+
+  const screen = await render(
+    <AccountDetailSheet
+      account={account}
+      totalValue={dec(1_000_000n)}
+      holdingValuations={[valuation({ cost: 500_000n, pnl: 100_000n }, 0)]}
+      holdingsByAccount={[{ id: "h0", ticker: "AAPL", valueCents: dec(750_000n) }]}
+      onClose={() => {}}
+      onEdit={() => {}}
+      onDelete={vi.fn(() => Promise.resolve())}
+    />,
+  );
+
+  await expect.element(screen.getByText("4.00% APY")).toBeVisible();
+  expect(screen.container.textContent).not.toContain("Cash APY");
 });
 
 test("two-tap delete: first shows Tap again to delete, second calls onDelete", async () => {

@@ -30,7 +30,6 @@ test("previews the largest holdings and drops the smallest", async () => {
       byHolding={byHolding}
       tickerById={byTicker}
       groupKeyById={byTicker}
-      totalInvestments={dec(2100_00n)}
       dayChangeByHoldingId={new Map()}
       holdings={[] as Holding[]}
       onRowClick={() => {}}
@@ -41,4 +40,39 @@ test("previews the largest holdings and drops the smallest", async () => {
   await expect.element(screen.getByText("EEE")).toBeVisible();
   expect(screen.container.querySelectorAll("tbody tr")).toHaveLength(5);
   expect(screen.container.textContent).not.toContain("FFF");
+});
+
+test("shows the per-share price derived from market value and shares", async () => {
+  const holdingId = asId<HoldingId>("h-AAA");
+  const holding = {
+    id: holdingId,
+    payload: {
+      accountId: "acct-1",
+      groupId: null,
+      ticker: "AAA",
+      assetType: "stock",
+      proxyTicker: null,
+      sharesMajor: "10",
+      sharesScale: 0,
+      costBasisCents: "50000",
+    },
+  } as unknown as Holding;
+  const byHolding: HoldingValuation[] = [
+    { holdingId, marketValue: dec(1000_00n), costBasis: dec(50000n), unrealizedPnl: dec(50000n) },
+  ];
+  const byTicker = new Map([[holdingId, "AAA"]]);
+
+  const screen = await render(
+    <TopHoldingsTable
+      byHolding={byHolding}
+      tickerById={byTicker}
+      groupKeyById={byTicker}
+      dayChangeByHoldingId={new Map()}
+      holdings={[holding]}
+      onRowClick={() => {}}
+    />,
+  );
+
+  // 10 shares at a $1,000 market value -> $100.00 per share.
+  await expect.element(screen.getByText("$100.00")).toBeVisible();
 });

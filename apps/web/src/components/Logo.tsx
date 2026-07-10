@@ -37,9 +37,9 @@ export function Logo({ size = 32, className, "aria-hidden": ariaHidden }: LogoPr
         stroke="currentColor"
         strokeWidth="7"
       />
-      <rect x="53.5" y="102" width="12.7" height="20.8" rx="3.2" fill="#7FC4C6" />
-      <rect x="73.6" y="92" width="12.7" height="30.8" rx="3.2" fill="#7FC4C6" />
-      <rect x="93.8" y="81.2" width="12.7" height="41.6" rx="3.2" fill="#7FC4C6" />
+      <rect x="53.5" y="102" width="12.7" height="20.8" rx="3.2" fill="#5EEAD4" />
+      <rect x="73.6" y="92" width="12.7" height="30.8" rx="3.2" fill="#5EEAD4" />
+      <rect x="93.8" y="81.2" width="12.7" height="41.6" rx="3.2" fill="#5EEAD4" />
     </svg>
   );
 }

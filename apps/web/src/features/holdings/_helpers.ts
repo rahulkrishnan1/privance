@@ -135,6 +135,30 @@ function getCostBasis(h: LocalHolding): Decimal {
   return parseCostBasisCents(h.costBasisCents);
 }
 
+/** Total cost basis as a Decimal; null when the stored string is malformed. */
+export function getTotalCost(h: LocalHolding): Decimal | null {
+  try {
+    return getCostBasis(h);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Avg cost per share = total cost basis / shares; null when shares are zero or
+ * inputs are malformed. Float quotient for display/sort only (rendered at 2dp);
+ * the cost basis stays in Decimal, mirroring the gainPct carve-out.
+ */
+export function computeAvgCost(h: LocalHolding): number | null {
+  try {
+    const cost = getCostBasis(h);
+    const shares = Decimal.fromString(h.sharesMajor, h.sharesScale);
+    return shares.isZero() ? null : cost.toFloat() / shares.toFloat();
+  } catch {
+    return null;
+  }
+}
+
 function getPrice(h: LocalHolding, prices: Map<string, PriceEntry>): Decimal {
   const priceTicker = h.proxyTicker ?? h.ticker;
   const entry = prices.get(priceTicker);
@@ -153,12 +177,13 @@ function getGainDollar(h: LocalHolding, prices: Map<string, PriceEntry>): Decima
   return getMarketValue(h, prices).sub(getCostBasis(h));
 }
 
-function getGainPct(h: LocalHolding, prices: Map<string, PriceEntry>): number {
-  const cost = getCostBasis(h);
-  if (cost.isZero()) return 0;
-  const gain = getMarketValue(h, prices).sub(cost);
-  // Decimal.div on different-scale operands rounds; use float for sort-only comparison.
-  return gain.toFloat() / cost.toFloat();
+/** Gain in dollars; null when the stored cost basis is malformed (nulls sort last). */
+function getGainDollarSafe(h: LocalHolding, prices: Map<string, PriceEntry>): Decimal | null {
+  try {
+    return getGainDollar(h, prices);
+  } catch {
+    return null;
+  }
 }
 
 export function sortHoldings(
@@ -175,6 +200,22 @@ export function sortHoldings(
         return dir * a.ticker.localeCompare(b.ticker);
       case "currentPrice":
         return dir * getPrice(a, prices).cmp(getPrice(b, prices));
+      case "avgCost": {
+        const ca = computeAvgCost(a);
+        const cb = computeAvgCost(b);
+        if (ca === null && cb === null) return 0;
+        if (ca === null) return 1;
+        if (cb === null) return -1;
+        return dir * (ca - cb);
+      }
+      case "totalCost": {
+        const ta = getTotalCost(a);
+        const tb = getTotalCost(b);
+        if (ta === null && tb === null) return 0;
+        if (ta === null) return 1;
+        if (tb === null) return -1;
+        return dir * ta.cmp(tb);
+      }
       case "dayPct": {
         // Sort by absolute day-change amount; null (no price) sorts last.
         const da = dayChangeByHoldingId.get(a.id) ?? null;
@@ -187,12 +228,13 @@ export function sortHoldings(
       case "marketValue":
       case "weight":
         return dir * getMarketValue(a, prices).cmp(getMarketValue(b, prices));
-      case "gainDollar":
-        return dir * getGainDollar(a, prices).cmp(getGainDollar(b, prices));
-      case "gainPct": {
-        const pa = getGainPct(a, prices);
-        const pb = getGainPct(b, prices);
-        return dir * (pa < pb ? -1 : pa > pb ? 1 : 0);
+      case "gainDollar": {
+        const ga = getGainDollarSafe(a, prices);
+        const gb = getGainDollarSafe(b, prices);
+        if (ga === null && gb === null) return 0;
+        if (ga === null) return 1;
+        if (gb === null) return -1;
+        return dir * ga.cmp(gb);
       }
       default:
         return 0;

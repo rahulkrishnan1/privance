@@ -144,12 +144,12 @@ export function HistoryChart({ points, className }: HistoryChartProps) {
                   <stop offset="1" stopColor={colors.line} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid stroke="rgba(235,235,230,0.05)" vertical={false} />
+              <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
               <XAxis dataKey="dateLabel" hide />
               <YAxis hide domain={yDomain} width={0} />
               <Tooltip
                 content={<ChartTooltip />}
-                cursor={{ stroke: "rgba(235,235,230,0.18)", strokeWidth: 1 }}
+                cursor={{ stroke: "rgba(255,255,255,0.18)", strokeWidth: 1 }}
               />
               <Area
                 type="monotone"

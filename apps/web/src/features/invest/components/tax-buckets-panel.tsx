@@ -60,7 +60,9 @@ export function TaxBucketsPanel({
 
       {/* One grid with subgrid rows so the value/percent columns align across
           rows (a per-row grid sizes each row's columns independently). */}
-      <ul className="grid grid-cols-[1fr_auto] gap-x-8 m-0 list-none p-0 md:grid-cols-[1fr_auto_auto]">
+      {/* -mx-1 cancels the rows' px-1 so columns align with the other panels
+          while the hover highlight bleeds past the text edge. */}
+      <ul className="grid grid-cols-[1fr_auto_auto] gap-x-8 my-0 -mx-1 list-none p-0">
         {buckets.map((b, i) => {
           const share = total > 0 ? b.valueCents.toFloat() / total : 0;
           const isActive = hoveredIndex === i;
@@ -71,7 +73,7 @@ export function TaxBucketsPanel({
               onMouseEnter={() => setHoveredIndex(i)}
               onMouseLeave={() => setHoveredIndex(null)}
               className={[
-                "col-span-2 md:col-span-3 grid grid-cols-subgrid items-center text-sm py-[11px] px-1 rounded-[5px] border-b border-line-soft last:border-b-0 transition-[background-color,opacity] duration-100 motion-reduce:transition-none",
+                "col-span-3 grid grid-cols-subgrid items-center text-sm py-[11px] px-1 rounded-[5px] border-b border-line-soft last:border-b-0 transition-[background-color,opacity] duration-100 motion-reduce:transition-none",
                 isActive ? "bg-panel-2" : "",
                 isDim ? "opacity-50" : "",
               ]
@@ -88,11 +90,11 @@ export function TaxBucketsPanel({
               </span>
               <span
                 data-testid={`tax-bucket-${b.key}`}
-                className="vfig font-mono text-sm text-cream-soft tabular-nums text-right"
+                className="vfig font-mono text-sm text-cream tabular-nums text-right"
               >
                 {formatCurrencyWhole(b.valueCents)}
               </span>
-              <span className="hidden md:block font-mono text-sm text-dim tabular-nums text-right">
+              <span className="font-mono text-sm text-dim tabular-nums text-right">
                 {formatPercent(share)}
               </span>
             </li>

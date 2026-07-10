@@ -2,9 +2,9 @@ import { BASE_URL } from "../../playwright/ports";
 /**
  * Holdings mobile tap targets.
  *
- * On mobile the Price, Gain, and Weight columns are hidden; only Holding, Day,
- * and Value are visible. Tapping any cell in a holding row opens the holding
- * detail sheet (a bottom sheet / dialog) with position details.
+ * On mobile the Day, Price, Avg cost, Total cost, and Weight columns are hidden;
+ * only Holding, G/L, and Value are visible. Tapping any cell in a holding row
+ * opens the holding detail sheet (a bottom sheet / dialog) with position details.
  *
  * This file matches *.mobile.spec.ts and runs exclusively under the mobile
  * Playwright project (Pixel 5 viewport), where detail columns are hidden and

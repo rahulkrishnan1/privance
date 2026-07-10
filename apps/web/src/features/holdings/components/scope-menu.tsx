@@ -146,7 +146,7 @@ export function ScopeMenu({
       type="button"
       className="group inline-flex items-center gap-2 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded"
     >
-      {label} &middot; {count}
+      {label} ({count})
       <ChevronDown
         size={18}
         aria-hidden="true"

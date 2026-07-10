@@ -110,6 +110,19 @@ export function HoldingsTable({
             <th
               scope="col"
               className="hidden md:table-cell text-right pb-3 pl-8 whitespace-nowrap"
+              aria-sort={ariaSort("dayPct", sort)}
+            >
+              <SortableHeader
+                column="dayPct"
+                label="Day"
+                sort={sort}
+                onPress={onSortChange}
+                align="right"
+              />
+            </th>
+            <th
+              scope="col"
+              className="hidden md:table-cell text-right pb-3 pl-8 whitespace-nowrap"
               aria-sort={ariaSort("currentPrice", sort)}
             >
               <SortableHeader
@@ -123,11 +136,11 @@ export function HoldingsTable({
             <th
               scope="col"
               className="hidden md:table-cell text-right pb-3 pl-8 whitespace-nowrap"
-              aria-sort={ariaSort("dayPct", sort)}
+              aria-sort={ariaSort("avgCost", sort)}
             >
               <SortableHeader
-                column="dayPct"
-                label="Day"
+                column="avgCost"
+                label="Avg cost"
                 sort={sort}
                 onPress={onSortChange}
                 align="right"
@@ -149,11 +162,11 @@ export function HoldingsTable({
             <th
               scope="col"
               className="hidden md:table-cell text-right pb-3 pl-8 whitespace-nowrap"
-              aria-sort={ariaSort("weight", sort)}
+              aria-sort={ariaSort("totalCost", sort)}
             >
               <SortableHeader
-                column="weight"
-                label="Weight"
+                column="totalCost"
+                label="Total cost"
                 sort={sort}
                 onPress={onSortChange}
                 align="right"
@@ -167,6 +180,19 @@ export function HoldingsTable({
               <SortableHeader
                 column="marketValue"
                 label="Value"
+                sort={sort}
+                onPress={onSortChange}
+                align="right"
+              />
+            </th>
+            <th
+              scope="col"
+              className="hidden md:table-cell text-right pb-3 pl-8 whitespace-nowrap"
+              aria-sort={ariaSort("weight", sort)}
+            >
+              <SortableHeader
+                column="weight"
+                label="Weight"
                 sort={sort}
                 onPress={onSortChange}
                 align="right"
