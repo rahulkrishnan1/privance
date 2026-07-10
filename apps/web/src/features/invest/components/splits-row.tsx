@@ -2,7 +2,11 @@
 
 import type { Decimal, NetWorthBreakdown } from "@privance/core";
 import type { ReactNode } from "react";
-import { formatCurrencyWhole, formatPercentMagnitude, trendTriangle } from "@/lib/format";
+import {
+  formatCurrencyWhole,
+  formatPercentMagnitude,
+  formatTrendCurrencyWhole,
+} from "@/lib/format";
 
 type SplitTileProps = {
   label: string;
@@ -11,22 +15,6 @@ type SplitTileProps = {
   subline: string;
   sublineColor?: string;
 };
-
-/**
- * Whole-dollar value with a leading trend triangle sized down to a marker so it
- * doesn't swallow the large serif number. Direction comes from the value's sign.
- */
-function trendAmount(value: Decimal): ReactNode {
-  const glyph = trendTriangle(value.isNegative(), value.isZero());
-  const amount = formatCurrencyWhole(value.abs());
-  if (glyph === "") return amount;
-  return (
-    <>
-      <span className="text-[0.5em] align-middle mr-1.5">{glyph}</span>
-      {amount}
-    </>
-  );
-}
 
 function SplitTile({
   label,
@@ -78,14 +66,14 @@ export function SplitsRow({ breakdown, delta, portfolioGain }: SplitsRowProps) {
       />
       <SplitTile
         label="Unrealized"
-        value={trendAmount(portfolioGain.gainCents)}
+        value={formatTrendCurrencyWhole(portfolioGain.gainCents)}
         valueColor={gainPositive ? "text-up" : gainNegative ? "text-down" : ""}
         subline={`${formatPercentMagnitude(portfolioGain.gainPct)} on cost`}
         sublineColor={gainPositive ? "text-up" : gainNegative ? "text-down" : "text-dim"}
       />
       <SplitTile
         label="Today"
-        value={delta === null ? "-" : trendAmount(delta.dollar)}
+        value={delta === null ? "-" : formatTrendCurrencyWhole(delta.dollar)}
         valueColor={deltaPositive ? "text-up" : deltaNegative ? "text-down" : ""}
         subline={delta === null ? "no price data" : `${formatPercentMagnitude(delta.pct)} today`}
         sublineColor={deltaPositive ? "text-up" : deltaNegative ? "text-down" : "text-dim"}

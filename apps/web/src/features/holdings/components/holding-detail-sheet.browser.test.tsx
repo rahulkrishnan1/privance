@@ -72,12 +72,12 @@ test("shows unrealized gain line when price and cost basis available", async () 
 
   // Fixture: 1000 shares × $278.14 = $278,140 MV; cost = $315,886.
   // unrealizedGain = -$37,746.00; pct = -11.95%.
-  // The source emits: ▼ + formatCurrency(|gain|) + " (" + |pct|% + ") unrealized".
+  // The source emits: - + formatCurrency(|gain|) + " (" + |pct|% + ") unrealized".
   const gainLine = screen.getByText(/unrealized/);
   await expect.element(gainLine).toBeVisible();
-  expect(gainLine.element().textContent).toContain("▼$37,746.00");
+  expect(gainLine.element().textContent).toContain("-$37,746.00");
   expect(gainLine.element().textContent).toContain("(11.95%)");
-  // Direction is carried by the triangle, not a +/- sign.
+  // Negative gain carries a - sign, not a +.
   expect(gainLine.element().textContent).not.toContain("+");
 });
 
@@ -90,7 +90,7 @@ function dayValueText(container: Element): string {
   return value?.textContent ?? "";
 }
 
-test("Day row shows a positive day change with an up triangle and percent", async () => {
+test("Day row shows a positive day change with a + sign and percent", async () => {
   // MV $278,140; +$2,000 today -> prior $276,140, 0.72%.
   await render(
     <HoldingDetailSheet
@@ -106,11 +106,11 @@ test("Day row shows a positive day change with an up triangle and percent", asyn
   );
 
   const text = dayValueText(document.body);
-  expect(text).toContain("▲$2,000.00");
+  expect(text).toContain("+$2,000.00");
   expect(text).toContain("(0.72%)");
 });
 
-test("Day row shows a negative day change with a down triangle and percent", async () => {
+test("Day row shows a negative day change with a - sign and percent", async () => {
   // MV $278,140; -$2,000 today -> prior $280,140, 0.71%.
   await render(
     <HoldingDetailSheet
@@ -126,7 +126,7 @@ test("Day row shows a negative day change with a down triangle and percent", asy
   );
 
   const text = dayValueText(document.body);
-  expect(text).toContain("▼$2,000.00");
+  expect(text).toContain("-$2,000.00");
   expect(text).toContain("(0.71%)");
 });
 
@@ -147,9 +147,9 @@ test("Day row shows a flat day change as $0.00 without a misleading direction", 
   const text = dayValueText(document.body);
   expect(text).toContain("$0.00");
   expect(text).toContain("0.00%");
-  // Flat: no triangle in either direction.
-  expect(text).not.toContain("▲");
-  expect(text).not.toContain("▼");
+  // Flat: no sign in either direction.
+  expect(text).not.toContain("+");
+  expect(text).not.toContain("-");
 });
 
 test("renders position KV rows: Quantity, Price, Cost basis, Portfolio weight, Account", async () => {

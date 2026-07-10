@@ -120,12 +120,11 @@ test("shows a positive unrealized gain with the dollar amount and percent", asyn
   );
   expect(gain).toBeDefined();
   const text = gain?.textContent ?? "";
-  expect(text).toContain("▲$2,000");
+  expect(text).toContain("+$2,000");
   expect(text).toContain("(20.00%)");
-  expect(text).not.toContain("+");
 });
 
-test("shows a negative unrealized loss with a down triangle and percent", async () => {
+test("shows a negative unrealized loss with a - sign and percent", async () => {
   const account = makeInvestAccount();
   await render(
     <AccountDetailSheet
@@ -144,7 +143,7 @@ test("shows a negative unrealized loss with a down triangle and percent", async 
   );
   expect(loss).toBeDefined();
   const text = loss?.textContent ?? "";
-  expect(text).toContain("▼$1,500");
+  expect(text).toContain("-$1,500");
   expect(text).toContain("(15.00%)");
   expect(text).not.toContain("+");
 });
