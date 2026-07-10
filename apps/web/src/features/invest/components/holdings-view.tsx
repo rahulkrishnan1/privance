@@ -30,7 +30,7 @@ import type {
   SortState,
 } from "@/features/holdings/types";
 import { refreshPrices } from "@/lib/api/prices";
-import { formatCurrencyWhole, formatPercent } from "@/lib/format";
+import { formatPercentMagnitude, formatTrendCurrencyWhole } from "@/lib/format";
 import { usePricesQuery, warmPrice } from "@/lib/queries/prices";
 import { partitionTickers } from "@/lib/tickers";
 import { useAuth } from "@/providers/auth-context";
@@ -355,11 +355,8 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
               <p
                 className={`font-mono text-sm mt-[5px] ${!gain.gainCents.isNegative() ? "text-up" : "text-down"}`}
               >
-                <span className="vfig">
-                  {!gain.gainCents.isNegative() ? "+" : ""}
-                  {formatCurrencyWhole(gain.gainCents)}
-                </span>{" "}
-                ({formatPercent(gain.gainPct, { signed: true })}) unrealized
+                <span className="vfig">{formatTrendCurrencyWhole(gain.gainCents)}</span> (
+                {formatPercentMagnitude(gain.gainPct)}) unrealized
               </p>
             )}
           </div>
@@ -374,7 +371,6 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
           onRowClick={setDetailHolding}
           onAdd={() => openDialog({ kind: "add" })}
           dayChangeByHoldingId={dayChangeByHoldingId}
-          totalInvestmentsCents={totalInvestmentsCents}
         />
       </div>
 

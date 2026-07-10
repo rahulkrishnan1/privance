@@ -4,7 +4,7 @@ import { Decimal, type Holding, type HoldingId, type HoldingValuation } from "@p
 import Link from "next/link";
 import { ChangePill } from "@/components/ui/change-pill";
 import type { LocalHolding } from "@/features/holdings/types";
-import { formatCurrency, formatPercent } from "@/lib/format";
+import { formatCurrency, formatTrendPercent } from "@/lib/format";
 import { useFillCount } from "@/lib/use-fill-count";
 import { useMediaQuery } from "@/lib/use-media-query";
 
@@ -253,7 +253,7 @@ export function TopHoldingsTable({
                       <span className="font-mono text-sm text-dim">-</span>
                     ) : (
                       <ChangePill tone={dayZero ? "flat" : dayPositive ? "up" : "down"} pad="roomy">
-                        {formatPercent(dayPct, { signed: true })}
+                        {formatTrendPercent(dayPct)}
                       </ChangePill>
                     )}
                   </td>

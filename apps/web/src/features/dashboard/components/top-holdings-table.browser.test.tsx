@@ -76,3 +76,36 @@ test("shows the per-share price derived from market value and shares", async () 
   // 10 shares at a $1,000 market value -> $100.00 per share.
   await expect.element(screen.getByText("$100.00")).toBeVisible();
 });
+
+test("renders the day change as a direction triangle with an unsigned percent", async () => {
+  const up = asId<HoldingId>("h-UP");
+  const down = asId<HoldingId>("h-DN");
+  const byHolding: HoldingValuation[] = [
+    { holdingId: up, marketValue: dec(110_00n), costBasis: dec(110_00n), unrealizedPnl: dec(0n) },
+    { holdingId: down, marketValue: dec(90_00n), costBasis: dec(90_00n), unrealizedPnl: dec(0n) },
+  ];
+  const byTicker = new Map([
+    [up, "UP"],
+    [down, "DN"],
+  ]);
+  const dayChange = new Map([
+    [up, dec(10_00n)],
+    [down, dec(-10_00n)],
+  ]);
+
+  const screen = await render(
+    <TopHoldingsTable
+      byHolding={byHolding}
+      tickerById={byTicker}
+      groupKeyById={byTicker}
+      dayChangeByHoldingId={dayChange}
+      holdings={[] as Holding[]}
+      onRowClick={() => {}}
+    />,
+  );
+
+  // +$10 on a $100 prior -> up triangle, and the percent carries no + sign.
+  await expect.element(screen.getByText("▲10.00%")).toBeVisible();
+  // -$10 on a $100 prior -> down triangle, and the percent carries no - sign.
+  await expect.element(screen.getByText("▼10.00%")).toBeVisible();
+});

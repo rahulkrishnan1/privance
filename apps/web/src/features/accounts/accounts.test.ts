@@ -108,23 +108,17 @@ describe("centsToDecimal", () => {
 describe("formatAccountBalanceWhole", () => {
   it("formats a cash balance in the account's own currency", () => {
     const eur = makeCash({ balanceCents: "150000", currency: "EUR" });
-    const { text, showNegative } = formatAccountBalanceWhole(eur, centsToDecimal("150000"));
-    expect(text).toBe("€1,500");
-    expect(showNegative).toBe(false);
+    expect(formatAccountBalanceWhole(eur, centsToDecimal("150000"))).toBe("€1,500");
   });
 
   it("renders a normal liability (positive stored value) as a negative debt", () => {
     const debt = makeLiability({ balanceCents: "500" });
-    const { text, showNegative } = formatAccountBalanceWhole(debt, centsToDecimal("500"));
-    expect(text).toBe("-$5");
-    expect(showNegative).toBe(true);
+    expect(formatAccountBalanceWhole(debt, centsToDecimal("500"))).toBe("-$5");
   });
 
   it("renders a liability credit (negative stored value) as a positive, no double negative", () => {
     const credit = makeLiability({ balanceCents: "-500" });
-    const { text, showNegative } = formatAccountBalanceWhole(credit, centsToDecimal("-500"));
-    expect(text).toBe("$5");
-    expect(showNegative).toBe(false);
+    expect(formatAccountBalanceWhole(credit, centsToDecimal("-500"))).toBe("$5");
   });
 });
 

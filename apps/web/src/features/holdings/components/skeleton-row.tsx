@@ -18,7 +18,15 @@ export function SkeletonRow() {
       <td className="hidden md:table-cell border-t border-line-soft py-[13px] pl-8 text-right">
         <div className="h-4 w-14 rounded bg-white/[0.07] animate-pulse ml-auto" />
       </td>
+      {/* Qty -- desktop only */}
+      <td className="hidden md:table-cell border-t border-line-soft py-[13px] pl-8 text-right">
+        <div className="h-4 w-10 rounded bg-white/[0.04] animate-pulse ml-auto" />
+      </td>
       {/* Avg cost -- desktop only */}
+      <td className="hidden md:table-cell border-t border-line-soft py-[13px] pl-8 text-right">
+        <div className="h-4 w-14 rounded bg-white/[0.07] animate-pulse ml-auto" />
+      </td>
+      {/* Total cost -- desktop only, beside avg cost */}
       <td className="hidden md:table-cell border-t border-line-soft py-[13px] pl-8 text-right">
         <div className="h-4 w-14 rounded bg-white/[0.07] animate-pulse ml-auto" />
       </td>
@@ -26,16 +34,8 @@ export function SkeletonRow() {
       <td className="border-t border-line-soft py-[13px] pl-8 text-right">
         <div className="h-4 w-16 rounded bg-white/[0.04] animate-pulse ml-auto" />
       </td>
-      {/* Total cost -- desktop only */}
-      <td className="hidden md:table-cell border-t border-line-soft py-[13px] pl-8 text-right">
-        <div className="h-4 w-14 rounded bg-white/[0.07] animate-pulse ml-auto" />
-      </td>
       <td className="border-t border-line-soft py-[13px] pl-8 text-right">
         <div className="h-4 w-20 rounded bg-white/[0.07] animate-pulse ml-auto" />
-      </td>
-      {/* Weight -- desktop only, last column */}
-      <td className="hidden md:table-cell border-t border-line-soft py-[13px] pl-8 text-right">
-        <div className="h-4 w-10 rounded bg-white/[0.04] animate-pulse ml-auto" />
       </td>
     </tr>
   );

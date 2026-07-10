@@ -2,6 +2,7 @@
 
 import type { Decimal } from "@privance/core";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import type { ReactNode } from "react";
 import type { LocalHolding, SortColumn, SortState } from "../types";
 import { EmptyState } from "./empty-state";
 import { HoldingRow } from "./holding-row";
@@ -21,18 +22,26 @@ type HoldingsTableProps = {
   onRowClick: (holding: LocalHolding) => void;
   onAdd: () => void;
   dayChangeByHoldingId: ReadonlyMap<string, Decimal>;
-  totalInvestmentsCents: Decimal | null;
 };
 
 type SortableHeaderProps = {
   column: SortColumn;
   label: string;
+  /** Visible header text; defaults to `label`. Use to show a different label than the aria one. */
+  displayLabel?: ReactNode;
   sort: SortState;
   onPress: (column: SortColumn) => void;
   align?: "left" | "right";
 };
 
-function SortableHeader({ column, label, sort, onPress, align = "left" }: SortableHeaderProps) {
+function SortableHeader({
+  column,
+  label,
+  displayLabel,
+  sort,
+  onPress,
+  align = "left",
+}: SortableHeaderProps) {
   const active = sort.column === column;
   const isRight = align === "right";
 
@@ -56,7 +65,7 @@ function SortableHeader({ column, label, sort, onPress, align = "left" }: Sortab
           active ? "text-accent" : "text-faint",
         ].join(" ")}
       >
-        {label}
+        {displayLabel ?? label}
       </span>
       {active && sort.direction === "asc" ? (
         <ChevronUp size={10} className="text-accent" />
@@ -81,7 +90,6 @@ export function HoldingsTable({
   onRowClick,
   onAdd,
   dayChangeByHoldingId,
-  totalInvestmentsCents,
 }: HoldingsTableProps) {
   if (loading) {
     return (
@@ -136,11 +144,12 @@ export function HoldingsTable({
             <th
               scope="col"
               className="hidden md:table-cell text-right pb-3 pl-8 whitespace-nowrap"
-              aria-sort={ariaSort("avgCost", sort)}
+              aria-sort={ariaSort("quantity", sort)}
             >
               <SortableHeader
-                column="avgCost"
-                label="Avg cost"
+                column="quantity"
+                label="Quantity"
+                displayLabel="Qty"
                 sort={sort}
                 onPress={onSortChange}
                 align="right"
@@ -148,12 +157,12 @@ export function HoldingsTable({
             </th>
             <th
               scope="col"
-              className="text-right pb-3 pl-8 whitespace-nowrap"
-              aria-sort={ariaSort("gainDollar", sort)}
+              className="hidden md:table-cell text-right pb-3 pl-8 whitespace-nowrap"
+              aria-sort={ariaSort("avgCost", sort)}
             >
               <SortableHeader
-                column="gainDollar"
-                label="G/L"
+                column="avgCost"
+                label="Avg cost"
                 sort={sort}
                 onPress={onSortChange}
                 align="right"
@@ -175,11 +184,17 @@ export function HoldingsTable({
             <th
               scope="col"
               className="text-right pb-3 pl-8 whitespace-nowrap"
-              aria-sort={ariaSort("marketValue", sort)}
+              aria-sort={ariaSort("gainDollar", sort)}
             >
               <SortableHeader
-                column="marketValue"
-                label="Value"
+                column="gainDollar"
+                label="Gain/Loss"
+                displayLabel={
+                  <>
+                    <span className="md:hidden">G/L</span>
+                    <span className="hidden md:inline">Gain/Loss</span>
+                  </>
+                }
                 sort={sort}
                 onPress={onSortChange}
                 align="right"
@@ -187,12 +202,12 @@ export function HoldingsTable({
             </th>
             <th
               scope="col"
-              className="hidden md:table-cell text-right pb-3 pl-8 whitespace-nowrap"
-              aria-sort={ariaSort("weight", sort)}
+              className="text-right pb-3 pl-8 whitespace-nowrap"
+              aria-sort={ariaSort("marketValue", sort)}
             >
               <SortableHeader
-                column="weight"
-                label="Weight"
+                column="marketValue"
+                label="Value"
                 sort={sort}
                 onPress={onSortChange}
                 align="right"
@@ -207,7 +222,6 @@ export function HoldingsTable({
               holding={holding}
               prices={prices}
               dayChangeCents={dayChangeByHoldingId.get(holding.id) ?? null}
-              totalInvestmentsCents={totalInvestmentsCents}
               onRowClick={onRowClick}
             />
           ))}

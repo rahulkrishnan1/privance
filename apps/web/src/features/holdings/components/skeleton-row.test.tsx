@@ -37,7 +37,6 @@ function realRowHtml(): string {
           holding={holding}
           prices={new Map([["AAPL", { ticker: "AAPL", price: "200.00000000" }]])}
           dayChangeCents={null}
-          totalInvestmentsCents={null}
           onRowClick={vi.fn()}
         />
       </tbody>
@@ -65,13 +64,13 @@ describe("SkeletonRow column parity with the real holding row", () => {
 
   it("hides exactly the same columns on mobile as the real row", () => {
     // The point of the skeleton is to occupy the same visible columns while
-    // loading; if the real row hides Price/Gain/Weight on mobile, so must the
-    // skeleton, or the table reflows when data arrives.
+    // loading; if the real row hides the desktop-only columns on mobile, so must
+    // the skeleton, or the table reflows when data arrives.
     const skeletonPattern = columnHiddenPattern(skeletonHtml());
     const realPattern = columnHiddenPattern(realRowHtml());
     expect(skeletonPattern).toEqual(realPattern);
-    // Holding, G/L, and Value stay visible on mobile; Day, Price, Avg cost, Total cost, Weight hide.
-    expect(skeletonPattern).toEqual([false, true, true, true, false, true, false, true]);
+    // Holding, G/L, and Value stay visible on mobile; Day, Price, Qty, Avg cost, Total cost hide.
+    expect(skeletonPattern).toEqual([false, true, true, true, true, true, false, false]);
   });
 
   it("SkeletonRows renders the requested count of rows", () => {

@@ -30,7 +30,6 @@ function renderRow(
   holdingOverrides: Partial<LocalHolding> = {},
   prices = EMPTY_PRICES,
   dayChangeCents: Decimal | null = null,
-  totalInvestmentsCents: Decimal | null = null,
 ): string {
   return renderToStaticMarkup(
     <table>
@@ -39,7 +38,6 @@ function renderRow(
           holding={makeHolding(holdingOverrides)}
           prices={prices}
           dayChangeCents={dayChangeCents}
-          totalInvestmentsCents={totalInvestmentsCents}
           onRowClick={vi.fn()}
         />
       </tbody>
@@ -78,11 +76,11 @@ describe("HoldingRow no-price row", () => {
 });
 
 describe("HoldingRow gain display", () => {
-  it("shows a signed gain dollar value when cost basis and price are present", () => {
+  it("shows a gain dollar value led by an up triangle when cost basis and price are present", () => {
     // 10 shares @ $200.00/share = $2,000 value; cost basis = $1,000 (100000 cents)
     const prices = new Map([["AAPL", { ticker: "AAPL", price: "200.00000000" }]]);
     const html = renderRow({ costBasisCents: "100000", sharesMajor: "10" }, prices);
-    expect(html).toContain("+");
+    expect(html).toContain("▲");
     expect(html).not.toContain("no price, set one");
   });
 });
@@ -102,22 +100,6 @@ describe("HoldingRow interactivity", () => {
   it("carries role=button on the tr so assistive tech announces it as interactive", () => {
     const html = renderRow();
     expect(html).toMatch(/<tr[^>]*role="button"[^>]*>/i);
-  });
-});
-
-describe("HoldingRow weight display", () => {
-  it("shows the weight percentage when totalInvestmentsCents is provided and price available", () => {
-    // 10 shares @ $200.00 = $2,000; total = $10,000; weight = 20.0%
-    const prices = new Map([["AAPL", { ticker: "AAPL", price: "200.00000000" }]]);
-    const total = Decimal.fromMinorUnits(1000000n, SCALE_CENTS); // $10,000
-    const html = renderRow({}, prices, null, total);
-    expect(html).toContain("20.0%");
-  });
-
-  it("shows '-' in weight cell when no price is available", () => {
-    const total = Decimal.fromMinorUnits(1000000n, SCALE_CENTS);
-    const html = renderRow({}, EMPTY_PRICES, null, total);
-    expect(html).not.toMatch(/\d+\.\d+%/);
   });
 });
 
@@ -145,26 +127,26 @@ describe("HoldingRow proxy + scaleFactor market value", () => {
 });
 
 describe("HoldingRow exact gain $ and %", () => {
-  it("renders +$1,000.00 and +100.00% for a 100% gain", () => {
-    // 10 shares @ $200.00 = $2,000; cost = $1,000 → gain = +$1,000, +100.00%
+  it("renders ▲$1,000.00 and ▲100.00% for a 100% gain", () => {
+    // 10 shares @ $200.00 = $2,000; cost = $1,000 → gain = ▲$1,000, ▲100.00%
     const prices = new Map([["AAPL", { ticker: "AAPL", price: "200.00000000" }]]);
     const html = renderRow({ costBasisCents: "100000", sharesMajor: "10" }, prices);
-    expect(html).toContain("+$1,000.00");
-    expect(html).toContain("+100.00%");
+    expect(html).toContain("▲$1,000.00");
+    expect(html).toContain("▲100.00%");
   });
 
-  it("renders -$500.00 for a loss", () => {
+  it("renders ▼$500.00 for a loss", () => {
     // 10 shares @ $50.00 = $500; cost = $1,000 → gain = -$500
     const prices = new Map([["AAPL", { ticker: "AAPL", price: "50.00000000" }]]);
     const html = renderRow({ costBasisCents: "100000", sharesMajor: "10" }, prices);
-    expect(html).toContain("-$500.00");
+    expect(html).toContain("▼$500.00");
   });
 
-  it("renders +$1,000.00 gain but no percent line when cost basis is zero", () => {
+  it("renders ▲$1,000.00 gain but no percent line when cost basis is zero", () => {
     // 10 shares @ $100.00 = $1,000; cost basis = $0 → gainPct is null (no percent line)
     const prices = new Map([["AAPL", { ticker: "AAPL", price: "100.00000000" }]]);
     const html = renderRow({ costBasisCents: "0", sharesMajor: "10" }, prices);
-    expect(html).toContain("+$1,000.00");
+    expect(html).toContain("▲$1,000.00");
     // A percentage is meaningless with no cost basis, so no percent figure is shown.
     expect(html).not.toMatch(/[\d.]+%/);
   });
@@ -202,12 +184,26 @@ describe("HoldingRow day change display", () => {
   it("renders day dollar change and correct day percent", () => {
     // 10 shares @ $200.00 = $2,000 MV; dayChange = +$1.50 (150 cents).
     // prior = $2,000 - $1.50 = $1,998.50; dayPct = 1.50 / 1998.50 = 0.000750562...
-    // formatSignedPct(0.000750562) = "+0.08%" (0.0750... rounds to 0.08 at 2dp)
+    // formatTrendPercent(0.000750562) = "▲0.08%" (0.0750... rounds to 0.08 at 2dp)
     const prices = new Map([["AAPL", { ticker: "AAPL", price: "200.00000000" }]]);
     const dayChange = Decimal.fromMinorUnits(150n, SCALE_CENTS); // +$1.50
     const html = renderRow({ costBasisCents: "100000", sharesMajor: "10" }, prices, dayChange);
-    expect(html).toContain("+$1.50");
-    expect(html).toContain("+0.08%");
+    expect(html).toContain("▲$1.50");
+    expect(html).toContain("▲0.08%");
+  });
+});
+
+describe("HoldingRow quantity column", () => {
+  it("shows the share count for a stock holding", () => {
+    const prices = new Map([["AAPL", { ticker: "AAPL", price: "200.00000000" }]]);
+    const html = renderRow({ sharesMajor: "123" }, prices);
+    expect(html).toContain(">123<");
+  });
+
+  it("shows a fractional quantity for a crypto holding", () => {
+    const prices = new Map([["bitcoin", { ticker: "bitcoin", price: "65000.00000000" }]]);
+    const html = renderRow({ ticker: "bitcoin", assetType: "crypto", sharesMajor: "0.5" }, prices);
+    expect(html).toContain(">0.5<");
   });
 });
 
@@ -224,7 +220,6 @@ describe("HoldingsTable aria-sort", () => {
         onRowClick={vi.fn()}
         onAdd={vi.fn()}
         dayChangeByHoldingId={new Map()}
-        totalInvestmentsCents={null}
       />,
     );
   }

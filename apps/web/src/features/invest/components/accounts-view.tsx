@@ -20,14 +20,15 @@ import { useDeleteAccount, useUpdateAccount } from "@/features/accounts/mutation
 import { centsToDecimal, getBalanceCents, useAccountsQuery } from "@/features/accounts/queries";
 import type { AccountFormValues } from "@/features/accounts/types";
 import { SECTION_ORDER } from "@/features/accounts/types";
+import { sortByValueDesc } from "@/features/holdings";
 import { useHoldingsQuery } from "@/features/holdings/queries";
 import { SUBKIND_TAG } from "../_constants";
 import { AccountDetailSheet } from "./account-detail-sheet";
 
 const SECTION_LABEL: Record<AccountKind, string> = {
-  investment: "Brokerage",
+  investment: "Investments",
   cash: "Cash",
-  manual_asset: "Property & assets",
+  manual_asset: "Assets",
   liability: "Liabilities",
 };
 
@@ -36,6 +37,15 @@ const KIND_ICONS: Record<AccountKind, typeof Wallet> = {
   investment: TrendingUp,
   manual_asset: Home,
   liability: CreditCard,
+};
+
+// Distinct icon tint per account kind, drawn from the allocation palette so the
+// accounts list reads as one family with the donut. Liability is the down tone.
+const KIND_ICON_COLOR: Record<AccountKind, string> = {
+  investment: "text-accent",
+  cash: "text-[#a78bfa]",
+  manual_asset: "text-[#fbbf24]",
+  liability: "text-down",
 };
 
 function formatShortMonthYear(isoDate: string): string {
@@ -85,8 +95,7 @@ type AccountRowProps = {
 
 function AccountRow({ account, displayValue, holdingsCount, onClick }: AccountRowProps) {
   const Icon = KIND_ICONS[account.payload.kind];
-  const { text: balanceText, showNegative } = formatAccountBalanceWhole(account, displayValue);
-  const isLiability = account.payload.kind === "liability";
+  const balanceText = formatAccountBalanceWhole(account, displayValue);
 
   return (
     <button
@@ -98,7 +107,7 @@ function AccountRow({ account, displayValue, holdingsCount, onClick }: AccountRo
       <div
         className={[
           "w-[38px] h-[38px] rounded-[9px] bg-panel-2 border border-line flex items-center justify-center shrink-0",
-          isLiability ? "text-down" : "text-accent",
+          KIND_ICON_COLOR[account.payload.kind],
         ].join(" ")}
       >
         <Icon size={17} />
@@ -111,14 +120,7 @@ function AccountRow({ account, displayValue, holdingsCount, onClick }: AccountRo
         </p>
       </div>
 
-      <span
-        className={[
-          "vfig font-mono text-sm tabular-nums shrink-0",
-          showNegative ? "text-down" : "text-cream",
-        ].join(" ")}
-      >
-        {balanceText}
-      </span>
+      <span className="vfig font-mono text-sm tabular-nums shrink-0 text-cream">{balanceText}</span>
 
       <ChevronRight size={14} className="text-faint shrink-0" />
     </button>
@@ -173,7 +175,7 @@ export function AccountsView({ breakdown }: AccountsViewProps) {
     const mvByHoldingId = new Map<string, Decimal>(
       breakdown.byHolding.map((hv) => [hv.holdingId, hv.marketValue]),
     );
-    return holdings
+    const rows = holdings
       .filter((h) => h.accountId === detailAccount.id)
       .map((h) => ({
         id: h.id,
@@ -181,6 +183,11 @@ export function AccountsView({ breakdown }: AccountsViewProps) {
         name: h.name,
         valueCents: mvByHoldingId.get(h.id) ?? centsToDecimal("0"),
       }));
+    return sortByValueDesc(
+      rows,
+      (r) => r.valueCents,
+      (r) => r.ticker,
+    );
   }, [detailAccount, breakdown, holdings]);
 
   const detailAccountValue = useMemo((): Decimal => {

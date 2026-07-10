@@ -122,14 +122,6 @@ describe("formatPercent", () => {
   it("formats zero share", () => {
     expect(formatPercent(0)).toBe("0.00%");
   });
-
-  it("adds + prefix when signed=true for positive value", () => {
-    expect(formatPercent(0.05, { signed: true })).toBe("+5.00%");
-  });
-
-  it("does not add + prefix when signed=true for zero", () => {
-    expect(formatPercent(0, { signed: true })).toBe("0.00%");
-  });
 });
 
 describe("formatDate", () => {

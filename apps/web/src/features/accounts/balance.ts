@@ -24,18 +24,13 @@ export function centsToDecimal(cents: string): Decimal {
 /**
  * Format an account's display balance (whole dollars) in the account's own
  * currency. A normal liability (positive stored value) reads as -$X; a credit
- * balance (negative stored value) reads as $X with no sign. `showNegative` says
- * whether to render it in the negative (down) color.
+ * balance (negative stored value) reads as $X with no sign.
  */
-export function formatAccountBalanceWhole(
-  account: Account,
-  value: Decimal,
-): { text: string; showNegative: boolean } {
+export function formatAccountBalanceWhole(account: Account, value: Decimal): string {
   const currency = account.payload.currency;
-  const showNegative = account.payload.kind === "liability" && !value.isNegative();
-  const text =
-    account.payload.kind === "liability"
-      ? `${showNegative ? "-" : ""}${formatCurrencyWhole(value.abs(), currency)}`
-      : formatCurrencyWhole(value, currency);
-  return { text, showNegative };
+  if (account.payload.kind !== "liability") {
+    return formatCurrencyWhole(value, currency);
+  }
+  const sign = value.isNegative() ? "" : "-";
+  return `${sign}${formatCurrencyWhole(value.abs(), currency)}`;
 }
