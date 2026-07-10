@@ -54,29 +54,29 @@ export function formatPercent(ratio: number): string {
   return `${(ratio * 100).toFixed(2)}%`;
 }
 
-/** Percent magnitude with the sign stripped, for pairing with a trend triangle. */
+/** Percent magnitude with the sign stripped, for pairing with a trend sign. */
 export function formatPercentMagnitude(ratio: number): string {
   return formatPercent(Math.abs(ratio));
 }
 
-/** Trend triangle for a gain/loss: ▲ up, ▼ down, empty when flat. */
-export function trendTriangle(negative: boolean, zero: boolean): string {
-  return zero ? "" : negative ? "▼" : "▲";
+/** Trend sign for a gain/loss: + up, - down, empty when flat. */
+export function trendSign(negative: boolean, zero: boolean): string {
+  return zero ? "" : negative ? "-" : "+";
 }
 
-/** Percent magnitude led by a trend triangle instead of a +/- sign. */
+/** Percent magnitude led by a +/- trend sign. */
 export function formatTrendPercent(ratio: number): string {
-  return `${trendTriangle(ratio < 0, ratio === 0)}${formatPercentMagnitude(ratio)}`;
+  return `${trendSign(ratio < 0, ratio === 0)}${formatPercentMagnitude(ratio)}`;
 }
 
-/** Whole-dollar currency led by a trend triangle instead of a +/- sign. */
+/** Whole-dollar currency led by a +/- trend sign. */
 export function formatTrendCurrencyWhole(d: Decimal, currency = "USD"): string {
-  return `${trendTriangle(d.isNegative(), d.isZero())}${formatCurrencyWhole(d.abs(), currency)}`;
+  return `${trendSign(d.isNegative(), d.isZero())}${formatCurrencyWhole(d.abs(), currency)}`;
 }
 
-/** Currency led by a trend triangle instead of a +/- sign. */
+/** Currency led by a +/- trend sign. */
 export function formatTrendCurrency(d: Decimal, currency = "USD"): string {
-  return `${trendTriangle(d.isNegative(), d.isZero())}${formatCurrency(d.abs(), currency)}`;
+  return `${trendSign(d.isNegative(), d.isZero())}${formatCurrency(d.abs(), currency)}`;
 }
 
 /** ISO-8601 date (YYYY-MM-DD) → short month + day, e.g. "May 16". */

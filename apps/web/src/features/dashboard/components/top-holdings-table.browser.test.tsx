@@ -77,7 +77,7 @@ test("shows the per-share price derived from market value and shares", async () 
   await expect.element(screen.getByText("$100.00")).toBeVisible();
 });
 
-test("renders the day change as a direction triangle with an unsigned percent", async () => {
+test("renders the day change with a +/- sign and unsigned percent", async () => {
   const up = asId<HoldingId>("h-UP");
   const down = asId<HoldingId>("h-DN");
   const byHolding: HoldingValuation[] = [
@@ -104,8 +104,8 @@ test("renders the day change as a direction triangle with an unsigned percent", 
     />,
   );
 
-  // +$10 on a $100 prior -> up triangle, and the percent carries no + sign.
-  await expect.element(screen.getByText("▲10.00%")).toBeVisible();
-  // -$10 on a $100 prior -> down triangle, and the percent carries no - sign.
-  await expect.element(screen.getByText("▼10.00%")).toBeVisible();
+  // +$10 on a $100 prior -> + sign, and the percent carries no sign.
+  await expect.element(screen.getByText("+10.00%")).toBeVisible();
+  // -$10 on a $100 prior -> - sign, and the percent carries no sign.
+  await expect.element(screen.getByText("-10.00%")).toBeVisible();
 });

@@ -76,11 +76,11 @@ describe("HoldingRow no-price row", () => {
 });
 
 describe("HoldingRow gain display", () => {
-  it("shows a gain dollar value led by an up triangle when cost basis and price are present", () => {
+  it("shows a gain dollar value led by a + sign when cost basis and price are present", () => {
     // 10 shares @ $200.00/share = $2,000 value; cost basis = $1,000 (100000 cents)
     const prices = new Map([["AAPL", { ticker: "AAPL", price: "200.00000000" }]]);
     const html = renderRow({ costBasisCents: "100000", sharesMajor: "10" }, prices);
-    expect(html).toContain("▲");
+    expect(html).toContain("+$");
     expect(html).not.toContain("no price, set one");
   });
 });
@@ -127,26 +127,26 @@ describe("HoldingRow proxy + scaleFactor market value", () => {
 });
 
 describe("HoldingRow exact gain $ and %", () => {
-  it("renders ▲$1,000.00 and ▲100.00% for a 100% gain", () => {
-    // 10 shares @ $200.00 = $2,000; cost = $1,000 → gain = ▲$1,000, ▲100.00%
+  it("renders +$1,000.00 and +100.00% for a 100% gain", () => {
+    // 10 shares @ $200.00 = $2,000; cost = $1,000 → gain = +$1,000, +100.00%
     const prices = new Map([["AAPL", { ticker: "AAPL", price: "200.00000000" }]]);
     const html = renderRow({ costBasisCents: "100000", sharesMajor: "10" }, prices);
-    expect(html).toContain("▲$1,000.00");
-    expect(html).toContain("▲100.00%");
+    expect(html).toContain("+$1,000.00");
+    expect(html).toContain("+100.00%");
   });
 
-  it("renders ▼$500.00 for a loss", () => {
+  it("renders -$500.00 for a loss", () => {
     // 10 shares @ $50.00 = $500; cost = $1,000 → gain = -$500
     const prices = new Map([["AAPL", { ticker: "AAPL", price: "50.00000000" }]]);
     const html = renderRow({ costBasisCents: "100000", sharesMajor: "10" }, prices);
-    expect(html).toContain("▼$500.00");
+    expect(html).toContain("-$500.00");
   });
 
-  it("renders ▲$1,000.00 gain but no percent line when cost basis is zero", () => {
+  it("renders +$1,000.00 gain but no percent line when cost basis is zero", () => {
     // 10 shares @ $100.00 = $1,000; cost basis = $0 → gainPct is null (no percent line)
     const prices = new Map([["AAPL", { ticker: "AAPL", price: "100.00000000" }]]);
     const html = renderRow({ costBasisCents: "0", sharesMajor: "10" }, prices);
-    expect(html).toContain("▲$1,000.00");
+    expect(html).toContain("+$1,000.00");
     // A percentage is meaningless with no cost basis, so no percent figure is shown.
     expect(html).not.toMatch(/[\d.]+%/);
   });
@@ -184,12 +184,12 @@ describe("HoldingRow day change display", () => {
   it("renders day dollar change and correct day percent", () => {
     // 10 shares @ $200.00 = $2,000 MV; dayChange = +$1.50 (150 cents).
     // prior = $2,000 - $1.50 = $1,998.50; dayPct = 1.50 / 1998.50 = 0.000750562...
-    // formatTrendPercent(0.000750562) = "▲0.08%" (0.0750... rounds to 0.08 at 2dp)
+    // formatTrendPercent(0.000750562) = "+0.08%" (0.0750... rounds to 0.08 at 2dp)
     const prices = new Map([["AAPL", { ticker: "AAPL", price: "200.00000000" }]]);
     const dayChange = Decimal.fromMinorUnits(150n, SCALE_CENTS); // +$1.50
     const html = renderRow({ costBasisCents: "100000", sharesMajor: "10" }, prices, dayChange);
-    expect(html).toContain("▲$1.50");
-    expect(html).toContain("▲0.08%");
+    expect(html).toContain("+$1.50");
+    expect(html).toContain("+0.08%");
   });
 });
 
