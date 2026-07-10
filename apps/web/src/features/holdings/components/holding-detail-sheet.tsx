@@ -1,14 +1,15 @@
 "use client";
 
-import { Decimal } from "@privance/core";
+import type { Decimal } from "@privance/core";
 import { useState } from "react";
 import { Button, CloseButton, ConfirmDeleteButton } from "@/components";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatPercentMagnitude, formatTrendCurrency } from "@/lib/format";
 import {
   computeAvgCost,
   computeEffectivePrice,
   computeMarketValue,
+  formatShares,
   parseCostBasisCents,
 } from "../_helpers";
 import type { LocalHolding } from "../types";
@@ -28,18 +29,6 @@ type HoldingDetailSheetProps = {
   onEdit: (holding: LocalHolding) => void;
   onDelete: (holding: LocalHolding) => Promise<void>;
 };
-
-function formatShares(sharesMajor: string, sharesScale: number): string {
-  try {
-    const d = Decimal.fromString(sharesMajor, sharesScale);
-    return d.toFloat().toLocaleString("en-US", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 4,
-    });
-  } catch {
-    return sharesMajor;
-  }
-}
 
 function formatPrice(price: Decimal): string {
   return price.toFloat().toLocaleString("en-US", {
@@ -172,12 +161,9 @@ export function HoldingDetailSheet({
 
         {unrealizedGain !== null && (
           <p className={`font-mono text-sm mt-1.5 ${gainTone}`}>
-            <span className="vfig">
-              {unrealizedGain.isNegative() ? "" : "+"}
-              {formatCurrency(unrealizedGain, "USD")}
-            </span>
+            <span className="vfig">{formatTrendCurrency(unrealizedGain)}</span>
             {unrealizedPct !== null
-              ? ` (${unrealizedPct >= 0 ? "+" : ""}${(unrealizedPct * 100).toFixed(1)}%) unrealized`
+              ? ` (${formatPercentMagnitude(unrealizedPct)}) unrealized`
               : " unrealized"}
           </p>
         )}
@@ -187,9 +173,16 @@ export function HoldingDetailSheet({
         </p>
 
         <div className="flex justify-between py-2 border-b border-line-soft text-sm">
-          <span className="text-dim">Quantity</span>
-          <span className="vfig font-mono text-sm tabular-nums">
-            {formatShares(holding.sharesMajor, holding.sharesScale)}
+          <span className="text-dim">Day</span>
+          <span className={`font-mono text-sm tabular-nums ${dayTone}`}>
+            {dayChangeCents === null ? (
+              "-"
+            ) : (
+              <>
+                <span className="vfig">{formatTrendCurrency(dayChangeCents)}</span>
+                {dayPct !== null && ` (${formatPercentMagnitude(dayPct)})`}
+              </>
+            )}
           </span>
         </div>
 
@@ -201,19 +194,9 @@ export function HoldingDetailSheet({
         </div>
 
         <div className="flex justify-between py-2 border-b border-line-soft text-sm">
-          <span className="text-dim">Day</span>
-          <span className={`font-mono text-sm tabular-nums ${dayTone}`}>
-            {dayChangeCents === null ? (
-              "-"
-            ) : (
-              <>
-                <span className="vfig">
-                  {dayChangeCents.isNegative() ? "" : "+"}
-                  {formatCurrency(dayChangeCents, "USD")}
-                </span>
-                {dayPct !== null && ` (${dayPct >= 0 ? "+" : ""}${(dayPct * 100).toFixed(2)}%)`}
-              </>
-            )}
+          <span className="text-dim">Quantity</span>
+          <span className="vfig font-mono text-sm tabular-nums">
+            {formatShares(holding.sharesMajor, holding.sharesScale)}
           </span>
         </div>
 

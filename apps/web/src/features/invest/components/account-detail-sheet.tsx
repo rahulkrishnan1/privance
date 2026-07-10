@@ -7,7 +7,11 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { CASH_TYPE_LABEL, SUBKIND_TYPE_LABEL } from "@/features/accounts";
 import { formatAccountBalanceWhole } from "@/features/accounts/balance";
 import { centsToDecimal } from "@/features/accounts/queries";
-import { formatCurrencyWhole, formatPercent } from "@/lib/format";
+import {
+  formatCurrencyWhole,
+  formatPercentMagnitude,
+  formatTrendCurrencyWhole,
+} from "@/lib/format";
 import { SUBKIND_TAG } from "../_constants";
 
 type HoldingInAccount = {
@@ -106,13 +110,12 @@ export function AccountDetailSheet({
           data-testid="account-detail-value"
           className="vfig font-serif text-5xl mt-4 tracking-[-0.01em]"
         >
-          {formatAccountBalanceWhole(account, totalValue).text}
+          {formatAccountBalanceWhole(account, totalValue)}
         </p>
 
         {hasGain && (
           <p className={`font-mono text-sm mt-1.5 ${gainPositive ? "text-up" : "text-down"}`}>
-            {gainPositive ? "+" : ""}
-            {formatCurrencyWhole(accountGainCents)} ({formatPercent(gainPct, { signed: true })}){" "}
+            {formatTrendCurrencyWhole(accountGainCents)} ({formatPercentMagnitude(gainPct)}){" "}
             unrealized
           </p>
         )}

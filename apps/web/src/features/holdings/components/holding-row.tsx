@@ -3,11 +3,12 @@
 import type { Decimal } from "@privance/core";
 import type { KeyboardEvent } from "react";
 import { ChangePill, type ChangeTone } from "@/components/ui/change-pill";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatTrendCurrency, formatTrendPercent } from "@/lib/format";
 import {
   computeAvgCost,
   computeEffectivePrice,
   computeMarketValue,
+  formatShares,
   getTotalCost,
   parseCostBasisCents,
 } from "../_helpers";
@@ -23,8 +24,6 @@ type HoldingRowProps = {
   prices: Map<string, PriceEntry>;
   /** Day change in cents for this holding; null when prior price not available. */
   dayChangeCents: Decimal | null;
-  /** Total investment portfolio value in cents; used to compute weight. */
-  totalInvestmentsCents: Decimal | null;
   /** Called when the row is clicked to open the detail sheet. */
   onRowClick: (holding: LocalHolding) => void;
 };
@@ -54,25 +53,7 @@ function formatPrice(price: Decimal): string {
   });
 }
 
-function formatSignedPct(pct: number): string {
-  const value = pct * 100;
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(2)}%`;
-}
-
-function formatSignedCurrency(d: Decimal): string {
-  const float = d.toFloat();
-  const sign = float > 0 ? "+" : "";
-  return `${sign}${formatCurrency(d, "USD")}`;
-}
-
-export function HoldingRow({
-  holding,
-  prices,
-  dayChangeCents,
-  totalInvestmentsCents,
-  onRowClick,
-}: HoldingRowProps) {
+export function HoldingRow({ holding, prices, dayChangeCents, onRowClick }: HoldingRowProps) {
   const priceTicker = holding.proxyTicker ?? holding.ticker;
   const priceEntry = prices.get(priceTicker);
 
@@ -118,14 +99,9 @@ export function HoldingRow({
           : "text-down";
   const dayPillTone: ChangeTone = dayZero ? "flat" : dayPositive ? "up" : "down";
 
-  const weightPct: number | null = (() => {
-    if (marketValue === null || totalInvestmentsCents === null || totalInvestmentsCents.isZero())
-      return null;
-    return (marketValue.toFloat() / totalInvestmentsCents.toFloat()) * 100;
-  })();
-
   const avgCost = computeAvgCost(holding);
   const totalCost = getTotalCost(holding);
+  const shares = formatShares(holding.sharesMajor, holding.sharesScale);
 
   const noPrice = priceEntry === undefined;
 
@@ -170,17 +146,18 @@ export function HoldingRow({
         ) : (
           <span className={`inline-flex flex-col items-end font-mono ${dayTone}`}>
             <span className="vfig text-sm">
-              {dayChangeCents !== null ? formatSignedCurrency(dayChangeCents) : "—"}
+              {dayChangeCents !== null ? formatTrendCurrency(dayChangeCents) : "—"}
             </span>
             {dayPct !== null && (
               <ChangePill tone={dayPillTone} className="mt-1">
-                {formatSignedPct(dayPct)}
+                {formatTrendPercent(dayPct)}
               </ChangePill>
             )}
           </span>
         )}
       </td>
 
+      {/* Price -- desktop only */}
       <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
         {noPrice ? (
           <span className="text-faint">—</span>
@@ -189,6 +166,11 @@ export function HoldingRow({
             {effectivePrice ? formatPrice(effectivePrice) : "—"}
           </span>
         )}
+      </td>
+
+      {/* Qty -- desktop only; shares/units held, independent of price */}
+      <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
+        <span className="vfig font-mono text-sm text-cream-soft">{shares}</span>
       </td>
 
       {/* Avg cost -- desktop only; derived from cost basis, independent of price */}
@@ -200,6 +182,13 @@ export function HoldingRow({
         </span>
       </td>
 
+      {/* Total cost -- desktop only; the stored total cost basis, beside avg cost */}
+      <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
+        <span className="vfig font-mono text-sm text-cream-soft">
+          {totalCost !== null ? formatCurrency(totalCost, "USD") : "—"}
+        </span>
+      </td>
+
       {/* G/L -- percent only on mobile, dollar over percent on desktop */}
       <td className="border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
         {noPrice || gain === null ? (
@@ -207,25 +196,18 @@ export function HoldingRow({
         ) : (
           <>
             <ChangePill tone={gainPillTone} size="sm" className="md:hidden">
-              {gain.gainPct !== null ? formatSignedPct(gain.gainPct) : "—"}
+              {gain.gainPct !== null ? formatTrendPercent(gain.gainPct) : "—"}
             </ChangePill>
             <span className={`hidden md:inline-flex flex-col items-end font-mono ${gainTone}`}>
-              <span className="vfig text-sm">{formatSignedCurrency(gain.gainDollar)}</span>
+              <span className="vfig text-sm">{formatTrendCurrency(gain.gainDollar)}</span>
               {gain.gainPct !== null && (
                 <ChangePill tone={gainPillTone} className="mt-1">
-                  {formatSignedPct(gain.gainPct)}
+                  {formatTrendPercent(gain.gainPct)}
                 </ChangePill>
               )}
             </span>
           </>
         )}
-      </td>
-
-      {/* Total cost -- desktop only; the stored total cost basis */}
-      <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
-        <span className="vfig font-mono text-sm text-cream-soft">
-          {totalCost !== null ? formatCurrency(totalCost, "USD") : "—"}
-        </span>
       </td>
 
       <td
@@ -240,15 +222,6 @@ export function HoldingRow({
           <span className="vfig font-mono text-sm text-cream">
             {marketValue ? formatCurrency(marketValue, "USD") : "—"}
           </span>
-        )}
-      </td>
-
-      {/* Weight -- hidden on mobile, last column */}
-      <td className="hidden md:table-cell border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
-        {noPrice || weightPct === null ? (
-          <span className="text-faint">—</span>
-        ) : (
-          <span className="font-mono text-sm text-cream">{weightPct.toFixed(1)}%</span>
         )}
       </td>
     </tr>

@@ -267,16 +267,31 @@ describe("sortHoldings", () => {
     expect(original[0]?.ticker).toBe("VXUS");
   });
 
-  it("sorts by weight ascending (same as marketValue with prices)", () => {
-    const prices = new Map([
-      ["AAPL", { ticker: "AAPL", price: "400.000000" }],
-      ["VXUS", { ticker: "VXUS", price: "50.000000" }],
-    ]);
-    // AAPL: 10 shares * $400 = $4000; VXUS: 5 shares * $50 = $250
-    // asc: VXUS first
-    const result = sortHoldings([alpha, beta], { column: "weight", direction: "asc" }, prices);
-    expect(result[0]?.ticker).toBe("VXUS");
-    expect(result[1]?.ticker).toBe("AAPL");
+  it("sorts by quantity ascending (fewest shares first, independent of price)", () => {
+    // AAPL: 5 shares; VXUS: 20 shares. asc -> AAPL first, the opposite of value order.
+    const result = sortHoldings(
+      [beta, alpha],
+      { column: "quantity", direction: "asc" },
+      EMPTY_PRICES,
+    );
+    expect(result[0]?.ticker).toBe("AAPL");
+    expect(result[1]?.ticker).toBe("VXUS");
+  });
+
+  it("sorts by quantity, keeping a malformed share count last in both directions", () => {
+    const badShares = makeHolding({ ticker: "BAD", sharesMajor: "not-a-number" });
+    const asc = sortHoldings(
+      [beta, badShares, alpha],
+      { column: "quantity", direction: "asc" },
+      EMPTY_PRICES,
+    );
+    expect(asc.map((h) => h.ticker)).toEqual(["AAPL", "VXUS", "BAD"]);
+    const desc = sortHoldings(
+      [alpha, badShares, beta],
+      { column: "quantity", direction: "desc" },
+      EMPTY_PRICES,
+    );
+    expect(desc.map((h) => h.ticker)).toEqual(["VXUS", "AAPL", "BAD"]);
   });
 
   // Distinct avg cost per share: HI = $1,000/10 = $100, LO = $1,000/100 = $10.

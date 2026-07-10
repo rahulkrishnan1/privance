@@ -55,6 +55,17 @@ export function humanizeCryptoId(id: string): string {
     .join(" ");
 }
 
+/** Share/unit quantity for display: up to 4 fraction digits, no forced trailing zeros. */
+export function formatShares(sharesMajor: string, sharesScale: number): string {
+  try {
+    return Decimal.fromString(sharesMajor, sharesScale)
+      .toFloat()
+      .toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+  } catch {
+    return sharesMajor;
+  }
+}
+
 export function filterHoldings(holdings: LocalHolding[], filter: FilterState): LocalHolding[] {
   switch (filter.kind) {
     case "all":
@@ -186,6 +197,15 @@ function getGainDollarSafe(h: LocalHolding, prices: Map<string, PriceEntry>): De
   }
 }
 
+/** Share/unit quantity as a Decimal; null when the stored value is malformed (nulls sort last). */
+function getShares(h: LocalHolding): Decimal | null {
+  try {
+    return Decimal.fromString(h.sharesMajor, h.sharesScale);
+  } catch {
+    return null;
+  }
+}
+
 export function sortHoldings(
   holdings: LocalHolding[],
   sort: SortState,
@@ -200,6 +220,14 @@ export function sortHoldings(
         return dir * a.ticker.localeCompare(b.ticker);
       case "currentPrice":
         return dir * getPrice(a, prices).cmp(getPrice(b, prices));
+      case "quantity": {
+        const qa = getShares(a);
+        const qb = getShares(b);
+        if (qa === null && qb === null) return 0;
+        if (qa === null) return 1;
+        if (qb === null) return -1;
+        return dir * qa.cmp(qb);
+      }
       case "avgCost": {
         const ca = computeAvgCost(a);
         const cb = computeAvgCost(b);
@@ -226,7 +254,6 @@ export function sortHoldings(
         return dir * da.cmp(db);
       }
       case "marketValue":
-      case "weight":
         return dir * getMarketValue(a, prices).cmp(getMarketValue(b, prices));
       case "gainDollar": {
         const ga = getGainDollarSafe(a, prices);

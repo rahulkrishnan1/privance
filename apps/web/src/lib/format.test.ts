@@ -1,6 +1,13 @@
 import { Decimal, SCALE_CENTS } from "@privance/core";
 import { expect, test } from "vitest";
-import { formatCurrency, formatCurrencyCompact, formatCurrencyWhole } from "./format";
+import {
+  formatCurrency,
+  formatCurrencyCompact,
+  formatCurrencyWhole,
+  formatTrendCurrency,
+  formatTrendCurrencyWhole,
+  formatTrendPercent,
+} from "./format";
 
 function toCents(dollars: number): Decimal {
   return Decimal.fromMinorUnits(BigInt(Math.round(dollars * 100)), SCALE_CENTS);
@@ -63,4 +70,22 @@ test("formatCurrencyCompact: keeps the minus sign for negative thousands and dol
 
 test("formatCurrencyWhole: 1000000 returns $1,000,000", () => {
   expect(formatCurrencyWhole(toCents(1_000_000))).toBe("$1,000,000");
+});
+
+test("formatTrendPercent: leads with a triangle and drops the +/- sign", () => {
+  expect(formatTrendPercent(0.0084)).toBe("▲0.84%");
+  expect(formatTrendPercent(-0.0909)).toBe("▼9.09%");
+  expect(formatTrendPercent(0)).toBe("0.00%");
+});
+
+test("formatTrendCurrency: triangle prefix on the absolute value, no sign", () => {
+  expect(formatTrendCurrency(toCents(150))).toBe("▲$150.00");
+  expect(formatTrendCurrency(toCents(-2_000))).toBe("▼$2,000.00");
+  expect(formatTrendCurrency(Decimal.zero(SCALE_CENTS))).toBe("$0.00");
+});
+
+test("formatTrendCurrencyWhole: triangle prefix, whole dollars, no sign", () => {
+  expect(formatTrendCurrencyWhole(toCents(1_000))).toBe("▲$1,000");
+  expect(formatTrendCurrencyWhole(toCents(-45))).toBe("▼$45");
+  expect(formatTrendCurrencyWhole(Decimal.zero(SCALE_CENTS))).toBe("$0");
 });

@@ -157,11 +157,11 @@ export type LocalGroup = {
 export const SORT_COLUMNS = [
   "ticker",
   "currentPrice",
+  "quantity",
   "avgCost",
   "totalCost",
   "dayPct",
   "gainDollar",
-  "weight",
   "marketValue",
 ] as const;
 export type SortColumn = (typeof SORT_COLUMNS)[number];

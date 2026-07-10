@@ -3,7 +3,11 @@
 import type { Decimal, NetWorthBreakdown } from "@privance/core";
 import dynamic from "next/dynamic";
 import { HistoryChartSkeleton } from "@/features/dashboard/components/skeletons";
-import { formatCurrencyWhole, formatPercent } from "@/lib/format";
+import {
+  formatCurrencyWhole,
+  formatPercentMagnitude,
+  formatTrendCurrencyWhole,
+} from "@/lib/format";
 import type { HistoryPoint } from "../../dashboard/types";
 
 const HistoryChart = dynamic(
@@ -54,8 +58,7 @@ export function InvestHero({ breakdown, delta, historyPoints }: InvestHeroProps)
               deltaBorder,
             ].join(" ")}
           >
-            {isPositive ? "+" : ""}
-            {formatCurrencyWhole(delta.dollar)} ({formatPercent(delta.pct, { signed: true })})
+            {formatTrendCurrencyWhole(delta.dollar)} ({formatPercentMagnitude(delta.pct)})
           </span>
         )}
       </div>
