@@ -7,6 +7,13 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 10
+    ignore:
+      # TypeScript 7 (the Go rewrite) drops the JS Compiler API until 7.1, so
+      # Next.js misdetects it as missing and the build fails. Hold the major
+      # until Next ships stable TS7 support; 6.x patch/minor still flow.
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
     groups:
       # Minor and patch bumps land as two consolidated PRs (prod, dev) so a
       # week's routine updates share one lockfile and one CI run each. Majors

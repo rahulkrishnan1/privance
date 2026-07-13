@@ -133,9 +133,9 @@ describe("enrollCredential", () => {
 
     const result = await enrollCredential({ username: "alice" });
 
-    const pk = (
-      vi.mocked(navigator.credentials.create).mock.calls[0]?.[0] as CredentialCreationOptions
-    ).publicKey;
+    const createCall = vi.mocked(navigator.credentials.create).mock.calls[0];
+    if (createCall === undefined) throw new Error("create was not called");
+    const pk = (createCall[0] as CredentialCreationOptions).publicKey;
     if (pk === undefined) throw new Error("missing publicKey options");
     expect(pk.authenticatorSelection?.authenticatorAttachment).toBe("platform");
     expect(pk.authenticatorSelection?.residentKey).toBe("required");
@@ -158,9 +158,9 @@ describe("enrollCredential", () => {
     expect(Array.from(first.salt)).not.toEqual(Array.from(second.salt));
 
     const challengeOf = (i: number) => {
-      const pk = (
-        vi.mocked(navigator.credentials.create).mock.calls[i]?.[0] as CredentialCreationOptions
-      ).publicKey;
+      const createCall = vi.mocked(navigator.credentials.create).mock.calls[i];
+      if (createCall === undefined) throw new Error(`create call ${i} missing`);
+      const pk = (createCall[0] as CredentialCreationOptions).publicKey;
       return Array.from(new Uint8Array(pk?.challenge as ArrayBuffer));
     };
     expect(challengeOf(0)).not.toEqual(challengeOf(1));
@@ -241,8 +241,9 @@ describe("assertPrf", () => {
 
     await assertPrf({ credentialId, salt });
 
-    const pk = (vi.mocked(navigator.credentials.get).mock.calls[0]?.[0] as CredentialRequestOptions)
-      .publicKey;
+    const getCall = vi.mocked(navigator.credentials.get).mock.calls[0];
+    if (getCall === undefined) throw new Error("get was not called");
+    const pk = (getCall[0] as CredentialRequestOptions).publicKey;
     if (pk === undefined) throw new Error("missing publicKey options");
     expect(pk.userVerification).toBe("required");
     const allowed = pk.allowCredentials?.[0];
