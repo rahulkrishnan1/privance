@@ -8,12 +8,16 @@ updates:
       day: monday
     open-pull-requests-limit: 10
     groups:
-      dev-tools:
-        patterns:
-          - "@biomejs/*"
-          - "lefthook"
-          - "turbo"
-          - "typescript"
+      # Minor and patch bumps land as two consolidated PRs (prod, dev) so a
+      # week's routine updates share one lockfile and one CI run each. Majors
+      # stay individual for review.
+      production:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+      development:
+        dependency-type: development
         update-types:
           - minor
           - patch
@@ -24,3 +28,8 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    groups:
+      actions:
+        update-types:
+          - minor
+          - patch
