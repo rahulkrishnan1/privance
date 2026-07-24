@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { expect, test } from "vitest";
 import { render } from "vitest-browser-react";
-import "@/app/globals.css";
+import "@/globals.css";
 import { Input as Field } from "@/components/Input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -7,7 +7,7 @@ export function SwUpdateBanner() {
   const [waiting, setWaiting] = useState<ServiceWorker | null>(null);
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== "production") return;
+    if (import.meta.env.DEV) return;
     if (!("serviceWorker" in navigator)) return;
 
     navigator.serviceWorker

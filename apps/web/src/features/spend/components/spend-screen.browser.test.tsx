@@ -3,7 +3,7 @@ import { render } from "vitest-browser-react";
 import type { LocalSpendItem } from "../types";
 import { SpendScreen } from "./spend-screen";
 // Load the real stylesheet so a `veil-on` ancestor actually blurs `.vfig`.
-import "@/app/globals.css";
+import "@/globals.css";
 
 // Mock the queries module to control what items are returned
 vi.mock("../queries", () => ({

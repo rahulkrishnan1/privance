@@ -143,8 +143,8 @@ describe("version row", () => {
   it("shows the injected build version, not the 'unknown' fallback", async () => {
     const screen = await render(<SettingsPage />);
 
-    // NEXT_PUBLIC_APP_VERSION is inlined by the vitest define (production uses
-    // the real build version). The bare process.env read must not fall back.
+    // VITE_APP_VERSION is inlined by the vitest define (production uses the real
+    // build version). The import.meta.env read must not fall back to "unknown".
     await expect.element(screen.getByText("v0.0.0-test")).toBeVisible();
     await expect.element(screen.getByText("vunknown")).not.toBeInTheDocument();
   });
@@ -304,7 +304,7 @@ describe("destroy vault", () => {
     await screen.getByRole("button", { name: "Destroy forever" }).click();
 
     await vi.waitFor(() => {
-      expect(navigateMock.hardRedirect).toHaveBeenCalledWith("/auth/login/");
+      expect(navigateMock.hardRedirect).toHaveBeenCalledWith("/auth/login");
     });
     expect(accountApiMock.destroy).toHaveBeenCalledWith({
       current_auth_hash: "Y3VyLWF1dGgtaGFzaA==",
@@ -325,7 +325,7 @@ describe("destroy vault", () => {
     await screen.getByRole("button", { name: "Destroy forever" }).click();
 
     await vi.waitFor(() => {
-      expect(navigateMock.hardRedirect).toHaveBeenCalledWith("/auth/login/");
+      expect(navigateMock.hardRedirect).toHaveBeenCalledWith("/auth/login");
     });
   });
 });

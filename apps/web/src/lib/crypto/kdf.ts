@@ -46,7 +46,7 @@ function initWorker(): Promise<void> {
   workerReady = new Promise<void>((resolve, reject) => {
     try {
       // Static-asset classic worker: served from /kdf/kdf-worker.js alongside
-      // the other public assets. No webpack eval in dev mode, so WebKit's strict
+      // the other public assets. No bundler eval in dev mode, so WebKit's strict
       // CSP in WKWebView does not block it.
       const w = new Worker(WORKER_URL);
 

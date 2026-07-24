@@ -26,15 +26,14 @@
 		Referrer-Policy strict-origin-when-cross-origin
 		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
 		X-Frame-Options DENY
-		# script-src 'unsafe-inline': the Next.js App Router static export emits
-		#   inline self.__next_f.push(...) RSC hydration scripts and a dark-mode
-		#   detection script with no nonce attributes; nonces require SSR.
 		# 'wasm-unsafe-eval': Argon2id (hash-wasm) and SQLite (sqlite-wasm) load
 		#   WebAssembly; without this Chromium blocks every WebAssembly.instantiate
 		#   and the client crypto path fails. This is the narrowest CSP knob that
 		#   re-enables WASM and does NOT permit `eval`.
+		# The Vite SPA ships a single external module script and no inline scripts,
+		#   so script-src omits 'unsafe-inline'.
 		# worker-src 'self' blob:: SQLite worker is created from a blob URL.
-		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
 	}
 
 	# Preserve the /api prefix: Hono feature routers are mounted at /api/auth,
@@ -53,17 +52,11 @@
 	redir /settings /app/settings/ permanent
 	redir /settings/ /app/settings/ permanent
 
-	# try_files resolves /app/accounts/ to /srv/web/app/accounts/index.html
-	# for the Next.js App Router static export.
+	# Single-page app: serve the requested file if it exists, otherwise fall back
+	# to index.html so client-routed deep links and hard refreshes resolve.
 	handle {
 		root * /srv/web
-		try_files {path} {path}/index.html =404
-		file_server
-	}
-
-	handle_errors {
-		root * /srv/web
-		rewrite * /404.html
+		try_files {path} /index.html
 		file_server
 	}
 }

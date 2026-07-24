@@ -8,7 +8,7 @@ export type SignupResult = {
 
 /**
  * Fills the signup form so the values survive late hydration. On a cold
- * next-dev compile, React can hydrate between fills and reset controlled
+ * dev server compile, React can hydrate between fills and reset controlled
  * inputs to empty (observed as "Username is required" with passwords intact).
  * Re-fill any wiped field and only return once every value sticks across a
  * short settle.
@@ -68,13 +68,6 @@ export type SessionSnapshot = {
  *
  * When the app's setDekStore is called (during login/signup crypto), the
  * exposed function fires and resolves the returned Promise with the DEK bytes.
- *
- * Why this is needed: Next.js 16 with output:"export" triggers a hard page
- * reload when router.replace("/app/") crosses layout-group boundaries (auth/ →
- * (app)/). The hard reload clears globalThis, so the DEK is gone before any
- * post-navigation page.evaluate could read it. exposeFunction survives the
- * hard reload and fires in the page context BEFORE the reload, giving us the
- * bytes we need.
  */
 async function installDekCapture(page: Page): Promise<() => Promise<number[]>> {
   let resolve!: (arr: number[]) => void;
@@ -111,16 +104,13 @@ async function installDekCapture(page: Page): Promise<() => Promise<number[]>> {
 }
 
 /**
- * Logs in with an existing account and captures the DEK bytes before the hard
- * page navigation clears globalThis.
+ * Logs in with an existing account and captures the DEK bytes.
  *
  * Returns a SessionSnapshot (cookies + DEK bytes) that can be injected into
  * subsequent pages via restoreSession.
  *
- * Why loginAndCapture instead of plain login:
- *   Next.js 16 output:"export" crosses layout-group boundaries (auth/ → app/)
- *   via a hard page reload. That clears globalThis, destroying the in-memory
- *   DEK. We capture the DEK via page.exposeFunction before the reload fires.
+ * Use loginAndCapture instead of plain login when you need the DEK for
+ * later restoreSession calls.
  */
 export async function loginAndCapture(
   browser: Browser,
@@ -131,16 +121,19 @@ export async function loginAndCapture(
 
   const waitForDek = await installDekCapture(page);
 
-  await page.goto("/auth/login/");
-  await page.getByLabel("Username").fill(opts.username);
+  await page.goto("/auth/login");
+  // Vite client-side render: wait for React hydration before filling.
+  await page.waitForTimeout(800);
+  await expect(page.getByLabel("Username")).toBeVisible({ timeout: 15_000 });
+  const usernameEl = page.getByLabel("Username");
+  await usernameEl.click();
+  await usernameEl.pressSequentially(opts.username);
   await page.getByLabel("Master password").fill(opts.password);
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  // Capture DEK bytes before the hard navigation wipes globalThis
+  // Capture DEK bytes set by the crypto layer during login
   const dekArray = await waitForDek();
 
-  // Wait for navigation to complete (may redirect to /auth/login/ since DEK
-  // is gone from globalThis on the new page; that's expected and fine here)
   await page.waitForURL(/\//, { timeout: 15_000 });
 
   const cookies = await ctx.cookies();
@@ -185,17 +178,12 @@ export async function waitForSynced(page: Page): Promise<void> {
  *
  * Returns the 12-word phrase so tests can use it for recovery flows.
  * Argon2 KDF derivation takes 3 to 8 s; caller must use a 60 s test timeout.
- *
- * Note: after signup the hard nav to "/" clears the DEK and the app redirects
- * back to login. For tests that need to verify the dashboard after signup,
- * use loginAndCapture + restoreSession to re-authenticate after signup
- * completes.
  */
 export async function signup(
   page: Page,
   opts: { username: string; password: string },
 ): Promise<SignupResult> {
-  await page.goto("/auth/signup/");
+  await page.goto("/auth/signup");
 
   await fillSignupForm(page, opts);
   await submitSignup(page);
@@ -204,9 +192,7 @@ export async function signup(
   await acknowledgePhrase(page);
   await verifyPhrase(page, phrase);
 
-  // Wait for the navigation to complete. The hard reload to "/" wipes the DEK,
-  // so the app will redirect to /auth/login/. Wait for either destination.
-  await page.waitForURL(/\/(auth\/login\/)?/, { timeout: 15_000 });
+  await page.waitForURL(/\/(auth\/login\/?)?/, { timeout: 15_000 });
 
   return { phrase };
 }
@@ -223,7 +209,7 @@ export async function signupAndLogin(
   const signupCtx = await browser.newContext({ baseURL: BASE_URL });
   const signupPage = await signupCtx.newPage();
 
-  await signupPage.goto("/auth/signup/");
+  await signupPage.goto("/auth/signup");
   await fillSignupForm(signupPage, opts);
   await submitSignup(signupPage);
 
@@ -304,22 +290,21 @@ export async function verifyPhrase(page: Page, phrase: string): Promise<void> {
  * Logs in with an existing account and waits for the URL to change.
  * Argon2 derivation takes 3 to 8 s; caller must use a 60 s test timeout.
  *
- * Note: after the DEK is set and router.replace("/app/") fires, Next.js does
- * a hard navigation that clears globalThis. The resulting page at "/app/"
- * will redirect to /auth/login/ because the DEK is gone. Use loginAndCapture
- * + restoreSession when you need the dashboard to actually render.
+ * Use loginAndCapture + restoreSession when you need the dashboard to
+ * actually render rather than bouncing to /unlock.
  */
 export async function login(
   page: Page,
   opts: { username: string; password: string },
 ): Promise<void> {
-  await page.goto("/auth/login/");
+  await page.goto("/auth/login");
+  await expect(page.getByLabel("Username")).toBeVisible({ timeout: 15_000 });
 
   await page.getByLabel("Username").fill(opts.username);
   await page.getByLabel("Master password").fill(opts.password);
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  // Wait for navigation to complete (may go to "/" or back to "/auth/login/")
+  // Wait for navigation to complete (may go to "/" or back to "/auth/login")
   await page.waitForURL(/\//, { timeout: 30_000 });
 }
 
@@ -331,27 +316,28 @@ export async function login(
  */
 export async function logout(page: Page): Promise<void> {
   await page.getByRole("link", { name: "Settings" }).click();
-  await expect(page).toHaveURL("/app/settings/", { timeout: 10_000 });
+  await expect(page).toHaveURL("/app/settings", { timeout: 10_000 });
   await page.getByRole("button", { name: "Sign out" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible({ timeout: 5_000 });
   await dialog.getByRole("button", { name: "Sign out" }).click();
-  await expect(page).toHaveURL("/auth/login/", { timeout: 10_000 });
+  await expect(page).toHaveURL("/auth/login", { timeout: 10_000 });
 }
 
 /**
- * Full account recovery flow: navigate to /auth/recovery/, enter credentials
+ * Full account recovery flow: navigate to /auth/recovery, enter credentials
  * + phrase, complete the new-phrase acknowledgement.
  *
  * Returns the new phrase issued after recovery.
- * Note: same hard-nav caveat as login; the caller must use loginAndCapture
- * + restoreSession if the dashboard needs to be reachable after recovery.
+ * Use loginAndCapture + restoreSession if the dashboard needs to be
+ * reachable after recovery.
  */
 export async function recover(
   page: Page,
   opts: { username: string; phrase: string; newPassword: string },
 ): Promise<{ newPhrase: string }> {
-  await page.goto("/auth/recovery/");
+  await page.goto("/auth/recovery");
+  await expect(page.getByLabel("Username")).toBeVisible({ timeout: 15_000 });
 
   await page.getByLabel("Username").fill(opts.username);
   await page.getByLabel("Recovery phrase (12 words)").fill(opts.phrase);

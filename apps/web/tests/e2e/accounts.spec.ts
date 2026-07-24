@@ -23,8 +23,8 @@ const SAVE_TIMEOUT = 30_000;
 let savedSession: SessionSnapshot;
 
 async function goToAccounts(page: import("@playwright/test").Page): Promise<void> {
-  await page.goto("/app/accounts/");
-  await expect(page).toHaveURL("/app/accounts/", { timeout: 15_000 });
+  await page.goto("/app/accounts");
+  await expect(page).toHaveURL("/app/accounts", { timeout: 15_000 });
   // Wait for the initial sync to fully drain before interacting. The sync pill
   // reads "synced" only once initialising flips false, which happens after
   // drainAllChanges() has populated the local store, so the empty<->populated
@@ -45,8 +45,6 @@ async function goToAccounts(page: import("@playwright/test").Page): Promise<void
 test.describe("accounts", () => {
   test.beforeAll(async ({ browser }) => {
     const { sharedUser } = loadFixtures();
-    // Capture DEK bytes via exposeFunction before the hard page navigation
-    // caused by router.replace("/app/") clears globalThis.
     savedSession = await loginAndCapture(browser, {
       username: sharedUser.username,
       password: sharedUser.password,

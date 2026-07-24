@@ -59,7 +59,7 @@ async function createCashAccount(
   name: string,
   balance = "50000.00",
 ): Promise<void> {
-  await page.goto("/app/accounts/");
+  await page.goto("/app/accounts");
   await expect(page.getByRole("link", { name: "Invest" })).toBeVisible({ timeout: 15_000 });
   await waitForSynced(page);
 
@@ -101,7 +101,7 @@ async function fillPlanAssumptions(
 ): Promise<void> {
   const { currentAge = 35, annualSpend = 40000, monthlyContribution = 1000, swrPercent = 4 } = opts;
 
-  await page.goto("/app/plan/");
+  await page.goto("/app/plan");
   await waitForSynced(page);
 
   // The account-derived pot opens the Adjust panel directly; wait for its first field.
@@ -152,8 +152,8 @@ test.describe
       test.setTimeout(120_000);
 
       // Navigate to the Invest screen first so the top nav is visible, then click Plan
-      await page.goto("/app/");
-      await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+      await page.goto("/app");
+      await expect(page).toHaveURL("/app", { timeout: 15_000 });
       // Wait for the account to finish syncing so the plan's account-derived pot
       // is computed (otherwise the starting pot reads $0).
       await waitForSynced(page);
@@ -248,7 +248,7 @@ test.describe
       test.setTimeout(120_000);
 
       // Navigate to plan (plan is already saved from F1 test)
-      await page.goto("/app/plan/");
+      await page.goto("/app/plan");
       // Wait for the saved plan to finish syncing before touching the panel, or a
       // late load re-initialises the Adjust panel and discards the slider change.
       await waitForSynced(page);
@@ -418,8 +418,8 @@ test.describe("plan: AE1 + AE14 + AE15", () => {
     test.setTimeout(60_000);
     await restoreSession(page, savedSession);
 
-    await page.goto("/app/");
-    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+    await page.goto("/app");
+    await expect(page).toHaveURL("/app", { timeout: 15_000 });
     await waitForSynced(page);
 
     // The Invest screen is the app's primary screen: net-worth hero + history chart.

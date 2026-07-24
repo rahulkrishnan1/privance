@@ -37,14 +37,12 @@ test.describe("mobile navigation", () => {
     await restoreSession(page, savedSession);
   });
 
-  // The Next.js dev overlay (dev server only, absent in the production PWA) is
-  // pinned to a bottom corner over the fixed tab bar, and a coordinate click,
-  // even forced, routes to it. Dispatch the click straight to the link element
-  // instead; the Next <Link> onClick still fires and navigates.
+  // Dispatch click directly to the link element to avoid any overlay intercepting
+  // coordinate-based clicks on the fixed bottom tab bar.
   const tap = (link: import("@playwright/test").Locator) => link.dispatchEvent("click");
 
   test("the bottom tab bar routes between the four screens", async ({ page }) => {
-    await page.goto("/app/");
+    await page.goto("/app");
     const nav = page.getByRole("navigation", { name: "Mobile navigation" });
     await expect(nav).toBeVisible({ timeout: 15_000 });
     // Settle the initial local-store load + first sync before asserting per-screen

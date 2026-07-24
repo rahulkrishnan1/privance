@@ -114,7 +114,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       // injects DEK directly into globalThis without going through login(), so
       // user.userId is undefined; tolerate that under non-prod builds where
       // each test browser context has its own OPFS partition.
-      if (user?.userId === undefined && process.env.NODE_ENV === "production") {
+      if (user?.userId === undefined && import.meta.env.PROD) {
         throw new Error("sync-context: store open requested without a userId");
       }
       // Non-prod fallback only. Note this is the same path the worker unlinks

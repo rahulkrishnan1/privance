@@ -1,8 +1,8 @@
 /**
  * Privance SQLite worker — served as a static asset and loaded via
  * `new Worker(url, { type: "module" })`. The Worker runtime resolves the
- * relative import below against this file's own URL, bypassing Turbopack /
- * Webpack entirely.
+ * relative import below against this file's own URL, bypassing the Vite
+ * bundler entirely.
  *
  * All SQLite I/O runs here because FileSystemFileHandle.createSyncAccessHandle
  * is only available inside a Worker (Chrome/Firefox).

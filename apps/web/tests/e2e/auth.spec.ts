@@ -46,8 +46,8 @@ test.describe("auth - sign up", () => {
     const page = await ctx.newPage();
     await restoreSession(page, session);
 
-    await page.goto("/app/");
-    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+    await page.goto("/app");
+    await expect(page).toHaveURL("/app", { timeout: 15_000 });
     await expect(page.getByRole("link", { name: "Invest" }).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -61,8 +61,8 @@ test.describe("auth - login", () => {
     const page = await ctx.newPage();
     await restoreSession(page, sharedSession);
 
-    await page.goto("/app/");
-    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+    await page.goto("/app");
+    await expect(page).toHaveURL("/app", { timeout: 15_000 });
     await expect(page.getByRole("link", { name: "Invest" }).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -75,7 +75,7 @@ test.describe("auth - duplicate username", () => {
   test("shows username-taken error on duplicate signup", async ({ page }) => {
     const { duplicateUser } = loadFixtures();
 
-    await page.goto("/auth/signup/");
+    await page.goto("/auth/signup");
     await page.getByLabel("Username").fill(duplicateUser.username);
     await page.getByLabel("Master password", { exact: true }).fill(duplicateUser.password);
     await page.getByLabel("Confirm master password").fill(duplicateUser.password);
@@ -132,8 +132,8 @@ test.describe("auth - account recovery", () => {
     const verifyCtx = await browser.newContext({ baseURL: BASE_URL });
     const verifyPage = await verifyCtx.newPage();
     await restoreSession(verifyPage, loginSession);
-    await verifyPage.goto("/app/");
-    await expect(verifyPage).toHaveURL("/app/", { timeout: 15_000 });
+    await verifyPage.goto("/app");
+    await expect(verifyPage).toHaveURL("/app", { timeout: 15_000 });
     await expect(verifyPage.getByRole("link", { name: "Invest" }).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -150,8 +150,8 @@ test.describe("auth - logout", () => {
     await restoreSession(page, sharedSession);
 
     // Confirm we are in the app
-    await page.goto("/app/");
-    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+    await page.goto("/app");
+    await expect(page).toHaveURL("/app", { timeout: 15_000 });
     await expect(page.getByRole("link", { name: "Invest" }).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -167,7 +167,7 @@ test.describe("auth - logout", () => {
     // navigation within a page's lifetime; the fresh context has no such script.
     const freshCtx = await browser.newContext({ baseURL: BASE_URL });
     const freshPage = await freshCtx.newPage();
-    await freshPage.goto("/app/");
+    await freshPage.goto("/app");
     await expect(freshPage).toHaveURL(/\/auth\/login/, { timeout: 15_000 });
     await freshCtx.close();
   });
@@ -175,7 +175,7 @@ test.describe("auth - logout", () => {
 
 test.describe("auth - protected route redirects", () => {
   test("protected route redirects to login when unauthenticated", async ({ page }) => {
-    await page.goto("/app/");
+    await page.goto("/app");
     // The React effect fires after mount and redirects to /auth/login
     await expect(page).toHaveURL(/\/auth\/login/, { timeout: 15_000 });
   });
@@ -199,12 +199,12 @@ test.describe("auth - protected route redirects", () => {
     await ctx.addCookies(snapshot.cookies);
     const page = await ctx.newPage();
 
-    // "/app/" redirects to login (no DEK in globalThis)
-    await page.goto("/app/");
+    // "/app" redirects to login (no DEK in globalThis)
+    await page.goto("/app");
     await expect(page).toHaveURL(/\/auth\/login/, { timeout: 15_000 });
 
-    // /unlock/ verifies the server session and shows the unlock form
-    await page.goto("/unlock/");
+    // /unlock verifies the server session and shows the unlock form
+    await page.goto("/unlock");
     await expect(page.getByRole("heading", { name: /Master password|Welcome back/ })).toBeVisible({
       timeout: 10_000,
     });
@@ -217,24 +217,24 @@ test.describe("auth - protected route redirects", () => {
   }) => {
     // Seed a persisted username (the "this device has an account" marker) with no
     // session vault and no cookie: the locked-then-expired boot.
-    await page.goto("/auth/login/");
+    await page.goto("/auth/login");
     await page.evaluate(() => localStorage.setItem("privance.username", "ghost-user"));
     await page.context().clearCookies();
 
-    // /unlock/ boots "locked" (username present, no vault), then its useEffect
+    // /unlock boots "locked" (username present, no vault), then its useEffect
     // calls authApi.session(), gets 401, runs the logout cleanup, and presents
     // the session-expired scene in place rather than hard-navigating away.
     // waitUntil:"commit" so the boot's own same-URL navigation can't "interrupt"
     // the goto on webkit (the scene assertion below is the real wait).
-    await page.goto("/unlock/", { waitUntil: "commit" });
+    await page.goto("/unlock", { waitUntil: "commit" });
 
     await expect(page.getByRole("heading", { name: /sealed itself/i })).toBeVisible({
       timeout: 15_000,
     });
 
-    // Stay on /unlock/ showing the cold scene; do not bounce to login or loop.
+    // Stay on /unlock showing the cold scene; do not bounce to login or loop.
     await page.waitForTimeout(1_000);
-    await expect(page).toHaveURL(/\/unlock\//);
+    await expect(page).toHaveURL(/\/unlock\/?/);
     await expect(page.getByRole("button", { name: "Sign back in" })).toBeVisible();
   });
 });

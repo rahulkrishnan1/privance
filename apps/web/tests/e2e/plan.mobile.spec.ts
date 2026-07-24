@@ -19,9 +19,8 @@
  * Mobile tests run after all desktop tests and are in a fresh window, so
  * one additional signup (lisa) is safe.
  *
- * The Next.js dev overlay is pinned to a bottom corner over the fixed tab bar;
- * use dispatchEvent("click") rather than .click() on bottom-bar links (same
- * pattern as navigation.mobile.spec.ts).
+ * Use dispatchEvent("click") rather than .click() on bottom-bar links (same
+ * pattern as navigation.mobile.spec.ts) to avoid overlay intercepting clicks.
  */
 
 import { expect, test } from "@playwright/test";
@@ -45,7 +44,7 @@ async function createCashAccountMobile(
   name: string,
   balance = "40000.00",
 ): Promise<void> {
-  await page.goto("/app/accounts/");
+  await page.goto("/app/accounts");
   await expect(
     page.getByTestId("invest-net-worth").or(page.getByRole("heading", { name: /vault is empty/i })),
   ).toBeVisible({ timeout: 15_000 });
@@ -97,8 +96,8 @@ test.describe("plan mobile: F1 + AE6", () => {
     await restoreSession(page, mobileSession);
 
     // 1. Navigate to Plan via the bottom tab bar
-    await page.goto("/app/");
-    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+    await page.goto("/app");
+    await expect(page).toHaveURL("/app", { timeout: 15_000 });
     const nav = page.getByRole("navigation", { name: "Mobile navigation" });
     await expect(nav).toBeVisible({ timeout: 15_000 });
     await waitForSynced(page);
@@ -212,7 +211,7 @@ test.describe("plan mobile: AE6 interactivity during recompute", () => {
     await restoreSession(page, mobileSession);
 
     // Navigate to Plan
-    await page.goto("/app/plan/");
+    await page.goto("/app/plan");
     await waitForSynced(page);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible({
       timeout: 15_000,

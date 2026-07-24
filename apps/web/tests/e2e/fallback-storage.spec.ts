@@ -98,7 +98,7 @@ test.describe("Storage fallback", () => {
     const ctx = await browser.newContext({ baseURL: BASE_URL });
     const page = await ctx.newPage();
     await loadLocalWorker(page);
-    await page.goto("/auth/login/", { waitUntil: "load" });
+    await page.goto("/auth/login", { waitUntil: "load" });
     const result = await runFullCycle(page);
     await ctx.close();
 
@@ -109,7 +109,7 @@ test.describe("Storage fallback", () => {
 
   test("persistent context → opfs mode, SQL works", async ({ persistentPage: page }) => {
     await loadLocalWorker(page);
-    await page.goto("/auth/login/", { waitUntil: "load" });
+    await page.goto("/auth/login", { waitUntil: "load" });
 
     const opfsAvailable = await page.evaluate(
       () => typeof navigator.storage?.getDirectory === "function",

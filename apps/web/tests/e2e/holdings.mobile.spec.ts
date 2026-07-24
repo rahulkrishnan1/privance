@@ -45,8 +45,8 @@ test.describe("holdings mobile", () => {
     const page = await ctx.newPage();
     await restoreSession(page, savedSession);
 
-    await page.goto("/app/accounts/");
-    await expect(page).toHaveURL("/app/accounts/", { timeout: 15_000 });
+    await page.goto("/app/accounts");
+    await expect(page).toHaveURL("/app/accounts", { timeout: 15_000 });
     // Wait for invest screen to finish loading (OPFS resolves locally, networkidle fires too early).
     await expect(
       page
@@ -83,8 +83,8 @@ test.describe("holdings mobile", () => {
   test("tapping a holding row opens the detail sheet with position details (regression)", async ({
     page,
   }) => {
-    await page.goto("/app/holdings/");
-    await expect(page).toHaveURL("/app/holdings/", { timeout: 10_000 });
+    await page.goto("/app/holdings");
+    await expect(page).toHaveURL("/app/holdings", { timeout: 10_000 });
     await waitForSynced(page);
 
     const ticker = `MOB${RUN.slice(-4).toUpperCase()}`;
@@ -140,8 +140,8 @@ test.describe("holdings mobile", () => {
   });
 
   test("scope sheet filters holdings by account on mobile (regression)", async ({ page }) => {
-    await page.goto("/app/holdings/");
-    await expect(page).toHaveURL("/app/holdings/", { timeout: 10_000 });
+    await page.goto("/app/holdings");
+    await expect(page).toHaveURL("/app/holdings", { timeout: 10_000 });
     await waitForSynced(page);
 
     // The card heading doubles as the scope-menu trigger; on mobile it opens a bottom sheet.

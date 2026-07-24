@@ -17,6 +17,7 @@
       "!**/scratch",
       "!**/.next",
       "!**/out",
+      "!**/routeTree.gen.ts",
       "!**/global.css",
       "!**/globals.css",
       "!**/test-results",

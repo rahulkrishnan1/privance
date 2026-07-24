@@ -28,7 +28,7 @@ cp server/.env.example server/.env
 #     generate: openssl rand -base64 48
 
 # Web app
-echo "NEXT_PUBLIC_SERVER_URL=http://localhost:3000" > apps/web/.env.development.local
+echo "VITE_SERVER_URL=http://localhost:3000" > apps/web/.env.development.local
 ```
 
 ### Database setup
@@ -57,7 +57,7 @@ To run workspaces individually:
 
 ```sh
 pnpm --filter @privance/server dev   # Bun hot-reload server
-pnpm --filter @privance/web dev      # Next.js dev server (webpack mode)
+pnpm --filter @privance/web dev      # Vite dev server
 ```
 
 ---

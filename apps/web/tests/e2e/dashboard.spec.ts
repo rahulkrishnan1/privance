@@ -29,8 +29,8 @@ test.describe("dashboard - empty state", () => {
     const page = await ctx.newPage();
     await restoreSession(page, session);
 
-    await page.goto("/app/");
-    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+    await page.goto("/app");
+    await expect(page).toHaveURL("/app", { timeout: 15_000 });
 
     // recoveryUser has no accounts → the invest empty state ("Your vault is
     // empty, and sealed.") with an "Add first account" button.
@@ -60,8 +60,8 @@ async function ensureDataSetup(browser: import("@playwright/test").Browser): Pro
   const page = await ctx.newPage();
   await restoreSession(page, savedSession);
 
-  await page.goto("/app/accounts/");
-  await expect(page).toHaveURL("/app/accounts/", { timeout: 15_000 });
+  await page.goto("/app/accounts");
+  await expect(page).toHaveURL("/app/accounts", { timeout: 15_000 });
   await expect(
     page
       .getByRole("heading", { name: /vault is empty/i })
@@ -94,8 +94,8 @@ test.describe("dashboard - with data", () => {
   test.beforeEach(async ({ page }) => {
     await restoreSession(page, savedSession);
 
-    await page.goto("/app/");
-    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+    await page.goto("/app");
+    await expect(page).toHaveURL("/app", { timeout: 15_000 });
     // OPFS resolves locally so networkidle fires too early; wait for the hero or subnav.
     await expect(
       page

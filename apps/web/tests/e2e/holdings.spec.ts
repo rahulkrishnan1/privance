@@ -19,8 +19,8 @@ let investmentAccountCreated = false;
 const INVESTMENT_ACCOUNT_NAME = `Holdings-Brokerage-${RUN}`;
 
 async function goToHoldings(page: import("@playwright/test").Page): Promise<void> {
-  await page.goto("/app/holdings/");
-  await expect(page).toHaveURL("/app/holdings/", { timeout: 10_000 });
+  await page.goto("/app/holdings");
+  await expect(page).toHaveURL("/app/holdings", { timeout: 10_000 });
   // Wait until the invest screen has finished loading: either the holdings table
   // (populated) or the empty-state heading. The OPFS store resolves locally, so
   // networkidle fires too early. (Match the empty-state heading, not an "Add
@@ -46,8 +46,6 @@ async function openAddHoldingDialog(page: import("@playwright/test").Page): Prom
 test.describe("holdings", () => {
   test.beforeAll(async ({ browser }) => {
     const { sharedUser } = loadFixtures();
-    // Capture DEK bytes via exposeFunction before the hard page navigation
-    // caused by router.replace("/app/") clears globalThis.
     savedSession = await loginAndCapture(browser, {
       username: sharedUser.username,
       password: sharedUser.password,
@@ -59,8 +57,8 @@ test.describe("holdings", () => {
       const page = await ctx.newPage();
       await restoreSession(page, savedSession);
 
-      await page.goto("/app/accounts/");
-      await expect(page).toHaveURL("/app/accounts/", { timeout: 15_000 });
+      await page.goto("/app/accounts");
+      await expect(page).toHaveURL("/app/accounts", { timeout: 15_000 });
       // Wait for invest screen to finish loading (OPFS is local, networkidle fires too early).
       await expect(
         page
@@ -453,7 +451,7 @@ test.describe("holdings", () => {
     await page.getByRole("link", { name: "Overview" }).first().click();
     await expect(page).toHaveURL(/\/app\/?$/, { timeout: 10_000 });
     await page.getByRole("link", { name: "Holdings" }).first().click();
-    await expect(page).toHaveURL("/app/holdings/", { timeout: 10_000 });
+    await expect(page).toHaveURL("/app/holdings", { timeout: 10_000 });
 
     // Regression: prior version mounted a fresh prices state per screen,
     // briefly rendering "-" before the refetch completed. Module-level cache

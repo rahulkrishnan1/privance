@@ -68,7 +68,7 @@ export function DestroyDialog({
     // (OPFS wipe + DEK clear) is best-effort, since it can throw on
     // OPFS-disabled hosts; the hard reload below wipes JS memory regardless.
     await onDestroyed().catch(() => {});
-    hardRedirect("/auth/login/");
+    hardRedirect("/auth/login");
   }
 
   return (

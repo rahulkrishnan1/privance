@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { expect, test } from "vitest";
 import { render } from "vitest-browser-react";
-import "@/app/globals.css";
+import "@/globals.css";
 import { Select as SelectField } from "@/components/Select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";

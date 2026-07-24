@@ -35,7 +35,7 @@ test.describe("landing page", () => {
     await expect(page).toHaveURL(/\/auth\/login/, { timeout: 10_000 });
   });
 
-  test("signed-in user visiting / is redirected to /app/", async ({ browser }) => {
+  test("signed-in user visiting / is redirected to /app", async ({ browser }) => {
     const { sharedUser } = loadFixtures();
     const session = await loginAndCapture(browser, {
       username: sharedUser.username,
@@ -47,7 +47,7 @@ test.describe("landing page", () => {
     await restoreSession(page, session);
 
     await page.goto("/");
-    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+    await expect(page).toHaveURL("/app", { timeout: 15_000 });
     await ctx.close();
   });
 });

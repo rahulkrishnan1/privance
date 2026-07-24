@@ -203,7 +203,7 @@ curl -sI https://<your-domain>/ | grep -iE '^(strict-transport|x-content-type|re
 [ "$(curl -sI https://<your-domain>/api/health | grep -ci '^strict-transport-security:')" = "1" ] && echo "HSTS count: 1 (PASS)" || echo "HSTS count: unexpected (FAIL)"
 ```
 
-CSP includes `'unsafe-inline'` in `script-src` because the Next.js static export emits inline RSC hydration scripts; nonces require SSR.
+`script-src` omits `'unsafe-inline'`: the Vite SPA ships a single external module script and no inline scripts. `'unsafe-inline'` remains in `style-src` only, for Tailwind's injected styles.
 
 **SSL Labs scan:**
 

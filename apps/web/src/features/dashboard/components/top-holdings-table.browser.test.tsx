@@ -1,7 +1,12 @@
 import type { Holding, HoldingId, HoldingValuation } from "@privance/core";
 import { asId, Decimal, SCALE_CENTS } from "@privance/core";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { render } from "vitest-browser-react";
+
+// The table renders a row Link; stub it so no RouterProvider is needed here.
+vi.mock("@tanstack/react-router", async () => ({
+  Link: (await import("@/__mocks__/router-stubs")).LinkStub,
+}));
 
 import { TopHoldingsTable } from "./top-holdings-table";
 

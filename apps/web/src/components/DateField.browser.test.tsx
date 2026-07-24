@@ -4,7 +4,7 @@ import { render } from "vitest-browser-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { DateField } from "./DateField";
 // Real stylesheet so the shadcn token utilities and popover render as in-app.
-import "@/app/globals.css";
+import "@/globals.css";
 
 function Harness({
   initial = "",

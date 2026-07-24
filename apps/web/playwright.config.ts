@@ -37,7 +37,7 @@ const MONOREPO_ROOT = path.resolve(__dirname, "../..");
  *
  * The config boots two servers automatically:
  *   - bun API server on :3000
- *   - Next.js dev server on :8081
+ *   - Vite dev server on :8081
  *
  * Each test uses a distinct username so no cross-test DB state leaks.
  *
@@ -129,14 +129,14 @@ export default defineConfig({
       env: { ...serverEnv, PORT: String(SERVER_PORT) },
     },
     {
-      // Next.js dev server
-      command: `pnpm exec next dev --webpack --port ${WEB_PORT}`,
+      // Vite dev server
+      command: `pnpm exec vite --port ${WEB_PORT}`,
       cwd: __dirname,
       url: BASE_URL,
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
       env: {
-        NEXT_PUBLIC_SERVER_URL: SERVER_URL,
+        VITE_SERVER_URL: SERVER_URL,
       },
     },
   ],

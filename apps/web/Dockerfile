@@ -7,7 +7,7 @@ COPY packages/core/package.json ./packages/core/
 COPY apps/web/package.json ./apps/web/
 RUN pnpm install --frozen-lockfile --shamefully-hoist
 
-# builder: produce Next.js static export
+# builder: produce the Vite static export
 FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS builder
 WORKDIR /build
 RUN corepack enable
@@ -16,9 +16,9 @@ COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY packages/core/ ./packages/core/
 COPY apps/web/ ./apps/web/
 # Version is injected from the git tag by the release workflow (single source of
-# truth); next.config falls back to package.json when the arg is absent (dev).
-ARG NEXT_PUBLIC_APP_VERSION
-ENV NEXT_PUBLIC_APP_VERSION=${NEXT_PUBLIC_APP_VERSION}
+# truth); vite.config falls back to package.json when the arg is absent (dev).
+ARG VITE_APP_VERSION
+ENV VITE_APP_VERSION=${VITE_APP_VERSION}
 # CI=true: pnpm 11 detects the hoisted node_modules layout in a non-TTY
 # container and aborts asking for confirmation to recreate it; CI mode proceeds.
 RUN CI=true pnpm -F @privance/web build

@@ -46,8 +46,8 @@ test.describe("dashboard mobile", () => {
     const ctx = await browser.newContext({ baseURL: BASE_URL });
     const page = await ctx.newPage();
     await restoreSession(page, savedSession);
-    await page.goto("/app/accounts/");
-    await expect(page).toHaveURL("/app/accounts/", { timeout: 15_000 });
+    await page.goto("/app/accounts");
+    await expect(page).toHaveURL("/app/accounts", { timeout: 15_000 });
     // Wait until the invest screen finishes loading (OPFS resolves locally, not network).
     await expect(
       page
@@ -84,7 +84,7 @@ test.describe("dashboard mobile", () => {
   test("renders the net-worth hero, allocation, and history chart at a phone viewport", async ({
     page,
   }) => {
-    await page.goto("/app/");
+    await page.goto("/app");
     // Wait for the invest screen data to load (OPFS is local, networkidle fires too early).
     await expect(
       page
@@ -113,7 +113,7 @@ test.describe("dashboard mobile", () => {
 
   // Sideways scroll at a phone width makes iOS WebKit shrink-to-fit zoom on launch.
   test("no horizontal overflow on the invest screen at a phone viewport", async ({ page }) => {
-    await page.goto("/app/");
+    await page.goto("/app");
     await expect(page.getByRole("navigation", { name: "Invest sub-navigation" })).toBeVisible({
       timeout: SAVE_TIMEOUT,
     });

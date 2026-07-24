@@ -29,7 +29,7 @@ import { PhraseCheckDialog } from "./components/phrase-check-dialog";
 import { SignOutDialog } from "./components/sign-out-dialog";
 import type { BiometricMessage, BiometricPhase, Dialog } from "./types";
 
-const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "unknown";
+const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? "unknown";
 const SOURCE_URL = "https://github.com/rahulkrishnan1/privance";
 const COINGECKO_URL = "https://www.coingecko.com";
 
@@ -161,7 +161,7 @@ export function SettingsScreen() {
     await authApi.logout().catch(() => undefined);
     // Await logout so the registered store.destroy() finishes before we unload.
     await logout();
-    hardRedirect("/auth/login/");
+    hardRedirect("/auth/login");
   }
 
   const bioBadge =

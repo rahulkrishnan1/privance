@@ -5,8 +5,8 @@ import { type ReactNode, useState } from "react";
 import { ApiError } from "@/lib/api/client";
 
 export function QueryProvider({ children }: { children: ReactNode }) {
-  // Client created inside useState so each Next.js prerender gets its own
-  // instance rather than sharing a module-level singleton across requests.
+  // Created once inside useState so a re-render never swaps the client and
+  // drops its cache.
   const [client] = useState(
     () =>
       new QueryClient({

@@ -68,7 +68,7 @@ jobs:
           file: ${{ matrix.dockerfile }}
           platforms: linux/${{ matrix.arch }}
           # Only the web image embeds the app version; other images ignore it.
-          build-args: ${{ matrix.name == 'privance-web' && format('NEXT_PUBLIC_APP_VERSION={0}', steps.ver.outputs.value) || '' }}
+          build-args: ${{ matrix.name == 'privance-web' && format('VITE_APP_VERSION={0}', steps.ver.outputs.value) || '' }}
           outputs: type=image,name=ghcr.io/${{ github.repository_owner }}/${{ matrix.name }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=${{ matrix.name }}-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}-${{ matrix.arch }}

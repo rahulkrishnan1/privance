@@ -24,7 +24,7 @@ function loadFixtures(): Fixtures {
 test.setTimeout(90_000);
 
 async function loginMobile(page: import("@playwright/test").Page, user: Fixtures["duplicateUser"]) {
-  await page.goto("/auth/login/");
+  await page.goto("/auth/login");
   await page.getByLabel("Username").fill(user.username);
   await page.getByLabel("Master password").fill(user.password);
   await page.getByRole("button", { name: "Sign in" }).click();
@@ -76,7 +76,7 @@ test.describe("session mobile", () => {
     // Cold launch (fresh navigation, as on reopening a closed PWA) re-locks. The
     // re-lock redirects to /unlock mid-load, which interrupts this navigation on
     // some engines; that redirect is the behavior under test, so tolerate it.
-    await page.goto("/app/").catch(() => {});
+    await page.goto("/app").catch(() => {});
     await expect(page).toHaveURL(/\/unlock\/?$/, { timeout: 15_000 });
   });
 });

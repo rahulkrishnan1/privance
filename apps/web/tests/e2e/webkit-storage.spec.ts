@@ -4,7 +4,7 @@ test.describe("WebKit storage smoke", () => {
   test.skip(({ browserName }) => browserName !== "webkit", "webkit-only spec");
 
   test("OPFS + sqlite-wasm worker initialises", async ({ persistentPage: page }) => {
-    await page.goto("/auth/login/", { waitUntil: "load" });
+    await page.goto("/auth/login", { waitUntil: "load" });
 
     const opfsAvailable = await page.evaluate(
       () => typeof navigator.storage?.getDirectory === "function",

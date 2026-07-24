@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { render } from "vitest-browser-react";
-import "@/app/globals.css";
+import "@/globals.css";
 import { Dialog, DialogContent, DialogTitle } from "./dialog";
 
 // A tall dialog must stay within the viewport and scroll its own body, rather

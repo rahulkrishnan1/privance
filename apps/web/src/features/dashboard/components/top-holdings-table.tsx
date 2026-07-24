@@ -1,7 +1,7 @@
 "use client";
 
 import { Decimal, type Holding, type HoldingId, type HoldingValuation } from "@privance/core";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { ChangePill } from "@/components/ui/change-pill";
 import type { LocalHolding } from "@/features/holdings/types";
 import { formatCurrency, formatTrendPercent } from "@/lib/format";
@@ -134,7 +134,7 @@ export function TopHoldingsTable({
       <div className="flex items-baseline justify-between mb-4 gap-2.5">
         <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">Top holdings</h3>
         <Link
-          href="/app/holdings"
+          to="/app/holdings"
           className="font-mono text-xs tracking-button uppercase text-faint hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded"
           aria-label="View all holdings"
         >

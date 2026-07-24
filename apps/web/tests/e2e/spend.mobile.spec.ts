@@ -36,7 +36,7 @@ test.describe("spend mobile", () => {
     const page = await ctx.newPage();
     await restoreSession(page, session);
 
-    await page.goto("/app/spend/");
+    await page.goto("/app/spend");
     await expect(page).toHaveURL(/\/app\/spend/, { timeout: 15_000 });
 
     // Empty state.

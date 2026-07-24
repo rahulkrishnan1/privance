@@ -19,9 +19,9 @@
 /playwright/.cache/
 .playwright-fixtures.json
 
-# next.js
-/.next/
+# build output (/.next/ kept to catch stale caches on pre-migration checkouts)
 /out/
+/.next/
 
 # production
 /build

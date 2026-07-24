@@ -1,7 +1,7 @@
 "use client";
 
 import type { Decimal, NetWorthBreakdown } from "@privance/core";
-import dynamic from "next/dynamic";
+import { lazy, Suspense } from "react";
 import { HistoryChartSkeleton } from "@/features/dashboard/components/skeletons";
 import {
   formatCurrencyWhole,
@@ -10,12 +10,10 @@ import {
 } from "@/lib/format";
 import type { HistoryPoint } from "../../dashboard/types";
 
-const HistoryChart = dynamic(
-  () =>
-    import("@/features/dashboard/components/history-chart").then((m) => ({
-      default: m.HistoryChart,
-    })),
-  { ssr: false, loading: () => <HistoryChartSkeleton /> },
+const HistoryChart = lazy(() =>
+  import("@/features/dashboard/components/history-chart").then((m) => ({
+    default: m.HistoryChart,
+  })),
 );
 
 type InvestHeroProps = {
@@ -63,7 +61,9 @@ export function InvestHero({ breakdown, delta, historyPoints }: InvestHeroProps)
         )}
       </div>
 
-      <HistoryChart points={historyPoints} className="mt-[26px]" />
+      <Suspense fallback={<HistoryChartSkeleton />}>
+        <HistoryChart points={historyPoints} className="mt-[26px]" />
+      </Suspense>
     </section>
   );
 }

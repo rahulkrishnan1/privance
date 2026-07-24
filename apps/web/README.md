@@ -1,9 +1,8 @@
 # @privance/web
 
-Next.js 16 static-export PWA for Privance.
+Vite + React static-export PWA for Privance.
 
-All crypto runs in the browser. This workspace has no server-side rendering; the
-`output: "export"` Next.js config produces a static `/out` directory.
+All crypto runs in the browser. This workspace has no server-side rendering; `vite build` produces a static `/out` directory served as a single-page app.
 
 CI is defined in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) and runs
 lint, typecheck, unit tests (core / web / server), E2E (Playwright chromium + firefox + webkit + mobile),
@@ -13,9 +12,10 @@ static build, and a dependency audit on every push to `main` and on pull request
 
 | Path | Purpose |
 |---|---|
-| `src/app/layout.tsx` | Root layout: QueryProvider > AuthProvider > SyncProvider |
-| `src/app/(landing)/page.tsx` | Landing at `/` (auth-aware redirect for signed-in users) |
-| `src/app/(app)/layout.tsx` | Auth-gated shell with sidebar + mobile tab bar (mounts under `/app/*`) |
+| `src/main.tsx` | App entry: mounts the router under QueryProvider > AuthProvider > SyncProvider |
+| `src/routes/__root.tsx` | Root route: ErrorBoundary + service-worker registration |
+| `src/routes/_landing/index.tsx` | Landing at `/` (auth-aware redirect for signed-in users) |
+| `src/routes/app/_app.tsx` | Auth-gated shell with top nav + mobile tab bar (mounts under `/app/*`) |
 | `src/providers/auth-context.tsx` | DEK store, auth state machine, auto-lock idle timer |
 | `src/providers/sync-context.tsx` | LocalStore + SyncClient lifecycle |
 | `src/features/accounts/` | Reference feature module (queries, mutations, components) |
@@ -37,7 +37,7 @@ WASM, icons) is pre-cached on first load; data sync requires network.
 
 **Offline behavior:** The app shell loads offline after first visit. Account data is stored locally via SQLite-WASM, OPFS-backed where the browser allows it and in-memory when it does not (Safari Private Browsing, restricted WKWebView hosts). In the in-memory mode the local store re-populates from the server on every session; the server holds ciphertext only. A full offline experience (no network ever) is not supported because authentication and initial sync require connectivity.
 
-**Service worker:** `/public/sw.js` is a hand-written service worker (no Workbox or next-pwa). It is registered only in production builds.
+**Service worker:** built from `src/sw-src.ts` by `scripts/build-sw.mjs` (Workbox `injectManifest`) into `/out/sw.js`. It is registered only in production builds.
 
 ## Development
 
@@ -107,7 +107,7 @@ pnpm -F @privance/web e2e:ui
 - Each test uses a distinct username (prefixed with the spec name +
   `Date.now().toString(36)`). No cross-test DB state; no DB reset needed.
 - Argon2 KDF derivation takes 3-8 s; the per-test timeout is 60 s.
-- The Playwright config boots the bun server (:3000) and Next.js dev server
+- The Playwright config boots the bun server (:3000) and Vite dev server
   (:8081) automatically. Both are reused across tests if already running
   (`reuseExistingServer: true` for local runs).
 - Desktop coverage runs the full functional suite on chromium, firefox, and

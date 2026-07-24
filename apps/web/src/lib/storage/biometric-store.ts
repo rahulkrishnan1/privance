@@ -117,7 +117,7 @@ function updateRecord(decide: (current: unknown) => EnrollmentRecord | null): Pr
 }
 
 function warnDev(op: string, err: unknown): void {
-  if (process.env.NODE_ENV !== "production") {
+  if (import.meta.env.DEV) {
     // biome-ignore lint/suspicious/noConsole: dev-only diagnostic, no secrets
     console.warn(`[biometric-store] ${op} failed`, err);
   }

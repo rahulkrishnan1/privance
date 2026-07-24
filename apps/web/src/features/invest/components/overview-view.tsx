@@ -1,9 +1,8 @@
 "use client";
 
 import type { Account, Decimal, Holding, HoldingId, NetWorthBreakdown } from "@privance/core";
-import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { lazy, Suspense, useMemo } from "react";
 import { AllocationPieSkeleton } from "@/features/dashboard/components/skeletons";
 import { TopHoldingsTable } from "@/features/dashboard/components/top-holdings-table";
 import type { SymbolProfileEntry } from "@/lib/api/symbol-profiles";
@@ -18,12 +17,10 @@ import { IncomePanel } from "./income-panel";
 import { SplitsRow } from "./splits-row";
 import { TaxBucketsPanel } from "./tax-buckets-panel";
 
-const AllocationPie = dynamic(
-  () =>
-    import("@/features/dashboard/components/allocation-pie").then((m) => ({
-      default: m.AllocationPie,
-    })),
-  { ssr: false, loading: () => <AllocationPieSkeleton /> },
+const AllocationPie = lazy(() =>
+  import("@/features/dashboard/components/allocation-pie").then((m) => ({
+    default: m.AllocationPie,
+  })),
 );
 
 type OverviewViewProps = {
@@ -45,7 +42,7 @@ export function OverviewView({
   taxBucketsResult,
   profilesByTicker,
 }: OverviewViewProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const gain = useMemo(() => portfolioGain(breakdown), [breakdown]);
 
   const classSlices = useMemo(
@@ -79,7 +76,13 @@ export function OverviewView({
 
       <div className="grid grid-cols-12 gap-4">
         <div className="col-span-6 max-[880px]:col-span-12 h-full">
-          <AllocationPie title="Allocation" classSlices={classSlices} sectorSlices={sectorSlices} />
+          <Suspense fallback={<AllocationPieSkeleton />}>
+            <AllocationPie
+              title="Allocation"
+              classSlices={classSlices}
+              sectorSlices={sectorSlices}
+            />
+          </Suspense>
         </div>
 
         <div className="col-span-6 max-[880px]:col-span-12 h-full">
@@ -89,7 +92,7 @@ export function OverviewView({
             groupKeyById={priceTickerById}
             dayChangeByHoldingId={dayChangeByHoldingId}
             holdings={holdings}
-            onRowClick={() => router.push("/app/holdings/")}
+            onRowClick={() => navigate({ to: "/app/holdings" })}
           />
         </div>
 

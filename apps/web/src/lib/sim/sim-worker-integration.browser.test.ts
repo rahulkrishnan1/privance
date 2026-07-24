@@ -8,7 +8,7 @@
  * ORDERING REQUIREMENT: apps/web/public/sim/sim-worker.mjs must exist before
  * this test runs. Build it with:
  *   node apps/web/scripts/build-sim-worker.mjs
- * The prebuild script runs this automatically before `next build`. For the
+ * The prebuild script runs this automatically before `vite build`. For the
  * vitest browser project, run the build script once before running tests:
  *   pnpm --filter @privance/web build:sim-worker
  * The test will skip with a clear message if the file is absent.

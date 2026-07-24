@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useLocation } from "@tanstack/react-router";
 import type { InvestView } from "../invest-screen";
 
 const NAV_ITEMS: Array<{ view: InvestView; label: string; href: string }> = [
@@ -16,7 +15,7 @@ type InvestSubnavProps = {
 };
 
 export function InvestSubnav({ onAdd, addLabel }: InvestSubnavProps) {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
 
   const active: InvestView = pathname.startsWith("/app/holdings")
     ? "holdings"
@@ -34,7 +33,7 @@ export function InvestSubnav({ onAdd, addLabel }: InvestSubnavProps) {
         return (
           <Link
             key={view}
-            href={href}
+            to={href}
             aria-current={isActive ? "page" : undefined}
             className={[
               "font-mono text-xs tracking-button uppercase py-4 px-0.5 border-b-2 -mb-px transition-colors whitespace-nowrap",

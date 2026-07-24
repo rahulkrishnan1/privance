@@ -6,7 +6,7 @@ import { expect, test, vi } from "vitest";
 import { render } from "vitest-browser-react";
 // Load the real stylesheet so a `veil-on` ancestor actually blurs `.vfig`
 // figures and getComputedStyle reports it, not just a class marker.
-import "@/app/globals.css";
+import "@/globals.css";
 
 const h = vi.hoisted(() => ({
   accounts: { status: "success", data: [] as unknown[] },
@@ -23,8 +23,9 @@ const h = vi.hoisted(() => ({
   savePlanMock: vi.fn(async (_payload: unknown) => {}),
 }));
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  useNavigate: () => vi.fn(),
 }));
 
 vi.mock("./queries", () => ({

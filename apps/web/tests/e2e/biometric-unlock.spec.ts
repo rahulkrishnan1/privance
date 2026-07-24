@@ -36,7 +36,7 @@ async function inlineLogin(
   username: string,
   password: string,
 ): Promise<void> {
-  await page.goto("/auth/login/");
+  await page.goto("/auth/login");
   await page.getByLabel("Username").fill(username);
   await page.getByLabel("Master password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
@@ -59,7 +59,7 @@ async function lockViaNav(page: import("@playwright/test").Page): Promise<void> 
 // Open the Biometric unlock dialog from its settings row. The redesign moved the
 // enroll/disable controls behind a row that opens a centered dialog.
 async function openBiometricDialog(page: import("@playwright/test").Page): Promise<void> {
-  await page.goto("/app/settings/");
+  await page.goto("/app/settings");
   await expect(page.getByRole("heading", { name: /The vault/ })).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: /Biometric unlock/ }).click();
 }
@@ -75,7 +75,7 @@ async function closeBiometricDialog(page: import("@playwright/test").Page): Prom
   });
 }
 
-// Enroll biometric unlock from the settings page (must be unlocked and on /app/settings/).
+// Enroll biometric unlock from the settings page (must be unlocked and on /app/settings).
 // Closes the dialog at the end so callers return to a clean, clickable settings page.
 async function enrollBiometric(page: import("@playwright/test").Page): Promise<void> {
   await openBiometricDialog(page);
@@ -126,7 +126,7 @@ test.describe("AE2: enroll, lock, biometric unlock", () => {
       await inlineLogin(page, bioUser.username, bioUser.password);
 
       // Seed a cash account with a known balance so we can assert real decrypted data.
-      await page.goto("/app/accounts/");
+      await page.goto("/app/accounts");
       // The redesigned accounts route renders InvestScreen; wait for nav as the
       // "app content loaded" landmark (present in both empty and populated states).
       await expect(page.getByRole("link", { name: "Invest" }).first()).toBeVisible({
@@ -168,7 +168,7 @@ test.describe("AE2: enroll, lock, biometric unlock", () => {
       await expect(page.getByLabel("Lock")).toBeVisible({ timeout: 15_000 });
 
       // Assert real decrypted data is visible (proves the items key came from PRF unwrap).
-      await page.goto("/app/accounts/");
+      await page.goto("/app/accounts");
       await page.waitForLoadState("networkidle");
       await expect(page.getByText("AE2-Balance")).toBeVisible({ timeout: 15_000 });
     } finally {
@@ -344,12 +344,11 @@ test.describe("AE5: logout purges enrollment", () => {
       const recordAfterLogout = await readIdbEnrollment(page);
       expect(recordAfterLogout, "enrollment must be fully purged after logout (R10)").toBeNull();
 
-      // Sign back in. Use explicit goto + fill so any hard reload from
-      // window.location.replace in handleLogout does not race with the form fill.
+      // Sign back in. Use explicit goto + fill so navigation does not race with form fill.
       await inlineLogin(page, bioUser.username, bioUser.password);
 
       // Biometric must NOT be enrolled (re-arm is no-op on absent record).
-      await page.goto("/app/settings/");
+      await page.goto("/app/settings");
       await expect(page.getByRole("heading", { name: /The vault/ })).toBeVisible({
         timeout: 15_000,
       });
@@ -506,7 +505,7 @@ test.describe("cross-user guard (userId mismatch purge)", () => {
       // Sign in as bioAltUser using the virtual authenticator (it needs WebAuthn
       // enabled for the settings page to show the biometric section).
       const authIdAlt = await installVirtualAuthenticator(page);
-      await page.goto("/auth/login/");
+      await page.goto("/auth/login");
       await page.getByLabel("Username").fill(bioAltUser.username);
       await page.getByLabel("Master password").fill(bioAltUser.password);
       await page.getByRole("button", { name: "Sign in" }).click();
@@ -514,7 +513,7 @@ test.describe("cross-user guard (userId mismatch purge)", () => {
       await expect(page.getByLabel("Lock")).toBeVisible({ timeout: 10_000 });
 
       // Navigate to settings; userId mismatch purge fires on loadEnrollment.
-      await page.goto("/app/settings/");
+      await page.goto("/app/settings");
       await expect(page.getByRole("heading", { name: /The vault/ })).toBeVisible({
         timeout: 15_000,
       });
@@ -560,14 +559,14 @@ test.describe("AE1: no biometric UI on non-PRF browsers", () => {
   }) => {
     const { bioUser } = loadFixtures();
 
-    await page.goto("/auth/login/");
+    await page.goto("/auth/login");
     await page.getByLabel("Username").fill(bioUser.username);
     await page.getByLabel("Master password").fill(bioUser.password);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL(/\/app\/?$/, { timeout: 30_000 });
     await expect(page.getByLabel("Lock")).toBeVisible({ timeout: 10_000 });
 
-    await page.goto("/app/settings/");
+    await page.goto("/app/settings");
     await expect(page.getByRole("heading", { name: /The vault/ })).toBeVisible({
       timeout: 15_000,
     });

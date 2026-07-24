@@ -42,8 +42,8 @@ test.describe("accounts mobile", () => {
   });
 
   test("creates a cash account and sees it in the list", async ({ page }) => {
-    await page.goto("/app/accounts/");
-    await expect(page).toHaveURL("/app/accounts/", { timeout: 15_000 });
+    await page.goto("/app/accounts");
+    await expect(page).toHaveURL("/app/accounts", { timeout: 15_000 });
     // Wait until the invest screen finishes loading (OPFS resolves locally, not network).
     await expect(
       page

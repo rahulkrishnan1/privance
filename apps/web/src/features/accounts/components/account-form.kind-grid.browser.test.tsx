@@ -1,7 +1,7 @@
 import { expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
-import "@/app/globals.css";
+import "@/globals.css";
 import { AccountForm } from "./account-form";
 
 async function openForm() {

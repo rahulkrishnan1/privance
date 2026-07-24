@@ -1,0 +1,402 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Class-based dark mode for Tailwind 4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #07080a;
+  --foreground: #f2f4f5;
+  --font-schibsted: "Schibsted Grotesk", sans-serif;
+  --font-spline-mono: "Spline Sans Mono", monospace;
+  --font-instrument-serif: "Instrument Serif", serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  /* Type. Instrument Serif for headers, Schibsted Grotesk for body/labels,
+     Spline Sans Mono for data and inputs. */
+  --font-sans: var(--font-schibsted);
+  --font-mono: var(--font-spline-mono);
+  --font-serif: var(--font-instrument-serif);
+  --font-editorial: var(--font-instrument-serif);
+
+  /* Privance 2026 palette, "Signal". Near-black vault + luminous mint accent,
+     violet as the secondary data hue. These names mirror the design mocks
+     one-to-one. */
+  --color-vault: #07080a;
+  --color-panel: #101216;
+  --color-panel-2: #171a20;
+  --color-cream: #f2f4f5;
+  --color-cream-soft: #c9ced2;
+  --color-dim: #8b939b;
+  --color-faint: #5b636b;
+  --color-line: rgba(255, 255, 255, 0.09);
+  --color-line-soft: rgba(255, 255, 255, 0.05);
+  --color-accent: #5eead4;
+  --color-accent-dim: #2dd4bf;
+  --color-accent-hover: #8cf5e4;
+  --color-up: #4ade80;
+  --color-down: #fb7185;
+  --color-signal: #fb923c;
+}
+
+/* shadcn/ui semantic tokens mapped onto the Privance palette. Only names that
+   don't collide with our own utilities are bridged into Tailwind, so `accent`
+   stays our brand teal and shadcn's brand/action role maps to `primary`. This
+   is the shared foundation every shadcn component (Calendar, Dialog, ...) reuses. */
+:root {
+  --card: var(--color-panel);
+  --card-foreground: var(--color-cream);
+  --popover: var(--color-panel-2);
+  --popover-foreground: var(--color-cream);
+  --primary: var(--color-accent);
+  --primary-foreground: var(--color-vault);
+  --secondary: var(--color-panel-2);
+  --secondary-foreground: var(--color-cream);
+  --muted: var(--color-panel-2);
+  --muted-foreground: var(--color-dim);
+  --destructive: var(--color-signal);
+  --destructive-foreground: var(--color-cream);
+  --border: var(--color-line);
+  --input: var(--color-line);
+  --ring: var(--color-accent);
+  /* Readable text on the brand-teal accent surface (e.g. today / range cells). */
+  --accent-foreground: var(--color-vault);
+}
+@theme inline {
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-accent-foreground: var(--accent-foreground);
+}
+
+/* Type scale. One ladder; every step a canonical value (Tailwind / Material /
+   iOS). The migration only ever lifts a size UP this ladder, never down, the
+   app read too small before, so nothing ends smaller than it was. Apply by role
+   (guidance, not extra tokens):
+     xs   12  eyebrow / micro-label / caption  (the floor, nothing smaller)
+     sm   14  dense data, table rows, secondary
+     base 16  body, row labels, inputs (iOS zoom floor), reading prose
+     lg   18  emphasis
+     xl   20  section title
+     2xl  24  small card figure / sub-heading
+     3xl  28  stat figure / sheet heading
+     4xl  32  screen title
+     5xl  40  amount entry, hero figure
+   Dense surfaces (holdings, transactions) lean sm; reading surfaces lean base. */
+@theme {
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.75rem;
+  --text-4xl: 2rem;
+  --text-5xl: 2.5rem;
+
+  /* One source of truth for letter-spacing so uppercase labels and buttons
+     never drift again. `label` = static eyebrows/headers; `button` = clickable
+     uppercase controls. Subtle mono spacing on tickers/badges stays inline. */
+  --tracking-label: 0.2em;
+  --tracking-button: 0.14em;
+}
+
+body {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(900px 520px at 82% 4%, rgba(94, 234, 212, 0.06), transparent 60%),
+    radial-gradient(820px 640px at 6% 94%, rgba(94, 234, 212, 0.035), transparent 55%);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* iOS standalone WebKit zooms the whole page out on launch if any element is
+   wider than the viewport. Clip at the root as a guardrail; `clip` (not
+   `hidden`) keeps sticky headers working. */
+html,
+body {
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-vault);
+}
+
+/* Film-grain signature: a fixed, non-interactive fractal-noise wash that gives
+   the graphite surface its texture. Pointer-events none so it never intercepts
+   input; sits above content but below modals (z-index 40). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+  opacity: 0.45;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .03 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    display: none;
+  }
+}
+
+/* Hide the native number-input spinner so number fields keep the same clean
+   underline as text fields. Values are still typed; the steppers add nothing. */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* iOS zooms into a focused input sized under 16px. Default form controls to the
+   16px floor in the base layer so utilities still win, a larger field (the amount
+   entry) keeps its size, while bare inputs never trip the zoom. Keep every input
+   utility at text-base or above; never style an input below 16px. */
+@layer base {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+/* Plan lever slider: an 18px-tall hit area with a thin 5px track painted as a
+   centered background strip, so JS can fill it teal up to the value. The
+   background-color MUST stay transparent or the input's default field shows
+   through as a white pill. The teal fill is applied inline per value. */
+input[type="range"].plan-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+  outline: none;
+  border-radius: 99px;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-size: 100% 5px;
+  background-position: 0 center;
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+}
+input[type="range"].plan-range::-webkit-slider-runnable-track {
+  height: 18px;
+  background: transparent;
+}
+input[type="range"].plan-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 99px;
+  background: var(--color-cream);
+  border: 3px solid var(--color-vault);
+  box-shadow: 0 0 0 1px var(--color-accent);
+  cursor: grab;
+}
+input[type="range"].plan-range::-webkit-slider-thumb:active {
+  cursor: grabbing;
+}
+input[type="range"].plan-range::-moz-range-track {
+  height: 5px;
+  border-radius: 99px;
+  background: transparent;
+}
+input[type="range"].plan-range::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border-radius: 99px;
+  background: var(--color-cream);
+  border: 3px solid var(--color-vault);
+  box-shadow: 0 0 0 1px var(--color-accent);
+  cursor: grab;
+}
+/* Keyboard focus on the slider is a soft glow on the thumb, not a hard ring
+   around the whole track (which looked heavy on tap, since range inputs show
+   focus styling on pointer focus too). */
+input[type="range"].plan-range:focus-visible {
+  outline: none;
+}
+input[type="range"].plan-range:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 5px rgba(94, 234, 212, 0.22),
+    0 0 0 1px var(--color-accent);
+}
+input[type="range"].plan-range:focus-visible::-moz-range-thumb {
+  box-shadow:
+    0 0 0 5px rgba(94, 234, 212, 0.22),
+    0 0 0 1px var(--color-accent);
+}
+
+/* No tap-flash on mobile, and no focus ring anywhere in the chart (Recharts
+   gives the surface and Pie sectors a focusable a11y layer; the cursor line +
+   tooltip already mark the read point, so a hard outline on tap is just noise).
+   Cover the whole wrapper subtree, not only the surface, since the focused
+   element differs by chart type. */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+.recharts-wrapper:focus,
+.recharts-wrapper :focus {
+  outline: none;
+}
+
+/* Sets its own border; don't also add border-line. */
+@utility glass {
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+  box-shadow:
+    0 12px 32px -14px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* The Veil: frost every figure on the surface. Toggled by adding `veil-on` to a
+   container; each masked value carries the `vfig` class. */
+.veil-on .vfig {
+  filter: blur(clamp(7px, 0.35em, 20px));
+  opacity: 0.7;
+  transition: filter 0.45s, opacity 0.45s;
+}
+.vfig {
+  transition: filter 0.45s, opacity 0.45s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .veil-on .vfig,
+  .vfig {
+    transition: none;
+  }
+}
+
+/* Landing reveal animations. Lives in globals.css (not an inline <style>)
+   so the rules apply on first SSR paint without a hydration round-trip. */
+html {
+  scroll-behavior: smooth;
+  /* Clears the 66px sticky landing header, plus a little breathing room. Sections
+     must NOT also set scroll-mt or the offsets stack and anchor jumps overshoot. */
+  scroll-padding-top: 67px;
+}
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes reveal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.reveal-up {
+  animation: reveal-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.reveal-fade {
+  animation: reveal-fade 1.2s ease-out both;
+}
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1300;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.trendline {
+  stroke-dasharray: 1300;
+  animation: draw 2s cubic-bezier(0.4, 0, 0.2, 1) 0.4s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .reveal-up,
+  .reveal-fade {
+    animation: none;
+    opacity: 1;
+  }
+  .trendline {
+    animation: none;
+  }
+}
+
+/* Auth card error shake. Plays once per error occurrence (the React side
+   re-triggers it by toggling the class). Guarded so it is inert under
+   reduced-motion, unlike the unguarded mock. */
+@keyframes shake {
+  0%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(5px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+.auth-shake {
+  animation: shake 0.4s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-shake {
+    animation: none;
+  }
+}
+
+/* The auth/unlock card entrance. Shared so the keyframe lives in one place, and
+   guarded so it is inert under reduced-motion. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.auth-rise {
+  animation: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-rise {
+    animation: none;
+  }
+}

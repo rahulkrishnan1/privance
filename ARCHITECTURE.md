@@ -5,9 +5,9 @@
 ```
 User's device  (browser)
 │
-├─ apps/web  ── Next.js 16 static export
+├─ apps/web  ── Vite 8 static export + TanStack Router
 │   ├─ React 19 + Tailwind 4 + TanStack Query 5 + Zod
-│   ├─ /          landing page  (auth-aware: redirects signed-in users to /app/)
+│   ├─ /          landing page  (auth-aware: redirects signed-in users to /app)
 │   ├─ /auth/*    unauthenticated flows  (signup, login, recovery)
 │   ├─ /unlock    locked: session exists but DEK not in memory
 │   └─ /app/*     auth-gated  (investments overview at /app, plus accounts, holdings, plan, spend, settings)
@@ -58,45 +58,54 @@ PostgreSQL 17
 
 ## Module structure
 
-### `apps/web/` , Next.js 16 PWA
+### `apps/web/` , Vite 8 PWA
 
-The public-facing web application. It is a **static export** , no SSR, no API routes in the Next.js layer. All server communication goes to the Bun/Hono server.
+The public-facing web application. It is a **static export**, no SSR, no server-side API routes. All server communication goes to the Bun/Hono server.
 
 **Key directories:**
 
 ```
 apps/web/src/
-├── app/                # Next.js App Router
-│   ├── layout.tsx      # Root layout: QueryProvider > AuthProvider > SyncProvider
-│   ├── (app)/          # Auth-gated route group
-│   │   ├── layout.tsx  # Sidebar + bottom tab bar; redirects if not unlocked
-│   │   ├── page.tsx    # Investments overview (net worth, allocation, holdings)
-│   │   ├── accounts/   # Account list + create/edit
-│   │   ├── holdings/   # Holdings list
-│   │   ├── plan/       # FIRE projections
-│   │   ├── spend/      # Spending
-│   │   └── settings/   # User settings
-│   ├── auth/           # Unauthenticated flows
-│   │   ├── login/
-│   │   ├── signup/
-│   │   └── recovery/
-│   └── unlock/         # Session exists but DEK not in memory (cookie-only state)
-├── features/           # Feature modules (accounts, holdings, invest, plan, spend, settings; dashboard is an Invest sub-module, not a route)
-│   └── accounts/       # Reference module: queries.ts, mutations.ts, types.ts, components/
+├── routes/                 # TanStack Router file-based routes
+│   ├── __root.tsx          # Root route: document shell, HeadContent, ErrorBoundary, SW registration
+│   ├── _landing.tsx        # Pathless layout: grain overlay, gradient backdrop
+│   │   └── index.tsx       # Landing page (/)
+│   ├── auth/
+│   │   └── _auth.tsx       # Pathless layout: AuthBackdrop, centered card, redirect on unlocked
+│   │       ├── login.tsx   # /auth/login
+│   │       ├── signup.tsx  # /auth/signup
+│   │       └── recovery.tsx # /auth/recovery
+│   ├── unlock.tsx          # /unlock (session exists, DEK not in memory)
+│   └── app/
+│       └── _app.tsx        # Pathless layout: TopBar, BottomNav, auth gate, veil toggle
+│           ├── index.tsx   # /app (investments overview)
+│           ├── accounts.tsx # /app/accounts
+│           ├── holdings.tsx # /app/holdings
+│           ├── plan.tsx    # /app/plan
+│           ├── spend.tsx   # /app/spend
+│           └── settings.tsx # /app/settings
+├── features/               # Feature modules (same as before, unchanged)
 ├── lib/
-│   ├── api/            # Raw fetch wrappers (auth, account, prices, symbol-profiles, client)
-│   ├── crypto/         # KDF worker client, WebAuthn PRF
-│   ├── storage/        # session-vault, biometric-store, per-user-store
-│   ├── sim/            # Sim worker client + wire types
-│   ├── queries/        # TanStack Query hooks (prices, profiles)
-│   └── auth-crypto.ts  # Browser-side crypto helpers for login/signup flows
-└── providers/
-    ├── auth-context.tsx # DEK store, auth state machine, auto-lock idle timer
-    ├── sync-context.tsx # LocalStore + SyncClient lifecycle
-    └── query-client.tsx # TanStack Query provider
+│   ├── api/                # Raw fetch wrappers + mapApiError utility
+│   ├── crypto/             # KDF worker client, WebAuthn PRF
+│   ├── storage/            # session-vault, biometric-store, per-user-store
+│   ├── sim/                # Sim worker client + wire types
+│   ├── queries/            # TanStack Query hooks (prices, profiles)
+│   ├── use-auth-redirect.ts # Shared auth redirect hook
+│   └── navigate.ts         # hardRedirect for DEK-scrubbing navigation
+├── providers/              # Unchanged (AuthProvider, SyncProvider, QueryProvider)
+├── sw-src.ts               # Workbox-based SW source (built by scripts/build-sw.mjs)
+├── main.tsx                # Vite entry: createRoot + RouterProvider with providers
+├── globals.css             # Tailwind v4 styles
+└── index.html              # Vite HTML entry point
 ```
 
-**Dependencies on:** `packages/core`, `@sqlite.org/sqlite-wasm` (via Worker).
+**Dependencies on:** `packages/core`, `@sqlite.org/sqlite-wasm` (via Worker), `@tanstack/react-router`, `workbox-*`.
+
+**Build pipeline:**
+1. `scripts/build-sim-worker.mjs` (prebuild): bundles projection engine into `public/sim/sim-worker.mjs`
+2. `vite build`: produces static files in `out/`, generates `routeTree.gen.ts` from `routes/`
+3. `scripts/build-sw.mjs` (postbuild): runs Workbox `injectManifest` over `out/`, injects revisioned precache manifest into `out/sw.js`
 
 ### `server/` , Bun + Hono API
 
@@ -320,34 +329,34 @@ The schema is identical in structure to the server's `sync_objects` table, enabl
 
 ## Routing
 
-### Next.js App Router file map
+### TanStack Router file-based route tree
+
+Pathless layout routes use the `_` prefix and wrap child routes via `<Outlet />`.
 
 ```
-app/
-├── layout.tsx                  # Root: providers (Query, Auth, Sync)
-├── (landing)/                  # Public landing page group
-│   ├── layout.tsx              # Dark-forced public layout (stone base)
-│   └── page.tsx                # Landing page (/), redirects signed-in users to /app/
-├── (app)/                      # Auth-gated group
-│   ├── layout.tsx              # Redirects to /auth/login or /unlock if not unlocked
-│   └── app/
-│       ├── page.tsx            # Investments overview (/app)
-│       ├── accounts/page.tsx   # Account list (/app/accounts)
-│       ├── holdings/page.tsx   # Holdings (/app/holdings)
-│       ├── plan/page.tsx       # FIRE projections (/app/plan)
-│       ├── spend/page.tsx      # Spending (/app/spend)
-│       └── settings/page.tsx   # Settings (/app/settings)
+routes/
+├── __root.tsx          # Root: document shell, HeadContent, ErrorBoundary, SW registration
+├── _landing.tsx        # Pathless layout: dark grain shell
+│   └── index.tsx       # Landing page (/)
 ├── auth/
-│   ├── layout.tsx              # Auth shell layout
-│   ├── login/page.tsx          # /auth/login
-│   ├── signup/page.tsx         # /auth/signup
-│   └── recovery/page.tsx       # /auth/recovery
-└── unlock/page.tsx             # /unlock (cookie present, DEK missing)
+│   └── _auth.tsx       # Pathless layout: AuthBackdrop, centered card, auth gate
+│       ├── login.tsx   # /auth/login
+│       ├── signup.tsx  # /auth/signup
+│       └── recovery.tsx # /auth/recovery
+├── unlock.tsx          # /unlock (cookie present, DEK missing)
+└── app/
+    └── _app.tsx        # Pathless layout: TopBar, BottomNav, auth gate, veil toggle
+        ├── index.tsx   # /app (investments overview)
+        ├── accounts.tsx # /app/accounts
+        ├── holdings.tsx # /app/holdings
+        ├── plan.tsx    # /app/plan
+        ├── spend.tsx   # /app/spend
+        └── settings.tsx # /app/settings
 ```
 
-**Landing page:** `(landing)/page.tsx` serves the landing page at `/`. It reads `useAuth()` and redirects signed-in users (`unlocked` → `/app/`, `locked` → `/unlock/`) so they never see the landing.
+**Landing page:** `_landing/index.tsx` serves the landing page at `/`. It uses `useAuthRedirect({ onUnlocked: true, onLocked: true })` for hard navigation, a DEK-scrubbing full page reload for formerly-authenticated users.
 
-**Auth gate:** `(app)/layout.tsx` uses `useAuth()` and redirects via `window.location.replace()` to `/auth/login/` (unauthenticated) or `/unlock/` (locked: session cookie present but the DEK is not in memory and cannot be rehydrated from the vault, because the window expired or a lock purged it). It does not redirect while auth state is `loading`, so the brief vault read on boot cannot bounce a soon-to-be-unlocked reload to `/unlock`.
+**Auth gate:** `app/_app.tsx` uses `useAuthRedirect({ onUnauthenticated: true, onLocked: true }, navigate)` for soft navigation via the router to `/auth/login` (unauthenticated) or `/unlock` (locked). The lock/logout actions do their own hard reload in `auth-context` for DEK scrub.
 
 ---
 
@@ -359,7 +368,7 @@ app/
 pnpm --filter @privance/web build
 ```
 
-Produces a static site in `apps/web/out/`. Deploy to any static host (Caddy, nginx, S3, etc.). The `trailingSlash: true` setting makes routes resolve as directories on static hosts.
+Runs three steps: (1) `scripts/build-sim-worker.mjs` bundles the projection engine into `public/sim/sim-worker.mjs`, (2) `vite build` produces a static site in `apps/web/out/` with TanStack Router `autoCodeSplitting` splitting each route into its own chunk, (3) `scripts/build-sw.mjs` runs Workbox `injectManifest` over the output, injecting a revisioned precache manifest into `out/sw.js`. Deploy to any static host (Caddy, nginx, S3, etc.).
 
 ### Server (`server`)
 

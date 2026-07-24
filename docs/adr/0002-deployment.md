@@ -3,10 +3,11 @@
 - **Status:** Accepted
 - **Date:** 2026-05-23
 - **Amended:** 2026-06-05. Deploys moved from rsync + build-on-VPS to CI-built images pulled from GHCR; the Deploys row, the CI threat-surface consequence, and the push-deploy alternative reflect the amended model.
+- **Amended:** 2026-07-23. PWA service worker migrated from hand-rolled `sw.js` to Workbox `injectManifest`; web build migrated from Next.js static export to Vite + TanStack Router static export.
 
 ## Context
 
-Privance needs a live, reachable, backed-up instance at `https://privance.app` that a single operator can stand up, run, and maintain. The deployment architecture decisions are separate from the stack decisions in ADR-0001 (Bun + Hono + Next.js); this ADR records what runs WHERE and how it gets there.
+Privance needs a live, reachable, backed-up instance at `https://privance.app` that a single operator can stand up, run, and maintain. The deployment architecture decisions are separate from the stack decisions in ADR-0001 (Bun + Hono + Vite); this ADR records what runs WHERE and how it gets there.
 
 Constraints that shaped the deployment:
 
@@ -25,13 +26,13 @@ Constraints that shaped the deployment:
 | Host | Single Hetzner Cloud VPS (small shared-vCPU SKU, EU region; current sizing table in `infra/hetzner-vps.md`). |
 | OS | Ubuntu LTS. SSH-key-only login as a non-root deploy user; root SSH disabled; firewall open on 22/tcp, 80/tcp, 443/tcp, 443/udp only. |
 | Runtime | Docker Compose stack: `server` (Bun, multi-stage Dockerfile, non-root uid 10001, digest-pinned `oven/bun` base) + `postgres` (Postgres 17, loopback-only) + `caddy` + `restic-runner` (cron sidecar). |
-| TLS + ingress | Caddy with Let's Encrypt; serves the Next.js static export at `/` and reverse-proxies `/api/*` to the server container; HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, CSP all set in `infra/Caddyfile`. |
+| TLS + ingress | Caddy with Let's Encrypt; serves the Vite static export at `/` and reverse-proxies `/api/*` to the server container; HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, CSP all set in `infra/Caddyfile`. |
 | DNS | Cloudflare, DNS-only (no proxy / orange cloud). A + AAAA records for apex + `www`. |
 | Secrets | `/etc/privance/env.d/` directory mode 700, owned by the deploy user. Postgres password as a Docker secret; restic password + Backblaze B2 keys + `ENUMERATION_SECRET` + `SIGNUP_ALLOWLIST` + `INVITE_REQUIRED` in env-d files mode 600. Nothing in the repo. |
 | Migrations | `server-migrate` one-shot Compose service runs `bun run db:migrate` before the API container accepts traffic. Failed migrations halt boot. |
 | Signup gating | Invite-only via the `InviteService` module. `INVITE_REQUIRED=true` enforced server-side; operator mints tokens via `docker compose -f compose.prod.yaml exec server bun dist/mint-invite.js` from the deploy directory on the VPS over SSH. Tokens are hashed at rest with SHA-256 and single-use via atomic UPDATE. |
 | Backups | Nightly `pg_dump --format=custom` piped to `restic backup --stdin-from-command`, encrypted and stored in Backblaze B2 (EU Central). Retention: 7 daily / 4 weekly / 6 monthly. Weekly structural `restic check`. In-place restore drill required during bring-up. |
-| PWA | Hand-rolled `apps/web/public/sw.js` (no Workbox dependency), manifest + icons in `public/`, registration via `ServiceWorkerRegistration.tsx`. Cache strategy: cache-first for static assets, stale-while-revalidate-with-offline-fallback for navigation, pass-through for `/api/*` and cross-origin. |
+| PWA | Workbox `injectManifest` service worker built from `src/sw-src.ts` via `scripts/build-sw.mjs`. Manifest + icons in `public/`, registration via `ServiceWorkerRegistration.tsx`. Cache strategy: revision-based precache for all Vite chunks, network-only for `/api/*`, cache-first for WASM/KDF assets, stale-while-revalidate with offline fallback for navigation. SW activation is deferred to next navigation; `skipWaiting` is only triggered by the client update banner, not on install, to prevent mid-crypto-operation version skew. |
 | Deploys | Operator-initiated, image-based: GitHub Actions builds and pushes versioned images to GHCR on `v*` tags; the operator runs `infra/deploy.sh <version>` from the workstation, which makes the VPS pull the pinned images and recreate containers. No CI runner has VPS credentials; CI holds only GHCR `packages: write`. |
 
 ## Consequences

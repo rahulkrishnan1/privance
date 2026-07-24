@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Logo } from "@/components/index";
 
 // Shared glow + safe-area header for the auth and unlock screens.
@@ -18,7 +18,7 @@ export function AuthBackdrop() {
       />
       <header className="px-8 pb-[26px] [padding-top:calc(26px+env(safe-area-inset-top))] flex justify-between items-center relative z-10">
         <Link
-          href="/"
+          to="/"
           aria-label="Back to home"
           className="flex items-center gap-[9px] no-underline font-serif text-2xl text-cream hover:opacity-80 transition-opacity"
         >

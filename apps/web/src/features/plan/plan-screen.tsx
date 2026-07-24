@@ -4,9 +4,8 @@ import type { Holding, HoldingGroupId, HoldingId, PlanPayload } from "@privance/
 import { asId, asIsoDateTime, Decimal, SCALE_CENTS } from "@privance/core";
 import type { SimulateResult } from "@privance/core/projection";
 import { DATASET_START_YEAR, PRESET_BALANCED } from "@privance/core/projection";
-import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Screen } from "@/components/index";
 import { useAccountsQuery } from "@/features/accounts/queries";
 import { useHoldingsQuery } from "@/features/holdings/queries";
@@ -24,12 +23,8 @@ import { payloadToSimInput } from "./sim-input";
 import { isNeverFiState, type PlanFormValues, samePlanValues } from "./types";
 
 // Lazy-load the fan chart so Recharts is not in the initial bundle.
-const FanChart = dynamic(
-  () => import("./components/fan-chart").then((m) => ({ default: m.FanChart })),
-  {
-    ssr: false,
-    loading: () => <FanChartSkeleton />,
-  },
+const FanChart = lazy(() =>
+  import("./components/fan-chart").then((m) => ({ default: m.FanChart })),
 );
 
 function generateSeed(): string {
@@ -128,7 +123,7 @@ const ACCOUNT_DEFAULTS: PlanFormValues = {
 };
 
 export function PlanScreen() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const accountsQuery = useAccountsQuery();
   const planQuery = usePlanRecord();
   const { holdings } = useHoldingsQuery();
@@ -436,7 +431,7 @@ export function PlanScreen() {
             <Button
               type="button"
               variant="primary"
-              onClick={() => router.push("/app/accounts/")}
+              onClick={() => navigate({ to: "/app/accounts" })}
               className="mt-7"
             >
               Add accounts
@@ -499,16 +494,18 @@ export function PlanScreen() {
                 <span>Updating projection&hellip;</span>
               </div>
             )}
-            <FanChart
-              bands={sim.result.mc.yearlyBands}
-              startAge={sim.input.currentAge}
-              className="w-full"
-              fireNumberDisplay={sim.result.fireNumber.toFloat()}
-              startingPot={sim.input.startingPotCents}
-              medianFireAge={sim.result.mc.medianFireAge}
-              fireYear={fireYear}
-              planUntilAge={sim.input.planUntilAge}
-            />
+            <Suspense fallback={<FanChartSkeleton />}>
+              <FanChart
+                bands={sim.result.mc.yearlyBands}
+                startAge={sim.input.currentAge}
+                className="w-full"
+                fireNumberDisplay={sim.result.fireNumber.toFloat()}
+                startingPot={sim.input.startingPotCents}
+                medianFireAge={sim.result.mc.medianFireAge}
+                fireYear={fireYear}
+                planUntilAge={sim.input.planUntilAge}
+              />
+            </Suspense>
             <p className="mt-3 font-mono text-xs leading-relaxed text-faint">
               {method === "mc"
                 ? "Percentile bands from 1,000 simulated futures, drawn on your allocation's return and volatility."

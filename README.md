@@ -78,7 +78,7 @@ pnpm dev                             # web on :8081, server on :3000
 Needs Bun >= 1.3.14, Node.js >= 22, pnpm >= 11, and Postgres 17. The full setup, test, and lint workflow is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ```
-apps/web/      Next.js 16 PWA (React, Tailwind, static export)
+apps/web/      Vite + React PWA (TanStack Router, Tailwind, static export)
 packages/core/ Pure TypeScript: crypto, decimal math, sync, storage
 server/        Bun + Hono + Drizzle + Postgres
 infra/         Compose stack, deploy procedure, env templates

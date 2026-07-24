@@ -79,7 +79,7 @@ test.describe("session persistence + auto-lock", () => {
     // blow the 3-per-minute signup cap the suite budgets.
     const { duplicateUser } = loadFixtures();
 
-    await page.goto("/auth/login/");
+    await page.goto("/auth/login");
     await page.getByLabel("Username").fill(duplicateUser.username);
     await page.getByLabel("Master password").fill(duplicateUser.password);
     await page.getByRole("button", { name: "Sign in" }).click();
@@ -142,7 +142,7 @@ test.describe("session persistence + auto-lock", () => {
     await emulateStandalonePwa(ctx);
     const page = await ctx.newPage();
 
-    await page.goto("/auth/login/");
+    await page.goto("/auth/login");
     await page.getByLabel("Username").fill(duplicateUser.username);
     await page.getByLabel("Master password").fill(duplicateUser.password);
     await page.getByRole("button", { name: "Sign in" }).click();
@@ -158,7 +158,7 @@ test.describe("session persistence + auto-lock", () => {
     // even though the 15-minute window has not elapsed. The re-lock redirects to
     // /unlock mid-load, which interrupts this navigation on Firefox; that
     // redirect is the behavior under test, so tolerate the interrupt and assert.
-    await page.goto("/app/").catch(() => {});
+    await page.goto("/app").catch(() => {});
     await expect(page).toHaveURL(/\/unlock\/?$/, { timeout: 15_000 });
     await expect(page.getByRole("heading", { name: /Master password|Welcome back/ })).toBeVisible({
       timeout: 10_000,
@@ -178,7 +178,7 @@ test.describe("session persistence + auto-lock", () => {
     const page = await ctx.newPage();
 
     // Log in to create a stored session.
-    await page.goto("/auth/login/");
+    await page.goto("/auth/login");
     await page.getByLabel("Username").fill(duplicateUser.username);
     await page.getByLabel("Master password").fill(duplicateUser.password);
     await page.getByRole("button", { name: "Sign in" }).click();
@@ -204,9 +204,9 @@ test.describe("session persistence + auto-lock", () => {
     });
     await page.evaluate(() => sessionStorage.removeItem("e2e.sawAppShell"));
 
-    // Cold launch into /app/: auth resolves to "locked" so the render gate must
+    // Cold launch into /app: auth resolves to "locked" so the render gate must
     // suppress the app shell and redirect to /unlock before any chrome paints.
-    await page.goto("/app/").catch(() => {});
+    await page.goto("/app").catch(() => {});
     await expect(page).toHaveURL(/\/unlock\/?$/, { timeout: 15_000 });
     await expect(page.getByRole("heading", { name: /Master password|Welcome back/ })).toBeVisible({
       timeout: 10_000,
@@ -223,7 +223,7 @@ test.describe("session persistence + auto-lock", () => {
     const ctx = await browser.newContext({ baseURL: BASE_URL });
 
     const tab1 = await ctx.newPage();
-    await tab1.goto("/auth/login/");
+    await tab1.goto("/auth/login");
     await tab1.getByLabel("Username").fill(duplicateUser.username);
     await tab1.getByLabel("Master password").fill(duplicateUser.password);
     await tab1.getByRole("button", { name: "Sign in" }).click();
@@ -232,7 +232,7 @@ test.describe("session persistence + auto-lock", () => {
     // A second tab in the same context shares the vault + localStorage, so it
     // boots straight into the unlocked app with no password.
     const tab2 = await ctx.newPage();
-    await tab2.goto("/app/");
+    await tab2.goto("/app");
     await expect(tab2.getByRole("button", { name: "Lock" })).toBeVisible({ timeout: 15_000 });
 
     // Locking tab1 must lock tab2 too (storage broadcast scrubs its in-memory DEK).
