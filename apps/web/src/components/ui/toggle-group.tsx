@@ -1,40 +1,28 @@
 "use client";
 
-import type { VariantProps } from "class-variance-authority";
-import { ToggleGroup as ToggleGroupPrimitive } from "radix-ui";
-import * as React from "react";
+import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group";
+import type * as React from "react";
 
 import { cn } from "@/lib/utils";
-import { segmentItemVariants } from "./radio-group";
+import { RadioGroupItem } from "./radio-group";
 
-const ToggleGroup = React.forwardRef<
-  React.ElementRef<typeof ToggleGroupPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Root>
->(({ className, ...props }, ref) => (
-  <ToggleGroupPrimitive.Root
-    ref={ref}
-    // Items render role="radio"; a single-select group must be a radiogroup so
-    // assistive tech announces the option count. Radix defaults the root to "group".
-    role={props.type === "single" ? "radiogroup" : undefined}
-    className={cn("inline-flex gap-1.5", className)}
-    {...props}
-  />
-));
-ToggleGroup.displayName = ToggleGroupPrimitive.Root.displayName;
+// A single-select segmented control for view state (nav tabs, chart ranges) as
+// opposed to RadioGroup for form fields. Its items are RadioGroupItem (identical
+// pill + radio a11y); the distinct group name keeps call-site intent readable.
+// `type="single"` is accepted for call-site compatibility and has no effect
+// (multi-select is not supported).
+type ToggleGroupProps = {
+  type?: "single";
+  value?: string;
+  defaultValue?: string;
+  onValueChange?: (value: string) => void;
+  className?: string;
+  children?: React.ReactNode;
+  "aria-label"?: string;
+};
 
-const ToggleGroupItem = React.forwardRef<
-  React.ElementRef<typeof ToggleGroupPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Item> &
-    VariantProps<typeof segmentItemVariants>
->(({ className, size, children, ...props }, ref) => (
-  <ToggleGroupPrimitive.Item
-    ref={ref}
-    className={cn(segmentItemVariants({ size, className }))}
-    {...props}
-  >
-    {children}
-  </ToggleGroupPrimitive.Item>
-));
-ToggleGroupItem.displayName = ToggleGroupPrimitive.Item.displayName;
+function ToggleGroup({ className, type: _type, ...props }: ToggleGroupProps) {
+  return <RadioGroupPrimitive className={cn("inline-flex gap-1.5", className)} {...props} />;
+}
 
-export { ToggleGroup, ToggleGroupItem };
+export { RadioGroupItem as ToggleGroupItem, ToggleGroup };

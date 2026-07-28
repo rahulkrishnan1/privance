@@ -120,16 +120,19 @@ export function SettingsDialogHeader({
 }) {
   return (
     <div className="mb-[18px] flex items-center justify-between">
-      <DialogTitle asChild>
-        <h3
-          id={titleId}
-          className={cn(
-            "font-serif font-normal text-2xl tracking-[-0.01em]",
-            danger && "text-down",
-          )}
-        >
-          {title}
-        </h3>
+      <DialogTitle
+        render={
+          // biome-ignore lint/a11y/useHeadingContent: heading text is injected as children by Base UI's render prop
+          <h3
+            id={titleId}
+            className={cn(
+              "font-serif font-normal text-2xl tracking-[-0.01em]",
+              danger && "text-down",
+            )}
+          />
+        }
+      >
+        {title}
       </DialogTitle>
       <CloseButton onClick={onClose} />
     </div>

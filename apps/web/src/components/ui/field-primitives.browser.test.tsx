@@ -89,15 +89,24 @@ test("Button loading shows the spinner, marks aria-busy, and disables", async ()
   expect(button.querySelector("svg")).not.toBeNull();
 });
 
-test("Button variants render their label as a real button", async () => {
+test("Button variants render distinct, visible styling per variant", async () => {
   const screen = await render(
     <>
       <Button variant="secondary">Cancel</Button>
       <Button variant="danger">Delete</Button>
     </>,
   );
+  const secondary = screen.getByRole("button", { name: "Cancel" }).element();
+  const danger = screen.getByRole("button", { name: "Delete" }).element();
   await expect.element(screen.getByRole("button", { name: "Cancel" })).toBeVisible();
   await expect.element(screen.getByRole("button", { name: "Delete" })).toBeVisible();
+
+  // The danger variant carries a solid fill; secondary is transparent. Assert
+  // the actual rendered colors so a swapped or dropped CVA mapping fails here.
+  const dangerBg = getComputedStyle(danger).backgroundColor;
+  const secondaryBg = getComputedStyle(secondary).backgroundColor;
+  expect(dangerBg).not.toBe("rgba(0, 0, 0, 0)");
+  expect(dangerBg).not.toBe(secondaryBg);
 });
 
 test("Button size=icon keeps real dimensions (never collapses to 0)", async () => {

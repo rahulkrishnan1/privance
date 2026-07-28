@@ -14,8 +14,8 @@ function pressActive(key: string) {
 }
 
 // The headline a11y fix: a single-select segmented control must be arrow-key
-// navigable (the hand-rolled radiogroups were not). Radix RadioGroup gives
-// roving focus + selection; assert the selection actually moves on ArrowRight.
+// navigable (the hand-rolled radiogroups were not). The RadioGroup primitive
+// gives roving focus + selection; assert the selection actually moves on ArrowRight.
 test("RadioGroup selects the next option on ArrowRight", async () => {
   const screen = await render(
     <RadioGroup defaultValue="equity" aria-label="Asset type">
@@ -61,14 +61,14 @@ test("ToggleGroup (single) reflects the selected item as pressed", async () => {
   ).toBe("false");
 });
 
-test("ToggleGroup (single) with guarded onValueChange cannot be deselected by re-clicking the active item", async () => {
+test("ToggleGroup (single) keeps its selection when the active item is re-clicked", async () => {
   function Harness() {
     const [value, setValue] = useState("class");
     return (
       <ToggleGroup
         type="single"
         value={value}
-        onValueChange={(nv) => nv && setValue(nv)}
+        onValueChange={setValue}
         aria-label="Allocation view"
       >
         <ToggleGroupItem value="class">By class</ToggleGroupItem>
@@ -79,21 +79,14 @@ test("ToggleGroup (single) with guarded onValueChange cannot be deselected by re
   const screen = await render(<Harness />);
   const byClass = screen.getByRole("radio", { name: "By class" });
   expect(byClass.element().getAttribute("aria-checked")).toBe("true");
+  // Radio semantics: re-clicking the already-selected item must not clear the
+  // selection (a segmented control that dropped to no-selection would be a bug),
+  // and must not flip its sibling on.
   await byClass.click();
   await expect.poll(() => byClass.element().getAttribute("aria-checked")).toBe("true");
-});
-
-test("ToggleGroup (multiple) is not exposed as a radiogroup", async () => {
-  // Only the single-select variant claims radiogroup semantics; a multi-select
-  // group must stay a plain group so AT does not announce a single choice.
-  const screen = await render(
-    <ToggleGroup type="multiple" aria-label="Filters">
-      <ToggleGroupItem value="a">A</ToggleGroupItem>
-      <ToggleGroupItem value="b">B</ToggleGroupItem>
-    </ToggleGroup>,
-  );
-  await expect.element(screen.getByText("A")).toBeVisible();
-  expect(document.querySelector('[role="radiogroup"]')).toBeNull();
+  expect(
+    screen.getByRole("radio", { name: "By sector" }).element().getAttribute("aria-checked"),
+  ).toBe("false");
 });
 
 test("Switch toggles aria-checked when clicked", async () => {

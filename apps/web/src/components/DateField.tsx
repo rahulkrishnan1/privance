@@ -60,21 +60,14 @@ export function DateField({
         if (!next) onBlur?.();
       }}
     >
-      <PopoverTrigger asChild>
-        <button
-          id={id}
-          type="button"
-          className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-line bg-panel-2 px-3.5 py-3 text-left font-mono text-base text-cream outline-none transition-colors focus:border-accent-dim"
-        >
-          <span className={label ? "" : "text-faint"}>{label ?? placeholder}</span>
-          <CalendarDays size={16} className="text-faint shrink-0" aria-hidden="true" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        className="w-auto p-0"
-        onOpenAutoFocus={(e) => e.preventDefault()}
+      <PopoverTrigger
+        id={id}
+        className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-line bg-panel-2 px-3.5 py-3 text-left font-mono text-base text-cream outline-none transition-colors focus:border-accent-dim"
       >
+        <span className={label ? "" : "text-faint"}>{label ?? placeholder}</span>
+        <CalendarDays size={16} className="text-faint shrink-0" aria-hidden="true" />
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-auto p-0" initialFocus={false}>
         <Calendar
           mode="single"
           captionLayout="dropdown"

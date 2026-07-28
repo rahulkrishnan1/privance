@@ -2,6 +2,9 @@ import type { Account, AccountId, UserId } from "@privance/core";
 import { asId, asIsoDateTime } from "@privance/core";
 import { expect, test, vi } from "vitest";
 import { render } from "vitest-browser-react";
+// Real stylesheet so Tailwind positioning applies; without it the modal Popup is
+// unpositioned and Base UI's inline-styled internal backdrop covers the content.
+import "@/app/globals.css";
 import { AccountForm } from "./account-form";
 
 const TS = asIsoDateTime("2026-01-01T00:00:00.000Z");

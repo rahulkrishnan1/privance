@@ -97,19 +97,19 @@ export function ChangePasswordDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={(o) => {
-        if (!o) handleClose();
+      onOpenChange={(o, details) => {
+        // Block escape / outside-press dismissal while a change is pending or the
+        // new phrase is awaiting acknowledgement; the explicit close still works.
+        if (!o) {
+          if (newPhrase !== null || pending) {
+            details.cancel();
+            return;
+          }
+          handleClose();
+        }
       }}
     >
-      <DialogContent
-        aria-labelledby="change-password-title"
-        onEscapeKeyDown={(e) => {
-          if (newPhrase !== null || pending) e.preventDefault();
-        }}
-        onInteractOutside={(e) => {
-          if (newPhrase !== null || pending) e.preventDefault();
-        }}
-      >
+      <DialogContent aria-labelledby="change-password-title">
         {newPhrase === null ? (
           <form onSubmit={(e) => void onSubmit(e)} noValidate>
             <SettingsDialogHeader

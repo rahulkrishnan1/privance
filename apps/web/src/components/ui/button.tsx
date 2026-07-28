@@ -1,7 +1,7 @@
 "use client";
 
+import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
-import { Slot } from "radix-ui";
 import * as React from "react";
 
 import { Spinner } from "@/components/Spinner";
@@ -36,35 +36,32 @@ const buttonVariants = cva(
 interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
-  asChild?: boolean;
+  /** Compose the button onto another element (e.g. a link), replacing `<button>`. */
+  render?: useRender.RenderProp;
   loading?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  (
-    { className, variant, size, asChild = false, loading = false, disabled, children, ...props },
-    ref,
-  ) => {
-    const Comp = asChild ? Slot.Root : "button";
-    return (
-      <Comp
-        ref={ref}
-        className={cn(buttonVariants({ variant, size, className }))}
-        disabled={disabled || loading}
-        aria-busy={loading}
-        {...props}
-      >
-        {loading ? (
+  ({ className, variant, size, render, loading = false, disabled, children, ...props }, ref) =>
+    useRender({
+      defaultTagName: "button",
+      render,
+      ref,
+      props: {
+        ...props,
+        className: cn(buttonVariants({ variant, size, className })),
+        disabled: disabled || loading,
+        "aria-busy": loading,
+        children: loading ? (
           <span className="flex items-center gap-2">
             <Spinner />
             {children}
           </span>
         ) : (
           children
-        )}
-      </Comp>
-    );
-  },
+        ),
+      },
+    }),
 );
 Button.displayName = "Button";
 

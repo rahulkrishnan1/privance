@@ -51,8 +51,8 @@ function NavBar() {
           ))}
         </nav>
 
-        <Button asChild variant="primary">
-          <Link href="/auth/login">Sign in</Link>
+        <Button variant="primary" render={<Link href="/auth/login" />}>
+          Sign in
         </Button>
       </div>
     </header>
@@ -164,11 +164,11 @@ function Hero() {
           className="reveal-up flex gap-[14px] mt-[30px] justify-center flex-wrap"
           style={{ animationDelay: "0.34s" }}
         >
-          <Button asChild variant="primary">
-            <Link href="/auth/signup/">Have an invite?</Link>
+          <Button variant="primary" render={<Link href="/auth/signup/" />}>
+            Have an invite?
           </Button>
-          <Button asChild variant="secondary">
-            <a href="#deploy">Self&#8209;host instead</a>
+          <Button variant="secondary" render={<a href="#deploy" />}>
+            Self&#8209;host instead
           </Button>
         </div>
 
@@ -589,8 +589,8 @@ function Deploy() {
               Sign up and go. We run the servers and keep the backups, and all we ever hold is
               ciphertext. Zero knowledge means trusting the math, not us.
             </p>
-            <Button asChild variant="primary" className="mt-[26px]">
-              <Link href="/auth/signup/">Have an invite?</Link>
+            <Button variant="primary" className="mt-[26px]" render={<Link href="/auth/signup/" />}>
+              Have an invite?
             </Button>
           </div>
           <div className="border border-line rounded-[12px] px-[30px] py-[30px] bg-panel relative group transition-[transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-accent/35 motion-reduce:hover:translate-y-0 motion-reduce:transition-none">
@@ -820,8 +820,8 @@ function LandingFooter() {
           Keep it <em className="text-accent">private.</em>
         </p>
         <div className="flex justify-center mt-7">
-          <Button asChild variant="primary">
-            <Link href="/auth/signup/">Start with Privance</Link>
+          <Button variant="primary" render={<Link href="/auth/signup/" />}>
+            Start with Privance
           </Button>
         </div>
         <div className="flex justify-between items-center gap-7 flex-wrap mt-[52px] pt-6 border-t border-line-soft">

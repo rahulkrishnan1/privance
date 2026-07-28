@@ -159,7 +159,7 @@ export function ScopeMenu({
     <h3 className="inline-block font-serif text-2xl font-normal tracking-[-0.005em]">
       {isMobile ? (
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogTrigger asChild>{trigger}</DialogTrigger>
+          <DialogTrigger render={trigger} />
           <DialogContent aria-label="Filter holdings by scope">
             <DialogTitle className="sr-only">Filter holdings by scope</DialogTitle>
             {body}
@@ -167,7 +167,7 @@ export function ScopeMenu({
         </Dialog>
       ) : (
         <Popover open={open} onOpenChange={onOpenChange}>
-          <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+          <PopoverTrigger render={trigger} />
           <PopoverContent
             aria-label="Filter holdings by scope"
             align="start"

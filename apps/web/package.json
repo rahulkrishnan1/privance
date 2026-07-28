@@ -17,6 +17,7 @@
     "e2e:install": "playwright install chromium firefox webkit"
   },
   "dependencies": {
+    "@base-ui/react": "1.6.0",
     "@hookform/resolvers": "5.4.0",
     "@privance/core": "workspace:*",
     "@sqlite.org/sqlite-wasm": "3.53.0-build1",
@@ -26,7 +27,6 @@
     "cmdk": "1.1.1",
     "lucide-react": "1.24.0",
     "next": "16.2.10",
-    "radix-ui": "1.6.2",
     "react": "19.2.7",
     "react-day-picker": "10.0.1",
     "react-dom": "19.2.7",

@@ -1,6 +1,9 @@
 import { Decimal, SCALE_CENTS } from "@privance/core";
 import { expect, test, vi } from "vitest";
 import { render } from "vitest-browser-react";
+// Real stylesheet so Tailwind positioning applies to the modal Popup; without it
+// Base UI's inline-styled internal backdrop covers the sheet content.
+import "@/app/globals.css";
 import type { LocalHolding } from "../types";
 import { HoldingDetailSheet } from "./holding-detail-sheet";
 
