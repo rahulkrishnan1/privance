@@ -1,4 +1,5 @@
-import { expect, test } from "vitest";
+import { useState } from "react";
+import { expect, test, vi } from "vitest";
 import { render } from "vitest-browser-react";
 import "@/app/globals.css";
 import { Dialog, DialogContent, DialogTitle } from "./dialog";
@@ -24,7 +25,7 @@ test("DialogContent caps its height and scrolls when content overflows", async (
   expect(content.clientHeight).toBeLessThanOrEqual(window.innerHeight);
 });
 
-// Radix Dialog moves focus into the dialog content on open. Guard against
+// The modal dialog moves focus into its content on open. Guard against
 // regressions where focus stays on the trigger or document body.
 test("DialogContent receives focus when opened", async () => {
   await render(
@@ -39,5 +40,39 @@ test("DialogContent receives focus when opened", async () => {
   const dialog = document.querySelector<HTMLElement>("[role=dialog]");
   if (!dialog) throw new Error("dialog not found");
 
-  expect(dialog.contains(document.activeElement)).toBe(true);
+  // Base UI moves focus into the popup asynchronously (after mount), so poll
+  // rather than asserting synchronously.
+  await expect.poll(() => dialog.contains(document.activeElement)).toBe(true);
+});
+
+// Escape must close the dialog (the default modal dismissal). Call sites that
+// need to block it opt out via onOpenChange (see change-password-dialog).
+test("Dialog closes on Escape", async () => {
+  const onOpenChange = vi.fn();
+  function Harness() {
+    const [open, setOpen] = useState(true);
+    return (
+      <Dialog
+        open={open}
+        onOpenChange={(o, details) => {
+          onOpenChange(o, details);
+          setOpen(o);
+        }}
+      >
+        <DialogContent aria-labelledby="esc-title">
+          <DialogTitle id="esc-title">Escape test</DialogTitle>
+          <button type="button">Inside</button>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+  await render(<Harness />);
+  expect(document.querySelector("[role=dialog]")).not.toBeNull();
+
+  document.activeElement?.dispatchEvent(
+    new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+  );
+
+  await expect.poll(() => document.querySelector("[role=dialog]")).toBeNull();
+  expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything());
 });

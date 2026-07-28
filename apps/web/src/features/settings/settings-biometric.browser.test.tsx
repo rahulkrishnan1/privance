@@ -6,6 +6,9 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
+// Real stylesheet so Tailwind positioning applies to the modal Popup; without it
+// Base UI's inline-styled internal backdrop covers the dialog content.
+import "@/app/globals.css";
 
 const authMock = vi.hoisted(() => ({
   user: null as { userId: string; username: string } | null,

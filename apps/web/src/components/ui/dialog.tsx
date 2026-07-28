@@ -1,10 +1,10 @@
 "use client";
 
-import { Dialog as DialogPrimitive } from "radix-ui";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import * as React from "react";
 
 import { CloseButton } from "@/components/CloseButton";
-import { useKeyboardInset } from "@/lib/use-keyboard-inset";
+import { keyboardInsetStyle, useKeyboardInset } from "@/lib/use-keyboard-inset";
 import { cn } from "@/lib/utils";
 import { overlayClassName } from "./overlay";
 
@@ -12,13 +12,13 @@ const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
 const DialogPortal = DialogPrimitive.Portal;
 
-const DialogOverlay = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+const DialogBackdrop = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Backdrop>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Backdrop>
 >(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay ref={ref} className={cn(overlayClassName, className)} {...props} />
+  <DialogPrimitive.Backdrop ref={ref} className={cn(overlayClassName, className)} {...props} />
 ));
-DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
+DialogBackdrop.displayName = "DialogBackdrop";
 
 /**
  * Centered dialog on desktop; bottom sheet on phones (<=560px), matching the
@@ -26,38 +26,31 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
  * shared settings DialogHeader, form headers), so this stays out of their way.
  */
 const DialogContent = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+  React.ElementRef<typeof DialogPrimitive.Popup>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Popup>
 >(({ className, children, style, ...props }, ref) => {
   const kb = useKeyboardInset();
   return (
     <DialogPortal>
-      <DialogOverlay />
-      <DialogPrimitive.Content
+      <DialogBackdrop />
+      <DialogPrimitive.Popup
         ref={ref}
-        // On phones the bottom sheet lifts above the soft keyboard and caps its
-        // height to the space left, so the focused input stays visible.
-        // Defaults reproduce the keyboard-free layout (bottom: 0, max-h: 90vh).
-        style={
-          {
-            "--kb-bottom": `${kb.height}px`,
-            "--kb-maxh": kb.available != null ? `${kb.available}px` : "90vh",
-            ...style,
-          } as React.CSSProperties
-        }
+        // On phones the bottom sheet lifts above the soft keyboard (max-h 90vh
+        // when none is shown); see keyboardInsetStyle.
+        style={{ ...keyboardInsetStyle(kb, "90vh"), ...style }}
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-line bg-panel p-6 text-cream shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)] outline-none duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-          "max-[560px]:left-0 max-[560px]:top-auto max-[560px]:bottom-(--kb-bottom) max-[560px]:max-h-(--kb-maxh) max-[560px]:max-w-none max-[560px]:translate-x-0 max-[560px]:translate-y-0 max-[560px]:rounded-b-none max-[560px]:rounded-t-2xl max-[560px]:border-x-0 max-[560px]:border-b-0 max-[560px]:data-[state=open]:slide-in-from-bottom max-[560px]:data-[state=closed]:slide-out-to-bottom",
+          "fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-line bg-panel p-6 text-cream shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)] outline-none transition-[opacity,transform] duration-200 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0",
+          "max-[560px]:left-0 max-[560px]:top-auto max-[560px]:bottom-(--kb-bottom) max-[560px]:max-h-(--kb-maxh) max-[560px]:max-w-none max-[560px]:translate-x-0 max-[560px]:translate-y-0 max-[560px]:rounded-b-none max-[560px]:rounded-t-2xl max-[560px]:border-x-0 max-[560px]:border-b-0 max-[560px]:data-[starting-style]:translate-y-full max-[560px]:data-[ending-style]:translate-y-full",
           className,
         )}
         {...props}
       >
         {children}
-      </DialogPrimitive.Content>
+      </DialogPrimitive.Popup>
     </DialogPortal>
   );
 });
-DialogContent.displayName = DialogPrimitive.Content.displayName;
+DialogContent.displayName = "DialogContent";
 
 // Equal-width buttons on one row at every width (the app's dialog-footer
 // convention), not shadcn's stack-on-mobile / right-align default.
@@ -72,7 +65,7 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title ref={ref} className={cn(className)} {...props} />
 ));
-DialogTitle.displayName = DialogPrimitive.Title.displayName;
+DialogTitle.displayName = "DialogTitle";
 
 const DialogTitleRow = ({
   title,
@@ -84,13 +77,11 @@ const DialogTitleRow = ({
   onClose: () => void;
 }) => (
   <div className="flex items-center justify-between">
-    <DialogTitle asChild>
-      <h2
-        id={titleId}
-        className="font-serif text-2xl leading-tight font-light tracking-[-0.01em] text-cream"
-      >
-        {title}
-      </h2>
+    <DialogTitle
+      id={titleId}
+      className="font-serif text-2xl leading-tight font-light tracking-[-0.01em] text-cream"
+    >
+      {title}
     </DialogTitle>
     <CloseButton onClick={onClose} />
   </div>

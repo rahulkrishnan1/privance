@@ -109,10 +109,11 @@ export function SpendForm({
     >
       <DialogContent aria-labelledby={titleId}>
         <div className="flex justify-between items-center mb-[18px]">
-          <DialogTitle asChild>
-            <h3 id={titleId} className="font-serif text-2xl tracking-[-0.01em]">
-              {isEdit ? `Edit ${item.name}` : "Add expense"}
-            </h3>
+          <DialogTitle
+            // biome-ignore lint/a11y/useHeadingContent: heading text is injected as children by Base UI's render prop
+            render={<h3 id={titleId} className="font-serif text-2xl tracking-[-0.01em]" />}
+          >
+            {isEdit ? `Edit ${item.name}` : "Add expense"}
           </DialogTitle>
           <CloseButton onClick={onClose} />
         </div>

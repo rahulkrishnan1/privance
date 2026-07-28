@@ -2,6 +2,9 @@ import type { Account, AccountId, HoldingId, HoldingValuation, UserId } from "@p
 import { asId, asIsoDateTime, Decimal, SCALE_CENTS } from "@privance/core";
 import { expect, test, vi } from "vitest";
 import { render } from "vitest-browser-react";
+// Real stylesheet so Tailwind positioning applies to the modal Popup; without it
+// Base UI's inline-styled internal backdrop covers the sheet content.
+import "@/app/globals.css";
 
 // Mock the accounts/queries dependency so the browser test doesn't load the
 // full sync-context chain.

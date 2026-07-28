@@ -130,8 +130,8 @@ export function HoldingDetailSheet({
       <SheetContent>
         <div className="flex justify-between items-start">
           <div>
-            <SheetTitle asChild>
-              <p className="font-mono text-base text-cream tracking-[.08em]">{holding.ticker}</p>
+            <SheetTitle render={<p className="font-mono text-base text-cream tracking-[.08em]" />}>
+              {holding.ticker}
             </SheetTitle>
             {holding.proxyTicker ? (
               <p className="font-mono text-sm text-dim tracking-[.04em] mt-1.5">

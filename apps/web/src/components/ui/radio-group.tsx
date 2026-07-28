@@ -1,19 +1,20 @@
 "use client";
 
+import { Radio as RadioPrimitive } from "@base-ui/react/radio";
+import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group";
 import { cva, type VariantProps } from "class-variance-authority";
-import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
 /**
  * Shared pill styling for segmented single-select controls. Used by both
- * RadioGroupItem (form fields, `data-state=checked`) and ToggleGroupItem
- * (view state, `data-state=on`), so a segmented control's look is defined once
- * and cannot drift between screens. The active fill is the brand teal.
+ * RadioGroupItem (form fields) and ToggleGroupItem (view state); both render a
+ * Radio, so the active state is `data-checked`. Defined once so a segmented
+ * control's look cannot drift between screens. The active fill is the brand teal.
  */
 export const segmentItemVariants = cva(
-  "inline-flex items-center justify-center font-mono uppercase tracking-button text-dim transition-colors cursor-pointer hover:text-cream data-[state=checked]:bg-accent data-[state=checked]:text-vault data-[state=on]:bg-accent data-[state=on]:text-vault focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
+  "inline-flex items-center justify-center font-mono uppercase tracking-button text-dim transition-colors cursor-pointer hover:text-cream data-[checked]:bg-accent data-[checked]:text-vault focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
   {
     variants: {
       size: {
@@ -26,26 +27,26 @@ export const segmentItemVariants = cva(
 );
 
 const RadioGroup = React.forwardRef<
-  React.ElementRef<typeof RadioGroupPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
+  React.ElementRef<typeof RadioGroupPrimitive>,
+  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive>
 >(({ className, ...props }, ref) => (
-  <RadioGroupPrimitive.Root ref={ref} className={cn("inline-flex gap-1.5", className)} {...props} />
+  <RadioGroupPrimitive ref={ref} className={cn("inline-flex gap-1.5", className)} {...props} />
 ));
-RadioGroup.displayName = RadioGroupPrimitive.Root.displayName;
+RadioGroup.displayName = "RadioGroup";
 
 const RadioGroupItem = React.forwardRef<
-  React.ElementRef<typeof RadioGroupPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item> &
+  React.ElementRef<typeof RadioPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof RadioPrimitive.Root> &
     VariantProps<typeof segmentItemVariants>
 >(({ className, size, children, ...props }, ref) => (
-  <RadioGroupPrimitive.Item
+  <RadioPrimitive.Root
     ref={ref}
     className={cn(segmentItemVariants({ size, className }))}
     {...props}
   >
     {children}
-  </RadioGroupPrimitive.Item>
+  </RadioPrimitive.Root>
 ));
-RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName;
+RadioGroupItem.displayName = "RadioGroupItem";
 
 export { RadioGroup, RadioGroupItem };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 
 // Below this, a viewport inset is browser-chrome jitter (e.g. a collapsing
 // toolbar), not a keyboard; real soft keyboards are far taller.
@@ -23,6 +23,18 @@ export function keyboardInset(
 ): KeyboardInset {
   const height = Math.max(0, innerHeight - viewportHeight - offsetTop);
   return height > KEYBOARD_MIN_PX ? { height, available: viewportHeight } : NONE;
+}
+
+/**
+ * The CSS-variable style a bottom-anchored dialog or sheet applies: it lifts the
+ * bottom edge above the keyboard (`--kb-bottom`) and caps the height to the space
+ * left (`--kb-maxh`), falling back to `fallbackMaxH` when no keyboard is shown.
+ */
+export function keyboardInsetStyle(kb: KeyboardInset, fallbackMaxH: string): CSSProperties {
+  return {
+    "--kb-bottom": `${kb.height}px`,
+    "--kb-maxh": kb.available != null ? `${kb.available}px` : fallbackMaxH,
+  } as CSSProperties;
 }
 
 /**

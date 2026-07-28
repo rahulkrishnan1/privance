@@ -2,6 +2,9 @@ import type { AccountId, InvestmentAccount, UserId } from "@privance/core";
 import { asId, asIsoDateTime } from "@privance/core";
 import { beforeEach, expect, test, vi } from "vitest";
 import { render } from "vitest-browser-react";
+// Real stylesheet so Tailwind positioning applies to the modal Popup; without it
+// Base UI's inline-styled internal backdrop covers the dialog content.
+import "@/app/globals.css";
 import { useMediaQuery } from "@/lib/use-media-query";
 import type { FilterState, LocalGroup } from "../types";
 import { ScopeMenu } from "./scope-menu";

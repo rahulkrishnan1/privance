@@ -81,7 +81,7 @@ export function AllocationPie({ title, classSlices, sectorSlices }: AllocationPi
               value={m.value}
               size="sm"
               // Active fill matches the primary nav (cream, not the teal segment default).
-              className="rounded-full px-3 py-1 data-[state=on]:bg-cream data-[state=on]:hover:text-vault data-[state=checked]:bg-cream data-[state=checked]:hover:text-vault"
+              className="rounded-full px-3 py-1 data-[checked]:bg-cream data-[checked]:hover:text-vault"
             >
               {m.label}
             </ToggleGroupItem>

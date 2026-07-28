@@ -97,10 +97,11 @@ export function AccountDetailSheet({
         <div className="flex justify-between items-start">
           <div>
             <AccountTypeTag account={account} />
-            <SheetTitle asChild>
-              <h3 className="font-serif text-3xl font-light tracking-[-0.01em] mt-1.5">
-                {account.payload.name}
-              </h3>
+            <SheetTitle
+              // biome-ignore lint/a11y/useHeadingContent: heading text is injected as children by Base UI's render prop
+              render={<h3 className="font-serif text-3xl font-light tracking-[-0.01em] mt-1.5" />}
+            >
+              {account.payload.name}
             </SheetTitle>
           </div>
           <CloseButton onClick={onClose} label="Close account details" />

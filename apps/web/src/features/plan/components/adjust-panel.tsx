@@ -422,7 +422,7 @@ export function AdjustPanel({
               key={s.pct}
               value={s.preset}
               size="sm"
-              className="rounded-full border border-line px-3 py-1 data-[state=on]:border-accent data-[state=on]:bg-accent/10 data-[state=on]:text-accent"
+              className="rounded-full border border-line px-3 py-1 data-[checked]:border-accent data-[checked]:bg-accent/10 data-[checked]:text-accent"
             >
               {s.label}
             </ToggleGroupItem>

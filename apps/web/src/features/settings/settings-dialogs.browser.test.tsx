@@ -7,6 +7,9 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
+// Real stylesheet so Tailwind positioning applies to the modal Popup; without it
+// Base UI's inline-styled internal backdrop covers the dialog content.
+import "@/app/globals.css";
 
 const authApiMock = vi.hoisted(() => ({
   kdfParams: vi.fn(),
@@ -168,6 +171,27 @@ describe("change master password", () => {
     expect(authApiMock.passwordChange).toHaveBeenCalledWith(
       expect.objectContaining({ current_auth_hash: "Y3VyLWF1dGgtaGFzaA==" }),
     );
+  });
+
+  it("does not dismiss on Escape while the new recovery phrase is unacknowledged", async () => {
+    authApiMock.passwordChange.mockResolvedValue(undefined);
+    const screen = await render(<SettingsPage />);
+
+    await screen.getByRole("button", { name: /Master password/ }).click();
+    await screen.getByLabelText("Current password").fill("old-password-123");
+    await screen.getByLabelText("New password").fill("a-brand-new-strong-password");
+    await screen.getByRole("button", { name: "Change password" }).click();
+    await expect.element(screen.getByText(/replaced your recovery phrase/)).toBeVisible();
+
+    // Escape must not close the dialog while the phrase is shown: dismissing here
+    // would lose the just-generated recovery words permanently.
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+    );
+    // Let any (incorrect) close+exit animation run to completion before asserting.
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    await expect.element(screen.getByText(/replaced your recovery phrase/)).toBeVisible();
+    expect(document.querySelector("[role=dialog]")).not.toBeNull();
   });
 
   it("shows a wrong-password message on a 401", async () => {
