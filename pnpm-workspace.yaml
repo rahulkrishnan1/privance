@@ -6,8 +6,9 @@ packages:
 nodeLinker: hoisted
 
 overrides:
-  postcss@<8.5.10: "8.5.15"
+  postcss@<8.5.18: "8.5.24"
   esbuild@<0.24.3: "0.25.12"
+  sharp@<0.35.0: "0.35.3"
 
 allowBuilds:
   esbuild: true
