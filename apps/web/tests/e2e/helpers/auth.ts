@@ -330,8 +330,13 @@ export async function login(
  * bounce to /unlock), open the confirm dialog, and confirm.
  */
 export async function logout(page: Page): Promise<void> {
-  await page.getByRole("link", { name: "Settings" }).click();
-  await expect(page).toHaveURL("/app/settings/", { timeout: 10_000 });
+  // On a cold next-dev compile the click can land mid-hydration and no-op
+  // (the route never commits), so retry until Settings actually opens.
+  const settingsLink = page.getByRole("link", { name: "Settings" });
+  await expect(async () => {
+    await settingsLink.click();
+    await expect(page).toHaveURL("/app/settings/", { timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
   await page.getByRole("button", { name: "Sign out" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible({ timeout: 5_000 });
