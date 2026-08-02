@@ -40,6 +40,7 @@ const EMPTY_PRICES = new Map<string, { ticker: string; price: string }>();
 test("renders ticker, name, and market value", async () => {
   const screen = await render(
     <HoldingDetailSheet
+      open
       holding={makeHolding()}
       prices={PRICE_MAP}
       dayChangeCents={null}
@@ -62,6 +63,7 @@ test("renders ticker, name, and market value", async () => {
 test("shows unrealized gain line when price and cost basis available", async () => {
   const screen = await render(
     <HoldingDetailSheet
+      open
       holding={makeHolding()}
       prices={PRICE_MAP}
       dayChangeCents={null}
@@ -97,6 +99,7 @@ test("Day row shows a positive day change with a + sign and percent", async () =
   // MV $278,140; +$2,000 today -> prior $276,140, 0.72%.
   await render(
     <HoldingDetailSheet
+      open
       holding={makeHolding()}
       prices={PRICE_MAP}
       dayChangeCents={dec(200000n)}
@@ -117,6 +120,7 @@ test("Day row shows a negative day change with a - sign and percent", async () =
   // MV $278,140; -$2,000 today -> prior $280,140, 0.71%.
   await render(
     <HoldingDetailSheet
+      open
       holding={makeHolding()}
       prices={PRICE_MAP}
       dayChangeCents={dec(-200000n)}
@@ -136,6 +140,7 @@ test("Day row shows a negative day change with a - sign and percent", async () =
 test("Day row shows a flat day change as $0.00 without a misleading direction", async () => {
   await render(
     <HoldingDetailSheet
+      open
       holding={makeHolding()}
       prices={PRICE_MAP}
       dayChangeCents={dec(0n)}
@@ -159,6 +164,7 @@ test("renders position KV rows: Quantity, Price, Cost basis, Portfolio weight, A
   const totalInvestments = dec(100000000n); // $1,000,000
   const screen = await render(
     <HoldingDetailSheet
+      open
       holding={makeHolding()}
       prices={PRICE_MAP}
       dayChangeCents={null}
@@ -182,6 +188,7 @@ test("renders position KV rows: Quantity, Price, Cost basis, Portfolio weight, A
 test("shows no-price state when price not available", async () => {
   const screen = await render(
     <HoldingDetailSheet
+      open
       holding={makeHolding()}
       prices={EMPTY_PRICES}
       dayChangeCents={null}
@@ -201,6 +208,7 @@ test("two-tap delete: first tap shows Tap again to delete, second calls onDelete
   const onDelete = vi.fn(() => Promise.resolve());
   const screen = await render(
     <HoldingDetailSheet
+      open
       holding={makeHolding()}
       prices={EMPTY_PRICES}
       dayChangeCents={null}
@@ -229,6 +237,7 @@ test("Edit holding button calls onEdit with the holding", async () => {
   const holding = makeHolding();
   const screen = await render(
     <HoldingDetailSheet
+      open
       holding={holding}
       prices={EMPTY_PRICES}
       dayChangeCents={null}
@@ -249,6 +258,7 @@ test("Close button calls onClose", async () => {
   const onClose = vi.fn();
   const screen = await render(
     <HoldingDetailSheet
+      open
       holding={makeHolding()}
       prices={EMPTY_PRICES}
       dayChangeCents={null}

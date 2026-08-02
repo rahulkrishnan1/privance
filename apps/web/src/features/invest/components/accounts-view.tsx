@@ -22,6 +22,7 @@ import type { AccountFormValues } from "@/features/accounts/types";
 import { SECTION_ORDER } from "@/features/accounts/types";
 import { sortByValueDesc } from "@/features/holdings";
 import { useHoldingsQuery } from "@/features/holdings/queries";
+import { useKeepLastNonNull } from "@/lib/use-keep-last";
 import { SUBKIND_TAG } from "../_constants";
 import { AccountDetailSheet } from "./account-detail-sheet";
 
@@ -101,7 +102,7 @@ function AccountRow({ account, displayValue, holdingsCount, onClick }: AccountRo
     <button
       type="button"
       onClick={onClick}
-      className="w-full flex items-center gap-3.5 glass rounded-[10px] px-5 py-[18px] text-left cursor-pointer hover:border-cream/20 hover:-translate-y-px transition-[border-color,transform] duration-200 motion-reduce:hover:translate-y-0 motion-reduce:transition-none"
+      className="w-full flex items-center gap-3.5 glass rounded-[10px] px-5 py-[18px] text-left cursor-pointer hover:border-cream/20 hover:-translate-y-px transition-[border-color,transform] duration-200 ease-in-out active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:transition-none motion-reduce:active:scale-100"
       aria-label={`${account.payload.name}, ${balanceText}`}
     >
       <div
@@ -140,6 +141,7 @@ export function AccountsView({ breakdown }: AccountsViewProps) {
   const { deleteAccount } = useDeleteAccount();
 
   const [detailAccount, setDetailAccount] = useState<Account | null>(null);
+  const shownDetailAccount = useKeepLastNonNull(detailAccount);
   const [drawer, setDrawer] = useState<DrawerState>({ mode: "closed" });
 
   const submitting = updateState === "pending";
@@ -163,20 +165,20 @@ export function AccountsView({ breakdown }: AccountsViewProps) {
   }, [breakdown]);
 
   const holdingValuationsForAccount = useMemo((): HoldingValuation[] => {
-    if (detailAccount === null || breakdown === null) return [];
+    if (shownDetailAccount === null || breakdown === null) return [];
     return breakdown.byHolding.filter((hv) => {
       const holding = holdings.find((h) => h.id === hv.holdingId);
-      return holding?.accountId === detailAccount.id;
+      return holding?.accountId === shownDetailAccount.id;
     });
-  }, [detailAccount, breakdown, holdings]);
+  }, [shownDetailAccount, breakdown, holdings]);
 
   const holdingsByAccountForDetail = useMemo(() => {
-    if (detailAccount === null || breakdown === null) return [];
+    if (shownDetailAccount === null || breakdown === null) return [];
     const mvByHoldingId = new Map<string, Decimal>(
       breakdown.byHolding.map((hv) => [hv.holdingId, hv.marketValue]),
     );
     const rows = holdings
-      .filter((h) => h.accountId === detailAccount.id)
+      .filter((h) => h.accountId === shownDetailAccount.id)
       .map((h) => ({
         id: h.id,
         ticker: h.ticker,
@@ -188,12 +190,15 @@ export function AccountsView({ breakdown }: AccountsViewProps) {
       (r) => r.valueCents,
       (r) => r.ticker,
     );
-  }, [detailAccount, breakdown, holdings]);
+  }, [shownDetailAccount, breakdown, holdings]);
 
   const detailAccountValue = useMemo((): Decimal => {
-    if (detailAccount === null) return centsToDecimal("0");
-    return valuesByAccount.get(detailAccount.id) ?? centsToDecimal(getBalanceCents(detailAccount));
-  }, [detailAccount, valuesByAccount]);
+    if (shownDetailAccount === null) return centsToDecimal("0");
+    return (
+      valuesByAccount.get(shownDetailAccount.id) ??
+      centsToDecimal(getBalanceCents(shownDetailAccount))
+    );
+  }, [shownDetailAccount, valuesByAccount]);
 
   async function handleSubmit(values: AccountFormValues) {
     if (drawer.mode !== "edit") return;
@@ -282,22 +287,21 @@ export function AccountsView({ breakdown }: AccountsViewProps) {
         </div>
       )}
 
-      {detailAccount !== null && (
-        <AccountDetailSheet
-          account={detailAccount}
-          totalValue={detailAccountValue}
-          holdingValuations={holdingValuationsForAccount}
-          holdingsByAccount={holdingsByAccountForDetail}
-          onClose={() => setDetailAccount(null)}
-          onEdit={(account) => {
-            setDetailAccount(null);
-            setDrawer({ mode: "edit", account });
-          }}
-          onDelete={async (account) => {
-            await deleteAccount(account);
-          }}
-        />
-      )}
+      <AccountDetailSheet
+        open={detailAccount !== null}
+        account={shownDetailAccount}
+        totalValue={detailAccountValue}
+        holdingValuations={holdingValuationsForAccount}
+        holdingsByAccount={holdingsByAccountForDetail}
+        onClose={() => setDetailAccount(null)}
+        onEdit={(account) => {
+          setDetailAccount(null);
+          setDrawer({ mode: "edit", account });
+        }}
+        onDelete={async (account) => {
+          await deleteAccount(account);
+        }}
+      />
 
       <AccountForm
         open={drawer.mode !== "closed"}

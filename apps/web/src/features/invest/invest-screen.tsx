@@ -96,7 +96,7 @@ export function InvestScreen({ view }: InvestScreenProps) {
           <button
             type="button"
             onClick={() => setAddAccountOpen(true)}
-            className="inline-block mt-7 font-mono text-xs tracking-button uppercase bg-accent text-vault rounded-md px-[26px] py-3.5 cursor-pointer hover:bg-cream transition-colors"
+            className="inline-block mt-7 font-mono text-xs tracking-button uppercase bg-accent text-vault rounded-md px-[26px] py-3.5 cursor-pointer hover:bg-cream transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100"
           >
             Add first account
           </button>
@@ -104,7 +104,13 @@ export function InvestScreen({ view }: InvestScreenProps) {
       ) : (
         <>
           {breakdown !== null && (
-            <InvestHero breakdown={breakdown} delta={netWorthDelta} historyPoints={historyPoints} />
+            <div className="swap-in">
+              <InvestHero
+                breakdown={breakdown}
+                delta={netWorthDelta}
+                historyPoints={historyPoints}
+              />
+            </div>
           )}
 
           {dashData.status === "loading" && (
@@ -133,26 +139,34 @@ export function InvestScreen({ view }: InvestScreenProps) {
           />
 
           {view === "overview" && breakdown !== null && (
-            <OverviewView
-              breakdown={breakdown}
-              accounts={accounts}
-              holdings={holdings}
-              dayChangeByHoldingId={dayChangeByHoldingId}
-              netWorthDelta={netWorthDelta}
-              taxBucketsResult={taxBucketsResult}
-              profilesByTicker={profilesByTicker}
-            />
+            <div key="overview" className="swap-in">
+              <OverviewView
+                breakdown={breakdown}
+                accounts={accounts}
+                holdings={holdings}
+                dayChangeByHoldingId={dayChangeByHoldingId}
+                netWorthDelta={netWorthDelta}
+                taxBucketsResult={taxBucketsResult}
+                profilesByTicker={profilesByTicker}
+              />
+            </div>
           )}
 
           {view === "holdings" && (
-            <HoldingsView
-              breakdown={breakdown}
-              dayChangeByHoldingId={dayChangeByHoldingId}
-              addSignal={addHoldingSignal}
-            />
+            <div key="holdings" className="swap-in">
+              <HoldingsView
+                breakdown={breakdown}
+                dayChangeByHoldingId={dayChangeByHoldingId}
+                addSignal={addHoldingSignal}
+              />
+            </div>
           )}
 
-          {view === "accounts" && <AccountsView breakdown={breakdown} />}
+          {view === "accounts" && (
+            <div key="accounts" className="swap-in">
+              <AccountsView breakdown={breakdown} />
+            </div>
+          )}
         </>
       )}
 

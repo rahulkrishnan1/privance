@@ -80,7 +80,7 @@ function RecurringRow({
       type="button"
       onClick={onClick}
       className={[
-        "flex items-center gap-3.5 w-full py-3 border-b border-line-soft text-left cursor-pointer hover:bg-white/1 transition-colors",
+        "flex items-center gap-3.5 w-full py-3 border-b border-line-soft text-left cursor-pointer hover:bg-white/1 transition ease-out duration-150 active:scale-[0.98] motion-reduce:active:scale-100",
         "last:border-b-0",
         isPaused ? "opacity-45" : "",
       ]
@@ -304,7 +304,7 @@ export function SpendScreen() {
         <button
           type="button"
           onClick={tick}
-          className="mt-3 font-mono text-xs tracking-button uppercase text-accent border border-accent/30 rounded-md px-4 py-2 cursor-pointer hover:bg-accent/8 transition-colors"
+          className="mt-3 font-mono text-xs tracking-button uppercase text-accent border border-accent/30 rounded-md px-4 py-2 cursor-pointer hover:bg-accent/8 transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100"
         >
           Retry
         </button>

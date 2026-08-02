@@ -1,6 +1,23 @@
-import type { Browser, BrowserContext, Page } from "@playwright/test";
+import type { Browser, BrowserContext, Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { BASE_URL } from "../../../playwright/ports";
+
+/**
+ * Clicks a top-bar nav link and waits for its route to commit.
+ *
+ * On a cold next-dev compile the click can land mid-hydration and no-op (the
+ * route never commits), so retry the click until the URL actually changes.
+ */
+export async function clickNavLink(
+  page: Page,
+  link: Locator,
+  expectedUrl: RegExp | string,
+): Promise<void> {
+  await expect(async () => {
+    await link.click();
+    await expect(page).toHaveURL(expectedUrl, { timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
+}
 
 export type SignupResult = {
   phrase: string;
@@ -330,13 +347,7 @@ export async function login(
  * bounce to /unlock), open the confirm dialog, and confirm.
  */
 export async function logout(page: Page): Promise<void> {
-  // On a cold next-dev compile the click can land mid-hydration and no-op
-  // (the route never commits), so retry until Settings actually opens.
-  const settingsLink = page.getByRole("link", { name: "Settings" });
-  await expect(async () => {
-    await settingsLink.click();
-    await expect(page).toHaveURL("/app/settings/", { timeout: 2_000 });
-  }).toPass({ timeout: 15_000 });
+  await clickNavLink(page, page.getByRole("link", { name: "Settings" }), "/app/settings/");
   await page.getByRole("button", { name: "Sign out" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible({ timeout: 5_000 });

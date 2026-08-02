@@ -92,7 +92,7 @@ export function AllocationPie({ title, classSlices, sectorSlices }: AllocationPi
       {isEmpty ? (
         <p className="text-sm text-dim text-center py-8">Add holdings to see allocation</p>
       ) : (
-        <div className="flex flex-col items-center gap-[18px]">
+        <div key={mode} className="swap-in flex flex-col items-center gap-[18px]">
           {/* Donut on top, center label/figure/pct swap to the hovered slice */}
           <div className="relative w-full max-w-[228px] aspect-square">
             <ResponsiveContainer

@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
  * control's look cannot drift between screens. The active fill is the brand teal.
  */
 export const segmentItemVariants = cva(
-  "inline-flex items-center justify-center font-mono uppercase tracking-button text-dim transition-colors cursor-pointer hover:text-cream data-[checked]:bg-accent data-[checked]:text-vault focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
+  "inline-flex items-center justify-center font-mono uppercase tracking-button text-dim transition ease-out duration-150 cursor-pointer hover:text-cream active:scale-[0.97] motion-reduce:active:scale-100 data-[checked]:bg-accent data-[checked]:text-vault focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
   {
     variants: {
       size: {

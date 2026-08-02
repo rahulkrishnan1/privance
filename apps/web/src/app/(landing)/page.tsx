@@ -234,7 +234,7 @@ function AppFrame() {
               aria-pressed={veiled}
               onClick={() => setVeiled((v) => !v)}
               className={[
-                "flex items-center gap-2 border rounded-full px-4 py-2 font-mono text-xs tracking-button uppercase cursor-pointer transition-colors",
+                "flex items-center gap-2 border rounded-full px-4 py-2 font-mono text-xs tracking-button uppercase cursor-pointer transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100",
                 veiled
                   ? "text-accent border-accent-dim bg-accent/8"
                   : "text-dim border-line hover:text-accent hover:border-accent-dim",
@@ -436,7 +436,7 @@ function Tenets() {
           {items.map((t) => (
             <div
               key={t.idx}
-              className="border border-line rounded-[12px] px-[30px] py-[34px] bg-panel relative group transition-[transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-accent/35 motion-reduce:hover:translate-y-0 motion-reduce:transition-none"
+              className="border border-line rounded-[12px] px-[30px] py-[34px] bg-panel relative group transition-[transform,border-color] duration-[250ms] ease-in-out hover:-translate-y-1 hover:border-accent/35 motion-reduce:hover:translate-y-0 motion-reduce:transition-none"
             >
               <span className="absolute top-5 right-[22px] font-serif italic text-lg text-faint">
                 {t.idx}
@@ -578,7 +578,7 @@ function Deploy() {
           </h2>
         </div>
         <div className="grid grid-cols-2 gap-4 max-[880px]:grid-cols-1">
-          <div className="border border-line rounded-[12px] px-[30px] py-[30px] bg-panel relative group transition-[transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-accent/35 motion-reduce:hover:translate-y-0 motion-reduce:transition-none">
+          <div className="border border-line rounded-[12px] px-[30px] py-[30px] bg-panel relative group transition-[transform,border-color] duration-[250ms] ease-in-out hover:-translate-y-1 hover:border-accent/35 motion-reduce:hover:translate-y-0 motion-reduce:transition-none">
             <span className="absolute top-5 right-[22px] font-mono text-sm tracking-[0.18em] text-accent">
               INVITE&#8209;ONLY
             </span>
@@ -593,7 +593,7 @@ function Deploy() {
               Have an invite?
             </Button>
           </div>
-          <div className="border border-line rounded-[12px] px-[30px] py-[30px] bg-panel relative group transition-[transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-accent/35 motion-reduce:hover:translate-y-0 motion-reduce:transition-none">
+          <div className="border border-line rounded-[12px] px-[30px] py-[30px] bg-panel relative group transition-[transform,border-color] duration-[250ms] ease-in-out hover:-translate-y-1 hover:border-accent/35 motion-reduce:hover:translate-y-0 motion-reduce:transition-none">
             <span className="absolute top-5 right-[22px] font-mono text-sm tracking-[0.18em] text-faint">
               FULL CONTROL
             </span>
@@ -778,7 +778,7 @@ function Features() {
           ].map((f) => (
             <div
               key={f.tag}
-              className={`${f.cls} border border-line rounded-[12px] p-[30px] bg-panel relative overflow-hidden transition-[transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-accent/35 motion-reduce:hover:translate-y-0 motion-reduce:transition-none`}
+              className={`${f.cls} border border-line rounded-[12px] p-[30px] bg-panel relative overflow-hidden transition-[transform,border-color] duration-[250ms] ease-in-out hover:-translate-y-1 hover:border-accent/35 motion-reduce:hover:translate-y-0 motion-reduce:transition-none`}
             >
               <span className="font-mono text-xs tracking-label uppercase text-accent">
                 {f.tag}

@@ -89,8 +89,8 @@ function Confidence({
       </ToggleGroup>
       <div className="h-1.5 min-w-[160px] max-w-[240px] flex-1 overflow-hidden rounded-full bg-cream/8">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-accent-dim to-accent transition-[width] duration-[400ms] ease-out motion-reduce:transition-none"
-          style={{ width: `${pct}%` }}
+          className="h-full w-full origin-left rounded-full bg-gradient-to-r from-accent-dim to-accent transition-transform duration-300 ease-out motion-reduce:transition-none"
+          style={{ transform: `scaleX(${pct / 100})` }}
         />
       </div>
       <span className="font-mono text-xs tracking-[0.04em] text-dim" aria-live="polite">
@@ -124,29 +124,31 @@ export function PlanHeadline({
     <section aria-live="polite" aria-atomic="true">
       <p className="font-mono text-xs uppercase tracking-label text-faint">The plan</p>
 
-      {state === "normal" && (
-        <h1 className={`${H1} mt-3.5 max-w-[21ch]`}>
-          Independent by{" "}
-          <em className="text-accent" data-testid="fire-year">
-            {fireYear}
-          </em>
-          , at age{" "}
-          <em className="text-accent" data-testid="fire-age-value">
-            {fireAge}
-          </em>
-          , spending <span className="vfig">{formatCurrencyWhole(annualSpendCents)}</span> a year.
-        </h1>
-      )}
-      {state === "alreadyFi" && (
-        <h1 className={`${H1} mt-3.5`}>
-          You&apos;re financially independent <em className="text-accent">today</em>.
-        </h1>
-      )}
-      {state === "neverFi" && (
-        <h1 className={`${H1} mt-3.5`}>
-          Independence isn&apos;t on this path <em className="text-signal">yet</em>.
-        </h1>
-      )}
+      <div key={state} className="swap-in">
+        {state === "normal" && (
+          <h1 className={`${H1} mt-3.5 max-w-[21ch]`}>
+            Independent by{" "}
+            <em className="text-accent" data-testid="fire-year">
+              {fireYear}
+            </em>
+            , at age{" "}
+            <em className="text-accent" data-testid="fire-age-value">
+              {fireAge}
+            </em>
+            , spending <span className="vfig">{formatCurrencyWhole(annualSpendCents)}</span> a year.
+          </h1>
+        )}
+        {state === "alreadyFi" && (
+          <h1 className={`${H1} mt-3.5`}>
+            You&apos;re financially independent <em className="text-accent">today</em>.
+          </h1>
+        )}
+        {state === "neverFi" && (
+          <h1 className={`${H1} mt-3.5`}>
+            Independence isn&apos;t on this path <em className="text-signal">yet</em>.
+          </h1>
+        )}
+      </div>
 
       <Progress potCents={potCents} fireNumber={fireNumber} />
 

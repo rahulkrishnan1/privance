@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
 /* Class-based dark mode for Tailwind 4 */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -112,6 +111,18 @@
      uppercase controls. Subtle mono spacing on tickers/badges stays inline. */
   --tracking-label: 0.2em;
   --tracking-button: 0.14em;
+}
+
+/* Motion. One curve set so every transition shares a personality: a strong
+   ease-out for enters and exits, a firm ease-in-out for on-screen movement, and
+   an iOS-style curve for drawers. These override Tailwind's weaker built-ins, so
+   the bare `ease-out` / `ease-in-out` utilities resolve to them too. Durations
+   stay on a small numeric ladder (150 for controls, 200 for modals and
+   dropdowns, 300 for drawers); the marketing keyframes below keep their own. */
+@theme {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 body {
@@ -274,12 +285,12 @@ html {
 /* The Veil: frost every figure on the surface. Toggled by adding `veil-on` to a
    container; each masked value carries the `vfig` class. */
 .veil-on .vfig {
-  filter: blur(clamp(7px, 0.35em, 20px));
+  filter: blur(clamp(7px, 0.35em, 18px));
   opacity: 0.7;
-  transition: filter 0.45s, opacity 0.45s;
+  transition: filter 0.45s var(--ease-out), opacity 0.45s var(--ease-out);
 }
 .vfig {
-  transition: filter 0.45s, opacity 0.45s;
+  transition: filter 0.45s var(--ease-out), opacity 0.45s var(--ease-out);
 }
 @media (prefers-reduced-motion: reduce) {
   .veil-on .vfig,
@@ -315,10 +326,10 @@ html {
   }
 }
 .reveal-up {
-  animation: reveal-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: reveal-up 0.9s var(--ease-out) both;
 }
 .reveal-fade {
-  animation: reveal-fade 1.2s ease-out both;
+  animation: reveal-fade 1.2s var(--ease-out) both;
 }
 @keyframes draw {
   from {
@@ -330,7 +341,7 @@ html {
 }
 .trendline {
   stroke-dasharray: 1300;
-  animation: draw 2s cubic-bezier(0.4, 0, 0.2, 1) 0.4s both;
+  animation: draw 2s var(--ease-in-out) 0.4s both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -343,6 +354,27 @@ html {
     opacity: 1;
   }
   .trendline {
+    animation: none;
+  }
+}
+
+/* Content-swap crossfade: a short opacity fade for in-place state swaps (chart
+   mode toggles, headline state changes). Applied with a `key` so the animation
+   replays on each swap. Inert under reduced motion. */
+@keyframes swap-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.swap-in {
+  animation: swap-in 0.18s var(--ease-out) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .swap-in,
+  .animate-pulse {
     animation: none;
   }
 }
@@ -369,7 +401,7 @@ html {
   }
 }
 .auth-shake {
-  animation: shake 0.4s ease;
+  animation: shake 0.4s var(--ease-out);
 }
 @media (prefers-reduced-motion: reduce) {
   .auth-shake {
@@ -390,7 +422,7 @@ html {
   }
 }
 .auth-rise {
-  animation: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: rise 0.5s var(--ease-out) both;
 }
 @media (prefers-reduced-motion: reduce) {
   .auth-rise {

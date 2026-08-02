@@ -25,6 +25,7 @@ apps/web/android/.gradle/
 coverage/
 .nyc_output/
 .playwright-mcp/
+.opencode/
 
 # Logs
 *.log

@@ -52,7 +52,7 @@ export function SwUpdateBanner() {
       <button
         type="button"
         onClick={handleUpdate}
-        className="text-sm font-medium text-accent hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
+        className="text-sm font-medium text-accent hover:opacity-80 transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
       >
         Reload
       </button>
@@ -60,7 +60,7 @@ export function SwUpdateBanner() {
         type="button"
         onClick={() => setWaiting(null)}
         aria-label="Dismiss"
-        className="text-dim hover:text-cream transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
+        className="text-dim hover:text-cream transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
       >
         <X size={14} />
       </button>

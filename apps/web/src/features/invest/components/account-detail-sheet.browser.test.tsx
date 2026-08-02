@@ -66,6 +66,7 @@ test("renders account type tag, name, and value for an investment account", asyn
   const account = makeInvestAccount();
   const screen = await render(
     <AccountDetailSheet
+      open
       account={account}
       totalValue={dec(500000n)}
       holdingValuations={[]}
@@ -87,6 +88,7 @@ test("renders the cash sub-type as the blue type tag", async () => {
   const account = makeCashAccount();
   const screen = await render(
     <AccountDetailSheet
+      open
       account={account}
       totalValue={dec(300000n)}
       holdingValuations={[]}
@@ -105,6 +107,7 @@ test("shows a positive unrealized gain with the dollar amount and percent", asyn
   const account = makeInvestAccount();
   await render(
     <AccountDetailSheet
+      open
       account={account}
       totalValue={dec(1_200_000n)}
       holdingValuations={[
@@ -131,6 +134,7 @@ test("shows a negative unrealized loss with a - sign and percent", async () => {
   const account = makeInvestAccount();
   await render(
     <AccountDetailSheet
+      open
       account={account}
       totalValue={dec(850_000n)}
       holdingValuations={[valuation({ cost: 1_000_000n, pnl: -150_000n }, 0)]}
@@ -160,6 +164,7 @@ test("shows the cash APY inline on the Cash row, not as a separate Cash APY row"
 
   const screen = await render(
     <AccountDetailSheet
+      open
       account={account}
       totalValue={dec(1_000_000n)}
       holdingValuations={[valuation({ cost: 500_000n, pnl: 100_000n }, 0)]}
@@ -180,6 +185,7 @@ test("two-tap delete: first shows Tap again to delete, second calls onDelete", a
   const account = makeInvestAccount();
   const screen = await render(
     <AccountDetailSheet
+      open
       account={account}
       totalValue={dec(0n)}
       holdingValuations={[]}

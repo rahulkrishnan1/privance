@@ -358,7 +358,7 @@ export function HoldingForm({
         aria-label={advancedOpen ? "Collapse advanced options" : "Expand advanced options"}
         aria-expanded={advancedOpen}
         aria-controls="holding-advanced-panel"
-        className="flex items-center gap-1 font-mono text-xs tracking-button uppercase text-accent-dim hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent focus-visible:rounded rounded min-h-9 cursor-pointer transition-colors"
+        className="flex items-center gap-1 font-mono text-xs tracking-button uppercase text-accent-dim hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent focus-visible:rounded rounded min-h-9 cursor-pointer transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100"
       >
         <span>No public ticker? Use a price proxy</span>
         {advancedOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}

@@ -33,6 +33,7 @@ import { refreshPrices } from "@/lib/api/prices";
 import { formatPercentMagnitude, formatTrendCurrencyWhole } from "@/lib/format";
 import { usePricesQuery, warmPrice } from "@/lib/queries/prices";
 import { partitionTickers } from "@/lib/tickers";
+import { useKeepLastNonNull } from "@/lib/use-keep-last";
 import { useAuth } from "@/providers/auth-context";
 import { useSync } from "@/providers/sync-context";
 import { subsetGain } from "../_invest-math";
@@ -53,6 +54,7 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<HoldingDialogMode>({ kind: "add" });
   const [detailHolding, setDetailHolding] = useState<LocalHolding | null>(null);
+  const shownDetailHolding = useKeepLastNonNull(detailHolding);
   const [groupsManagerOpen, setGroupsManagerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -323,7 +325,7 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
             type="button"
             onClick={tick}
             aria-label="Retry"
-            className="ml-2 text-sm font-medium text-down hover:underline cursor-pointer"
+            className="ml-2 text-sm font-medium text-down hover:underline cursor-pointer transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100"
           >
             Retry
           </button>
@@ -374,21 +376,28 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
         />
       </div>
 
-      {detailHolding !== null && (
-        <HoldingDetailSheet
-          holding={detailHolding}
-          prices={pricesMap}
-          dayChangeCents={dayChangeByHoldingId.get(detailHolding.id as HoldingId) ?? null}
-          totalInvestmentsCents={totalInvestmentsCents}
-          accountName={accountNamesMap.get(detailHolding.accountId) ?? detailHolding.accountId}
-          onClose={() => setDetailHolding(null)}
-          onEdit={(h) => {
-            setDetailHolding(null);
-            openDialog({ kind: "edit", holding: h });
-          }}
-          onDelete={handleDeleteHolding}
-        />
-      )}
+      <HoldingDetailSheet
+        open={detailHolding !== null}
+        holding={shownDetailHolding}
+        prices={pricesMap}
+        dayChangeCents={
+          shownDetailHolding === null
+            ? null
+            : (dayChangeByHoldingId.get(shownDetailHolding.id as HoldingId) ?? null)
+        }
+        totalInvestmentsCents={totalInvestmentsCents}
+        accountName={
+          shownDetailHolding === null
+            ? ""
+            : (accountNamesMap.get(shownDetailHolding.accountId) ?? shownDetailHolding.accountId)
+        }
+        onClose={() => setDetailHolding(null)}
+        onEdit={(h) => {
+          setDetailHolding(null);
+          openDialog({ kind: "edit", holding: h });
+        }}
+        onDelete={handleDeleteHolding}
+      />
 
       <HoldingDialog
         open={dialogOpen}

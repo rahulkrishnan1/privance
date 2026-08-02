@@ -32,7 +32,13 @@ import { expect, test } from "@playwright/test";
 import type { Fixtures } from "../../playwright/global-setup";
 import { BASE_URL } from "../../playwright/ports";
 import type { SessionSnapshot } from "./helpers/auth";
-import { loginAndCapture, restoreSession, signupAndLogin, waitForSynced } from "./helpers/auth";
+import {
+  clickNavLink,
+  loginAndCapture,
+  restoreSession,
+  signupAndLogin,
+  waitForSynced,
+} from "./helpers/auth";
 import { setSlider } from "./helpers/forms";
 
 function loadFixtures(): Fixtures {
@@ -159,8 +165,7 @@ test.describe
       await waitForSynced(page);
 
       const topNav = page.getByRole("navigation", { name: "Primary navigation" });
-      await topNav.getByRole("link", { name: "Plan" }).click();
-      await expect(page).toHaveURL(/\/app\/plan\/?$/, { timeout: 10_000 });
+      await clickNavLink(page, topNav.getByRole("link", { name: "Plan" }), /\/app\/plan\/?$/);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible({
         timeout: 10_000,
       });
