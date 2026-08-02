@@ -133,7 +133,7 @@ export function ScopeMenu({
             onOpenChange(false);
             onEditGroups();
           }}
-          className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2.5 text-left font-mono text-xs uppercase tracking-button text-faint transition-colors hover:bg-white/[0.03] hover:text-accent"
+          className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2.5 text-left font-mono text-xs uppercase tracking-button text-faint transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100 hover:bg-white/[0.03] hover:text-accent"
         >
           <span aria-hidden="true">&#8862;</span> Edit groups
         </button>
@@ -144,13 +144,13 @@ export function ScopeMenu({
   const trigger = (
     <button
       type="button"
-      className="group inline-flex items-center gap-2 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded"
+      className="group inline-flex items-center gap-2 cursor-pointer transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded"
     >
       {label} ({count})
       <ChevronDown
         size={18}
         aria-hidden="true"
-        className={`text-faint transition-[color,transform] group-hover:text-accent ${open ? "rotate-180 text-accent" : ""}`}
+        className={`text-faint transition-[color,transform] duration-150 ease-in-out group-hover:text-accent motion-reduce:transition-colors ${open ? "rotate-180 text-accent" : ""}`}
       />
     </button>
   );

@@ -8,6 +8,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Screen } from "@/components/index";
+import { Spinner } from "@/components/Spinner";
 import { useAccountsQuery } from "@/features/accounts/queries";
 import { useHoldingsQuery } from "@/features/holdings/queries";
 import { usePricesQuery } from "@/lib/queries/prices";
@@ -476,26 +477,7 @@ export function PlanScreen() {
                 aria-label="Recomputing projections"
                 className="mb-3 flex items-center gap-2 text-xs text-cream-soft"
               >
-                <svg
-                  aria-hidden="true"
-                  className="h-3.5 w-3.5 animate-spin text-accent"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
-                </svg>
+                <Spinner className="h-3.5 w-3.5 text-accent" />
                 <span>Updating projection&hellip;</span>
               </div>
             )}

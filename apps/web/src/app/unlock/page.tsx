@@ -329,8 +329,7 @@ export default function UnlockPage() {
               {biometricRecord ? (
                 <>
                   <div
-                    className="bio-emblem w-[74px] h-[74px] rounded-full border border-accent-dim mx-auto mb-[30px] flex items-center justify-center text-accent relative"
-                    style={{ animation: biometricPending ? "pulse 2.4s ease infinite" : undefined }}
+                    className={`bio-emblem w-[74px] h-[74px] rounded-full border border-accent-dim mx-auto mb-[30px] flex items-center justify-center text-accent relative${biometricPending ? " bio-pulsing" : ""}`}
                   >
                     <span className="absolute inset-[6px] border border-dashed border-accent/30 rounded-full" />
                     <svg
@@ -511,8 +510,9 @@ export default function UnlockPage() {
       </div>
 
       <style>{`
-        @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(94,234,212,.25)}50%{box-shadow:0 0 0 16px rgba(94,234,212,0)}}
-        @media(prefers-reduced-motion:reduce){.bio-emblem{animation:none!important}}
+        @keyframes bio-pulse{0%{transform:scale(1);opacity:.55}100%{transform:scale(1.6);opacity:0}}
+        .bio-pulsing::after{content:"";position:absolute;inset:-1px;border:1px solid rgba(94,234,212,.25);border-radius:inherit;pointer-events:none;animation:bio-pulse 2.4s linear infinite}
+        @media(prefers-reduced-motion:reduce){.bio-pulsing::after{animation:none!important}}
       `}</style>
     </main>
   );

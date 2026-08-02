@@ -29,7 +29,7 @@ export function RoundIconButton({
       title={title}
       disabled={disabled}
       className={cn(
-        "flex h-11 w-11 items-center justify-center rounded-full border transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 disabled:cursor-default",
+        "flex h-11 w-11 items-center justify-center rounded-full border transition ease-out duration-150 cursor-pointer active:scale-95 motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 disabled:cursor-default",
         pressed
           ? "border-accent-dim text-accent"
           : "border-line text-dim hover:border-accent-dim hover:text-accent",

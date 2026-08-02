@@ -82,7 +82,7 @@ export function IncomePanel({ result }: IncomePanelProps) {
           type="button"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
-          className="mt-3 font-mono text-xs tracking-button uppercase text-faint hover:text-accent transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded"
+          className="mt-3 font-mono text-xs tracking-button uppercase text-faint hover:text-accent transition ease-out duration-150 cursor-pointer active:scale-[0.97] motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded"
         >
           {expanded ? "Show less" : `Show all ${payers.length}`}
         </button>

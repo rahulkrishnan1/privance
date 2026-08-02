@@ -55,7 +55,7 @@ export function InvestSubnav({ onAdd, addLabel }: InvestSubnavProps) {
           // Stable accessible name across viewports: the visible text collapses
           // to a bare "+" on mobile, but the label keeps the account/holding context.
           aria-label={`+ Add ${addLabel}`}
-          className="font-mono text-xs tracking-button uppercase text-vault bg-accent rounded-md px-4 py-2 self-center cursor-pointer hover:bg-cream transition-colors"
+          className="font-mono text-xs tracking-button uppercase text-vault bg-accent rounded-md px-4 py-2 self-center cursor-pointer hover:bg-cream transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100"
         >
           <span className="max-[560px]:hidden">+ Add {addLabel}</span>
           <span className="hidden max-[560px]:inline" aria-hidden="true">

@@ -33,7 +33,7 @@ const PopoverContent = React.forwardRef<
         ref={ref}
         data-slot="popover-content"
         className={cn(
-          "w-72 rounded-md border border-border bg-popover p-4 text-popover-foreground shadow-md outline-none origin-(--transform-origin) transition-[opacity,transform] duration-150 data-[starting-style]:opacity-0 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[ending-style]:scale-95",
+          "w-72 rounded-md border border-border bg-popover p-4 text-popover-foreground shadow-md outline-none origin-(--transform-origin) transition-[opacity,transform] duration-150 ease-out data-[starting-style]:opacity-0 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:duration-100 motion-reduce:data-[starting-style]:scale-100 motion-reduce:data-[ending-style]:scale-100",
           className,
         )}
         {...props}

@@ -38,7 +38,7 @@ export function RefreshPricesButton() {
         fill="none"
         stroke="currentColor"
         strokeWidth={1.7}
-        className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+        className={`h-4 w-4 ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`}
         aria-hidden="true"
       >
         <path d="M21 12a9 9 0 1 1-2.64-6.36" />

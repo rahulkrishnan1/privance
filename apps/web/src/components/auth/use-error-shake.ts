@@ -15,9 +15,16 @@ export function useErrorShake(errorKey: string | number | undefined): boolean {
     // Falsy covers all "no error yet" sentinels: undefined, "", and the 0 the
     // counter callers start at (the first real error bumps it to 1).
     if (!errorKey) return;
-    setShaking(true);
+    // Drop the class for a frame before reapplying so a second error arriving
+    // mid-shake restarts the keyframe instead of silently extending the timer
+    // (the class never left, so the animation would not re-trigger).
+    setShaking(false);
+    const raf = requestAnimationFrame(() => setShaking(true));
     const id = setTimeout(() => setShaking(false), 400);
-    return () => clearTimeout(id);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(id);
+    };
   }, [errorKey]);
 
   return shaking;

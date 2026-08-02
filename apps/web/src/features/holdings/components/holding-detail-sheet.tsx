@@ -20,7 +20,8 @@ type PriceEntry = {
 };
 
 type HoldingDetailSheetProps = {
-  holding: LocalHolding;
+  open: boolean;
+  holding: LocalHolding | null;
   prices: Map<string, PriceEntry>;
   dayChangeCents: Decimal | null;
   totalInvestmentsCents: Decimal | null;
@@ -28,6 +29,10 @@ type HoldingDetailSheetProps = {
   onClose: () => void;
   onEdit: (holding: LocalHolding) => void;
   onDelete: (holding: LocalHolding) => Promise<void>;
+};
+
+type HoldingDetailSheetBodyProps = Omit<HoldingDetailSheetProps, "open" | "holding"> & {
+  holding: LocalHolding;
 };
 
 function formatPrice(price: Decimal): string {
@@ -39,7 +44,7 @@ function formatPrice(price: Decimal): string {
   });
 }
 
-export function HoldingDetailSheet({
+function HoldingDetailSheetBody({
   holding,
   prices,
   dayChangeCents,
@@ -48,7 +53,7 @@ export function HoldingDetailSheet({
   onClose,
   onEdit,
   onDelete,
-}: HoldingDetailSheetProps) {
+}: HoldingDetailSheetBodyProps) {
   const [deleting, setDeleting] = useState(false);
 
   const priceTicker = holding.proxyTicker ?? holding.ticker;
@@ -121,123 +126,150 @@ export function HoldingDetailSheet({
   }
 
   return (
+    <>
+      <div className="flex justify-between items-start">
+        <div>
+          <SheetTitle render={<p className="font-mono text-base text-cream tracking-[.08em]" />}>
+            {holding.ticker}
+          </SheetTitle>
+          {holding.proxyTicker ? (
+            <p className="font-mono text-sm text-dim tracking-[.04em] mt-1.5">
+              Proxy: {holding.proxyTicker}
+            </p>
+          ) : (
+            holding.name !== undefined && (
+              <h3 className="font-serif text-3xl font-light tracking-[-0.01em] mt-1">
+                {holding.name}
+              </h3>
+            )
+          )}
+        </div>
+        <CloseButton onClick={onClose} label="Close holding details" />
+      </div>
+
+      {marketValue !== null ? (
+        <p
+          data-testid="holding-detail-value"
+          className="vfig font-serif text-5xl mt-4 tracking-[-0.01em]"
+        >
+          {formatCurrency(marketValue, "USD")}
+        </p>
+      ) : (
+        <p className="font-mono text-sm text-faint mt-4">no price, set one</p>
+      )}
+
+      {unrealizedGain !== null && (
+        <p className={`font-mono text-sm mt-1.5 ${gainTone}`}>
+          <span className="vfig">{formatTrendCurrency(unrealizedGain)}</span>
+          {unrealizedPct !== null
+            ? ` (${formatPercentMagnitude(unrealizedPct)}) unrealized`
+            : " unrealized"}
+        </p>
+      )}
+
+      <p className="font-mono text-xs tracking-label uppercase text-faint mt-6 mb-1.5">Position</p>
+
+      <div className="flex justify-between py-2 border-b border-line-soft text-sm">
+        <span className="text-dim">Day</span>
+        <span className={`font-mono text-sm tabular-nums ${dayTone}`}>
+          {dayChangeCents === null ? (
+            "-"
+          ) : (
+            <>
+              <span className="vfig">{formatTrendCurrency(dayChangeCents)}</span>
+              {dayPct !== null && ` (${formatPercentMagnitude(dayPct)})`}
+            </>
+          )}
+        </span>
+      </div>
+
+      <div className="flex justify-between py-2 border-b border-line-soft text-sm">
+        <span className="text-dim">Price</span>
+        <span className="font-mono text-sm tabular-nums">
+          {effectivePrice ? formatPrice(effectivePrice) : "-"}
+        </span>
+      </div>
+
+      <div className="flex justify-between py-2 border-b border-line-soft text-sm">
+        <span className="text-dim">Quantity</span>
+        <span className="vfig font-mono text-sm tabular-nums">
+          {formatShares(holding.sharesMajor, holding.sharesScale)}
+        </span>
+      </div>
+
+      <div className="flex justify-between py-2 border-b border-line-soft text-sm">
+        <span className="text-dim">Avg cost basis</span>
+        <span className="vfig font-mono text-sm tabular-nums">
+          {avgCostBasis !== null
+            ? avgCostBasis.toLocaleString("en-US", { style: "currency", currency: "USD" })
+            : "-"}
+        </span>
+      </div>
+
+      <div className="flex justify-between py-2 border-b border-line-soft text-sm">
+        <span className="text-dim">Total cost basis</span>
+        <span className="vfig font-mono text-sm tabular-nums">
+          {costBasis !== null ? formatCurrency(costBasis, "USD") : "-"}
+        </span>
+      </div>
+
+      <div className="flex justify-between py-2 border-b border-line-soft text-sm">
+        <span className="text-dim">Portfolio weight</span>
+        <span className="font-mono text-sm tabular-nums">
+          {weightPct !== null ? `${weightPct.toFixed(1)}%` : "-"}
+        </span>
+      </div>
+
+      <div className="flex justify-between py-2 border-b border-line-soft text-sm">
+        <span className="text-dim">Account</span>
+        <span className="text-sm text-cream-soft">{accountName}</span>
+      </div>
+
+      <div className="flex gap-2.5 mt-6">
+        <Button variant="secondary" onClick={() => onEdit(holding)} className="flex-1">
+          Edit holding
+        </Button>
+        <ConfirmDeleteButton
+          onConfirm={() => void handleDelete()}
+          pending={deleting}
+          className="flex-1"
+        />
+      </div>
+    </>
+  );
+}
+
+export function HoldingDetailSheet({
+  open,
+  holding,
+  prices,
+  dayChangeCents,
+  totalInvestmentsCents,
+  accountName,
+  onClose,
+  onEdit,
+  onDelete,
+}: HoldingDetailSheetProps) {
+  return (
     <Sheet
-      open
+      open={open}
       onOpenChange={(o) => {
         if (!o) onClose();
       }}
     >
       <SheetContent>
-        <div className="flex justify-between items-start">
-          <div>
-            <SheetTitle render={<p className="font-mono text-base text-cream tracking-[.08em]" />}>
-              {holding.ticker}
-            </SheetTitle>
-            {holding.proxyTicker ? (
-              <p className="font-mono text-sm text-dim tracking-[.04em] mt-1.5">
-                Proxy: {holding.proxyTicker}
-              </p>
-            ) : (
-              holding.name !== undefined && (
-                <h3 className="font-serif text-3xl font-light tracking-[-0.01em] mt-1">
-                  {holding.name}
-                </h3>
-              )
-            )}
-          </div>
-          <CloseButton onClick={onClose} label="Close holding details" />
-        </div>
-
-        {marketValue !== null ? (
-          <p
-            data-testid="holding-detail-value"
-            className="vfig font-serif text-5xl mt-4 tracking-[-0.01em]"
-          >
-            {formatCurrency(marketValue, "USD")}
-          </p>
-        ) : (
-          <p className="font-mono text-sm text-faint mt-4">no price, set one</p>
-        )}
-
-        {unrealizedGain !== null && (
-          <p className={`font-mono text-sm mt-1.5 ${gainTone}`}>
-            <span className="vfig">{formatTrendCurrency(unrealizedGain)}</span>
-            {unrealizedPct !== null
-              ? ` (${formatPercentMagnitude(unrealizedPct)}) unrealized`
-              : " unrealized"}
-          </p>
-        )}
-
-        <p className="font-mono text-xs tracking-label uppercase text-faint mt-6 mb-1.5">
-          Position
-        </p>
-
-        <div className="flex justify-between py-2 border-b border-line-soft text-sm">
-          <span className="text-dim">Day</span>
-          <span className={`font-mono text-sm tabular-nums ${dayTone}`}>
-            {dayChangeCents === null ? (
-              "-"
-            ) : (
-              <>
-                <span className="vfig">{formatTrendCurrency(dayChangeCents)}</span>
-                {dayPct !== null && ` (${formatPercentMagnitude(dayPct)})`}
-              </>
-            )}
-          </span>
-        </div>
-
-        <div className="flex justify-between py-2 border-b border-line-soft text-sm">
-          <span className="text-dim">Price</span>
-          <span className="font-mono text-sm tabular-nums">
-            {effectivePrice ? formatPrice(effectivePrice) : "-"}
-          </span>
-        </div>
-
-        <div className="flex justify-between py-2 border-b border-line-soft text-sm">
-          <span className="text-dim">Quantity</span>
-          <span className="vfig font-mono text-sm tabular-nums">
-            {formatShares(holding.sharesMajor, holding.sharesScale)}
-          </span>
-        </div>
-
-        <div className="flex justify-between py-2 border-b border-line-soft text-sm">
-          <span className="text-dim">Avg cost basis</span>
-          <span className="vfig font-mono text-sm tabular-nums">
-            {avgCostBasis !== null
-              ? avgCostBasis.toLocaleString("en-US", { style: "currency", currency: "USD" })
-              : "-"}
-          </span>
-        </div>
-
-        <div className="flex justify-between py-2 border-b border-line-soft text-sm">
-          <span className="text-dim">Total cost basis</span>
-          <span className="vfig font-mono text-sm tabular-nums">
-            {costBasis !== null ? formatCurrency(costBasis, "USD") : "-"}
-          </span>
-        </div>
-
-        <div className="flex justify-between py-2 border-b border-line-soft text-sm">
-          <span className="text-dim">Portfolio weight</span>
-          <span className="font-mono text-sm tabular-nums">
-            {weightPct !== null ? `${weightPct.toFixed(1)}%` : "-"}
-          </span>
-        </div>
-
-        <div className="flex justify-between py-2 border-b border-line-soft text-sm">
-          <span className="text-dim">Account</span>
-          <span className="text-sm text-cream-soft">{accountName}</span>
-        </div>
-
-        <div className="flex gap-2.5 mt-6">
-          <Button variant="secondary" onClick={() => onEdit(holding)} className="flex-1">
-            Edit holding
-          </Button>
-          <ConfirmDeleteButton
-            onConfirm={() => void handleDelete()}
-            pending={deleting}
-            className="flex-1"
+        {holding !== null && (
+          <HoldingDetailSheetBody
+            holding={holding}
+            prices={prices}
+            dayChangeCents={dayChangeCents}
+            totalInvestmentsCents={totalInvestmentsCents}
+            accountName={accountName}
+            onClose={onClose}
+            onEdit={onEdit}
+            onDelete={onDelete}
           />
-        </div>
+        )}
       </SheetContent>
     </Sheet>
   );
