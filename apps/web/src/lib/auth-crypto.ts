@@ -6,7 +6,6 @@ import {
   deriveRecoverySeed,
   generateItemsKey,
   KDF_PARAM_SETS,
-  KDF_PARAM_VERSION,
   LABEL_VERSION,
   phraseToSeed,
   randomBytes,
@@ -15,7 +14,10 @@ import {
   unwrapItemsKey,
   wrapItemsKey,
 } from "@privance/core";
-import { stretchMasterPasswordInWorker as stretchMasterPassword } from "@/lib/crypto/kdf";
+import {
+  effectiveKdfVersion,
+  stretchMasterPasswordInWorker as stretchMasterPassword,
+} from "@/lib/crypto/kdf";
 
 type SignupCryptoResult = {
   authHash: string;
@@ -74,7 +76,7 @@ export async function deriveSignupCrypto(opts: { password: string }): Promise<Si
   const { key: stretched, version: kdfParamVersion } = await stretchMasterPassword({
     password: opts.password,
     salt: kdfSaltBytes,
-    version: KDF_PARAM_VERSION,
+    version: effectiveKdfVersion(),
   });
 
   const authHashBytes = deriveAuthHash(stretched);
@@ -98,7 +100,7 @@ export async function deriveSignupCrypto(opts: { password: string }): Promise<Si
   const { key: recoveryStretched, version: recoveryKdfParamVersion } = await stretchMasterPassword({
     password: seedString,
     salt: recoverySaltBytes,
-    version: KDF_PARAM_VERSION,
+    version: effectiveKdfVersion(),
   });
 
   const recoveryAuthHashBytes = deriveAuthHash(recoveryStretched);
@@ -133,7 +135,7 @@ export async function deriveLoginCrypto(opts: {
   kdfSalt: string;
 }): Promise<LoginCryptoResult> {
   const saltBytes = b64ToBytes(opts.kdfSalt);
-  const version = KDF_PARAM_VERSION;
+  const version = effectiveKdfVersion();
   const { key: stretched } = await stretchMasterPassword({
     password: opts.password,
     salt: saltBytes,
@@ -180,7 +182,7 @@ export async function deriveRecoveryUnwrap(opts: {
   const { key: recoveryStretched, version } = await stretchMasterPassword({
     password: seedString,
     salt: saltBytes,
-    version: KDF_PARAM_VERSION,
+    version: effectiveKdfVersion(),
   });
 
   const recoveryKek = deriveKek(recoveryStretched);
@@ -207,7 +209,7 @@ export async function deriveRecoveryProof(opts: {
   const { key: recoveryStretched } = await stretchMasterPassword({
     password: seedString,
     salt: saltBytes,
-    version: KDF_PARAM_VERSION,
+    version: effectiveKdfVersion(),
   });
 
   return b64(deriveAuthHash(recoveryStretched));
@@ -221,7 +223,7 @@ export async function deriveNewCredsAfterRecovery(opts: {
   const { key: newStretched, version: newKdfParamVersion } = await stretchMasterPassword({
     password: opts.newPassword,
     salt: newKdfSaltBytes,
-    version: KDF_PARAM_VERSION,
+    version: effectiveKdfVersion(),
   });
 
   const newAuthHashBytes = deriveAuthHash(newStretched);
@@ -244,7 +246,7 @@ export async function deriveNewCredsAfterRecovery(opts: {
     await stretchMasterPassword({
       password: newSeedString,
       salt: newRecoverySaltBytes,
-      version: KDF_PARAM_VERSION,
+      version: effectiveKdfVersion(),
     });
 
   const newRecoveryAuthHashBytes = deriveAuthHash(newRecoveryStretched);

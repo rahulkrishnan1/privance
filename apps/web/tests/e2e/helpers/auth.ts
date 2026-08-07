@@ -5,8 +5,8 @@ import { BASE_URL } from "../../../playwright/ports";
 /**
  * Clicks a top-bar nav link and waits for its route to commit.
  *
- * On a cold next-dev compile the click can land mid-hydration and no-op (the
- * route never commits), so retry the click until the URL actually changes.
+ * Retries until the URL actually changes, so a click that lands mid-render
+ * (or on a slow first paint) cannot silently no-op.
  */
 export async function clickNavLink(
   page: Page,
@@ -19,16 +19,22 @@ export async function clickNavLink(
   }).toPass({ timeout: 15_000 });
 }
 
+/**
+ * Taps a mobile bottom-tab nav link via native HTMLElement.click() (evaluate),
+ * bypassing Playwright's actionability checks that fail on position-fixed
+ * bottom bars in mobile viewports.
+ */
+export async function tapNav(link: Locator): Promise<void> {
+  await link.evaluate((el) => (el as HTMLElement).click());
+}
+
 export type SignupResult = {
   phrase: string;
 };
 
 /**
- * Fills the signup form so the values survive late hydration. On a cold
- * next-dev compile, React can hydrate between fills and reset controlled
- * inputs to empty (observed as "Username is required" with passwords intact).
- * Re-fill any wiped field and only return once every value sticks across a
- * short settle.
+ * Fills the signup form and retries until every value sticks, so a wiped
+ * controlled input cannot silently submit an empty field.
  */
 async function fillSignupForm(
   page: Page,
@@ -49,10 +55,38 @@ async function fillSignupForm(
 }
 
 /**
+ * Fills the login form and retries until every value sticks, so a wiped
+ * controlled input cannot silently submit an empty field.
+ *
+ * Pass { waitForButton: true } to additionally wait for the Sign-in button to
+ * become enabled before returning.
+ */
+export async function fillLoginForm(
+  page: Page,
+  username: string,
+  password: string,
+  opts?: { waitForButton?: boolean },
+): Promise<void> {
+  await expect(async () => {
+    if ((await page.getByLabel("Username").inputValue()) !== username) {
+      await page.getByLabel("Username").fill(username);
+    }
+    if ((await page.getByLabel("Master password").inputValue()) !== password) {
+      await page.getByLabel("Master password").fill(password);
+    }
+    expect(await page.getByLabel("Username").inputValue()).toBe(username);
+    expect(await page.getByLabel("Master password").inputValue()).toBe(password);
+    if (opts?.waitForButton) {
+      await expect(page.getByRole("button", { name: "Sign in" })).toBeEnabled({ timeout: 1_000 });
+    }
+  }).toPass({ timeout: 10_000 });
+}
+
+/**
  * Clicks Create account and waits for the recovery-phrase screen, retrying
- * through the signup rate limit (3 per IP per minute by design; parallel
- * browser projects can race past the budget at run start and surface the
- * generic signup alert). Bounded retries keep genuine failures visible.
+ * through transient failures. Rate limits are lifted for E2E
+ * (RATE_LIMIT_SIGNUP_PER_IP=1000); the retry loop guards against
+ * network flakes and transient signup failures.
  */
 async function submitSignup(page: Page): Promise<void> {
   // Redesigned signup shows the "Your recovery phrase." heading; the pre-redesign
@@ -62,8 +96,7 @@ async function submitSignup(page: Page): Promise<void> {
     .getByRole("heading", { name: /recovery phrase/i })
     .or(page.getByText("Write down your recovery phrase"));
   const failed = page.getByText("Signup failed. Try again.");
-  // 12 attempts spans ~4 minutes of windows: a full five-project run queues
-  // ~12 signups against the 3-per-minute budget, and the last in line waits.
+  // Bounded retries for transient failures (network flakes).
   for (let attempt = 0; attempt < 12; attempt++) {
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(phrase.or(failed).first()).toBeVisible({ timeout: 30_000 });
@@ -149,8 +182,7 @@ export async function loginAndCapture(
   const waitForDek = await installDekCapture(page);
 
   await page.goto("/auth/login/");
-  await page.getByLabel("Username").fill(opts.username);
-  await page.getByLabel("Master password").fill(opts.password);
+  await fillLoginForm(page, opts.username, opts.password, { waitForButton: true });
   await page.getByRole("button", { name: "Sign in" }).click();
 
   // Capture DEK bytes before the hard navigation wipes globalThis
@@ -173,8 +205,12 @@ export async function loginAndCapture(
  * Call in beforeEach, before page.goto.
  */
 export async function restoreSession(page: Page, snapshot: SessionSnapshot): Promise<void> {
-  // addInitScript runs before each navigation in this page context.
+  // addInitScript runs before each navigation in this page context. Skip auth
+  // pages: after logout/destroy the app must stay logged out, and re-injecting
+  // the DEK there would make auth-context boot "unlocked" and bounce back into
+  // the app.
   await page.addInitScript((arr: number[]) => {
+    if (location.pathname.startsWith("/auth/") || location.pathname.startsWith("/unlock")) return;
     const sym = Symbol.for("privance.dekStore.v1");
     (globalThis as Record<symbol, unknown>)[sym] = { itemsKey: new Uint8Array(arr) };
   }, snapshot.dekArray);
@@ -201,7 +237,7 @@ export async function waitForSynced(page: Page): Promise<void> {
  * acknowledges it, and lands on the dashboard.
  *
  * Returns the 12-word phrase so tests can use it for recovery flows.
- * Argon2 KDF derivation takes 3 to 8 s; caller must use a 60 s test timeout.
+ * Caller must use a generous test timeout (KDF runs in the browser).
  *
  * Note: after signup the hard nav to "/" clears the DEK and the app redirects
  * back to login. For tests that need to verify the dashboard after signup,
@@ -331,9 +367,7 @@ export async function login(
   opts: { username: string; password: string },
 ): Promise<void> {
   await page.goto("/auth/login/");
-
-  await page.getByLabel("Username").fill(opts.username);
-  await page.getByLabel("Master password").fill(opts.password);
+  await fillLoginForm(page, opts.username, opts.password, { waitForButton: true });
   await page.getByRole("button", { name: "Sign in" }).click();
 
   // Wait for navigation to complete (may go to "/" or back to "/auth/login/")
@@ -369,10 +403,27 @@ export async function recover(
 ): Promise<{ newPhrase: string }> {
   await page.goto("/auth/recovery/");
 
-  await page.getByLabel("Username").fill(opts.username);
-  await page.getByLabel("Recovery phrase (12 words)").fill(opts.phrase);
-  await page.getByLabel("New master password", { exact: true }).fill(opts.newPassword);
-  await page.getByLabel("Confirm new master password").fill(opts.newPassword);
+  // Retry until every value sticks; a wiped controlled input would submit empty.
+  await expect(async () => {
+    if ((await page.getByLabel("Username").inputValue()) !== opts.username) {
+      await page.getByLabel("Username").fill(opts.username);
+    }
+    if ((await page.getByLabel("Recovery phrase (12 words)").inputValue()) !== opts.phrase) {
+      await page.getByLabel("Recovery phrase (12 words)").fill(opts.phrase);
+    }
+    if (
+      (await page.getByLabel("New master password", { exact: true }).inputValue()) !==
+      opts.newPassword
+    ) {
+      await page.getByLabel("New master password", { exact: true }).fill(opts.newPassword);
+      await page.getByLabel("Confirm new master password").fill(opts.newPassword);
+    }
+    expect(await page.getByLabel("Username").inputValue()).toBe(opts.username);
+    expect(await page.getByLabel("Recovery phrase (12 words)").inputValue()).toBe(opts.phrase);
+    expect(await page.getByLabel("New master password", { exact: true }).inputValue()).toBe(
+      opts.newPassword,
+    );
+  }).toPass({ timeout: 15_000 });
   // Button label changed to "Derive new keys & continue" in new UI
   const newRecoverBtn = page.getByRole("button", { name: /Derive new keys/i });
   const oldRecoverBtn = page.getByRole("button", { name: "Recover account" });

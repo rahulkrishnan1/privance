@@ -37,6 +37,7 @@ Thumbs.db
 .idea/
 
 # Local-only, never committed
+.hermes/
 .claude/settings.local.json
 .claude/plans/
 .claude/scratch/

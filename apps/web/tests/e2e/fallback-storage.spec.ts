@@ -93,7 +93,6 @@ async function runFullCycle(page: import("@playwright/test").Page) {
 test.describe("Storage fallback", () => {
   test("ephemeral WebKit → in-memory mode, SQL works", async ({ persistentPage }) => {
     const browser = persistentPage.context().browser();
-    test.skip(browser?.browserType().name() !== "webkit", "webkit-only ephemeral fallback test");
     if (browser === null) throw new Error("browser handle missing on persistent context");
     const ctx = await browser.newContext({ baseURL: BASE_URL });
     const page = await ctx.newPage();

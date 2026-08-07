@@ -149,7 +149,7 @@ describe("unwrapDek", () => {
     // kdfParamVersion is bound into the AEAD AAD. Unwrapping the DEK while
     // claiming a different param version must fail, so a downgrade attack on
     // the stored version cannot trick the client into accepting weaker KDF
-    // params. Cast simulates a future/forged version since only 1 exists today.
+    // params. Cast simulates a future/forged version (beyond 1 and 2).
     const signup = await deriveSignupCrypto({ password: "downgrade-pass-1!" });
     const login = await deriveLoginCrypto({
       password: "downgrade-pass-1!",

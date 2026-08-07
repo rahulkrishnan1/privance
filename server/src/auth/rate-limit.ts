@@ -79,7 +79,8 @@ const loginPerIpMax = Number(process.env.RATE_LIMIT_LOGIN_PER_IP) || 20;
 
 const loginPerUsername = new SlidingWindow(60_000, loginPerUsernameMax);
 const loginPerIp = new SlidingWindow(60_000, loginPerIpMax);
-const signupPerIp = new SlidingWindow(60_000, 3);
+const signupPerIpMax = Number(process.env.RATE_LIMIT_SIGNUP_PER_IP) || 3;
+const signupPerIp = new SlidingWindow(60_000, signupPerIpMax);
 const recoveryPerUsername = new SlidingWindow(3_600_000, 5);
 const recoveryPerIp = new SlidingWindow(3_600_000, 10);
 const loginBackoff = new ProgressiveBackoff(250, 4_000);
