@@ -106,17 +106,19 @@ pnpm -F @privance/web e2e:ui
 
 - Each test uses a distinct username (prefixed with the spec name +
   `Date.now().toString(36)`). No cross-test DB state; no DB reset needed.
-- Argon2 KDF derivation takes 3-8 s; the per-test timeout is 60 s.
-- The Playwright config boots the bun server (:3000) and Next.js dev server
-  (:8081) automatically. Both are reused across tests if already running
+- E2E builds run with reduced-KDF v2 params (`NEXT_PUBLIC_PRIVANCE_KDF_REDUCED`),
+  so auth flows complete in well under a second; the per-test timeout is 60 s.
+- The Playwright config boots the bun server (:3000) and the production static
+  export (:8081 — built first, then served by sirv, matching the Docker image)
+  automatically. Both are reused across tests if already running
   (`reuseExistingServer: true` for local runs).
-- Desktop coverage runs the full functional suite on chromium, firefox, and
-  webkit (webkit additionally runs the OPFS storage specs `webkit-storage` and
-  `fallback-storage`, which only apply to it). The two mobile projects,
-  `mobile-safari` (iPhone, WebKit) and `mobile-chrome` (Pixel 5), run the
-  `*.mobile.spec.ts` suite against the mobile UI.
-- All projects run locally (macOS). On CI the shared Linux runner cannot carry
-  the 64 MB Argon2id auth flows on WebKit in time, so CI scopes the WebKit
-  projects to their storage specs and runs the mobile suite on Pixel 5;
-  chromium and firefox carry the full functional suite. Restoring full WebKit
-  and iPhone coverage to CI (reduced test-env KDF cost) is a tracked follow-up.
+- Coverage is tiered by engine. Chromium runs the full critical-user-journey
+  suite (auth incl. recovery, accounts, holdings + regressions, dashboard,
+  session, landing, plan, spend, settings, biometric PRF); firefox runs auth +
+  session smoke; webkit runs the OPFS storage specs (`webkit-storage` and
+  `fallback-storage`) plus auth smoke and `biometric-unlock`. The two mobile
+  projects, `mobile-safari` (iPhone, WebKit) and `mobile-chrome` (Pixel 5), run
+  the `*.mobile.spec.ts` suite against the mobile UI.
+- All five projects run locally and in CI. The reduced-KDF v2 params
+  (`NEXT_PUBLIC_PRIVANCE_KDF_REDUCED=true`) keep WebKit's Argon2id auth flows
+  within the CI time budget, so CI carries the same coverage as local runs.

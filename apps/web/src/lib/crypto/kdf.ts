@@ -11,7 +11,7 @@
  */
 
 import type { KdfParamVersion, StretchedMasterKey } from "@privance/core";
-import { KDF_PARAM_SETS, stretchMasterPassword } from "@privance/core";
+import { KDF_PARAM_SETS, KDF_PARAM_VERSION, stretchMasterPassword } from "@privance/core";
 
 const WORKER_URL = "/kdf/kdf-worker.js";
 
@@ -31,6 +31,15 @@ let workerReady: Promise<void> | null = null;
 // Latches once the worker proves unusable so later calls skip it and go
 // straight in-thread instead of paying the timeout every time.
 let workerUnavailable = false;
+
+export function effectiveKdfVersion(): KdfParamVersion {
+  // Static export bakes NODE_ENV=production into the client bundle, so a
+  // NODE_ENV guard would disable reduced KDF in the very build CI tests.
+  // The flag is build-time; release builds (Dockerfile, release.yml) never
+  // set it, so production always gets KDF_PARAM_VERSION.
+  if (process.env.NEXT_PUBLIC_PRIVANCE_KDF_REDUCED !== "true") return KDF_PARAM_VERSION;
+  return 2;
+}
 
 function randomId(): string {
   const buf = new Uint8Array(8);
@@ -99,7 +108,7 @@ async function deriveViaWorker(opts: {
 
   // Resolve params here so @privance/core stays the single source of truth; the
   // worker just runs argon2id with what it is given.
-  const version = opts.version ?? 1;
+  const version = opts.version ?? effectiveKdfVersion();
   const params = KDF_PARAM_SETS[version];
 
   return new Promise<KdfResult>((resolve, reject) => {

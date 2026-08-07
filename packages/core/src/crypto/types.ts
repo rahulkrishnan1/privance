@@ -40,6 +40,13 @@ export const KDF_PARAMS = {
   hashLength: 64,
 } as const;
 
+export const KDF_PARAMS_REDUCED = {
+  memoryCost: 8192,
+  timeCost: 1,
+  parallelism: 1,
+  hashLength: 64,
+} as const;
+
 export const NONCE_BYTES = 12 as const;
 export const TAG_BYTES = 16 as const;
 export const ITEMS_KEY_BYTES = 32 as const;

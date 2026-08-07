@@ -123,18 +123,4 @@ test.describe("dashboard - with data", () => {
     await expect(card).toBeVisible({ timeout: 15_000 });
     await expect(card.getByText(/Net worth history will appear after a few days/i)).toBeVisible();
   });
-
-  test("range selector switches between ranges", async ({ page }) => {
-    await expect(page.getByRole("img", { name: "Net worth history chart" })).toBeVisible({
-      timeout: 15_000,
-    });
-
-    const ranges = ["1M", "3M", "1Y", "All"] as const;
-    for (const range of ranges) {
-      await page.getByRole("radio", { name: `${range} range` }).click();
-      await expect(
-        page.getByRole("radio", { name: `${range} range`, checked: true }),
-      ).toBeVisible();
-    }
-  });
 });

@@ -111,7 +111,7 @@ pnpm --filter @privance/web e2e:headed
 
 E2E specs live in `apps/web/tests/e2e/`. Auth flows go through the helpers in `apps/web/tests/e2e/helpers/auth.ts`, do not copy-paste auth steps into specs. Use a distinct username per test (alice, bob, dave, ...) for `cleanState` isolation. Prefer `getByRole` / `getByLabel` selectors; `getByTestId` only when role/label are not unique. Never use Tailwind class names as selectors.
 
-Playwright runs five projects: `chromium`, `firefox`, and `webkit` run the full functional suite (webkit also runs the OPFS storage specs that only apply to it), and `mobile-safari` (iPhone, WebKit) and `mobile-chrome` (Pixel 5) run `*.mobile.spec.ts` against the mobile UI. Target one with `pnpm --filter @privance/web e2e --project=<name>`. All five run locally (macOS); on CI the shared Linux runner cannot carry WebKit's 64 MB Argon2id auth flows in time, so CI scopes the WebKit projects to their storage specs and runs the mobile suite on Pixel 5 (restoring full WebKit/iPhone CI coverage via a reduced test-env KDF is a tracked follow-up).
+Playwright runs five projects with tiered coverage: `chromium` runs critical user journeys (auth, accounts, holdings, dashboard, session, landing, plan, spend, settings, biometric PRF), `firefox` runs auth + session smoke, `webkit` runs storage verification + auth smoke, and `mobile-safari` (iPhone) and `mobile-chrome` (Pixel 5) run `*.mobile.spec.ts` against the mobile UI. Target one with `pnpm --filter @privance/web e2e --project=<name>`. All five run locally (macOS/Linux) and in CI (KDF cost is reduced via `NEXT_PUBLIC_PRIVANCE_KDF_REDUCED=true`).
 
 ---
 

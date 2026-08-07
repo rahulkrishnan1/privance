@@ -21,7 +21,6 @@ const RUN = Date.now().toString(36);
 let session: SessionSnapshot;
 
 test.beforeAll(async ({ browser }) => {
-  test.setTimeout(120_000);
   const result = await signupAndLogin(browser, {
     username: `grace-${RUN}`,
     password: PASS,

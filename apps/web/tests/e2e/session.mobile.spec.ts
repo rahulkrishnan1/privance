@@ -14,6 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 import type { Fixtures } from "../../playwright/global-setup";
+import { fillLoginForm } from "./helpers/auth";
 
 function loadFixtures(): Fixtures {
   const p = path.join(__dirname, "../../.playwright-fixtures.json");
@@ -25,8 +26,7 @@ test.setTimeout(90_000);
 
 async function loginMobile(page: import("@playwright/test").Page, user: Fixtures["duplicateUser"]) {
   await page.goto("/auth/login/");
-  await page.getByLabel("Username").fill(user.username);
-  await page.getByLabel("Master password").fill(user.password);
+  await fillLoginForm(page, user.username, user.password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/app\/?$/, { timeout: 30_000 });
 }

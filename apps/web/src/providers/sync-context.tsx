@@ -21,7 +21,7 @@ import {
 } from "react";
 import { serverUrl } from "@/lib/api/client";
 import { perUserDbFilename } from "@/lib/storage/per-user-store";
-import { readItemsKey, useAuth } from "./auth-context";
+import { readItemsKey, USER_ID_KEY, useAuth } from "./auth-context";
 
 type StoreState = {
   store: LocalStore | null;
@@ -107,21 +107,15 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         import("@privance/core/sync"),
       ]);
 
-      // Per-user OPFS file. Production throws when userId is unknown so a
-      // refactor that produces unlocked-without-userId state surfaces loudly
-      // (caught below into setupError) rather than silently funnelling into a
-      // shared file or hanging on the init spinner. The E2E session restorer
-      // injects DEK directly into globalThis without going through login(), so
-      // user.userId is undefined; tolerate that under non-prod builds where
-      // each test browser context has its own OPFS partition.
-      if (user?.userId === undefined && process.env.NODE_ENV === "production") {
-        throw new Error("sync-context: store open requested without a userId");
-      }
-      // Non-prod fallback only. Note this is the same path the worker unlinks
-      // once at init (legacy cleanup), so the dev DB is wiped-then-recreated on
-      // each boot; harmless because every test context has its own OPFS.
-      const dbFilename =
-        user?.userId !== undefined ? perUserDbFilename(user.userId) : "/privance.sqlite3";
+      // Per-user OPFS file. No guard needed for an unlocked-without-userId
+      // state: auth-context fail-closes (rehydrate requires USER_ID_KEY, and
+      // login sets user.userId), so in production the store can only be opened
+      // with a userId present. The shared-file fallback exists only for the E2E
+      // DEK-injection boot (the session restorer injects the DEK into
+      // globalThis without going through login()), which is safe because every
+      // test context has its own OPFS partition.
+      const userId = user?.userId ?? localStorage.getItem(USER_ID_KEY);
+      const dbFilename = userId !== null ? perUserDbFilename(userId) : "/privance.sqlite3";
       const store = createLocalStore({
         workerUrl: "/sqlite/privance-worker.mjs",
         dbFilename,

@@ -203,14 +203,18 @@ jobs:
         run: bun test
 
   test-e2e:
-    name: E2E (chromium + firefox + webkit + mobile)
+    name: E2E (${{ matrix.project }})
     runs-on: ubuntu-latest
     # Browsers + system deps are preinstalled, so CI never runs the apt-bound
     # `playwright install --with-deps` (it stalled the job). Pin to the
     # @playwright/test version; bump both together.
     container: mcr.microsoft.com/playwright:v1.62.0-noble
-    timeout-minutes: 30
+    timeout-minutes: 15
     needs: [lint, typecheck, test-unit-core, test-unit-web, test-unit-server]
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit, mobile-safari, mobile-chrome]
     services:
       postgres:
         image: postgres:17-alpine
@@ -270,27 +274,14 @@ jobs:
         working-directory: server
         run: bun run db:migrate
 
-      - name: Run E2E tests (chromium)
-        run: pnpm -F @privance/web e2e --project=chromium
-
-      - name: Run E2E tests (firefox)
-        run: pnpm -F @privance/web e2e --project=firefox
-
-      # Linux WebKit on the shared runner cannot carry the 64 MB Argon2id auth
-      # flows in time, so CI runs only its storage specs. The full WebKit suite
-      # and the iPhone/WebKit mobile project run locally on macOS; restoring them
-      # to CI (reduced test-env KDF cost) is a tracked follow-up.
-      - name: Run E2E tests (webkit, storage specs)
-        run: pnpm -F @privance/web e2e --project=webkit webkit-storage fallback-storage
-
-      - name: Run E2E tests (mobile, Pixel 5)
-        run: pnpm -F @privance/web e2e --project=mobile-chrome
+      - name: Run E2E tests (${{ matrix.project }})
+        run: pnpm -F @privance/web e2e --project=${{ matrix.project }}
 
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.project }}
           path: apps/web/playwright-report/
           retention-days: 7
 

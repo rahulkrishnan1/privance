@@ -14,9 +14,10 @@ const serverEnv: Record<string, string> = {
   ALLOWED_ORIGINS: BASE_URL,
   // Reusing a few fixture users across many specs and five projects from one IP
   // would trip the production login caps; lift them for the E2E backend only.
-  // Signup stays capped (the suite budgets signups via global-setup's cooldown).
+  // Rate limits lifted for E2E (RATE_LIMIT_SIGNUP_PER_IP=1000).
   RATE_LIMIT_LOGIN_PER_USERNAME: "1000",
   RATE_LIMIT_LOGIN_PER_IP: "1000",
+  RATE_LIMIT_SIGNUP_PER_IP: "1000",
   // Use deterministic fake price + profile upstreams so E2E doesn't depend on
   // live Yahoo / CoinGecko quotas. Real upstreams run in dev (no env override).
   PRICE_PROVIDER: "fake",
@@ -37,23 +38,21 @@ const MONOREPO_ROOT = path.resolve(__dirname, "../..");
  *
  * The config boots two servers automatically:
  *   - bun API server on :3000
- *   - Next.js dev server on :8081
+ *   - production static export (sirv) on :8081
  *
  * Each test uses a distinct username so no cross-test DB state leaks.
  *
- * Coverage matches the surfaces we ship (web + installed PWA), per engine and
- * viewport: chromium, firefox, and webkit each run the full desktop functional
- * suite (webkit additionally runs the OPFS storage specs, which only apply to
- * it). The two mobile projects run the comprehensive *.mobile specs against the
- * mobile UI: iPhone (WebKit, the iOS PWA engine) and Pixel 5 (Chromium, the
- * Android PWA engine). workers:1 serialises the main-thread argon2id KDF so
- * parallel WebKit contexts do not sum to an out-of-memory kill.
+ * Browser tiering follows Testing Trophy: E2E verifies critical user journeys
+ * end-to-end; don't repeat the full suite across every engine.
+ *   - Chromium: full suite (CDP for WebAuthn/PRF, fastest execution).
+ *   - Firefox: auth smoke only (cookie behaviour, WebAuthn, storage APIs).
+ *   - WebKit: storage verification (OPFS + fallback) + auth smoke. Reduced-KDF
+ *     params (v2) make signup feasible on Linux runners.
+ *   - Mobile Safari / Mobile Chrome: *.mobile.spec.ts for viewport-specific
+ *     layout and touch interaction.
  *
- * These projects run in full locally (macOS). On CI, the shared Linux runner
- * cannot carry the 64 MB Argon2id auth flows on WebKit in time, so the CI
- * workflow scopes the WebKit projects to the storage specs and runs the mobile
- * suite on Pixel 5 only. Restoring full WebKit + iPhone coverage to CI via a
- * reduced test-env KDF cost is a tracked follow-up.
+ * workers:1 serialises the main-thread argon2id KDF so parallel contexts do not
+ * sum to an out-of-memory kill.
  */
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -88,21 +87,28 @@ export default defineConfig({
 
   projects: [
     {
+      // Curated critical-user-journey subset (Testing Trophy: E2E is the tip).
+      // Auth (incl. recovery), accounts, holdings (+ regressions), dashboard,
+      // session, landing, plan, spend, settings, biometric PRF.
+      // CDP (WebAuthn/PRF) and the recovered journeys live here only.
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
-      testIgnore: /(webkit-storage|fallback-storage|.*\.mobile)\.spec\.ts$/,
+      testMatch:
+        /(auth|accounts|holdings|dashboard|session-persistence|landing|plan|spend|settings|biometric-prf)\.spec\.ts$/,
     },
     {
+      // Auth smoke only: cookie behaviour, WebAuthn, storage APIs are where
+      // browser differences matter most between engines.
       name: "firefox",
       use: { ...devices["Desktop Firefox"] },
-      testIgnore: /(webkit-storage|fallback-storage|.*\.mobile)\.spec\.ts$/,
+      testMatch: /(auth|session-persistence)\.spec\.ts$/,
     },
     {
-      // Full desktop suite plus the OPFS storage specs (which testMatch on
-      // browserName === "webkit" internally). Only the mobile specs are ignored.
+      // Storage verification (OPFS behaviour + fallback path) and auth smoke
+      // at reduced KDF cost (v2 params make signup feasible).
       name: "webkit",
       use: { ...devices["Desktop Safari"] },
-      testIgnore: /\.mobile\.spec\.ts$/,
+      testMatch: /(auth|webkit-storage|fallback-storage|biometric-unlock)\.spec\.ts$/,
     },
     {
       // iOS PWA surface: WebKit at a phone viewport. Runs the mobile UI specs.
@@ -129,15 +135,22 @@ export default defineConfig({
       env: { ...serverEnv, PORT: String(SERVER_PORT) },
     },
     {
-      // Next.js dev server
-      command: `pnpm exec next dev --webpack --port ${WEB_PORT}`,
+      // Production static export served by sirv (matches the Docker image).
+      // Builds first — NEXT_PUBLIC_* is baked into the bundle at build time —
+      // then serves ./out on WEB_PORT. --single maps non-trailing-slash deep
+      // links to index.html.
+      //
+      // WARNING (reuseExistingServer): outside CI this reuses whatever is already
+      // on :8081. A stale/foreign build, or a developer's own `pnpm dev` started
+      // without NEXT_PUBLIC_PRIVANCE_KDF_REDUCED, would defeat the reduced-KDF
+      // (v2) params this build enables, so signup/login derivations are full-cost
+      // and slow. CI sets CI=true so reuse never happens there.
+      command: `NEXT_PUBLIC_SERVER_URL=${SERVER_URL} NEXT_PUBLIC_PRIVANCE_KDF_REDUCED=true pnpm -F @privance/web build && pnpm exec sirv out --port ${WEB_PORT} --single --quiet`,
       cwd: __dirname,
       url: BASE_URL,
       reuseExistingServer: !process.env.CI,
-      timeout: 60_000,
-      env: {
-        NEXT_PUBLIC_SERVER_URL: SERVER_URL,
-      },
+      // Cold `next build --webpack` (plus prebuild sim worker) can exceed 120s.
+      timeout: 180_000,
     },
   ],
 });

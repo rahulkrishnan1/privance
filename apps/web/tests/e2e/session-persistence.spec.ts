@@ -75,8 +75,7 @@ test.describe("session persistence + auto-lock", () => {
     // redirect is a soft navigation that keeps the in-memory DEK, and the wrapped
     // DEK is persisted so the reload below survives too. duplicateUser is the one
     // fixture nothing else logs in as (it exists only as a duplicate-signup
-    // target), so its login rate-limit budget is free here; a fresh signup would
-    // blow the 3-per-minute signup cap the suite budgets.
+    // target), so its login rate-limit budget is free here.
     const { duplicateUser } = loadFixtures();
 
     await page.goto("/auth/login/");

@@ -13,7 +13,7 @@ Operating manual for code work in this repo. Architecture lives in `ARCHITECTURE
 - Shared: TypeScript `packages/core`, crypto (@noble/* + hash-wasm + @scure/bip39), decimal math, domain types, sync client, storage adapter
 - Client (`apps/web`): Next.js 16 (App Router, static export) + React 19 + Tailwind 4 + Base UI (unstyled primitives) + TanStack Query 5 + Zod 4 + Recharts.
 - Storage on the client: `@sqlite.org/sqlite-wasm` in a Web Worker. Uses the SAH Pool VFS (OPFS-backed) where available, falls back to an in-memory DB on OPFS-disabled hosts (Safari Private Browsing, restricted WKWebView).
-- Tests: Vitest + fast-check (core/web logic), Vitest Browser Mode + `vitest-browser-react` (web component rendering in real Chromium), `bun test` (server), Playwright (E2E: chromium, firefox, and webkit run the full functional suite plus iPhone and Pixel 5 mobile projects locally; CI scopes WebKit to its storage specs and runs the mobile suite on Pixel 5, since the Linux runner can't carry WebKit's Argon2id auth flows in time)
+- Tests: Vitest + fast-check (core/web logic), Vitest Browser Mode + `vitest-browser-react` (web component rendering in real Chromium), `bun test` (server), Playwright (E2E: chromium, firefox, webkit, plus iPhone and Pixel 5 mobile projects; CI runs all five projects via a reduced-KDF v2 that keeps WebKit's Argon2id auth flows within the time budget)
 - Lint/format: Biome 2.4 (replaces ESLint + Prettier)
 
 Exact-pinned versions in the lockfile, never `^` or `~` (Shai-Hulud lesson).

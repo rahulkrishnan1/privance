@@ -19,6 +19,9 @@ COPY apps/web/ ./apps/web/
 # truth); next.config falls back to package.json when the arg is absent (dev).
 ARG NEXT_PUBLIC_APP_VERSION
 ENV NEXT_PUBLIC_APP_VERSION=${NEXT_PUBLIC_APP_VERSION}
+# Reduced KDF is a test-only flag; a release build must never ship it.
+RUN test -z "$NEXT_PUBLIC_PRIVANCE_KDF_REDUCED" \
+  || (echo "NEXT_PUBLIC_PRIVANCE_KDF_REDUCED must not be set in a release build" && exit 1)
 # CI=true: pnpm 11 detects the hoisted node_modules layout in a non-TTY
 # container and aborts asking for confirmation to recreate it; CI mode proceeds.
 RUN CI=true pnpm -F @privance/web build

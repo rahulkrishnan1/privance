@@ -14,7 +14,7 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 import type { Fixtures } from "../../playwright/global-setup";
 import type { SessionSnapshot } from "./helpers/auth";
-import { loginAndCapture, restoreSession, waitForSynced } from "./helpers/auth";
+import { loginAndCapture, restoreSession, tapNav, waitForSynced } from "./helpers/auth";
 
 function loadFixtures(): Fixtures {
   const p = path.join(__dirname, "../../.playwright-fixtures.json");
@@ -37,13 +37,7 @@ test.describe("mobile navigation", () => {
     await restoreSession(page, savedSession);
   });
 
-  // The Next.js dev overlay (dev server only, absent in the production PWA) is
-  // pinned to a bottom corner over the fixed tab bar, and a coordinate click,
-  // even forced, routes to it. Dispatch the click straight to the link element
-  // instead; the Next <Link> onClick still fires and navigates.
-  const tap = (link: import("@playwright/test").Locator) => link.dispatchEvent("click");
-
-  test("the bottom tab bar routes between the four screens", async ({ page }) => {
+  test("the bottom tab bar routes between the screens", async ({ page }) => {
     await page.goto("/app/");
     const nav = page.getByRole("navigation", { name: "Mobile navigation" });
     await expect(nav).toBeVisible({ timeout: 15_000 });
@@ -53,7 +47,7 @@ test.describe("mobile navigation", () => {
     await waitForSynced(page);
 
     // Spend tab -> spend screen, and the tab marks itself current.
-    await tap(nav.getByRole("link", { name: "Spend" }));
+    await tapNav(nav.getByRole("link", { name: "Spend" }));
     await expect(page).toHaveURL(/\/app\/spend\/?$/, { timeout: 10_000 });
     // A fresh user has no recurring items, so the Spend screen shows its empty state.
     await expect(page.getByRole("heading", { name: /Nothing recurring/ })).toBeVisible({
@@ -65,14 +59,14 @@ test.describe("mobile navigation", () => {
     // heading is dynamic: the empty state reads "Project your path to
     // independence." (h2) and a computed plan reads "Independent by {year}..."
     // (h1), so match the shared "independ" stem rather than a level or exact text.
-    await tap(nav.getByRole("link", { name: "Plan" }));
+    await tapNav(nav.getByRole("link", { name: "Plan" }));
     await expect(page).toHaveURL(/\/app\/plan\/?$/, { timeout: 10_000 });
     await expect(page.getByRole("heading", { name: /independ/i })).toBeVisible({ timeout: 15_000 });
     await expect(nav.getByRole("link", { name: "Plan" })).toHaveAttribute("aria-current", "page");
 
     // Settings tab -> settings screen. The page heading confirms the route; the
     // Lock affordance lives only in the top bar now, not as a settings row.
-    await tap(nav.getByRole("link", { name: "Settings" }));
+    await tapNav(nav.getByRole("link", { name: "Settings" }));
     await expect(page).toHaveURL(/\/app\/settings\/?$/, { timeout: 10_000 });
     await expect(page.getByRole("heading", { name: /The vault/i })).toBeVisible({
       timeout: 10_000,
@@ -82,7 +76,7 @@ test.describe("mobile navigation", () => {
     // OPFS-backed net-worth query whose timing depends on cross-spec fixture
     // state, so this routing test asserts the route and the active-tab marker
     // (the Invest screen's own rendering is covered by dashboard.mobile.spec).
-    await tap(nav.getByRole("link", { name: "Invest" }));
+    await tapNav(nav.getByRole("link", { name: "Invest" }));
     await expect(page).toHaveURL(/\/app\/?$/, { timeout: 10_000 });
     await expect(nav.getByRole("link", { name: "Invest" })).toHaveAttribute("aria-current", "page");
   });

@@ -1,8 +1,6 @@
 import { expect, test } from "./fixtures/persistent-webkit";
 
 test.describe("WebKit storage smoke", () => {
-  test.skip(({ browserName }) => browserName !== "webkit", "webkit-only spec");
-
   test("OPFS + sqlite-wasm worker initialises", async ({ persistentPage: page }) => {
     await page.goto("/auth/login/", { waitUntil: "load" });
 

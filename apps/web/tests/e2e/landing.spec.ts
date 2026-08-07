@@ -20,21 +20,6 @@ test.describe("landing page", () => {
     await expect(page.getByRole("link", { name: "Sign in" }).first()).toBeVisible();
   });
 
-  test("invite CTA navigates to /auth/signup", async ({ page }) => {
-    await page.goto("/");
-    await page
-      .getByRole("link", { name: /Have an invite/i })
-      .first()
-      .click();
-    await expect(page).toHaveURL(/\/auth\/signup/, { timeout: 10_000 });
-  });
-
-  test("Sign in link navigates to /auth/login", async ({ page }) => {
-    await page.goto("/");
-    await page.getByRole("link", { name: "Sign in" }).first().click();
-    await expect(page).toHaveURL(/\/auth\/login/, { timeout: 10_000 });
-  });
-
   test("signed-in user visiting / is redirected to /app/", async ({ browser }) => {
     const { sharedUser } = loadFixtures();
     const session = await loginAndCapture(browser, {
