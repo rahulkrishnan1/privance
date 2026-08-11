@@ -1,5 +1,3 @@
-"use client";
-
 import { Decimal, SCALE_CENTS } from "@privance/core";
 import { useState } from "react";
 import { assignColors } from "@/features/dashboard/palette";

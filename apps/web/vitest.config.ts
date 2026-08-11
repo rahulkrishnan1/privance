@@ -1,30 +1,17 @@
-import path from "node:path";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
-
-const coreRoot = path.resolve(__dirname, "../../packages/core/src");
-// Aliases ordered most-specific first so Vite matches subpaths before the root.
-// next/link uses process.env which is absent in the browser test environment;
-// alias it to a minimal shim that renders a plain anchor.
-const alias = [
-  { find: "@privance/core/decimal", replacement: path.join(coreRoot, "decimal/index.ts") },
-  { find: "@privance/core/projection", replacement: path.join(coreRoot, "projection/index.ts") },
-  { find: "@privance/core/storage", replacement: path.join(coreRoot, "storage/index.ts") },
-  { find: "@privance/core/sync", replacement: path.join(coreRoot, "sync/index.ts") },
-  { find: "@privance/core", replacement: path.join(coreRoot, "index.ts") },
-  { find: "@", replacement: path.resolve(__dirname, "./src") },
-  { find: "next/link", replacement: path.resolve(__dirname, "./src/__mocks__/next-link.tsx") },
-];
+import { alias } from "./vite.alias";
 
 export default defineConfig({
   // Dedupe React so component deps (e.g. react-hook-form) share the single React
   // instance the test renderer uses; otherwise hooks see a null dispatcher.
   resolve: { alias, dedupe: ["react", "react-dom"] },
-  // Next inlines NEXT_PUBLIC_* at build time; the browser test bundle has no
-  // process, so inline a stand-in version the way Next would in production.
-  define: { "process.env.NEXT_PUBLIC_APP_VERSION": JSON.stringify("0.0.0-test") },
-  plugins: [react()],
+  // Vite inlines VITE_* at build time; the browser test bundle has no
+  // process, so inline a stand-in version the way the build would.
+  define: { "import.meta.env.VITE_APP_VERSION": JSON.stringify("0.0.0-test") },
+  plugins: [react(), tailwindcss()],
   test: {
     projects: [
       {

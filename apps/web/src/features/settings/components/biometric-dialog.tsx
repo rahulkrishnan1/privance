@@ -1,5 +1,3 @@
-"use client";
-
 import { Button } from "@/components";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import type { BiometricMessage, BiometricPhase } from "../types";

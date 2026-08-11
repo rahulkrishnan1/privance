@@ -1,5 +1,3 @@
-"use client";
-
 import { deriveBiometricKek, sealProtectorKey } from "@privance/core";
 import { useEffect, useState } from "react";
 import { Screen } from "@/components/index";
@@ -29,7 +27,7 @@ import { PhraseCheckDialog } from "./components/phrase-check-dialog";
 import { SignOutDialog } from "./components/sign-out-dialog";
 import type { BiometricMessage, BiometricPhase, Dialog } from "./types";
 
-const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "unknown";
+const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? "unknown";
 const SOURCE_URL = "https://github.com/rahulkrishnan1/privance";
 const COINGECKO_URL = "https://www.coingecko.com";
 

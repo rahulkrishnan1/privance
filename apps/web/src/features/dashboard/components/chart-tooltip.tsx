@@ -1,5 +1,3 @@
-"use client";
-
 import type { Decimal } from "@privance/core";
 import { formatCurrency, formatDate } from "@/lib/format";
 

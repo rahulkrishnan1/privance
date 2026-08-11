@@ -1,5 +1,3 @@
-"use client";
-
 import type { ItemsKey } from "@privance/core";
 import type { ReactNode } from "react";
 import {

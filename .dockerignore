@@ -15,8 +15,6 @@ node_modules
 dist/
 **/dist/
 build/
-.next/
-apps/web/.next/
 apps/web/out/
 .turbo/
 *.tsbuildinfo

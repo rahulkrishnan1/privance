@@ -16,7 +16,7 @@ export class ApiError extends Error {
 }
 
 export function serverUrl(): string {
-  return process.env.NEXT_PUBLIC_SERVER_URL ?? "";
+  return import.meta.env.VITE_SERVER_URL ?? "";
 }
 
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {

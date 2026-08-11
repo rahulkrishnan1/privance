@@ -1,5 +1,3 @@
-"use client";
-
 import { Decimal } from "@privance/core";
 import type { Milestone, MilestoneKey, SimulateResult } from "@privance/core/projection";
 import { computeMilestones, deriveAllocationParams } from "@privance/core/projection";

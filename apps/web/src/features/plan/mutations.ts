@@ -1,5 +1,3 @@
-"use client";
-
 import type { PlanPayload } from "@privance/core";
 import {
   encryptAead,

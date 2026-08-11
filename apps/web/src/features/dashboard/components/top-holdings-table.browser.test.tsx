@@ -1,5 +1,6 @@
 import type { Holding, HoldingId, HoldingValuation } from "@privance/core";
 import { asId, Decimal, SCALE_CENTS } from "@privance/core";
+import { MemoryRouter } from "react-router";
 import { expect, test } from "vitest";
 import { render } from "vitest-browser-react";
 
@@ -26,14 +27,16 @@ test("previews the largest holdings and drops the smallest", async () => {
   const byTicker = new Map(tickers.map((t) => [asId<HoldingId>(`h-${t}`), t]));
 
   const screen = await render(
-    <TopHoldingsTable
-      byHolding={byHolding}
-      tickerById={byTicker}
-      groupKeyById={byTicker}
-      dayChangeByHoldingId={new Map()}
-      holdings={[] as Holding[]}
-      onRowClick={() => {}}
-    />,
+    <MemoryRouter>
+      <TopHoldingsTable
+        byHolding={byHolding}
+        tickerById={byTicker}
+        groupKeyById={byTicker}
+        dayChangeByHoldingId={new Map()}
+        holdings={[] as Holding[]}
+        onRowClick={() => {}}
+      />
+    </MemoryRouter>,
   );
 
   await expect.element(screen.getByText("AAA")).toBeVisible();
@@ -63,14 +66,16 @@ test("shows the per-share price derived from market value and shares", async () 
   const byTicker = new Map([[holdingId, "AAA"]]);
 
   const screen = await render(
-    <TopHoldingsTable
-      byHolding={byHolding}
-      tickerById={byTicker}
-      groupKeyById={byTicker}
-      dayChangeByHoldingId={new Map()}
-      holdings={[holding]}
-      onRowClick={() => {}}
-    />,
+    <MemoryRouter>
+      <TopHoldingsTable
+        byHolding={byHolding}
+        tickerById={byTicker}
+        groupKeyById={byTicker}
+        dayChangeByHoldingId={new Map()}
+        holdings={[holding]}
+        onRowClick={() => {}}
+      />
+    </MemoryRouter>,
   );
 
   // 10 shares at a $1,000 market value -> $100.00 per share.
@@ -94,14 +99,16 @@ test("renders the day change with a +/- sign and unsigned percent", async () => 
   ]);
 
   const screen = await render(
-    <TopHoldingsTable
-      byHolding={byHolding}
-      tickerById={byTicker}
-      groupKeyById={byTicker}
-      dayChangeByHoldingId={dayChange}
-      holdings={[] as Holding[]}
-      onRowClick={() => {}}
-    />,
+    <MemoryRouter>
+      <TopHoldingsTable
+        byHolding={byHolding}
+        tickerById={byTicker}
+        groupKeyById={byTicker}
+        dayChangeByHoldingId={dayChange}
+        holdings={[] as Holding[]}
+        onRowClick={() => {}}
+      />
+    </MemoryRouter>,
   );
 
   // +$10 on a $100 prior -> + sign, and the percent carries no sign.

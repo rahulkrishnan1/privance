@@ -1,5 +1,3 @@
-"use client";
-
 function SkeletonBox({ className }: { className?: string }) {
   return (
     <div className={["bg-white/5 rounded animate-pulse", className].filter(Boolean).join(" ")} />

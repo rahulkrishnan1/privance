@@ -6,7 +6,7 @@
  * Constraints:
  *   - Single ESM module output (no eval, no dynamic import at runtime).
  *   - es2022 target covers BigInt natively; WKWebView CSP satisfied.
- *   - Runs before `next build`, `next dev`, and `vitest run` (prebuild,
+ *   - Runs before `vite build`, `vite dev`, and `vitest run` (prebuild,
  *     dev, and pretest wiring in package.json). Re-run `build:sim-worker`
  *     manually to refresh a long-lived dev server after engine changes.
  */

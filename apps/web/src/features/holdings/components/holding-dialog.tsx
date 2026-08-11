@@ -1,5 +1,3 @@
-"use client";
-
 import { Decimal, type InvestmentAccount } from "@privance/core";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogTitleRow } from "@/components/ui/dialog";

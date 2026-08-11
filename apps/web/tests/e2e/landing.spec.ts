@@ -32,7 +32,7 @@ test.describe("landing page", () => {
     await restoreSession(page, session);
 
     await page.goto("/");
-    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/app\/?$/, { timeout: 15_000 });
     await ctx.close();
   });
 });

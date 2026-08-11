@@ -1,5 +1,3 @@
-"use client";
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { InvestmentAccount } from "@privance/core";
 import { ChevronDown, ChevronUp } from "lucide-react";

@@ -1,5 +1,3 @@
-"use client";
-
 import type { Account, Decimal, HoldingValuation } from "@privance/core";
 import { useState } from "react";
 import { Button, CloseButton, ConfirmDeleteButton } from "@/components";

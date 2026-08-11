@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en" class="h-full antialiased" data-scroll-behavior="smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#07080a" />
+    <title>Privance</title>
+    <meta
+      name="description"
+      content="A self-hostable, zero-knowledge personal finance app. Your money, your math. The server never sees your data."
+    />
+    <meta property="og:title" content="Privance: personal finance, encrypted on your device" />
+    <meta
+      property="og:description"
+      content="A self-hostable, zero-knowledge personal finance app. Open source, end-to-end encrypted, yours."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Privance" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <!-- Inline ThemeScript: sets class="dark" before React mounts to prevent FOUC -->
+    <script>
+      try {
+        if (window.matchMedia("(prefers-color-scheme:dark)").matches) {
+          document.documentElement.classList.add("dark");
+        }
+      } catch {}
+    </script>
+  </head>
+  <body class="min-h-full flex flex-col">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

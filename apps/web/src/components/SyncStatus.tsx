@@ -1,5 +1,3 @@
-"use client";
-
 import { useSync } from "@/providers/sync-context";
 
 /**

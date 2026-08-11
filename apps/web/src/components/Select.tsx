@@ -1,5 +1,3 @@
-"use client";
-
 import type { ComponentProps } from "react";
 import { forwardRef, useId } from "react";
 import { Label } from "@/components/ui/label";

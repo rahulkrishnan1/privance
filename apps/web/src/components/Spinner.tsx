@@ -1,5 +1,3 @@
-"use client";
-
 type SpinnerProps = {
   className?: string;
 };

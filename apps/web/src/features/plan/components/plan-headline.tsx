@@ -1,5 +1,3 @@
-"use client";
-
 import { Decimal } from "@privance/core";
 import { DATASET_START_YEAR } from "@privance/core/projection";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";

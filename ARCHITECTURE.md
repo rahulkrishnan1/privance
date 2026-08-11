@@ -5,7 +5,7 @@
 ```
 User's device  (browser)
 │
-├─ apps/web  ── Next.js 16 static export
+├─ apps/web  ── Vite 8 static SPA (React Router v8)
 │   ├─ React 19 + Tailwind 4 + TanStack Query 5 + Zod
 │   ├─ /          landing page  (auth-aware: redirects signed-in users to /app/)
 │   ├─ /auth/*    unauthenticated flows  (signup, login, recovery)
@@ -58,42 +58,43 @@ PostgreSQL 17
 
 ## Module structure
 
-### `apps/web/` , Next.js 16 PWA
+### `apps/web/` , Vite 8 PWA
 
-The public-facing web application. It is a **static export** , no SSR, no API routes in the Next.js layer. All server communication goes to the Bun/Hono server.
+The public-facing web application. It is a **static SPA** , no SSR, no API routes in the app layer. All server communication goes to the Bun/Hono server.
 
 **Key directories:**
 
 ```
 apps/web/src/
-├── app/                # Next.js App Router
-│   ├── layout.tsx      # Root layout: QueryProvider > AuthProvider > SyncProvider
-│   ├── (app)/          # Auth-gated route group
-│   │   ├── layout.tsx  # Sidebar + bottom tab bar; redirects if not unlocked
-│   │   ├── page.tsx    # Investments overview (net worth, allocation, holdings)
-│   │   ├── accounts/   # Account list + create/edit
-│   │   ├── holdings/   # Holdings list
-│   │   ├── plan/       # FIRE projections
-│   │   ├── spend/      # Spending
-│   │   └── settings/   # User settings
-│   ├── auth/           # Unauthenticated flows
+├── main.tsx              # Entry: providers + RouterProvider
+├── router.tsx            # Route tree (createBrowserRouter)
+├── app/                  # Route components (layouts + pages)
+│   ├── (app)/            # Auth-gated route group
+│   │   ├── layout.tsx    # Top bar + bottom nav; redirects if not unlocked
+│   │   ├── page.tsx      # Investments overview (net worth, allocation, holdings)
+│   │   ├── accounts/     # Account list + create/edit
+│   │   ├── holdings/     # Holdings list
+│   │   ├── plan/         # FIRE projections
+│   │   ├── spend/        # Spending
+│   │   └── settings/     # User settings
+│   ├── auth/             # Unauthenticated flows
 │   │   ├── login/
 │   │   ├── signup/
 │   │   └── recovery/
-│   └── unlock/         # Session exists but DEK not in memory (cookie-only state)
-├── features/           # Feature modules (accounts, holdings, invest, plan, spend, settings; dashboard is an Invest sub-module, not a route)
-│   └── accounts/       # Reference module: queries.ts, mutations.ts, types.ts, components/
+│   └── unlock/           # Session exists but DEK not in memory (cookie-only state)
+├── features/             # Feature modules (accounts, holdings, invest, plan, spend, settings; dashboard is an Invest sub-module, not a route)
+│   └── accounts/         # Reference module: queries.ts, mutations.ts, types.ts, components/
 ├── lib/
-│   ├── api/            # Raw fetch wrappers (auth, account, prices, symbol-profiles, client)
-│   ├── crypto/         # KDF worker client, WebAuthn PRF
-│   ├── storage/        # session-vault, biometric-store, per-user-store
-│   ├── sim/            # Sim worker client + wire types
-│   ├── queries/        # TanStack Query hooks (prices, profiles)
-│   └── auth-crypto.ts  # Browser-side crypto helpers for login/signup flows
+│   ├── api/              # Raw fetch wrappers (auth, account, prices, symbol-profiles, client)
+│   ├── crypto/           # KDF worker client, WebAuthn PRF
+│   ├── storage/          # session-vault, biometric-store, per-user-store
+│   ├── sim/              # Sim worker client + wire types
+│   ├── queries/          # TanStack Query hooks (prices, profiles)
+│   └── auth-crypto.ts    # Browser-side crypto helpers for login/signup flows
 └── providers/
-    ├── auth-context.tsx # DEK store, auth state machine, auto-lock idle timer
-    ├── sync-context.tsx # LocalStore + SyncClient lifecycle
-    └── query-client.tsx # TanStack Query provider
+    ├── auth-context.tsx  # DEK store, auth state machine, auto-lock idle timer
+    ├── sync-context.tsx  # LocalStore + SyncClient lifecycle
+    └── query-client.tsx  # TanStack Query provider
 ```
 
 **Dependencies on:** `packages/core`, `@sqlite.org/sqlite-wasm` (via Worker).
@@ -104,31 +105,31 @@ The backend. Stores only opaque ciphertext in Postgres. Has no ability to decryp
 
 ```
 server/src/
-├── index.ts            # Entry point: wires feature routers, starts maintenance tasks
+├── index.ts               # Entry point: wires feature routers, starts maintenance tasks
 ├── core/
-│   ├── app.ts          # createApp(): mounts CORS, secureHeaders, CSRF middleware
-│   ├── db.ts           # Drizzle + postgres.js connection
-│   ├── middleware.ts   # requireCsrfHeader
-│   └── logger.ts       # pino logger
-├── auth/               # Signup, login, recovery, password-change, sessions
-│   ├── wire.ts         # Hono routes; single error mapper
-│   ├── middleware.ts   # requireSession session gate (used by all protected routers)
+│   ├── app.ts             # createApp(): mounts CORS, secureHeaders, CSRF middleware
+│   ├── db.ts              # Drizzle + postgres.js connection
+│   ├── middleware.ts      # requireCsrfHeader
+│   └── logger.ts          # pino logger
+├── auth/                  # Signup, login, recovery, password-change, sessions
+│   ├── wire.ts            # Hono routes; single error mapper
+│   ├── middleware.ts      # requireSession session gate (used by all protected routers)
 │   ├── login-service.ts
 │   ├── signup-service.ts
 │   ├── recovery-service.ts
 │   ├── password-service.ts
 │   ├── session-service.ts
 │   ├── invite-service.ts  # Invite-token mint + atomic single-use claim
-│   ├── repo.ts         # Only layer that queries auth tables
-│   ├── rate-limit.ts   # Sliding-window + progressive backoff (in-memory)
-│   └── kdf.ts          # Server-side argon2id for auth-hash storage
-├── sync/               # Encrypted blob CRUD + change feed
+│   ├── repo.ts            # Only layer that queries auth tables
+│   ├── rate-limit.ts      # Sliding-window + progressive backoff (in-memory)
+│   └── kdf.ts             # Server-side argon2id for auth-hash storage
+├── sync/                  # Encrypted blob CRUD + change feed
 │   ├── wire.ts
 │   ├── sync-service.ts
 │   └── repo.ts
-├── account/            # Password-gated vault destruction (cascade delete)
-├── prices/             # Market-price refresh proxy + Postgres cache (Yahoo, CoinGecko)
-└── symbol-profiles/    # Symbol metadata + sector weightings (Yahoo upstream, cached)
+├── account/               # Password-gated vault destruction (cascade delete)
+├── prices/                # Market-price refresh proxy + Postgres cache (Yahoo, CoinGecko)
+└── symbol-profiles/       # Symbol metadata + sector weightings (Yahoo upstream, cached)
 ```
 
 **Dependencies on:** `packages/core` (domain types, audit event constants only , no crypto).
@@ -320,34 +321,36 @@ The schema is identical in structure to the server's `sync_objects` table, enabl
 
 ## Routing
 
-### Next.js App Router file map
+### Route map
 
 ```
-app/
-├── layout.tsx                  # Root: providers (Query, Auth, Sync)
-├── (landing)/                  # Public landing page group
-│   ├── layout.tsx              # Dark-forced public layout (stone base)
-│   └── page.tsx                # Landing page (/), redirects signed-in users to /app/
-├── (app)/                      # Auth-gated group
-│   ├── layout.tsx              # Redirects to /auth/login or /unlock if not unlocked
-│   └── app/
-│       ├── page.tsx            # Investments overview (/app)
-│       ├── accounts/page.tsx   # Account list (/app/accounts)
-│       ├── holdings/page.tsx   # Holdings (/app/holdings)
-│       ├── plan/page.tsx       # FIRE projections (/app/plan)
-│       ├── spend/page.tsx      # Spending (/app/spend)
-│       └── settings/page.tsx   # Settings (/app/settings)
-├── auth/
-│   ├── layout.tsx              # Auth shell layout
-│   ├── login/page.tsx          # /auth/login
-│   ├── signup/page.tsx         # /auth/signup
-│   └── recovery/page.tsx       # /auth/recovery
-└── unlock/page.tsx             # /unlock (cookie present, DEK missing)
+src/
+├── main.tsx                       # Entry: providers (Query, Auth, Sync) + RouterProvider
+├── router.tsx                     # Route tree (createBrowserRouter)
+└── app/
+    ├── (landing)/                 # Public landing page group
+    │   ├── layout.tsx             # Dark-forced public layout (vault base)
+    │   └── page.tsx               # Landing page (/), redirects signed-in users to /app/
+    ├── (app)/                     # Auth-gated group
+    │   ├── layout.tsx             # Redirects to /auth/login or /unlock if not unlocked
+    │   └── app/
+    │       ├── page.tsx           # Investments overview (/app)
+    │       ├── accounts/page.tsx  # Account list (/app/accounts)
+    │       ├── holdings/page.tsx  # Holdings (/app/holdings)
+    │       ├── plan/page.tsx      # FIRE projections (/app/plan)
+    │       ├── spend/page.tsx     # Spending (/app/spend)
+    │       └── settings/page.tsx  # Settings (/app/settings)
+    ├── auth/                      # Unauthenticated flows
+    │   ├── layout.tsx             # Auth shell layout
+    │   ├── login/page.tsx         # /auth/login
+    │   ├── signup/page.tsx        # /auth/signup
+    │   └── recovery/page.tsx      # /auth/recovery
+    └── unlock/page.tsx            # /unlock (cookie present, DEK missing)
 ```
 
-**Landing page:** `(landing)/page.tsx` serves the landing page at `/`. It reads `useAuth()` and redirects signed-in users (`unlocked` → `/app/`, `locked` → `/unlock/`) so they never see the landing.
+**Landing page:** `(landing)/page.tsx` serves the landing page at `/`. It reads `useAuth()` and redirects signed-in users (`unlocked` → `/app`, `locked` → `/unlock`) so they never see the landing.
 
-**Auth gate:** `(app)/layout.tsx` uses `useAuth()` and redirects via `window.location.replace()` to `/auth/login/` (unauthenticated) or `/unlock/` (locked: session cookie present but the DEK is not in memory and cannot be rehydrated from the vault, because the window expired or a lock purged it). It does not redirect while auth state is `loading`, so the brief vault read on boot cannot bounce a soon-to-be-unlocked reload to `/unlock`.
+**Auth gate:** `(app)/layout.tsx` uses `useAuth()` and soft-navigates via `navigate()` to `/auth/login` (unauthenticated) or `/unlock` (locked: session cookie present but the DEK is not in memory and cannot be rehydrated from the vault, because the window expired or a lock purged it). It does not redirect while auth state is `loading`, so the brief vault read on boot cannot bounce a soon-to-be-unlocked reload to `/unlock`.
 
 ---
 
@@ -359,7 +362,7 @@ app/
 pnpm --filter @privance/web build
 ```
 
-Produces a static site in `apps/web/out/`. Deploy to any static host (Caddy, nginx, S3, etc.). The `trailingSlash: true` setting makes routes resolve as directories on static hosts.
+Produces a static site in `apps/web/out/`. Deploy to any static host (Caddy, nginx, S3, etc.). All routes serve the single `index.html` shell; the host's SPA fallback (Caddy `try_files {path} /index.html`) resolves them.
 
 ### Server (`server`)
 

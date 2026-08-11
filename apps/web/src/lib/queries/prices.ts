@@ -1,5 +1,3 @@
-"use client";
-
 import { Decimal, SCALE_CRYPTO } from "@privance/core";
 import { useQuery } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";

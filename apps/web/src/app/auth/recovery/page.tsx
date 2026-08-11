@@ -1,9 +1,6 @@
-"use client";
-
 import { countRecognizedWords, validatePhrase } from "@privance/core";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { Button } from "@/components";
 import { AuthErrorBar } from "@/components/auth/AuthErrorBar";
 import { PasswordStrength } from "@/components/auth/PasswordStrength";
@@ -26,7 +23,7 @@ import { useAuth } from "@/providers/auth-context";
 type Step = "form" | "new-phrase";
 
 export default function RecoveryPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { login } = useAuth();
 
   const [username, setUsername] = useState("");
@@ -175,7 +172,7 @@ export default function RecoveryPage() {
       itemsKey: pendingLogin.itemsKey,
       persistence: "memory",
     });
-    router.replace("/app/");
+    navigate("/app", { replace: true });
   }
 
   if (step === "new-phrase" && newPhrase !== null && pendingLogin !== undefined) {
@@ -401,7 +398,7 @@ export default function RecoveryPage() {
 
       <p className="text-center font-mono text-xs tracking-[0.04em] text-faint mt-[26px]">
         <Link
-          href="/auth/login"
+          to="/auth/login"
           className="text-accent-dim no-underline hover:text-accent transition-colors"
         >
           Back to sign in

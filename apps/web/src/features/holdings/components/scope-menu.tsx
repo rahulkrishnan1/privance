@@ -1,5 +1,3 @@
-"use client";
-
 import type { InvestmentAccount } from "@privance/core";
 import { ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";

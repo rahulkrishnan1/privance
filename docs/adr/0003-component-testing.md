@@ -7,7 +7,7 @@
 
 The web unit layer rendered components with `renderToStaticMarkup` under `happy-dom` and asserted Tailwind class strings. That cannot lay out or render Recharts/SVG (`ResponsiveContainer` measures 0x0 in jsdom/happy-dom), and a class-string assertion passes whether or not the user-visible result is correct. The cost was real: a net-worth chart that rendered as a flat line pinned to a $0-anchored axis shipped while the test suite was green.
 
-We need component rendering and interaction tested the way a user experiences them, in a real browser, so a rendered regression fails CI automatically. Industry standard for React + Next.js is Vitest + React-Testing-Library-style component tests + Playwright for E2E; Vitest Browser Mode became stable in Vitest 4 (we are on 4.1.x).
+We need component rendering and interaction tested the way a user experiences them, in a real browser, so a rendered regression fails CI automatically. Industry standard for React + Vite is Vitest + React-Testing-Library-style component tests + Playwright for E2E; Vitest Browser Mode became stable in Vitest 4 (we are on 4.1.x).
 
 ## Decision
 

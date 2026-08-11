@@ -1,5 +1,3 @@
-"use client";
-
 import { type AllocationSlice, Decimal, SCALE_CENTS } from "@privance/core";
 import { useMemo, useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";

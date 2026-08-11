@@ -1,5 +1,3 @@
-"use client";
-
 import { SpendItemPayloadSchema } from "@privance/core";
 import { useEffect, useState } from "react";
 import { useSync } from "@/providers";

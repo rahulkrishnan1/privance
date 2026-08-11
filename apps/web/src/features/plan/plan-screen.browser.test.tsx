@@ -23,9 +23,13 @@ const h = vi.hoisted(() => ({
   savePlanMock: vi.fn(async (_payload: unknown) => {}),
 }));
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
-}));
+vi.mock("react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router")>();
+  return {
+    ...actual,
+    useNavigate: () => vi.fn(),
+  };
+});
 
 vi.mock("./queries", () => ({
   usePlanRecord: () => h.planRecord,
@@ -115,7 +119,7 @@ function makeUnpricedHolding(accountId: string, ticker: string): unknown {
 }
 
 function toCents(dollars: number): Decimal {
-  return Decimal.fromMinorUnits(BigInt(Math.round(dollars * 100)), SCALE_CENTS);
+  return Decimal.fromString(String(dollars), SCALE_CENTS);
 }
 
 function makeBand(p10: number, p25: number, p50: number, p75: number, p90: number): YearBand {

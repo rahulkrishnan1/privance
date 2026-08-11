@@ -146,8 +146,8 @@ describe("version row", () => {
   it("shows the injected build version, not the 'unknown' fallback", async () => {
     const screen = await render(<SettingsPage />);
 
-    // NEXT_PUBLIC_APP_VERSION is inlined by the vitest define (production uses
-    // the real build version). The bare process.env read must not fall back.
+    // VITE_APP_VERSION is inlined by the vitest define (production uses
+    // the real build version). The bare import.meta.env read must not fall back.
     await expect.element(screen.getByText("v0.0.0-test")).toBeVisible();
     await expect.element(screen.getByText("vunknown")).not.toBeInTheDocument();
   });

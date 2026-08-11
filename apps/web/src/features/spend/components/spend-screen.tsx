@@ -1,5 +1,3 @@
-"use client";
-
 import type { BillingUnit } from "@privance/core";
 import { useMemo, useState } from "react";
 import { Button, CadenceSuffix } from "@/components";

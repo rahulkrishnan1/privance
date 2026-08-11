@@ -47,7 +47,7 @@ test.describe("auth - sign up", () => {
     await restoreSession(page, session);
 
     await page.goto("/app/");
-    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/app\/?$/, { timeout: 15_000 });
     await expect(page.getByRole("link", { name: "Invest" }).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -114,7 +114,7 @@ test.describe("auth - account recovery", () => {
     const verifyPage = await verifyCtx.newPage();
     await restoreSession(verifyPage, loginSession);
     await verifyPage.goto("/app/");
-    await expect(verifyPage).toHaveURL("/app/", { timeout: 15_000 });
+    await expect(verifyPage).toHaveURL(/\/app\/?$/, { timeout: 15_000 });
     await expect(verifyPage.getByRole("link", { name: "Invest" }).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -129,7 +129,7 @@ test.describe("auth - login", () => {
     await restoreSession(page, sharedSession);
 
     await page.goto("/app/");
-    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/app\/?$/, { timeout: 15_000 });
     await expect(page.getByRole("link", { name: "Invest" }).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -145,7 +145,7 @@ test.describe("auth - logout", () => {
 
     // Confirm we are in the app
     await page.goto("/app/");
-    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/app\/?$/, { timeout: 15_000 });
     await expect(page.getByRole("link", { name: "Invest" }).first()).toBeVisible({
       timeout: 10_000,
     });

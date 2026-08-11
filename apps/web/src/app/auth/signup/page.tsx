@@ -1,8 +1,5 @@
-"use client";
-
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { Button } from "@/components";
 import { AuthErrorBar } from "@/components/auth/AuthErrorBar";
 import { PasswordStrength } from "@/components/auth/PasswordStrength";
@@ -42,7 +39,7 @@ function StepDots({ current }: { current: number }) {
 const VERIFY_INDICES = [2, 6, 11] as const;
 
 export default function SignupPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { login } = useAuth();
 
   const [username, setUsername] = useState("");
@@ -149,7 +146,7 @@ export default function SignupPage() {
       itemsKey: pendingLogin.itemsKey,
       persistence: "memory",
     });
-    router.replace("/app/");
+    navigate("/app", { replace: true });
   }
 
   function onVerify(e: React.FormEvent) {
@@ -427,7 +424,7 @@ export default function SignupPage() {
       <p className="text-center font-mono text-xs tracking-[0.04em] text-faint mt-[26px]">
         Already vaulted?{" "}
         <Link
-          href="/auth/login"
+          to="/auth/login"
           className="text-accent-dim no-underline hover:text-accent transition-colors"
         >
           Unlock instead

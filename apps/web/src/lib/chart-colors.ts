@@ -1,5 +1,3 @@
-"use client";
-
 type ChartColors = {
   grid: string;
   text: string;
