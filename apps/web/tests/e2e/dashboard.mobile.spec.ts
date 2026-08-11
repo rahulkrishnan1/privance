@@ -47,7 +47,7 @@ test.describe("dashboard mobile", () => {
     const page = await ctx.newPage();
     await restoreSession(page, savedSession);
     await page.goto("/app/accounts/");
-    await expect(page).toHaveURL("/app/accounts/", { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/app\/accounts\/?$/, { timeout: 15_000 });
     // Wait until the invest screen finishes loading (OPFS resolves locally, not network).
     await expect(
       page

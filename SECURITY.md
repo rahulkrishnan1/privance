@@ -85,7 +85,7 @@ The following properties are enforced by the design and verified in code:
 ## Hardening choices
 
 - **Exact-pinned dependencies.** Every direct dependency is pinned to a precise
-  version in the lockfile, with `bun audit` and `pnpm audit` enforced in pre-commit and weekly CI cron.
+  version in the lockfile, with `pnpm audit` enforced in the pre-push hook and the CI dependency-audit job.
 - **Renderer reload on auto-lock.** When the idle timer fires, the app issues a
   full page reload to scrub V8-internal copies of the DEK in addition to clearing the `Symbol`-keyed store.
 

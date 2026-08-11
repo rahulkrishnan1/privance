@@ -1,9 +1,6 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode, SVGProps } from "react";
 import { useCallback, useEffect, useState } from "react";
+import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { Logo, RoundIconButton } from "@/components/index";
 import { SyncStatus } from "@/components/SyncStatus";
 import { RefreshPricesButton } from "@/features/invest/components/refresh-prices-button";
@@ -80,8 +77,6 @@ type NavItem = {
   match: (pathname: string) => boolean;
 };
 
-// Invest groups the Overview / Holdings / Accounts sub-views, so its tab stays
-// active across all three routes.
 const NAV_ITEMS: NavItem[] = [
   {
     label: "Invest",
@@ -112,12 +107,12 @@ function TopBar({
   onToggleVeil: () => void;
   onLock: () => void;
 }) {
-  const pathname = usePathname();
+  const location = useLocation();
 
   return (
     <header className="sticky top-0 z-20 border-b border-line-soft bg-[color-mix(in_srgb,var(--color-vault)_88%,transparent)] backdrop-blur-[12px] [padding-top:env(safe-area-inset-top)]">
       <div className="mx-auto flex h-[62px] max-w-[1120px] items-center justify-between px-7 max-[760px]:h-14">
-        <Link href="/app" className="flex items-center gap-[9px] text-cream">
+        <Link to="/app" className="flex items-center gap-[9px] text-cream">
           <Logo size={23} className="text-cream" />
           <span className="font-serif text-2xl">Privance</span>
         </Link>
@@ -127,11 +122,11 @@ function TopBar({
           aria-label="Primary navigation"
         >
           {NAV_ITEMS.map(({ label, href, match }) => {
-            const active = match(pathname);
+            const active = match(location.pathname);
             return (
               <Link
                 key={href}
-                href={href}
+                to={href}
                 aria-current={active ? "page" : undefined}
                 className={[
                   "rounded-full px-[18px] py-2 font-mono text-xs uppercase tracking-button transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
@@ -184,7 +179,7 @@ function TopBar({
 }
 
 function BottomNav() {
-  const pathname = usePathname();
+  const location = useLocation();
 
   return (
     <nav
@@ -192,11 +187,11 @@ function BottomNav() {
       aria-label="Mobile navigation"
     >
       {NAV_ITEMS.map(({ label, href, Icon, match }) => {
-        const active = match(pathname);
+        const active = match(location.pathname);
         return (
           <Link
             key={href}
-            href={href}
+            to={href}
             aria-current={active ? "page" : undefined}
             className={[
               "flex flex-1 flex-col items-center gap-1 py-1.5 font-mono text-xs uppercase tracking-button focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent",
@@ -212,13 +207,14 @@ function BottomNav() {
   );
 }
 
-export default function AppLayout({ children }: { children: ReactNode }) {
+// children is a test-only escape hatch: the router renders routes via
+// <Outlet />, but browser tests mount AppLayout directly with children.
+export default function AppLayout({ children }: { children?: ReactNode }) {
   const { state, lock } = useAuth();
-  const router = useRouter();
+  const navigate = useNavigate();
   const hydrated = useHydrated();
   const [veiled, setVeiled] = useState(false);
 
-  // Restore the figures toggle; the auth context resets it on sign-in / unlock.
   useEffect(() => {
     setVeiled(readVeil());
   }, []);
@@ -233,18 +229,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Soft nav: no DEK exists in memory on a cold boot into locked/unauthenticated,
-    // so router.replace is safe here. The lock/logout actions do their own hard
+    // so navigate is safe here. The lock/logout actions do their own hard
     // reload in auth-context for DEK scrub; this path is boot-only.
-    if (state === "unauthenticated") {
-      router.replace("/auth/login/");
-    } else if (state === "locked") {
-      router.replace("/unlock/");
-    }
-  }, [state, router]);
+    if (state === "unauthenticated") navigate("/auth/login", { replace: true });
+    else if (state === "locked") navigate("/unlock", { replace: true });
+  }, [state, navigate]);
 
-  // Hold a blank splash until hydrated and unlocked: gating on state alone
-  // would diverge from the prerendered HTML (hydration mismatch), and painting
-  // the shell before auth resolves flashes the dashboard on a cold launch.
   if (!hydrated || state !== "unlocked") {
     return <div className="dark min-h-svh bg-vault" />;
   }
@@ -253,10 +243,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     <div className={`dark min-h-svh bg-vault text-cream${veiled ? " veil-on" : ""}`}>
       <TopBar veiled={veiled} onToggleVeil={toggleVeil} onLock={lock} />
       <SyncStatus />
-      {/* Clear the fixed bottom nav plus the iOS home-indicator safe area, so the
-          last content is never hidden behind the nav. */}
       <main className="[padding-bottom:calc(4rem+env(safe-area-inset-bottom))] min-[760px]:pb-4">
-        {children}
+        {children ?? <Outlet />}
       </main>
       <BottomNav />
     </div>

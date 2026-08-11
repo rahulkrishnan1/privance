@@ -78,7 +78,7 @@ test.describe("plan mobile: F1 + AE6", () => {
 
     // 1. Navigate to Plan via the bottom tab bar
     await page.goto("/app/");
-    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/app\/?$/, { timeout: 15_000 });
     const nav = page.getByRole("navigation", { name: "Mobile navigation" });
     await expect(nav).toBeVisible({ timeout: 15_000 });
     await waitForSynced(page);

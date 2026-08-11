@@ -8,10 +8,9 @@
  *           saved assumptions.
  *   AE2     FIRE number: spend $40k + 4% SWR shows $1,000,000.
  *
- * Rate-limit budget (3 signups per IP per minute): this file burns exactly one
- * fresh signup per project:
+ * Signup budget: this file burns exactly one fresh signup per project:
  *   finn    F1 + F2 (serial describe)
- * AE2 reuses the shared fixture user (never saves, never mutates).
+ * AE2 reuses the shared fixture user (never saves the plan).
  */
 
 import fs from "node:fs";
@@ -147,7 +146,7 @@ test.describe
 
       // Navigate to the Invest screen first so the top nav is visible, then click Plan
       await page.goto("/app/");
-      await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+      await expect(page).toHaveURL(/\/app\/?$/, { timeout: 15_000 });
       // Wait for the account to finish syncing so the plan's account-derived pot
       // is computed (otherwise the starting pot reads $0).
       await waitForSynced(page);

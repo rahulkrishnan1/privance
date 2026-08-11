@@ -1,5 +1,3 @@
-"use client";
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Account, AccountKind, InvestmentAccountSubKind } from "@privance/core";
 import { Decimal, SCALE_CENTS } from "@privance/core";

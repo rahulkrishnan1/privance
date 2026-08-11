@@ -1,8 +1,5 @@
-"use client";
-
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { Button } from "@/components";
 import { AuthErrorBar } from "@/components/auth/AuthErrorBar";
 import { useErrorShake } from "@/components/auth/use-error-shake";
@@ -23,7 +20,7 @@ type LoginBanner =
   | undefined;
 
 export default function LoginPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { login } = useAuth();
 
   const [username, setUsername] = useState("");
@@ -75,7 +72,7 @@ export default function LoginPage() {
         itemsKey,
         persistence: "memory",
       });
-      router.replace("/app/");
+      navigate("/app", { replace: true });
     } catch (e) {
       if (e instanceof ApiError) {
         if (e.status === 401 || e.status === 404) {
@@ -194,14 +191,14 @@ export default function LoginPage() {
 
       <p className="text-center font-mono text-xs tracking-[0.04em] text-faint mt-[26px]">
         <Link
-          href="/auth/signup"
+          to="/auth/signup"
           className="text-accent-dim no-underline hover:text-accent transition-colors"
         >
           Create account
         </Link>
         <span className="px-3 text-faint">/</span>
         <Link
-          href="/auth/recovery"
+          to="/auth/recovery"
           className="text-accent-dim no-underline hover:text-accent transition-colors"
         >
           Recover account

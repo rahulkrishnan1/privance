@@ -102,7 +102,7 @@ function updateRecord(decide: (current: unknown) => VaultRecord | null): Promise
  *  persistence layer is observable. The error objects here carry no key
  *  material; never called on the fail-closed decrypt path (tamper stays quiet). */
 function warnDev(op: string, err: unknown): void {
-  if (process.env.NODE_ENV !== "production") {
+  if (import.meta.env.DEV) {
     // biome-ignore lint/suspicious/noConsole: dev-only diagnostic, no secrets
     console.warn(`[session-vault] ${op} failed`, err);
   }

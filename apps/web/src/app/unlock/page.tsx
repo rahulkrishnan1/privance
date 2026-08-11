@@ -1,8 +1,6 @@
-"use client";
-
 import { deriveBiometricKek, openProtectorKey } from "@privance/core";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { Button } from "@/components";
 import { AuthBackdrop } from "@/components/auth/AuthBackdrop";
 import { AuthErrorBar } from "@/components/auth/AuthErrorBar";
@@ -35,7 +33,7 @@ type KdfParamsResponse = Awaited<ReturnType<typeof authApi.kdfParams>>;
 type UnlockBanner = "wrong" | "limit" | "net" | "generic" | "bio-purged";
 
 export default function UnlockPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { state, unlock, logout, user } = useAuth();
 
   // Holds the username after a session-expired logout so the cold scene and a
@@ -178,7 +176,7 @@ export default function UnlockPage() {
         itemsKey,
         persistence: "biometric",
       });
-      router.replace("/app/");
+      navigate("/app", { replace: true });
     } catch (e) {
       if (pkcs8 !== null) pkcs8.fill(0);
       if (e instanceof BiometricCancelledError || e instanceof BiometricFailureError) {
@@ -239,7 +237,7 @@ export default function UnlockPage() {
         persistence: "memory",
       });
       performance.mark("privance:unlock-done");
-      router.replace("/app/");
+      navigate("/app", { replace: true });
     } catch (e) {
       if (e instanceof ApiError) {
         if (e.status === 401 || e.status === 404) {
@@ -267,7 +265,7 @@ export default function UnlockPage() {
     if (userId !== null) await destroyUserStore(userId);
     await purgeEnrollment();
     await logout();
-    window.location.replace("/auth/login/");
+    window.location.replace("/auth/login");
   }
 
   return (
@@ -317,7 +315,7 @@ export default function UnlockPage() {
                 ?{" "}
                 <button
                   type="button"
-                  onClick={() => router.push("/auth/signup/")}
+                  onClick={() => navigate("/auth/signup")}
                   className="text-accent-dim no-underline hover:text-accent transition-colors cursor-pointer"
                 >
                   Create a vault

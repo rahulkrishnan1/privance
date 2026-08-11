@@ -37,7 +37,7 @@ export function effectiveKdfVersion(): KdfParamVersion {
   // NODE_ENV guard would disable reduced KDF in the very build CI tests.
   // The flag is build-time; release builds (Dockerfile, release.yml) never
   // set it, so production always gets KDF_PARAM_VERSION.
-  if (process.env.NEXT_PUBLIC_PRIVANCE_KDF_REDUCED !== "true") return KDF_PARAM_VERSION;
+  if (import.meta.env.VITE_PRIVANCE_KDF_REDUCED !== "true") return KDF_PARAM_VERSION;
   return 2;
 }
 
@@ -55,8 +55,8 @@ function initWorker(): Promise<void> {
   workerReady = new Promise<void>((resolve, reject) => {
     try {
       // Static-asset classic worker: served from /kdf/kdf-worker.js alongside
-      // the other public assets. No webpack eval in dev mode, so WebKit's strict
-      // CSP in WKWebView does not block it.
+      // the other public assets, so it needs no bundler transform and is never
+      // eval'd — WebKit's strict CSP in WKWebView does not block it.
       const w = new Worker(WORKER_URL);
 
       const onReady = (event: MessageEvent) => {

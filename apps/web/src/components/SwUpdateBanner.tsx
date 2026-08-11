@@ -1,5 +1,3 @@
-"use client";
-
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -7,7 +5,7 @@ export function SwUpdateBanner() {
   const [waiting, setWaiting] = useState<ServiceWorker | null>(null);
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== "production") return;
+    if (import.meta.env.DEV) return;
     if (!("serviceWorker" in navigator)) return;
 
     navigator.serviceWorker
@@ -16,11 +14,16 @@ export function SwUpdateBanner() {
         if (!reg) return;
 
         const trackInstalling = (sw: ServiceWorker) => {
-          sw.addEventListener("statechange", () => {
+          const onChange = () => {
             if (sw.state === "installed" && navigator.serviceWorker.controller !== null) {
               setWaiting(sw);
             }
-          });
+            // The worker's lifecycle ends here; drop the listener with it.
+            if (sw.state === "installed" || sw.state === "redundant") {
+              sw.removeEventListener("statechange", onChange);
+            }
+          };
+          sw.addEventListener("statechange", onChange);
         };
 
         if (reg.installing) trackInstalling(reg.installing);

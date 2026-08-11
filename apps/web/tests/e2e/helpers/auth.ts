@@ -119,12 +119,12 @@ export type SessionSnapshot = {
  * When the app's setDekStore is called (during login/signup crypto), the
  * exposed function fires and resolves the returned Promise with the DEK bytes.
  *
- * Why this is needed: Next.js 16 with output:"export" triggers a hard page
- * reload when router.replace("/app/") crosses layout-group boundaries (auth/ →
- * (app)/). The hard reload clears globalThis, so the DEK is gone before any
- * post-navigation page.evaluate could read it. exposeFunction survives the
- * hard reload and fires in the page context BEFORE the reload, giving us the
- * bytes we need.
+ * Why this is needed: the DEK lives only in JS memory
+ * (globalThis[Symbol.for("privance.dekStore.v1")]). Fresh pages — and any
+ * page that hard-navigates (logout, lock, auto-lock) — have no DEK in memory,
+ * so restoreSession re-injects it. exposeFunction fires synchronously in the
+ * page context the moment setDekStore runs (during login/signup crypto),
+ * giving us the raw DEK before anything can clear it.
  */
 async function installDekCapture(page: Page): Promise<() => Promise<number[]>> {
   let resolve!: (arr: number[]) => void;
@@ -168,9 +168,9 @@ async function installDekCapture(page: Page): Promise<() => Promise<number[]>> {
  * subsequent pages via restoreSession.
  *
  * Why loginAndCapture instead of plain login:
- *   Next.js 16 output:"export" crosses layout-group boundaries (auth/ → app/)
- *   via a hard page reload. That clears globalThis, destroying the in-memory
- *   DEK. We capture the DEK via page.exposeFunction before the reload fires.
+ *   login → /app is a soft client-side navigation, but the DEK capture still
+ *   needs to fire the moment setDekStore runs so restoreSession can re-inject
+ *   it into fresh pages. We capture it via page.exposeFunction.
  */
 export async function loginAndCapture(
   browser: Browser,
@@ -185,12 +185,12 @@ export async function loginAndCapture(
   await fillLoginForm(page, opts.username, opts.password, { waitForButton: true });
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  // Capture DEK bytes before the hard navigation wipes globalThis
+  // Capture DEK bytes for seeding fresh contexts (login soft-navigates, so
+  // the bytes stay in memory; the snapshot is what other tests restore from).
   const dekArray = await waitForDek();
 
-  // Wait for navigation to complete (may redirect to /auth/login/ since DEK
-  // is gone from globalThis on the new page; that's expected and fine here)
-  await page.waitForURL(/\//, { timeout: 15_000 });
+  // Login soft-navigates to /app; wait for the dashboard before closing.
+  await page.waitForURL(/\/app\/?$/, { timeout: 15_000 });
 
   const cookies = await ctx.cookies();
   await ctx.close();
@@ -239,10 +239,8 @@ export async function waitForSynced(page: Page): Promise<void> {
  * Returns the 12-word phrase so tests can use it for recovery flows.
  * Caller must use a generous test timeout (KDF runs in the browser).
  *
- * Note: after signup the hard nav to "/" clears the DEK and the app redirects
- * back to login. For tests that need to verify the dashboard after signup,
- * use loginAndCapture + restoreSession to re-authenticate after signup
- * completes.
+ * Note: signup soft-navigates to the dashboard with the DEK in memory. For
+ * fresh-context session snapshots, use loginAndCapture + restoreSession.
  */
 export async function signup(
   page: Page,
@@ -257,9 +255,8 @@ export async function signup(
   await acknowledgePhrase(page);
   await verifyPhrase(page, phrase);
 
-  // Wait for the navigation to complete. The hard reload to "/" wipes the DEK,
-  // so the app will redirect to /auth/login/. Wait for either destination.
-  await page.waitForURL(/\/(auth\/login\/)?/, { timeout: 15_000 });
+  // Signup soft-navigates to the dashboard; wait for it before returning.
+  await page.waitForURL(/\/app\/?$/, { timeout: 15_000 });
 
   return { phrase };
 }
@@ -283,7 +280,7 @@ export async function signupAndLogin(
   const phrase = await capturePhrase(signupPage);
   await acknowledgePhrase(signupPage);
   await verifyPhrase(signupPage, phrase);
-  await signupPage.waitForURL(/\//, { timeout: 15_000 });
+  await signupPage.waitForURL(/\/app\/?$/, { timeout: 15_000 });
   await signupCtx.close();
 
   // Step 2: Login to get a proper session snapshot with DEK captured
@@ -357,10 +354,10 @@ export async function verifyPhrase(page: Page, phrase: string): Promise<void> {
  * Logs in with an existing account and waits for the URL to change.
  * Argon2 derivation takes 3 to 8 s; caller must use a 60 s test timeout.
  *
- * Note: after the DEK is set and router.replace("/app/") fires, Next.js does
- * a hard navigation that clears globalThis. The resulting page at "/app/"
- * will redirect to /auth/login/ because the DEK is gone. Use loginAndCapture
- * + restoreSession when you need the dashboard to actually render.
+ * Note: after the DEK is set and navigate("/app") fires, the transition is a
+ * soft client-side navigation, so the DEK stays in memory and the dashboard
+ * renders. loginAndCapture + restoreSession are still the way to seed a
+ * fresh page/context whose DEK is not in memory.
  */
 export async function login(
   page: Page,
@@ -370,8 +367,8 @@ export async function login(
   await fillLoginForm(page, opts.username, opts.password, { waitForButton: true });
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  // Wait for navigation to complete (may go to "/" or back to "/auth/login/")
-  await page.waitForURL(/\//, { timeout: 30_000 });
+  // Login soft-navigates to /app; wait for the dashboard before returning.
+  await page.waitForURL(/\/app\/?$/, { timeout: 30_000 });
 }
 
 /**
@@ -381,12 +378,12 @@ export async function login(
  * bounce to /unlock), open the confirm dialog, and confirm.
  */
 export async function logout(page: Page): Promise<void> {
-  await clickNavLink(page, page.getByRole("link", { name: "Settings" }), "/app/settings/");
+  await clickNavLink(page, page.getByRole("link", { name: "Settings" }), /\/app\/settings\/?$/);
   await page.getByRole("button", { name: "Sign out" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible({ timeout: 5_000 });
   await dialog.getByRole("button", { name: "Sign out" }).click();
-  await expect(page).toHaveURL("/auth/login/", { timeout: 10_000 });
+  await expect(page).toHaveURL(/\/auth\/login\/?$/, { timeout: 10_000 });
 }
 
 /**

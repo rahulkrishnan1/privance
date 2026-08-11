@@ -1,5 +1,3 @@
-"use client";
-
 // Mirrors HoldingRow's cell layout so columns don't shift when data loads.
 export function SkeletonRow() {
   return (

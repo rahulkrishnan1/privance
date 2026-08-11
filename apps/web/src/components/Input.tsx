@@ -1,5 +1,3 @@
-"use client";
-
 import type { InputHTMLAttributes } from "react";
 import { forwardRef, useId } from "react";
 import { Input as InputControl } from "@/components/ui/input";

@@ -1,5 +1,3 @@
-"use client";
-
 import type { Decimal } from "@privance/core";
 import type { KeyboardEvent } from "react";
 import { ChangePill, type ChangeTone } from "@/components/ui/change-pill";

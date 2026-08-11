@@ -15,8 +15,7 @@ const RUN = Date.now().toString(36);
 
 // Uses recoveryUser (from globalSetup fixtures) which never has accounts added
 // in any E2E test, so it always shows the empty dashboard state. This avoids
-// burning a signup slot, which can be unreliable when the rate limit
-// (3 signups / 60 s / IP) is already close to the edge.
+// burning a fresh signup per run.
 test.describe("dashboard - empty state", () => {
   test("with no data shows the empty state", async ({ browser }) => {
     const { recoveryUser } = loadFixtures();
@@ -30,7 +29,7 @@ test.describe("dashboard - empty state", () => {
     await restoreSession(page, session);
 
     await page.goto("/app/");
-    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/app\/?$/, { timeout: 15_000 });
 
     // recoveryUser has no accounts → the invest empty state ("Your vault is
     // empty, and sealed.") with an "Add first account" button.
@@ -42,8 +41,8 @@ test.describe("dashboard - empty state", () => {
   });
 });
 
-// Login once in beforeAll and inject DEK + cookies in beforeEach so we only
-// burn one login attempt per test run (avoids the 5/min per-username limit).
+// Login once in beforeAll and inject DEK + cookies in beforeEach so each
+// test runs against a warm session.
 let savedSession: SessionSnapshot;
 let dataSetupDone = false;
 
@@ -61,7 +60,7 @@ async function ensureDataSetup(browser: import("@playwright/test").Browser): Pro
   await restoreSession(page, savedSession);
 
   await page.goto("/app/accounts/");
-  await expect(page).toHaveURL("/app/accounts/", { timeout: 15_000 });
+  await expect(page).toHaveURL(/\/app\/accounts\/?$/, { timeout: 15_000 });
   await expect(
     page
       .getByRole("heading", { name: /vault is empty/i })
@@ -95,7 +94,7 @@ test.describe("dashboard - with data", () => {
     await restoreSession(page, savedSession);
 
     await page.goto("/app/");
-    await expect(page).toHaveURL("/app/", { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/app\/?$/, { timeout: 15_000 });
     // OPFS resolves locally so networkidle fires too early; wait for the hero or subnav.
     await expect(
       page

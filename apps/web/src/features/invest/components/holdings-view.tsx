@@ -1,5 +1,3 @@
-"use client";
-
 import type { Decimal, HoldingId, InvestmentAccount, NetWorthBreakdown } from "@privance/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { centsToDecimal, useAccountsQuery } from "@/features/accounts/queries";

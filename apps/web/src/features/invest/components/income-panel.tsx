@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { CadenceSuffix } from "@/components";
 import { formatCurrency, formatPercent } from "@/lib/format";

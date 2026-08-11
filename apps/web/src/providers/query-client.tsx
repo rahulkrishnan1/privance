@@ -1,12 +1,10 @@
-"use client";
-
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
 import { ApiError } from "@/lib/api/client";
 
 export function QueryProvider({ children }: { children: ReactNode }) {
-  // Client created inside useState so each Next.js prerender gets its own
-  // instance rather than sharing a module-level singleton across requests.
+  // Client created inside useState (lazy initializer) so a remount gets a
+  // fresh instance rather than a module-level singleton shared across mounts.
   const [client] = useState(
     () =>
       new QueryClient({

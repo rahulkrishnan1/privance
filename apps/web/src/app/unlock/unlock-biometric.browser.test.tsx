@@ -14,13 +14,17 @@ const ceremony = vi.hoisted(() => ({
   assertPrf: vi.fn(),
 }));
 
-// Mock next/navigation so useRouter is available outside a Next.js app shell.
+// Mock react-router so useNavigate is available outside a React Router app shell.
 const mockReplace = vi.hoisted(() => vi.fn());
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: mockReplace }),
-  usePathname: () => "/unlock",
-  useSearchParams: () => new URLSearchParams(),
-}));
+vi.mock("react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router")>();
+  return {
+    ...actual,
+    useNavigate: () => mockReplace,
+    useLocation: () => ({ pathname: "/unlock" }),
+    useSearchParams: () => new URLSearchParams(),
+  };
+});
 
 // Mock the ceremony module; core crypto and biometric-store use the real impls.
 vi.mock("@/lib/crypto/webauthn-prf", () => ({
@@ -74,6 +78,7 @@ vi.mock("@/lib/storage/per-user-store", () => ({
   destroyUserStore: vi.fn(() => Promise.resolve()),
 }));
 
+import { MemoryRouter } from "react-router";
 import * as authApi from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { loadEnrollment, purgeEnrollment } from "@/lib/storage/biometric-store";
@@ -105,9 +110,11 @@ async function renderUnlockPage(opts: { userId: string; username: string }) {
   localStorage.setItem(USERNAME_KEY, opts.username);
   localStorage.setItem(USER_ID_KEY, opts.userId);
   const screen = await render(
-    <AuthProvider>
-      <UnlockPage />
-    </AuthProvider>,
+    <MemoryRouter>
+      <AuthProvider>
+        <UnlockPage />
+      </AuthProvider>
+    </MemoryRouter>,
   );
   return screen;
 }
@@ -263,7 +270,7 @@ describe("successful biometric unlock path", () => {
 
     // After success the page calls router.replace('/app/')
     await vi.waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith("/app/");
+      expect(mockReplace).toHaveBeenCalledWith("/app", { replace: true });
     });
 
     // The success path does not purge the record (biometric re-arm is skipped;

@@ -1,5 +1,3 @@
-"use client";
-
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { RoundIconButton } from "@/components";

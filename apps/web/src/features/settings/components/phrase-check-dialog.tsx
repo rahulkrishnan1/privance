@@ -1,5 +1,3 @@
-"use client";
-
 import { countRecognizedWords, validatePhrase } from "@privance/core";
 import { useState } from "react";
 import { Button } from "@/components";

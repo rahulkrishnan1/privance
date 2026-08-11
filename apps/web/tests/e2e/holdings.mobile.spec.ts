@@ -43,7 +43,7 @@ test.describe("holdings mobile", () => {
     await restoreSession(page, savedSession);
 
     await page.goto("/app/accounts/");
-    await expect(page).toHaveURL("/app/accounts/", { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/app\/accounts\/?$/, { timeout: 15_000 });
     await expect(
       page
         .getByRole("heading", { name: /vault is empty/i })
@@ -75,7 +75,7 @@ test.describe("holdings mobile", () => {
     page,
   }) => {
     await page.goto("/app/holdings/");
-    await expect(page).toHaveURL("/app/holdings/", { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/app\/holdings\/?$/, { timeout: 10_000 });
     await waitForSynced(page);
 
     const ticker = `MOB${RUN.slice(-4).toUpperCase()}`;

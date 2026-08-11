@@ -1,5 +1,3 @@
-"use client";
-
 import type { AllocationSlice } from "@privance/core";
 import { formatCurrencyWhole, formatPercent } from "@/lib/format";
 

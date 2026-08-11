@@ -20,7 +20,7 @@ const INVESTMENT_ACCOUNT_NAME = `Holdings-Brokerage-${RUN}`;
 
 async function goToHoldings(page: import("@playwright/test").Page): Promise<void> {
   await page.goto("/app/holdings/");
-  await expect(page).toHaveURL("/app/holdings/", { timeout: 10_000 });
+  await expect(page).toHaveURL(/\/app\/holdings\/?$/, { timeout: 10_000 });
   // Wait until the invest screen has finished loading: either the holdings table
   // (populated) or the empty-state heading.
   await expect(
@@ -53,7 +53,7 @@ test.describe("holdings", () => {
       await restoreSession(page, savedSession);
 
       await page.goto("/app/accounts/");
-      await expect(page).toHaveURL("/app/accounts/", { timeout: 15_000 });
+      await expect(page).toHaveURL(/\/app\/accounts\/?$/, { timeout: 15_000 });
       await expect(
         page
           .getByRole("heading", { name: /vault is empty/i })

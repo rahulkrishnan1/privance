@@ -26,15 +26,17 @@
 		Referrer-Policy strict-origin-when-cross-origin
 		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
 		X-Frame-Options DENY
-		# script-src 'unsafe-inline': the Next.js App Router static export emits
-		#   inline self.__next_f.push(...) RSC hydration scripts and a dark-mode
-		#   detection script with no nonce attributes; nonces require SSR.
+		# script-src 'unsafe-inline': index.html inlines the dark-mode detection
+		#   script (no nonce; nonces require SSR). App code ships as module
+		#   scripts from /assets/.
 		# 'wasm-unsafe-eval': Argon2id (hash-wasm) and SQLite (sqlite-wasm) load
 		#   WebAssembly; without this Chromium blocks every WebAssembly.instantiate
 		#   and the client crypto path fails. This is the narrowest CSP knob that
 		#   re-enables WASM and does NOT permit `eval`.
-		# worker-src 'self' blob:: SQLite worker is created from a blob URL.
-		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+		# worker-src 'self' covers all workers: SQLite (/sqlite/privance-worker.mjs),
+		# KDF (/kdf/kdf-worker.js) and sim (/sim/sim-worker.mjs) are module/classic
+		# workers from static URLs — none are blob-created.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
 	}
 
 	# Preserve the /api prefix: Hono feature routers are mounted at /api/auth,
@@ -43,8 +45,8 @@
 		reverse_proxy server:3000
 	}
 
-	# Legacy deep-link compatibility: the four (app) segments moved from
-	# /, /accounts, /holdings, /settings to /app/* in the route restructure.
+	# Legacy deep-link compatibility: the three (app) segments moved from
+	# /accounts, /holdings, /settings to /app/* in the route restructure.
 	# Without these, existing bookmarks and pre-rename PWA start_urls 404.
 	redir /accounts /app/accounts/ permanent
 	redir /accounts/ /app/accounts/ permanent
@@ -53,11 +55,11 @@
 	redir /settings /app/settings/ permanent
 	redir /settings/ /app/settings/ permanent
 
-	# try_files resolves /app/accounts/ to /srv/web/app/accounts/index.html
-	# for the Next.js App Router static export.
+	# try_files resolves the Vite SPA: every route serves the single root index.html.
+	# The file_server then delivers the matched file (index.html or an actual asset).
 	handle {
 		root * /srv/web
-		try_files {path} {path}/index.html =404
+		try_files {path} /index.html =404
 		file_server
 	}
 

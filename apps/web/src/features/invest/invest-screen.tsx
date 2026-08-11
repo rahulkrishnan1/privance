@@ -1,9 +1,7 @@
-"use client";
-
 import { Decimal, type HoldingId, SCALE_CENTS } from "@privance/core";
 import { Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import { AccountForm, percentToFraction, trimToUndefined } from "@/features/accounts";
 import { useCreateAccount } from "@/features/accounts/mutations";
 import { useAccountsQuery } from "@/features/accounts/queries";
@@ -27,7 +25,7 @@ type InvestScreenProps = {
 const MAX_WIDTH = "max-w-[1120px] mx-auto px-7 max-[760px]:px-4";
 
 export function InvestScreen({ view }: InvestScreenProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const dashData = useDashboardData();
   const accountsState = useAccountsQuery();
   const [addAccountOpen, setAddAccountOpen] = useState(false);
@@ -132,7 +130,7 @@ export function InvestScreen({ view }: InvestScreenProps) {
                   ? () => setAddHoldingSignal((n) => n + 1)
                   : () => {
                       sessionStorage.setItem(OPEN_ADD_HOLDING_KEY, "1");
-                      router.push("/app/holdings/");
+                      navigate("/app/holdings");
                     }
             }
             addLabel={view === "accounts" ? "account" : "holding"}

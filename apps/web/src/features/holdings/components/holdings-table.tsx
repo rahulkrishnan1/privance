@@ -1,5 +1,3 @@
-"use client";
-
 import type { Decimal } from "@privance/core";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { ReactNode } from "react";

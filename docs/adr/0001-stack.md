@@ -20,14 +20,14 @@ Constraints that shaped the stack:
 
 | Layer    | Choice |
 | -------- | ------ |
-| Server   | Bun 1.3 + Hono 4.12 + postgres.js + Drizzle ORM + pino, PostgreSQL 17. Routes are raw Hono with hand-rolled validators. |
+| Server   | Bun 1.3 + Hono 4.13 + postgres.js + Drizzle ORM + pino, PostgreSQL 17. Routes are raw Hono with hand-rolled validators. |
 | Shared   | TypeScript-only `packages/core` (crypto, decimal, domain, sync, storage). |
-| Client   | Next.js 16 (App Router, static export) + React 19 + Tailwind 4 + Recharts. |
+| Client   | Vite 8 + React Router v8 (library mode, static SPA) + React 19 + Tailwind 4 + Recharts. |
 | Crypto   | `@noble/hashes` + `@noble/ciphers` + `@scure/bip39` + `hash-wasm`. |
 | Storage  | SQLite via `@sqlite.org/sqlite-wasm` in a dedicated Web Worker, OPFS SAH Pool VFS where available, in-memory fallback otherwise. |
 | Decimals | `BigInt` minor-units + a thin `Decimal` wrapper in `packages/core`. |
 | Monorepo | pnpm 11 workspaces (`nodeLinker: hoisted`) + Turborepo. |
-| Tooling  | Biome 2.4 (lint + format), TypeScript strict + `noUncheckedIndexedAccess` (TS 6 in `core`, `server`, and root; TS 5 in `apps/web`, pending Next.js support), Vitest + fast-check + Playwright. |
+| Tooling  | Biome (lint + format), TypeScript strict + `noUncheckedIndexedAccess` (TS 7 in all workspaces), Vitest + fast-check + Playwright. |
 
 ## Consequences
 
@@ -36,7 +36,7 @@ Constraints that shaped the stack:
 - One language across server, shared, and client. Domain types, crypto primitives, and decimal math are written once.
 - Strong types via TypeScript strict + Drizzle + Zod end-to-end.
 - Single test-tooling surface (Vitest + bun test, both first-class).
-- Fast iteration: Bun's startup + Vitest's runner + Next.js fast refresh.
+- Fast iteration: Bun's startup + Vitest's runner + Vite HMR.
 
 **Harder:**
 

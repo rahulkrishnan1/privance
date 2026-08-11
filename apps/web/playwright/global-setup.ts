@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { chromium, expect } from "@playwright/test";
+import { chromium } from "@playwright/test";
 import postgres from "postgres";
+import { signup } from "../tests/e2e/helpers/auth";
 import { BASE_URL, wasWebServerPreexisting } from "./ports";
 
 /**
@@ -73,53 +74,8 @@ async function signupUser(
   const ctx = await browser.newContext({ baseURL: BASE_URL });
   const page = await ctx.newPage();
 
-  await page.goto("/auth/signup/");
-  // Retry until values stick and the Continue button enables.
-  await page.getByLabel("Username").fill(username);
-  await expect(async () => {
-    if ((await page.getByLabel("Username").inputValue()) !== username) {
-      await page.getByLabel("Username").fill(username);
-    }
-    if ((await page.getByLabel("Master password", { exact: true }).inputValue()) !== password) {
-      await page.getByLabel("Master password", { exact: true }).fill(password);
-      await page.getByLabel("Confirm master password").fill(password);
-    }
-    await expect(page.getByRole("button", { name: "Continue" })).toBeEnabled({ timeout: 1_000 });
-  }).toPass({ timeout: 20_000 });
-  await page.getByRole("button", { name: "Continue" }).click();
-
-  // Wait for phrase screen (argon2 × 2 = up to 15 s).
-  // New UI heading: "Your recovery phrase." (fieldset with legend "Recovery phrase words")
-  const fieldset = page.locator("fieldset").filter({
-    has: page.locator("legend", { hasText: "Recovery phrase words" }),
-  });
-  await fieldset.waitFor({ state: "visible", timeout: 45_000 });
-
-  // Capture words from the 3×4 grid.
-  // Each cell: <div class="...bg-panel...flex..."><span>{num}</span>{word}</div>
-  // The grid div is the direct child of the fieldset; word cells are its direct children.
-  const gridDiv = fieldset.locator("div").first();
-  const wordCells = gridDiv.locator("> div");
-  await wordCells.first().waitFor({ state: "visible", timeout: 10_000 });
-  const count = await wordCells.count();
-  const words: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const cell = wordCells.nth(i);
-    // innerText = "<num>\n<word>" or similar; strip the leading number.
-    const raw = (await cell.innerText()).trim();
-    words.push(raw.replace(/^\d+\s*/, "").trim());
-  }
-  const phrase = words.join(" ");
-
-  // Acknowledge, new UI: different checkbox label + "I have it. Continue" button
-  const newCheckbox = page.getByLabel("I wrote the phrase down, on paper, somewhere safe.");
-  const oldCheckbox = page.getByLabel("I have written down my recovery phrase in a safe place.");
-  const checkbox = (await newCheckbox.count()) > 0 ? newCheckbox : oldCheckbox;
-  await checkbox.check();
-  const newBtn = page.getByRole("button", { name: "I have it. Continue" });
-  const oldBtn = page.getByRole("button", { name: "Continue" });
-  const btn = (await newBtn.count()) > 0 ? newBtn : oldBtn;
-  await btn.click();
+  // Shared helper covers fill → phrase capture → acknowledge → verify.
+  const { phrase } = await signup(page, { username, password });
 
   await ctx.close();
   return { phrase };
@@ -142,7 +98,7 @@ export default async function globalSetup(): Promise<void> {
       if (process.env.CI !== "true" && (await wasWebServerPreexisting())) {
         // biome-ignore lint/suspicious/noConsole: reuse-risk warning during Playwright global setup
         console.warn(
-          "[global-setup] Reusing a server already on :8081: it may lack NEXT_PUBLIC_PRIVANCE_KDF_REDUCED, disabling reduced KDF (v2).",
+          "[global-setup] Reusing a server already on :8081: it may lack VITE_PRIVANCE_KDF_REDUCED, disabling reduced KDF (v2).",
         );
       }
       // biome-ignore lint/suspicious/noConsole: progress output during Playwright global setup

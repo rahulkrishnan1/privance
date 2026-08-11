@@ -1,5 +1,3 @@
-"use client";
-
 import type { Decimal } from "@privance/core";
 import type { YearBand } from "@privance/core/projection";
 import { useEffect, useMemo, useRef } from "react";

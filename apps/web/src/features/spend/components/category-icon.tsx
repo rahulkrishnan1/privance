@@ -1,5 +1,3 @@
-"use client";
-
 import type { SpendCategory } from "@privance/core";
 
 type IconProps = {

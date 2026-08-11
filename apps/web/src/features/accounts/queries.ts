@@ -1,5 +1,3 @@
-"use client";
-
 import type { Account, AccountId, UserId } from "@privance/core";
 import { AccountPayloadSchema, asId, asIsoDateTime, KIND_ACCOUNT } from "@privance/core";
 import { useCallback, useEffect, useState } from "react";

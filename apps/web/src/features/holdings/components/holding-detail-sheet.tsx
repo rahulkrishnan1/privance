@@ -1,5 +1,3 @@
-"use client";
-
 import type { Decimal } from "@privance/core";
 import { useState } from "react";
 import { Button, CloseButton, ConfirmDeleteButton } from "@/components";

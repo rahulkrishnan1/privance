@@ -1,5 +1,3 @@
-"use client";
-
 import { HoldingGroupPayloadSchema, HoldingPayloadSchema } from "@privance/core";
 import { useEffect, useMemo, useState } from "react";
 import { useSymbolProfilesQuery } from "@/lib/queries/profiles";

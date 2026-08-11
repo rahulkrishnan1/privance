@@ -9,12 +9,12 @@ Operating manual for code work in this repo. Architecture lives in `ARCHITECTURE
 ## Stack
 
 - Monorepo: pnpm workspaces + Turborepo
-- Server: Bun 1.3 + Hono 4.12 + postgres.js + Drizzle + pino, PG 17
+- Server: Bun 1.3 + Hono 4.13 + postgres.js + Drizzle + pino, PG 17
 - Shared: TypeScript `packages/core`, crypto (@noble/* + hash-wasm + @scure/bip39), decimal math, domain types, sync client, storage adapter
-- Client (`apps/web`): Next.js 16 (App Router, static export) + React 19 + Tailwind 4 + Base UI (unstyled primitives) + TanStack Query 5 + Zod 4 + Recharts.
+- Client (`apps/web`): Vite 8 + React Router v8 (library mode, static SPA) + React 19 + Tailwind 4 + Base UI (unstyled primitives) + TanStack Query 5 + Zod 4 + Recharts.
 - Storage on the client: `@sqlite.org/sqlite-wasm` in a Web Worker. Uses the SAH Pool VFS (OPFS-backed) where available, falls back to an in-memory DB on OPFS-disabled hosts (Safari Private Browsing, restricted WKWebView).
 - Tests: Vitest + fast-check (core/web logic), Vitest Browser Mode + `vitest-browser-react` (web component rendering in real Chromium), `bun test` (server), Playwright (E2E: chromium, firefox, webkit, plus iPhone and Pixel 5 mobile projects; CI runs all five projects via a reduced-KDF v2 that keeps WebKit's Argon2id auth flows within the time budget)
-- Lint/format: Biome 2.4 (replaces ESLint + Prettier)
+- Lint/format: Biome (replaces ESLint + Prettier)
 
 Exact-pinned versions in the lockfile, never `^` or `~` (Shai-Hulud lesson).
 
@@ -146,7 +146,7 @@ Backward-incompatible changes follow **expand → backfill → contract** (three
 1. `pnpm biome check` + `tsc --noEmit` (every workspace)
 2. `packages/core`: `vitest run --coverage` ≥ 90%
 3. `server`: `bun test` ≥ 85% + `bun audit` clean
-4. `apps/web`: `vitest run` + `next build` + `pnpm audit` clean
+4. `apps/web`: `vitest run` + `vite build` + `pnpm audit` clean
 5. E2E: Playwright on chromium + firefox + webkit + mobile against real backend + real Postgres
 6. Manual: signup → recovery → login cycle in a real browser for any auth-touching change
 

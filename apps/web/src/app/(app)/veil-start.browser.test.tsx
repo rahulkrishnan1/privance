@@ -12,11 +12,15 @@ import { render } from "vitest-browser-react";
 import "@/app/globals.css";
 
 const mockReplace = vi.hoisted(() => vi.fn());
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: mockReplace }),
-  usePathname: () => "/app",
-  useSearchParams: () => new URLSearchParams(),
-}));
+vi.mock("react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router")>();
+  return {
+    ...actual,
+    useNavigate: () => mockReplace,
+    useLocation: () => ({ pathname: "/app", search: "", hash: "", state: null, key: "default" }),
+    useSearchParams: () => [new URLSearchParams(), vi.fn()],
+  };
+});
 
 vi.mock("@/providers/auth-context", () => ({
   useAuth: () => ({ state: "unlocked" as const, lock: vi.fn() }),
@@ -28,6 +32,7 @@ vi.mock("@/features/invest/components/refresh-prices-button", () => ({
   RefreshPricesButton: () => null,
 }));
 
+import { MemoryRouter } from "react-router";
 import AppLayout from "./layout";
 
 const VEIL_KEY = "privance.veil.v1";
@@ -54,7 +59,11 @@ describe("app shell figures veil", () => {
   it("starts veiled and blurs figures when the persisted toggle is on", async () => {
     localStorage.setItem(VEIL_KEY, "1");
 
-    const screen = await render(<AppLayout>{figure}</AppLayout>);
+    const screen = await render(
+      <MemoryRouter>
+        <AppLayout>{figure}</AppLayout>
+      </MemoryRouter>,
+    );
 
     const toggle = screen.getByRole("button", { name: "Reveal figures" });
     await expect.element(toggle).toBeVisible();
@@ -66,7 +75,11 @@ describe("app shell figures veil", () => {
   });
 
   it("starts revealed and leaves figures sharp when the toggle is unset", async () => {
-    const screen = await render(<AppLayout>{figure}</AppLayout>);
+    const screen = await render(
+      <MemoryRouter>
+        <AppLayout>{figure}</AppLayout>
+      </MemoryRouter>,
+    );
 
     const toggle = screen.getByRole("button", { name: "Veil figures" });
     await expect.element(toggle).toBeVisible();
@@ -78,7 +91,11 @@ describe("app shell figures veil", () => {
   });
 
   it("blurs figures the moment the user veils and persists the choice", async () => {
-    const screen = await render(<AppLayout>{figure}</AppLayout>);
+    const screen = await render(
+      <MemoryRouter>
+        <AppLayout>{figure}</AppLayout>
+      </MemoryRouter>,
+    );
 
     const fig = screen.container.querySelector("[data-testid='figure']");
     if (fig === null) throw new Error("figure not rendered");

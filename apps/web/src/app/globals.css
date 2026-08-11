@@ -6,6 +6,12 @@
 :root {
   --background: #07080a;
   --foreground: #f2f4f5;
+
+  /* Font family CSS variables — loaded via @fontsource in main.tsx; defined
+     here so the @theme block below picks them up. */
+  --font-schibsted: "Schibsted Grotesk", sans-serif;
+  --font-spline-mono: "Spline Sans Mono", monospace;
+  --font-instrument-serif: "Instrument Serif", serif;
 }
 
 @theme inline {

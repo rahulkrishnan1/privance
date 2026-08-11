@@ -1,5 +1,3 @@
-"use client";
-
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 
 // Below this, a viewport inset is browser-chrome jitter (e.g. a collapsing

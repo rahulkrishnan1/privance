@@ -1,5 +1,3 @@
-"use client";
-
 import type { Plan, PlanId, UserId } from "@privance/core";
 import { asId, asIsoDateTime, KIND_PLAN, PLAN_OBJECT_ID, PlanPayloadSchema } from "@privance/core";
 import { useCallback, useEffect, useState } from "react";

@@ -203,7 +203,7 @@ curl -sI https://<your-domain>/ | grep -iE '^(strict-transport|x-content-type|re
 [ "$(curl -sI https://<your-domain>/api/health | grep -ci '^strict-transport-security:')" = "1" ] && echo "HSTS count: 1 (PASS)" || echo "HSTS count: unexpected (FAIL)"
 ```
 
-CSP includes `'unsafe-inline'` in `script-src` because the Next.js static export emits inline RSC hydration scripts; nonces require SSR.
+CSP includes `'unsafe-inline'` in `script-src` because the Vite SPA inlines the dark-mode detection script in `index.html`; nonces require SSR.
 
 **SSL Labs scan:**
 

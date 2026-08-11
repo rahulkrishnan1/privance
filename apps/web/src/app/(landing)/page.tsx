@@ -1,12 +1,7 @@
-"use client";
-
-import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { Button, Logo } from "@/components/index";
 import { useAuth } from "@/providers/auth-context";
-
-// useLayoutEffect on the server logs a warning; fall back to useEffect there.
-const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 const NAV_LINKS = [
   { label: "Tenets", href: "#tenets" },
@@ -27,7 +22,7 @@ function NavBar() {
     <header className="sticky top-0 z-30 bg-vault/86 backdrop-blur-[12px] border-b border-line-soft [padding-top:env(safe-area-inset-top)]">
       <div className="max-w-[1160px] mx-auto px-8 h-[66px] flex items-center justify-between">
         <Link
-          href="/"
+          to="/"
           onClick={(e) => {
             e.preventDefault();
             window.scrollTo({ top: 0, behavior: "smooth" });
@@ -51,7 +46,7 @@ function NavBar() {
           ))}
         </nav>
 
-        <Button variant="primary" render={<Link href="/auth/login" />}>
+        <Button variant="primary" render={<Link to="/auth/login" />}>
           Sign in
         </Button>
       </div>
@@ -164,7 +159,7 @@ function Hero() {
           className="reveal-up flex gap-[14px] mt-[30px] justify-center flex-wrap"
           style={{ animationDelay: "0.34s" }}
         >
-          <Button variant="primary" render={<Link href="/auth/signup/" />}>
+          <Button variant="primary" render={<Link to="/auth/signup" />}>
             Have an invite?
           </Button>
           <Button variant="secondary" render={<a href="#deploy" />}>
@@ -589,7 +584,7 @@ function Deploy() {
               Sign up and go. We run the servers and keep the backups, and all we ever hold is
               ciphertext. Zero knowledge means trusting the math, not us.
             </p>
-            <Button variant="primary" className="mt-[26px]" render={<Link href="/auth/signup/" />}>
+            <Button variant="primary" className="mt-[26px]" render={<Link to="/auth/signup" />}>
               Have an invite?
             </Button>
           </div>
@@ -820,7 +815,7 @@ function LandingFooter() {
           Keep it <em className="text-accent">private.</em>
         </p>
         <div className="flex justify-center mt-7">
-          <Button variant="primary" render={<Link href="/auth/signup/" />}>
+          <Button variant="primary" render={<Link to="/auth/signup" />}>
             Start with Privance
           </Button>
         </div>
@@ -859,16 +854,19 @@ function LandingFooter() {
 export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
   const { state } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  useIsoLayoutEffect(() => {
+  // Soft nav: no DEK exists before auth, so navigate is safe here (matches
+  // AppLayout's boot-only redirect; lock/logout do their own hard reload).
+  useLayoutEffect(() => {
     if (!mounted) return;
-    if (state === "unlocked") window.location.replace("/app/");
-    else if (state === "locked") window.location.replace("/unlock/");
-  }, [mounted, state]);
+    if (state === "unlocked") navigate("/app", { replace: true });
+    else if (state === "locked") navigate("/unlock", { replace: true });
+  }, [mounted, state, navigate]);
 
   if (!(mounted && state === "unauthenticated")) return null;
 

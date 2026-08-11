@@ -1,13 +1,11 @@
-"use client";
-
 import { useEffect, useState } from "react";
 
 /**
- * False during SSR and the first client render, true once the mount effect has
- * run (i.e. after React has hydrated). Gate interactive controls on this so a
- * tap on a not-yet-hydrated control is never a silent no-op, which is the
- * documented failure mode on slow cold loads (notably WebKit and the installed
- * PWA, where the static HTML paints well before hydration attaches handlers).
+ * False on the first client render, true once the mount effect has run. The
+ * app is a pure SPA (no SSR), so this guards the one-frame window where the
+ * shell has rendered but effects have not flushed — gating interactive
+ * controls on it avoids a silent no-op tap on a not-yet-wired control on
+ * slow cold loads (notably WebKit and the installed PWA).
  */
 export function useHydrated(): boolean {
   const [hydrated, setHydrated] = useState(false);

@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * Client-only advisory strength meter. The score is a local heuristic; it is
  * never sent to the server.

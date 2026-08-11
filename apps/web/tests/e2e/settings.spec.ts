@@ -81,7 +81,7 @@ test.describe("settings - change password", () => {
     const verifyPage = await verifyCtx.newPage();
     await restoreSession(verifyPage, newSession);
     await verifyPage.goto("/app/");
-    await expect(verifyPage).toHaveURL("/app/", { timeout: 15_000 });
+    await expect(verifyPage).toHaveURL(/\/app\/?$/, { timeout: 15_000 });
     await expect(verifyPage.getByRole("link", { name: "Invest" }).first()).toBeVisible({
       timeout: 10_000,
     });

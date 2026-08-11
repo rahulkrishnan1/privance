@@ -2,10 +2,9 @@ import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 import { BASE_URL, SERVER_PORT, SERVER_URL, WEB_PORT } from "./playwright/ports";
 
-// Read env from server/.env for spawning the bun server
+// Env for spawning the bun server (process.env overrides, else local defaults)
 const serverEnv: Record<string, string> = {
   DATABASE_URL: process.env.DATABASE_URL ?? "postgres://privance:privance@localhost:5432/privance",
-  PORT: "3000",
   NODE_ENV: "test",
   ENUMERATION_SECRET:
     process.env.ENUMERATION_SECRET ??
@@ -136,20 +135,20 @@ export default defineConfig({
     },
     {
       // Production static export served by sirv (matches the Docker image).
-      // Builds first — NEXT_PUBLIC_* is baked into the bundle at build time —
+      // Builds first — VITE_* is baked into the bundle at build time —
       // then serves ./out on WEB_PORT. --single maps non-trailing-slash deep
       // links to index.html.
       //
       // WARNING (reuseExistingServer): outside CI this reuses whatever is already
       // on :8081. A stale/foreign build, or a developer's own `pnpm dev` started
-      // without NEXT_PUBLIC_PRIVANCE_KDF_REDUCED, would defeat the reduced-KDF
+      // without VITE_PRIVANCE_KDF_REDUCED, would defeat the reduced-KDF
       // (v2) params this build enables, so signup/login derivations are full-cost
       // and slow. CI sets CI=true so reuse never happens there.
-      command: `NEXT_PUBLIC_SERVER_URL=${SERVER_URL} NEXT_PUBLIC_PRIVANCE_KDF_REDUCED=true pnpm -F @privance/web build && pnpm exec sirv out --port ${WEB_PORT} --single --quiet`,
+      command: `VITE_SERVER_URL=${SERVER_URL} VITE_PRIVANCE_KDF_REDUCED=true pnpm -F @privance/web build && pnpm exec sirv out --port ${WEB_PORT} --single --quiet`,
       cwd: __dirname,
       url: BASE_URL,
       reuseExistingServer: !process.env.CI,
-      // Cold `next build --webpack` (plus prebuild sim worker) can exceed 120s.
+      // Cold `vite build` (plus prebuild sim worker) can exceed 120s.
       timeout: 180_000,
     },
   ],
