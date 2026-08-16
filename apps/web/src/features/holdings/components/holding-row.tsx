@@ -1,7 +1,9 @@
 import type { Decimal } from "@privance/core";
 import type { KeyboardEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ChangePill, type ChangeTone } from "@/components/ui/change-pill";
 import { formatCurrency, formatTrendCurrency, formatTrendPercent } from "@/lib/format";
+import { usePrefersReducedMotion } from "@/lib/use-media-query";
 import {
   computeAvgCost,
   computeEffectivePrice,
@@ -24,6 +26,9 @@ type HoldingRowProps = {
   dayChangeCents: Decimal | null;
   /** Called when the row is clicked to open the detail sheet. */
   onRowClick: (holding: LocalHolding) => void;
+  /** When true, the row flashes a background accent pulse for ~2s,
+   *  then clears itself via animationend. Inert under reduced-motion. */
+  highlight?: boolean;
 };
 
 function computeGain(
@@ -51,7 +56,42 @@ function formatPrice(price: Decimal): string {
   });
 }
 
-export function HoldingRow({ holding, prices, dayChangeCents, onRowClick }: HoldingRowProps) {
+export function HoldingRow({
+  holding,
+  prices,
+  dayChangeCents,
+  onRowClick,
+  highlight = false,
+}: HoldingRowProps) {
+  const [highlightActive, setHighlightActive] = useState(false);
+
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  // Activate the flash on mount when deep-linked via a top-holding click.
+  // Guarded against reduced-motion so the row never gets stranded in a
+  // half-animated state.
+  useEffect(() => {
+    if (!highlight) return;
+    if (prefersReducedMotion !== false) return;
+    setHighlightActive(true);
+  }, [highlight, prefersReducedMotion]);
+
+  const clearHighlight = useCallback(() => setHighlightActive(false), []);
+
+  const handleAnimationEnd = (e: React.AnimationEvent<HTMLTableRowElement>) => {
+    // Only clear on the row-flash animation; other animations (future
+    // entrance effects) must not wipe the highlight prematurely.
+    if (e.animationName === "row-flash") {
+      clearHighlight();
+    }
+  };
+
+  // If reduced-motion is toggled on mid-flash, CSS animation:none cancels
+  // the animation (animationcancel, not animationend) — clear so
+  // highlightActive isn't stranded.
+  const handleAnimationCancel = () => {
+    clearHighlight();
+  };
   const priceTicker = holding.proxyTicker ?? holding.ticker;
   const priceEntry = prices.get(priceTicker);
 
@@ -115,9 +155,13 @@ export function HoldingRow({ holding, prices, dayChangeCents, onRowClick }: Hold
     // biome-ignore lint/a11y/useSemanticElements: <tr> must stay for table layout; role=button adds AT announcement for the interactive row
     <tr
       role="button"
-      className="hover:bg-white/[0.015] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
+      className="pointer-fine:hover:bg-panel-2 active:bg-panel-2 cursor-pointer transition-[background-color,opacity] duration-100 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
       onClick={handleClick}
       onKeyDown={onRowKeyDown}
+      onAnimationEnd={handleAnimationEnd}
+      // @ts-expect-error onAnimationCancel is a standard DOM event; @types/react 19.2.18 omits it
+      onAnimationCancel={handleAnimationCancel}
+      {...(highlightActive ? { "data-highlight": "true" } : {})}
       tabIndex={0}
       aria-label={`${holding.ticker}, open holding details`}
     >

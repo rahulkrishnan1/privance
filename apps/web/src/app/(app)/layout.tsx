@@ -1,6 +1,6 @@
 import type { ReactNode, SVGProps } from "react";
-import { useCallback, useEffect, useState } from "react";
-import { Link, Outlet, useLocation, useNavigate } from "react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, Outlet, useLocation, useNavigate, useNavigationType } from "react-router";
 import { Logo, RoundIconButton } from "@/components/index";
 import { SyncStatus } from "@/components/SyncStatus";
 import { RefreshPricesButton } from "@/features/invest/components/refresh-prices-button";
@@ -111,7 +111,10 @@ function TopBar({
 
   return (
     <header className="sticky top-0 z-20 border-b border-line-soft bg-[color-mix(in_srgb,var(--color-vault)_88%,transparent)] backdrop-blur-[12px] [padding-top:env(safe-area-inset-top)]">
-      <div className="mx-auto flex h-[62px] max-w-[1120px] items-center justify-between px-7 max-[760px]:h-14">
+      <div
+        style={{ viewTransitionName: "top-bar" }}
+        className="mx-auto flex h-[62px] max-w-[1120px] items-center justify-between px-7 max-[760px]:h-14"
+      >
         <Link to="/app" className="flex items-center gap-[9px] text-cream">
           <Logo size={23} className="text-cream" />
           <span className="font-serif text-2xl">Privance</span>
@@ -127,6 +130,7 @@ function TopBar({
               <Link
                 key={href}
                 to={href}
+                viewTransition
                 aria-current={active ? "page" : undefined}
                 className={[
                   "rounded-full px-[18px] py-2 font-mono text-xs uppercase tracking-button transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
@@ -186,23 +190,26 @@ function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-30 hidden border-t border-line bg-[color-mix(in_srgb,var(--color-vault)_90%,transparent)] px-2.5 backdrop-blur-[14px] max-[760px]:flex [padding-bottom:max(0.5rem,env(safe-area-inset-bottom))]"
       aria-label="Mobile navigation"
     >
-      {NAV_ITEMS.map(({ label, href, Icon, match }) => {
-        const active = match(location.pathname);
-        return (
-          <Link
-            key={href}
-            to={href}
-            aria-current={active ? "page" : undefined}
-            className={[
-              "flex flex-1 flex-col items-center gap-1 py-1.5 font-mono text-xs uppercase tracking-button focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent",
-              active ? "text-accent" : "text-faint",
-            ].join(" ")}
-          >
-            <Icon className="h-[19px] w-[19px]" aria-hidden="true" />
-            {label}
-          </Link>
-        );
-      })}
+      <div className="flex w-full" style={{ viewTransitionName: "bottom-nav" }}>
+        {NAV_ITEMS.map(({ label, href, Icon, match }) => {
+          const active = match(location.pathname);
+          return (
+            <Link
+              key={href}
+              to={href}
+              viewTransition
+              aria-current={active ? "page" : undefined}
+              className={[
+                "flex flex-1 flex-col items-center gap-1 py-1.5 font-mono text-xs uppercase tracking-button focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent",
+                active ? "text-accent" : "text-faint",
+              ].join(" ")}
+            >
+              <Icon className="h-[19px] w-[19px]" aria-hidden="true" />
+              {label}
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }
@@ -212,12 +219,32 @@ function BottomNav() {
 export default function AppLayout({ children }: { children?: ReactNode }) {
   const { state, lock } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const navigationType = useNavigationType();
   const hydrated = useHydrated();
   const [veiled, setVeiled] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+  const previousPathnameRef = useRef(pathname);
 
   useEffect(() => {
     setVeiled(readVeil());
   }, []);
+
+  useEffect(() => {
+    const pathnameChanged = previousPathnameRef.current !== pathname;
+    previousPathnameRef.current = pathname;
+    if (!pathnameChanged || navigationType === "POP") return;
+
+    const { activeElement } = document;
+    const skipFocus =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      activeElement instanceof HTMLSelectElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+    if (!skipFocus) {
+      mainRef.current?.focus();
+    }
+  }, [pathname, navigationType]);
 
   const toggleVeil = useCallback(() => {
     setVeiled((v) => {
@@ -243,7 +270,11 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
     <div className={`dark min-h-svh bg-vault text-cream${veiled ? " veil-on" : ""}`}>
       <TopBar veiled={veiled} onToggleVeil={toggleVeil} onLock={lock} />
       <SyncStatus />
-      <main className="[padding-bottom:calc(4rem+env(safe-area-inset-bottom))] min-[760px]:pb-4">
+      <main
+        ref={mainRef}
+        tabIndex={-1}
+        className="outline-none [padding-bottom:calc(4rem+env(safe-area-inset-bottom))] min-[760px]:pb-4"
+      >
         {children ?? <Outlet />}
       </main>
       <BottomNav />

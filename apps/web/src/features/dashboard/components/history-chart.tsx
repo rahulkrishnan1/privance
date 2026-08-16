@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -11,6 +11,7 @@ import {
 import { formatYAxisTick, niceCeil } from "@/lib/chart";
 import { useChartColors } from "@/lib/chart-colors";
 import { formatDate } from "@/lib/format";
+import { usePrefersReducedMotion } from "@/lib/use-media-query";
 import type { ChartRange, HistoryPoint } from "../types";
 import { ChartTooltip } from "./chart-tooltip";
 import { RangeSelector } from "./range-selector";
@@ -70,18 +71,6 @@ export function computeYDomain(values: number[]): [number, number] {
   const half = Math.max((max - min) / 2, Math.abs(mid) * 0.015, 1) * 1.3;
   const lower = min >= 0 ? Math.max(0, mid - half) : mid - half;
   return [lower, niceCeil(mid + half)];
-}
-
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(mq.matches);
-    const onChange = () => setReduced(mq.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-  return reduced;
 }
 
 /**
@@ -157,8 +146,8 @@ export function HistoryChart({ points, className }: HistoryChartProps) {
                 fill="url(#nwHistoryFill)"
                 dot={false}
                 activeDot={{ r: 4, fill: colors.line, stroke: "none" }}
-                isAnimationActive={!reducedMotion}
-                animationDuration={1400}
+                isAnimationActive={reducedMotion === false}
+                animationDuration={280}
                 connectNulls={false}
               />
             </AreaChart>

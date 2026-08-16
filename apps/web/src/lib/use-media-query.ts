@@ -18,3 +18,18 @@ export function useMediaQuery(query: string): boolean {
 
   return matches;
 }
+
+/** Returns null until the browser reports the user's reduced-motion preference. */
+export function usePrefersReducedMotion(): boolean | null {
+  const [matches, setMatches] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setMatches(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  return matches;
+}

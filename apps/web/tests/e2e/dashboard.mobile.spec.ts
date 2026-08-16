@@ -106,9 +106,10 @@ test.describe("dashboard mobile", () => {
       timeout: SAVE_TIMEOUT,
     });
 
-    // The history range selector is reachable and switchable on touch.
-    await page.getByRole("radio", { name: "1M range" }).click();
-    await expect(page.getByRole("radio", { name: "1M range", checked: true })).toBeVisible();
+    // The history range selector is a single-select toggle group.
+    const monthRange = page.getByRole("button", { name: "1M range" });
+    await monthRange.click();
+    await expect(monthRange).toHaveAttribute("aria-pressed", "true");
   });
 
   // Sideways scroll at a phone width makes iOS WebKit shrink-to-fit zoom on launch.

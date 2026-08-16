@@ -131,7 +131,7 @@ export function ScopeMenu({
             onOpenChange(false);
             onEditGroups();
           }}
-          className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2.5 text-left font-mono text-xs uppercase tracking-button text-faint transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100 hover:bg-white/[0.03] hover:text-accent"
+          className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2.5 text-left font-mono text-xs uppercase tracking-button text-faint transition ease-out duration-150 active:bg-panel-2 active:scale-[0.97] motion-reduce:active:scale-100 pointer-fine:hover:bg-panel-2 pointer-fine:hover:text-accent"
         >
           <span aria-hidden="true">&#8862;</span> Edit groups
         </button>

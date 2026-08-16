@@ -35,4 +35,38 @@ test.describe("landing page", () => {
     await expect(page).toHaveURL(/\/app\/?$/, { timeout: 15_000 });
     await ctx.close();
   });
+
+  test("signed-in user visiting auth does not paint the login card before redirect", async ({
+    browser,
+  }) => {
+    const { sharedUser } = loadFixtures();
+    const session = await loginAndCapture(browser, {
+      username: sharedUser.username,
+      password: sharedUser.password,
+    });
+
+    const ctx = await browser.newContext({ baseURL: BASE_URL });
+    const page = await ctx.newPage();
+    await restoreSession(page, session, { preserveAuthRoutes: true });
+    await page.addInitScript(() => {
+      (window as Window & { authRiseSeen?: boolean }).authRiseSeen = false;
+      new MutationObserver((mutations) => {
+        const seen = mutations.some((mutation) =>
+          [...mutation.addedNodes].some(
+            (node) =>
+              node instanceof Element &&
+              (node.matches(".auth-rise") || node.querySelector(".auth-rise") !== null),
+          ),
+        );
+        if (seen) (window as Window & { authRiseSeen?: boolean }).authRiseSeen = true;
+      }).observe(document, { childList: true, subtree: true });
+    });
+
+    await page.goto("/auth/login");
+    await expect(page).toHaveURL(/\/app\/?$/, { timeout: 15_000 });
+    await expect
+      .poll(() => page.evaluate(() => (window as Window & { authRiseSeen?: boolean }).authRiseSeen))
+      .toBe(false);
+    await ctx.close();
+  });
 });

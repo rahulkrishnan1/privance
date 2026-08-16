@@ -104,6 +104,16 @@ test.describe("dashboard - with data", () => {
     await waitForSynced(page);
   });
 
+  test("PUSH navigation resets scroll and focuses the new page", async ({ page }) => {
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+
+    await page.getByRole("link", { name: "Plan", exact: true }).first().click();
+    await expect(page).toHaveURL(/\/app\/plan\/?$/);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+    await expect(page.locator("main")).toBeFocused();
+  });
+
   test("net worth tile renders a real computed value, not $0 or NaN", async ({ page }) => {
     const value = page.getByTestId("invest-net-worth");
     await expect(value).toBeVisible({ timeout: 15_000 });

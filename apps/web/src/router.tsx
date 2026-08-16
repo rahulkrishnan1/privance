@@ -4,9 +4,13 @@ import { createBrowserRouter } from "react-router";
 // must not flash a blank Suspense fallback. Chart-heavy components are
 // code-split inside each page (React.lazy), as they were pre-migration.
 
-import AccountsPage from "./app/(app)/app/accounts/page";
-import HoldingsPage from "./app/(app)/app/holdings/page";
-import AppPage from "./app/(app)/app/page";
+// Invest: layout route keeps hero + subnav mounted across tab switches.
+import { InvestLayout } from "@/features/invest";
+import { AccountsView } from "@/features/invest/components/accounts-view";
+import { HoldingsView } from "@/features/invest/components/holdings-view";
+import { OverviewView } from "@/features/invest/components/overview-view";
+// Sibling app routes (plan, spend, settings) are flat — they don't share
+// the invest layout.
 import PlanPage from "./app/(app)/app/plan/page";
 import SettingsPage from "./app/(app)/app/settings/page";
 import SpendPage from "./app/(app)/app/spend/page";
@@ -47,9 +51,15 @@ const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { path: "app", element: <AppPage /> },
-          { path: "app/accounts", element: <AccountsPage /> },
-          { path: "app/holdings", element: <HoldingsPage /> },
+          {
+            path: "app",
+            element: <InvestLayout />,
+            children: [
+              { index: true, element: <OverviewView /> },
+              { path: "holdings", element: <HoldingsView /> },
+              { path: "accounts", element: <AccountsView /> },
+            ],
+          },
           { path: "app/plan", element: <PlanPage /> },
           { path: "app/spend", element: <SpendPage /> },
           { path: "app/settings", element: <SettingsPage /> },

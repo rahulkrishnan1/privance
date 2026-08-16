@@ -202,18 +202,31 @@ export async function loginAndCapture(
  * Injects a previously captured DEK and session cookies into a page BEFORE
  * any navigation, so AuthProvider initialises as "unlocked" on first render.
  *
- * Call in beforeEach, before page.goto.
+ * Call in beforeEach, before page.goto. Auth-route coverage can opt into keeping
+ * the injected session on `/auth/*` and `/unlock` with `preserveAuthRoutes`.
  */
-export async function restoreSession(page: Page, snapshot: SessionSnapshot): Promise<void> {
+export async function restoreSession(
+  page: Page,
+  snapshot: SessionSnapshot,
+  options: { preserveAuthRoutes?: boolean } = {},
+): Promise<void> {
+  const { preserveAuthRoutes = false } = options;
   // addInitScript runs before each navigation in this page context. Skip auth
-  // pages: after logout/destroy the app must stay logged out, and re-injecting
-  // the DEK there would make auth-context boot "unlocked" and bounce back into
-  // the app.
-  await page.addInitScript((arr: number[]) => {
-    if (location.pathname.startsWith("/auth/") || location.pathname.startsWith("/unlock")) return;
-    const sym = Symbol.for("privance.dekStore.v1");
-    (globalThis as Record<symbol, unknown>)[sym] = { itemsKey: new Uint8Array(arr) };
-  }, snapshot.dekArray);
+  // pages by default: after logout/destroy the app must stay logged out, and
+  // re-injecting the DEK there would make auth-context boot "unlocked" and
+  // bounce back into the app.
+  await page.addInitScript(
+    ({ arr, preserveAuthRoutes }: { arr: number[]; preserveAuthRoutes: boolean }) => {
+      if (
+        !preserveAuthRoutes &&
+        (location.pathname.startsWith("/auth/") || location.pathname.startsWith("/unlock"))
+      )
+        return;
+      const sym = Symbol.for("privance.dekStore.v1");
+      (globalThis as Record<symbol, unknown>)[sym] = { itemsKey: new Uint8Array(arr) };
+    },
+    { arr: snapshot.dekArray, preserveAuthRoutes },
+  );
 
   await page.context().addCookies(snapshot.cookies);
 }

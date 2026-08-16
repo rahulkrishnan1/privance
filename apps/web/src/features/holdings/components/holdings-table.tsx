@@ -20,6 +20,8 @@ type HoldingsTableProps = {
   onRowClick: (holding: LocalHolding) => void;
   onAdd: () => void;
   dayChangeByHoldingId: ReadonlyMap<string, Decimal>;
+  /** If set, the row whose holding.id matches this value gets a flash highlight. */
+  highlightedHoldingId?: string;
 };
 
 type SortableHeaderProps = {
@@ -88,6 +90,7 @@ export function HoldingsTable({
   onRowClick,
   onAdd,
   dayChangeByHoldingId,
+  highlightedHoldingId,
 }: HoldingsTableProps) {
   if (loading) {
     return (
@@ -221,6 +224,7 @@ export function HoldingsTable({
               prices={prices}
               dayChangeCents={dayChangeByHoldingId.get(holding.id) ?? null}
               onRowClick={onRowClick}
+              highlight={highlightedHoldingId === holding.id}
             />
           ))}
         </tbody>

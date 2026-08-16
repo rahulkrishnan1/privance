@@ -117,10 +117,17 @@ test.describe("session persistence + auto-lock", () => {
     // 4b) A network failure on the background session check must not wipe the
     // locked state (offline PWA boot); only a confirmed 401 logs out.
     await page.route("**/api/auth/session", (route) => route.abort());
-    await page.reload();
-    await expect(page.getByRole("heading", { name: /Master password|Welcome back/ })).toBeVisible({
-      timeout: 10_000,
-    });
+    // Firefox can cancel the reload itself when an in-flight request is aborted
+    // mid-navigation (NS_BINDING_ABORTED). The abort is transient and the route
+    // stays armed, so the retried reload still boots offline and must stay locked.
+    await expect(async () => {
+      await page.reload();
+      await expect(page.getByRole("heading", { name: /Master password|Welcome back/ })).toBeVisible(
+        {
+          timeout: 10_000,
+        },
+      );
+    }).toPass({ timeout: 30_000 });
     await expect(page).toHaveURL(/\/unlock\/?$/);
     await page.unroute("**/api/auth/session");
 

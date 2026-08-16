@@ -133,6 +133,7 @@ export function TopHoldingsTable({
         <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">Top holdings</h3>
         <Link
           to="/app/holdings"
+          viewTransition
           className="font-mono text-xs tracking-button uppercase text-faint hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded"
           aria-label="View all holdings"
         >
@@ -236,7 +237,7 @@ export function TopHoldingsTable({
                   aria-label={handleClick ? `${h.ticker}, open holding details` : undefined}
                   className={
                     handleClick
-                      ? "cursor-pointer hover:bg-cream/2 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
+                      ? "cursor-pointer pointer-fine:hover:bg-panel-2 active:bg-panel-2 transition-[background-color,opacity] duration-100 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
                       : undefined
                   }
                 >

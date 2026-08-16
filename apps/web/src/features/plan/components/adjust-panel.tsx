@@ -1,3 +1,4 @@
+import { Slider } from "@base-ui/react/slider";
 import type { Decimal } from "@privance/core";
 import { deriveAllocationParams } from "@privance/core/projection";
 import { useEffect, useId, useRef, useState } from "react";
@@ -32,13 +33,6 @@ function roundTo(value: number, step: number): number {
 
 function clamp(value: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, value));
-}
-
-function fillStyle(value: number, min: number, max: number): React.CSSProperties {
-  const pct = max <= min ? 0 : ((Math.min(max, Math.max(min, value)) - min) / (max - min)) * 100;
-  return {
-    backgroundImage: `linear-gradient(90deg, var(--color-accent) ${pct}%, rgba(255,255,255,0.10) ${pct}%)`,
-  };
 }
 
 const dollars = (n: number) => `$${Math.round(n).toLocaleString()}`;
@@ -146,6 +140,7 @@ function Lever({
   warn?: string | null;
   children?: React.ReactNode;
 }) {
+  const clamped = Math.min(max, Math.max(min, value));
   return (
     <div className="border-b border-line-soft py-4 last:border-b-0 last:pb-0">
       <div className="flex items-baseline justify-between">
@@ -154,18 +149,24 @@ function Lever({
           {readout}
         </span>
       </div>
-      <input
-        type="range"
-        className="plan-range mt-3 w-full"
+      <Slider.Root
         min={min}
         max={max}
         step={step}
-        value={Math.min(max, Math.max(min, value))}
-        style={fillStyle(value, min, max)}
-        onChange={(e) => onChange(Number(e.target.value))}
-        aria-label={ariaLabel}
-        aria-valuetext={ariaValueText}
-      />
+        value={clamped}
+        onValueChange={(v) => onChange(v as number)}
+      >
+        <Slider.Control className="relative mt-3 flex w-full items-center">
+          <Slider.Track className="relative h-[5px] w-full rounded-full bg-cream/10">
+            <Slider.Indicator className="h-full rounded-full bg-accent" />
+          </Slider.Track>
+          <Slider.Thumb
+            getAriaLabel={() => ariaLabel}
+            aria-valuetext={ariaValueText}
+            className="size-[18px] rounded-full bg-cream border-[3px] border-vault shadow-[0_0_0_1px_var(--color-accent)] cursor-grab active:cursor-grabbing focus-visible:shadow-[0_0_0_5px_rgba(94,234,212,0.22),0_0_0_1px_var(--color-accent)] focus-visible:outline-none"
+          />
+        </Slider.Control>
+      </Slider.Root>
       {children}
       {impact !== undefined && <p className="mt-2.5 font-mono text-xs text-faint">{impact}</p>}
       {warn != null && (
@@ -258,7 +259,7 @@ export function AdjustPanel({
     });
   };
 
-  const saveLabel = saving ? "Saving…" : dirty ? "Save plan" : "Saved";
+  const showSaved = !dirty && !saving;
   const canSave = dirty && !saving && !saveDisabled;
 
   return (
@@ -278,13 +279,28 @@ export function AdjustPanel({
         <Button
           onClick={onSave}
           disabled={!canSave}
-          aria-label={dirty ? "Save plan" : "Plan saved"}
+          loading={saving}
+          aria-label={showSaved ? "Plan saved" : "Save plan"}
           variant={dirty && !saveDisabled ? "primary" : "ghost"}
           size="sm"
-          loading={saving}
           className="order-2 ml-auto self-start shrink-0 whitespace-nowrap sm:order-3"
         >
-          {saveLabel}
+          <span aria-hidden="true" className="grid">
+            <span
+              className={`col-start-1 row-start-1 transition-opacity duration-150 ease-out motion-reduce:transition-none ${
+                showSaved ? "opacity-0" : "opacity-100"
+              }`}
+            >
+              Save plan
+            </span>
+            <span
+              className={`col-start-1 row-start-1 transition-opacity duration-150 ease-out motion-reduce:transition-none ${
+                showSaved ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              Saved
+            </span>
+          </span>
         </Button>
       </div>
 
@@ -414,6 +430,7 @@ export function AdjustPanel({
           }}
           aria-label="Allocation preset"
           className="mt-3 gap-2"
+          slidingIndicator={false}
         >
           {ALLOCATION_SNAPS.map((s) => (
             <ToggleGroupItem

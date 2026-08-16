@@ -195,77 +195,6 @@ input[type="number"] {
   }
 }
 
-/* Plan lever slider: an 18px-tall hit area with a thin 5px track painted as a
-   centered background strip, so JS can fill it teal up to the value. The
-   background-color MUST stay transparent or the input's default field shows
-   through as a white pill. The teal fill is applied inline per value. */
-input[type="range"].plan-range {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 18px;
-  margin: 0;
-  cursor: pointer;
-  outline: none;
-  border-radius: 99px;
-  background-color: transparent;
-  background-repeat: no-repeat;
-  background-size: 100% 5px;
-  background-position: 0 center;
-  background-image: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.1) 100%
-  );
-}
-input[type="range"].plan-range::-webkit-slider-runnable-track {
-  height: 18px;
-  background: transparent;
-}
-input[type="range"].plan-range::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 99px;
-  background: var(--color-cream);
-  border: 3px solid var(--color-vault);
-  box-shadow: 0 0 0 1px var(--color-accent);
-  cursor: grab;
-}
-input[type="range"].plan-range::-webkit-slider-thumb:active {
-  cursor: grabbing;
-}
-input[type="range"].plan-range::-moz-range-track {
-  height: 5px;
-  border-radius: 99px;
-  background: transparent;
-}
-input[type="range"].plan-range::-moz-range-thumb {
-  width: 15px;
-  height: 15px;
-  border-radius: 99px;
-  background: var(--color-cream);
-  border: 3px solid var(--color-vault);
-  box-shadow: 0 0 0 1px var(--color-accent);
-  cursor: grab;
-}
-/* Keyboard focus on the slider is a soft glow on the thumb, not a hard ring
-   around the whole track (which looked heavy on tap, since range inputs show
-   focus styling on pointer focus too). */
-input[type="range"].plan-range:focus-visible {
-  outline: none;
-}
-input[type="range"].plan-range:focus-visible::-webkit-slider-thumb {
-  box-shadow:
-    0 0 0 5px rgba(94, 234, 212, 0.22),
-    0 0 0 1px var(--color-accent);
-}
-input[type="range"].plan-range:focus-visible::-moz-range-thumb {
-  box-shadow:
-    0 0 0 5px rgba(94, 234, 212, 0.22),
-    0 0 0 1px var(--color-accent);
-}
-
 /* No tap-flash on mobile, and no focus ring anywhere in the chart (Recharts
    gives the surface and Pie sectors a focusable a11y layer; the cursor line +
    tooltip already mark the read point, so a hard outline on tap is just noise).
@@ -305,8 +234,8 @@ html {
   }
 }
 
-/* Landing reveal animations. Lives in globals.css (not an inline <style>)
-   so the rules apply on first SSR paint without a hydration round-trip. */
+/* Landing reveal animations stay in the shared stylesheet so the first paint
+   does not depend on a component effect. */
 html {
   scroll-behavior: smooth;
   /* Clears the 66px sticky landing header, plus a little breathing room. Sections
@@ -378,9 +307,51 @@ html {
 .swap-in {
   animation: swap-in 0.18s var(--ease-out) both;
 }
+/* Skeleton shimmer uses linear motion so the sweep stays continuous. Big-block
+   placeholders use `.skeleton`; tiered rows use `.skeleton-shimmer` so their
+   existing opacity hierarchy remains visible under the overlay. */
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    110deg,
+    var(--color-panel) 30%,
+    color-mix(in srgb, var(--color-panel-2) 55%, var(--color-panel)) 50%,
+    var(--color-panel) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s linear infinite;
+}
+/* Tier-preserving shimmer overlay — keeps the element's own background-color
+   (e.g. bg-white/[0.07] vs bg-white/[0.04]) and sweeps a subtle white gradient
+   on top via ::after. The class itself sets position + overflow; only `rounded`
+   so the overlay clips to the element's border radius. */
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s linear infinite;
+  pointer-events: none;
+}
 @media (prefers-reduced-motion: reduce) {
-  .swap-in,
-  .animate-pulse {
+  .skeleton,
+  .skeleton-shimmer::after {
+    animation: none;
+  }
+  .swap-in {
     animation: none;
   }
 }
@@ -434,4 +405,51 @@ html {
   .auth-rise {
     animation: none;
   }
+}
+
+/* ── Route crossfade (React Router native View Transitions) ──────────────
+   Old page exits 250ms as the new enters 450ms; vertical drift only —
+   horizontal slide implies drill-down, and no nav level in this app is a
+   drill-down. Persistent chrome (top bar, bottom nav, subnav) is isolated
+   via viewTransitionName inline styles (layout.tsx, invest-subnav.tsx) so
+   it never participates in the crossfade.
+   Reduced motion: 150ms opacity-only fades (Emil: keep fades, drop movement). */
+::view-transition-old(root) {
+  animation: 250ms var(--ease-out) both vt-fade-out;
+}
+::view-transition-new(root) {
+  animation: 450ms var(--ease-out) both vt-fade-in;
+}
+@keyframes vt-fade-out {
+  to { opacity: 0; transform: translateY(-4px); }
+}
+@keyframes vt-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root) {
+    animation: 150ms var(--ease-out) both vt-fade-out-rm;
+  }
+  ::view-transition-new(root) {
+    animation: 150ms var(--ease-out) both vt-fade-in-rm;
+  }
+  @keyframes vt-fade-out-rm { to { opacity: 0; } }
+  @keyframes vt-fade-in-rm { from { opacity: 0; } }
+}
+
+/* Holding row highlight: background pulse for the row reached via a top-holding
+   click. ~2s so the flash registers; tr selector outranks row entrance classes. */
+@keyframes row-flash {
+  0% { background-color: color-mix(in srgb, var(--color-accent) 18%, transparent); }
+  100% { background-color: transparent; }
+}
+tr[data-highlight="true"] {
+  animation: row-flash 2000ms var(--ease-out) both;
+}
+/* Defense-in-depth: if the JS guard is ever removed, this rule keeps a
+   reduced-motion user from getting stranded mid-flash (the CSS cancel
+   fires animationcancel, not animationend). The row is inert under
+   reduced-motion so suppressing the animation is cheap and correct. */
+@media (prefers-reduced-motion: reduce) {
+  tr[data-highlight="true"] { animation: none; }
 }

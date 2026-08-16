@@ -1,10 +1,4 @@
-import type {
-  Account,
-  AccountKind,
-  Decimal,
-  HoldingValuation,
-  NetWorthBreakdown,
-} from "@privance/core";
+import type { Account, AccountKind, Decimal, HoldingValuation } from "@privance/core";
 import { ChevronRight, CreditCard, Home, TrendingUp, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
@@ -22,6 +16,7 @@ import { sortByValueDesc } from "@/features/holdings";
 import { useHoldingsQuery } from "@/features/holdings/queries";
 import { useKeepLastNonNull } from "@/lib/use-keep-last";
 import { SUBKIND_TAG } from "../_constants";
+import { useInvestDashboard } from "../invest-context";
 import { AccountDetailSheet } from "./account-detail-sheet";
 
 const SECTION_LABEL: Record<AccountKind, string> = {
@@ -100,7 +95,7 @@ function AccountRow({ account, displayValue, holdingsCount, onClick }: AccountRo
     <button
       type="button"
       onClick={onClick}
-      className="w-full flex items-center gap-3.5 glass rounded-[10px] px-5 py-[18px] text-left cursor-pointer hover:border-cream/20 hover:-translate-y-px transition-[border-color,transform] duration-200 ease-in-out active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:transition-none motion-reduce:active:scale-100"
+      className="w-full flex items-center gap-3.5 glass rounded-[10px] px-5 py-[18px] text-left cursor-pointer pointer-fine:hover:border-cream/20 pointer-fine:hover:-translate-y-px transition-[border-color,transform] duration-200 ease-in-out active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:transition-none motion-reduce:active:scale-100"
       aria-label={`${account.payload.name}, ${balanceText}`}
     >
       <div
@@ -128,11 +123,10 @@ function AccountRow({ account, displayValue, holdingsCount, onClick }: AccountRo
 
 type DrawerState = { mode: "closed" } | { mode: "edit"; account: Account };
 
-type AccountsViewProps = {
-  breakdown: NetWorthBreakdown | null;
-};
+export function AccountsView() {
+  const { dashData } = useInvestDashboard();
+  const breakdown = dashData.status === "ready" ? dashData.breakdown : null;
 
-export function AccountsView({ breakdown }: AccountsViewProps) {
   const query = useAccountsQuery();
   const { holdings } = useHoldingsQuery();
   const { update, state: updateState } = useUpdateAccount();
@@ -220,19 +214,23 @@ export function AccountsView({ breakdown }: AccountsViewProps) {
 
   if (query.status === "initialising") {
     return (
-      <div className="pt-4">
-        {[...Array(3)].map((_, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders
-          <div key={i} className="h-[74px] rounded-[10px] bg-white/5 animate-pulse mb-2.5" />
-        ))}
+      <div className="swap-in">
+        <div className="pt-4">
+          {[...Array(3)].map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders
+            <div key={i} className="h-[74px] rounded-[10px] skeleton mb-2.5" />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (query.status === "error") {
     return (
-      <div className="pt-4">
-        <p className="text-sm text-down">{query.error.message}</p>
+      <div className="swap-in">
+        <div className="pt-4">
+          <p className="text-sm text-down">{query.error.message}</p>
+        </div>
       </div>
     );
   }
@@ -256,59 +254,61 @@ export function AccountsView({ breakdown }: AccountsViewProps) {
   })).filter((section) => section.accounts.length > 0);
 
   return (
-    <div className="pt-4">
-      {renderedSections.map(({ kind, accounts: sectionAccounts }, sectionIndex) => (
-        <div key={kind} className={sectionIndex > 0 ? "mt-4" : ""}>
-          <p className="font-mono text-xs tracking-label uppercase text-faint pb-2.5">
-            {SECTION_LABEL[kind]}
-          </p>
-          <div className="flex flex-col gap-2.5">
-            {sectionAccounts.map((account) => (
-              <AccountRow
-                key={account.id}
-                account={account}
-                displayValue={displayValueFor(account)}
-                holdingsCount={holdingsCountByAccount.get(account.id) ?? 0}
-                onClick={() => setDetailAccount(account)}
-              />
-            ))}
+    <div className="swap-in">
+      <div className="pt-4">
+        {renderedSections.map(({ kind, accounts: sectionAccounts }, sectionIndex) => (
+          <div key={kind} className={sectionIndex > 0 ? "mt-4" : ""}>
+            <p className="font-mono text-xs tracking-label uppercase text-faint pb-2.5">
+              {SECTION_LABEL[kind]}
+            </p>
+            <div className="flex flex-col gap-2.5">
+              {sectionAccounts.map((account) => (
+                <AccountRow
+                  key={account.id}
+                  account={account}
+                  displayValue={displayValueFor(account)}
+                  holdingsCount={holdingsCountByAccount.get(account.id) ?? 0}
+                  onClick={() => setDetailAccount(account)}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
 
-      {accounts.length === 0 && (
-        <div className="py-16 text-center">
-          <p className="text-cream-soft text-base mb-1">No accounts yet</p>
-          <p className="font-mono text-xs text-faint">
-            Add an account to start tracking your net worth.
-          </p>
-        </div>
-      )}
+        {accounts.length === 0 && (
+          <div className="py-16 text-center">
+            <p className="text-cream-soft text-base mb-1">No accounts yet</p>
+            <p className="font-mono text-xs text-faint">
+              Add an account to start tracking your net worth.
+            </p>
+          </div>
+        )}
 
-      <AccountDetailSheet
-        open={detailAccount !== null}
-        account={shownDetailAccount}
-        totalValue={detailAccountValue}
-        holdingValuations={holdingValuationsForAccount}
-        holdingsByAccount={holdingsByAccountForDetail}
-        onClose={() => setDetailAccount(null)}
-        onEdit={(account) => {
-          setDetailAccount(null);
-          setDrawer({ mode: "edit", account });
-        }}
-        onDelete={async (account) => {
-          await deleteAccount(account);
-        }}
-      />
+        <AccountDetailSheet
+          open={detailAccount !== null}
+          account={shownDetailAccount}
+          totalValue={detailAccountValue}
+          holdingValuations={holdingValuationsForAccount}
+          holdingsByAccount={holdingsByAccountForDetail}
+          onClose={() => setDetailAccount(null)}
+          onEdit={(account) => {
+            setDetailAccount(null);
+            setDrawer({ mode: "edit", account });
+          }}
+          onDelete={async (account) => {
+            await deleteAccount(account);
+          }}
+        />
 
-      <AccountForm
-        open={drawer.mode !== "closed"}
-        defaultKind="cash"
-        {...(drawer.mode === "edit" ? { account: drawer.account } : {})}
-        onClose={() => setDrawer({ mode: "closed" })}
-        onSubmit={handleSubmit}
-        submitting={submitting}
-      />
+        <AccountForm
+          open={drawer.mode !== "closed"}
+          defaultKind="cash"
+          {...(drawer.mode === "edit" ? { account: drawer.account } : {})}
+          onClose={() => setDrawer({ mode: "closed" })}
+          onSubmit={handleSubmit}
+          submitting={submitting}
+        />
+      </div>
     </div>
   );
 }

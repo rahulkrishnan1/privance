@@ -1,5 +1,6 @@
-import type { Decimal, HoldingId, InvestmentAccount, NetWorthBreakdown } from "@privance/core";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Decimal, HoldingId, InvestmentAccount } from "@privance/core";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { centsToDecimal, useAccountsQuery } from "@/features/accounts/queries";
 import {
   computeAnchorScaleFactor,
@@ -35,16 +36,19 @@ import { useKeepLastNonNull } from "@/lib/use-keep-last";
 import { useAuth } from "@/providers/auth-context";
 import { useSync } from "@/providers/sync-context";
 import { subsetGain } from "../_invest-math";
-import { OPEN_ADD_HOLDING_KEY } from "../types";
+import { useInvestDashboard } from "../invest-context";
 
-type HoldingsViewProps = {
-  breakdown: NetWorthBreakdown | null;
-  dayChangeByHoldingId: ReadonlyMap<HoldingId, Decimal>;
-  /** Incremented by the parent subnav "+ holding" button to open the add dialog. */
-  addSignal?: number;
-};
+export function HoldingsView() {
+  const { dashData, addHoldingSignal, consumeAddHoldingSignal } = useInvestDashboard();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: HoldingsViewProps) {
+  // Derive these values from the shared dashboard computation so every invest
+  // view uses the same breakdown.
+  const breakdown = dashData.status === "ready" ? dashData.breakdown : null;
+  const dayChangeByHoldingId: ReadonlyMap<HoldingId, Decimal> =
+    dashData.status === "ready" ? dashData.dayChangeByHoldingId : new Map();
+
   const { user } = useAuth();
   const userId = user?.userId;
   const [sort, setSort] = useState<SortState>(() => getSavedSort(userId));
@@ -53,10 +57,17 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
   const [dialogMode, setDialogMode] = useState<HoldingDialogMode>({ kind: "add" });
   const [detailHolding, setDetailHolding] = useState<LocalHolding | null>(null);
   const shownDetailHolding = useKeepLastNonNull(detailHolding);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const stateConsumedRef = useRef(false);
   const [groupsManagerOpen, setGroupsManagerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { holdings, loading: holdingsLoading, error: holdingsError } = useHoldingsQuery();
+  // Ignore a stale highlight id that does not match a loaded holding.
+  const validatedHighlightId = useMemo(
+    () => (highlightId && holdings.some((h) => h.id === highlightId) ? highlightId : null),
+    [highlightId, holdings],
+  );
   const { groups, loading: groupsLoading, error: groupsError } = useGroupsQuery();
   const { store, tick } = useSync();
 
@@ -195,20 +206,26 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
     setDialogOpen(false);
   }, []);
 
-  // Open the add dialog when the parent subnav "+ holding" button fires. The
-  // signal starts at 0 (falsy) so the initial render does not auto-open.
+  // Open the add dialog only for a new signal. Consumption lives in the
+  // provider because it survives HoldingsView unmounts during tab switches.
   useEffect(() => {
-    if (addSignal) openDialog({ kind: "add" });
-  }, [addSignal, openDialog]);
+    if (!consumeAddHoldingSignal(addHoldingSignal)) return;
+    openDialog({ kind: "add" });
+  }, [addHoldingSignal, consumeAddHoldingSignal, openDialog]);
 
-  // Overview's "+ Add holding" routes here and leaves a one-shot flag to open
-  // the add dialog (the dialog lives on this view, not on Overview).
+  // Overview's "+ Add holding" routes here via router state to auto-open the
+  // add dialog, and top-holding click deep-links leave a highlightId in state.
+  // Both are read-once then cleared so back/forward doesn't re-trigger.
   useEffect(() => {
-    if (sessionStorage.getItem(OPEN_ADD_HOLDING_KEY)) {
-      sessionStorage.removeItem(OPEN_ADD_HOLDING_KEY);
-      openDialog({ kind: "add" });
+    if (stateConsumedRef.current) return;
+    const state = location.state as { highlightId?: string; openAddHolding?: boolean } | null;
+    if (state && (state.highlightId || state.openAddHolding)) {
+      stateConsumedRef.current = true;
+      navigate(location.pathname, { replace: true, viewTransition: false });
+      if (state.highlightId) setHighlightId(state.highlightId);
+      if (state.openAddHolding) openDialog({ kind: "add" });
     }
-  }, [openDialog]);
+  }, [location.state, location.pathname, navigate, openDialog]);
 
   const handleSubmit = useCallback(
     async (values: HoldingFormValues, mode: HoldingDialogMode, opts: { proxyPrice?: string }) => {
@@ -310,112 +327,115 @@ export function HoldingsView({ breakdown, dayChangeByHoldingId, addSignal }: Hol
   const anyError = holdingsError ?? groupsError;
 
   return (
-    <div className="pt-4">
-      {(anyError !== null || error !== null) && (
-        <div
-          role="alert"
-          className="rounded-lg bg-down/10 border border-down/40 px-4 py-3 mb-4 flex items-center justify-between"
-        >
-          <p className="text-sm text-down flex-1">
-            {anyError?.message ?? error ?? "An error occurred"}
-          </p>
-          <button
-            type="button"
-            onClick={tick}
-            aria-label="Retry"
-            className="ml-2 text-sm font-medium text-down hover:underline cursor-pointer transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100"
+    <div className="swap-in">
+      <div className="pt-4">
+        {(anyError !== null || error !== null) && (
+          <div
+            role="alert"
+            className="rounded-lg bg-down/10 border border-down/40 px-4 py-3 mb-4 flex items-center justify-between"
           >
-            Retry
-          </button>
-        </div>
-      )}
-
-      <div className="glass rounded-[10px] p-6">
-        <div className="flex justify-between items-baseline mb-4 gap-2.5 max-[560px]:flex-col max-[560px]:items-start max-[560px]:gap-1.5">
-          <div>
-            {investmentAccounts.length > 0 ? (
-              <ScopeMenu
-                filter={filter}
-                label={filterLabel}
-                count={visibleHoldings.length}
-                accounts={scopeAccounts}
-                groups={scopeGroups}
-                accountCounts={scopeCounts.byAccount}
-                groupCounts={scopeCounts.byGroup}
-                totalCount={holdings.length}
-                onSelect={setFilter}
-                onEditGroups={() => setGroupsManagerOpen(true)}
-              />
-            ) : (
-              <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">
-                {filterLabel} ({visibleHoldings.length})
-              </h3>
-            )}
-            {gain !== null && !gain.gainCents.isZero() && (
-              <p
-                className={`font-mono text-sm mt-[5px] ${!gain.gainCents.isNegative() ? "text-up" : "text-down"}`}
-              >
-                <span className="vfig">{formatTrendCurrencyWhole(gain.gainCents)}</span> (
-                {formatPercentMagnitude(gain.gainPct)}) unrealized
-              </p>
-            )}
+            <p className="text-sm text-down flex-1">
+              {anyError?.message ?? error ?? "An error occurred"}
+            </p>
+            <button
+              type="button"
+              onClick={tick}
+              aria-label="Retry"
+              className="ml-2 text-sm font-medium text-down hover:underline cursor-pointer transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100"
+            >
+              Retry
+            </button>
           </div>
+        )}
+
+        <div className="glass rounded-[10px] p-6">
+          <div className="flex justify-between items-baseline mb-4 gap-2.5 max-[560px]:flex-col max-[560px]:items-start max-[560px]:gap-1.5">
+            <div>
+              {investmentAccounts.length > 0 ? (
+                <ScopeMenu
+                  filter={filter}
+                  label={filterLabel}
+                  count={visibleHoldings.length}
+                  accounts={scopeAccounts}
+                  groups={scopeGroups}
+                  accountCounts={scopeCounts.byAccount}
+                  groupCounts={scopeCounts.byGroup}
+                  totalCount={holdings.length}
+                  onSelect={setFilter}
+                  onEditGroups={() => setGroupsManagerOpen(true)}
+                />
+              ) : (
+                <h3 className="font-serif text-2xl font-normal tracking-[-0.005em]">
+                  {filterLabel} ({visibleHoldings.length})
+                </h3>
+              )}
+              {gain !== null && !gain.gainCents.isZero() && (
+                <p
+                  className={`font-mono text-sm mt-[5px] ${!gain.gainCents.isNegative() ? "text-up" : "text-down"}`}
+                >
+                  <span className="vfig">{formatTrendCurrencyWhole(gain.gainCents)}</span> (
+                  {formatPercentMagnitude(gain.gainPct)}) unrealized
+                </p>
+              )}
+            </div>
+          </div>
+
+          <HoldingsTable
+            holdings={visibleHoldings}
+            prices={pricesMap}
+            sort={sort}
+            loading={loading}
+            onSortChange={handleSortChange}
+            onRowClick={setDetailHolding}
+            onAdd={() => openDialog({ kind: "add" })}
+            dayChangeByHoldingId={dayChangeByHoldingId}
+            highlightedHoldingId={validatedHighlightId ?? undefined}
+          />
         </div>
 
-        <HoldingsTable
-          holdings={visibleHoldings}
+        <HoldingDetailSheet
+          open={detailHolding !== null}
+          holding={shownDetailHolding}
           prices={pricesMap}
-          sort={sort}
-          loading={loading}
-          onSortChange={handleSortChange}
-          onRowClick={setDetailHolding}
-          onAdd={() => openDialog({ kind: "add" })}
-          dayChangeByHoldingId={dayChangeByHoldingId}
+          dayChangeCents={
+            shownDetailHolding === null
+              ? null
+              : (dayChangeByHoldingId.get(shownDetailHolding.id as HoldingId) ?? null)
+          }
+          totalInvestmentsCents={totalInvestmentsCents}
+          accountName={
+            shownDetailHolding === null
+              ? ""
+              : (accountNamesMap.get(shownDetailHolding.accountId) ?? shownDetailHolding.accountId)
+          }
+          onClose={() => setDetailHolding(null)}
+          onEdit={(h) => {
+            setDetailHolding(null);
+            openDialog({ kind: "edit", holding: h });
+          }}
+          onDelete={handleDeleteHolding}
+        />
+
+        <HoldingDialog
+          open={dialogOpen}
+          mode={dialogMode}
+          investmentAccounts={investmentAccounts}
+          groups={groups}
+          onClose={closeDialog}
+          onSubmit={handleSubmit}
+          onLookupProxyPrice={handleLookupProxyPrice}
+          onCreateGroup={handleCreateGroup}
+          submitting={holdingMutations.creating || holdingMutations.updating}
+        />
+
+        <GroupsManager
+          open={groupsManagerOpen}
+          groups={groups}
+          onClose={() => setGroupsManagerOpen(false)}
+          onRename={handleGroupRename}
+          onDelete={handleGroupDelete}
         />
       </div>
-
-      <HoldingDetailSheet
-        open={detailHolding !== null}
-        holding={shownDetailHolding}
-        prices={pricesMap}
-        dayChangeCents={
-          shownDetailHolding === null
-            ? null
-            : (dayChangeByHoldingId.get(shownDetailHolding.id as HoldingId) ?? null)
-        }
-        totalInvestmentsCents={totalInvestmentsCents}
-        accountName={
-          shownDetailHolding === null
-            ? ""
-            : (accountNamesMap.get(shownDetailHolding.accountId) ?? shownDetailHolding.accountId)
-        }
-        onClose={() => setDetailHolding(null)}
-        onEdit={(h) => {
-          setDetailHolding(null);
-          openDialog({ kind: "edit", holding: h });
-        }}
-        onDelete={handleDeleteHolding}
-      />
-
-      <HoldingDialog
-        open={dialogOpen}
-        mode={dialogMode}
-        investmentAccounts={investmentAccounts}
-        groups={groups}
-        onClose={closeDialog}
-        onSubmit={handleSubmit}
-        onLookupProxyPrice={handleLookupProxyPrice}
-        onCreateGroup={handleCreateGroup}
-        submitting={holdingMutations.creating || holdingMutations.updating}
-      />
-
-      <GroupsManager
-        open={groupsManagerOpen}
-        groups={groups}
-        onClose={() => setGroupsManagerOpen(false)}
-        onRename={handleGroupRename}
-        onDelete={handleGroupDelete}
-      />
     </div>
   );
 }
