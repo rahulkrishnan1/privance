@@ -1,5 +1,5 @@
 // Shared conversions from raw account-form strings to stored values, used by
-// both the add path (invest-screen) and the edit path (accounts-view).
+// both the add path (invest layout) and the edit path (accounts-view).
 
 /** Percent input ("4.15") to a stored rate fraction ("0.0415"); blank -> undefined. */
 export function percentToFraction(pct: string | undefined): string | undefined {

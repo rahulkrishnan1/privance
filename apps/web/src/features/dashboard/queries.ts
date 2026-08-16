@@ -29,7 +29,12 @@ import { usePricesQuery } from "@/lib/queries/prices";
 import { useSymbolProfilesQuery } from "@/lib/queries/profiles";
 import { readItemsKey } from "@/providers/auth-context";
 import { useSync } from "@/providers/sync-context";
-import { computeDayChangeByHoldingId, isAwaitingInitialPrices } from "./_math";
+import {
+  type AggregateDeltas,
+  computeDayChangeByHoldingId,
+  deriveAggregateDeltas,
+  isAwaitingInitialPrices,
+} from "./_math";
 import {
   buildSnapshotPayload,
   existingSnapshotLooksUnpriced,
@@ -81,7 +86,7 @@ function parseSnapshot(raw: unknown, objectId: string): NetWorthSnapshot {
   } as NetWorthSnapshot;
 }
 
-type DashboardData =
+export type DashboardData =
   | { status: "loading" }
   | { status: "error"; error: Error }
   | { status: "empty" }
@@ -94,6 +99,8 @@ type DashboardData =
       lastRefreshedMs: number;
       /** Per-holding day change in cents; absent when prior price isn't available. */
       dayChangeByHoldingId: Map<HoldingId, Decimal>;
+      /** Aggregate net-worth day delta computed from this snapshot. */
+      netWorthDelta: AggregateDeltas["netWorth"];
       /** Symbol profiles keyed by display ticker; non-critical, may still be loading. */
       profilesByTicker: Map<string, SymbolProfileEntry>;
     };
@@ -280,6 +287,7 @@ export function useDashboardData(): DashboardData {
         });
 
       const dayChangeByHoldingId = computeDayChangeByHoldingId(holdings, prices, previousPrices);
+      const netWorthDelta = deriveAggregateDeltas(breakdown, dayChangeByHoldingId).netWorth;
 
       setData({
         status: "ready",
@@ -289,6 +297,7 @@ export function useDashboardData(): DashboardData {
         snapshots,
         lastRefreshedMs: breakdown.asOf,
         dayChangeByHoldingId,
+        netWorthDelta,
         profilesByTicker,
       });
     } catch (err) {

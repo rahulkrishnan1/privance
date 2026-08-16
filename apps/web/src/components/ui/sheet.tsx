@@ -35,7 +35,9 @@ const SheetContent = React.forwardRef<
         // none is shown); see keyboardInsetStyle.
         style={{ ...keyboardInsetStyle(kb, "88vh"), ...style }}
         className={cn(
-          "fixed right-0 top-0 bottom-0 z-50 h-dvh w-[440px] max-w-[100vw] overflow-auto border-l border-line bg-panel p-7 text-cream shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)] outline-none transition-transform duration-300 ease-drawer data-[starting-style]:translate-x-full data-[ending-style]:translate-x-full data-[ending-style]:duration-200 motion-reduce:data-[starting-style]:translate-x-0 motion-reduce:data-[ending-style]:translate-x-0",
+          // Gentler not zero: keep an opacity fade under reduced motion for state
+          // legibility (vestibular-safe), while dropping the position change.
+          "fixed right-0 top-0 bottom-0 z-50 h-dvh w-[440px] max-w-[100vw] overflow-auto border-l border-line bg-panel p-7 text-cream shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)] outline-none transition-transform duration-300 ease-drawer data-[starting-style]:translate-x-full data-[ending-style]:translate-x-full data-[ending-style]:duration-200 motion-reduce:transition-opacity motion-reduce:duration-150 motion-reduce:data-[starting-style]:opacity-0 motion-reduce:data-[ending-style]:opacity-0 motion-reduce:data-[starting-style]:translate-x-0 motion-reduce:data-[ending-style]:translate-x-0",
           "max-[560px]:inset-x-0 max-[560px]:top-auto max-[560px]:bottom-(--kb-bottom) max-[560px]:h-auto max-[560px]:max-h-(--kb-maxh) max-[560px]:w-auto max-[560px]:rounded-t-2xl max-[560px]:border-l-0 max-[560px]:border-t max-[560px]:data-[starting-style]:translate-x-0 max-[560px]:data-[starting-style]:translate-y-full max-[560px]:data-[ending-style]:translate-x-0 max-[560px]:data-[ending-style]:translate-y-full motion-reduce:max-[560px]:data-[starting-style]:translate-y-0 motion-reduce:max-[560px]:data-[ending-style]:translate-y-0",
           className,
         )}

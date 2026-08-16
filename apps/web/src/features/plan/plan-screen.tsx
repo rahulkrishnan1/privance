@@ -5,7 +5,6 @@ import { DATASET_START_YEAR, PRESET_BALANCED } from "@privance/core/projection";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Button, Screen } from "@/components/index";
-import { Spinner } from "@/components/Spinner";
 import { useAccountsQuery } from "@/features/accounts/queries";
 import { useHoldingsQuery } from "@/features/holdings/queries";
 import { usePricesQuery } from "@/lib/queries/prices";
@@ -191,7 +190,6 @@ export function PlanScreen() {
   const [method, setMethod] = useState<SimMethod>("mc");
 
   const [sim, setSim] = useState<{ result: SimulateResult; input: SimWorkerInput } | null>(null);
-  const [computing, setComputing] = useState(false);
   const [simFailed, setSimFailed] = useState(false);
   const [hasMinInputs, setHasMinInputs] = useState(false);
 
@@ -230,7 +228,6 @@ export function PlanScreen() {
   const runSimulation = useCallback(async (input: SimWorkerInput, values: PlanFormValues) => {
     lastInputRef.current = input;
     const myGen = ++genRef.current;
-    setComputing(true);
     setSimFailed(false);
     try {
       const result = await simulate(input);
@@ -252,8 +249,6 @@ export function PlanScreen() {
       );
     } catch {
       if (genRef.current === myGen) setSimFailed(true);
-    } finally {
-      if (genRef.current === myGen) setComputing(false);
     }
   }, []);
 
@@ -430,7 +425,7 @@ export function PlanScreen() {
             <Button
               type="button"
               variant="primary"
-              onClick={() => navigate("/app/accounts")}
+              onClick={() => navigate("/app/accounts", { viewTransition: true })}
               className="mt-7"
             >
               Add accounts
@@ -464,16 +459,6 @@ export function PlanScreen() {
 
         {sim !== null && (
           <section aria-label="Portfolio projection">
-            {computing && (
-              <div
-                role="status"
-                aria-label="Recomputing projections"
-                className="mb-3 flex items-center gap-2 text-xs text-cream-soft"
-              >
-                <Spinner className="h-3.5 w-3.5 text-accent" />
-                <span>Updating projection&hellip;</span>
-              </div>
-            )}
             <Suspense fallback={<FanChartSkeleton />}>
               <FanChart
                 bands={sim.result.mc.yearlyBands}

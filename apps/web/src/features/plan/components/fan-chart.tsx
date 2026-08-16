@@ -15,7 +15,7 @@ import {
 import { formatYAxisTick, niceTicks } from "@/lib/chart";
 import { useChartColors } from "@/lib/chart-colors";
 import { formatCurrencyCompact, formatCurrencyWhole } from "@/lib/format";
-import { useMediaQuery } from "@/lib/use-media-query";
+import { usePrefersReducedMotion } from "@/lib/use-media-query";
 
 interface FanChartPoint {
   age: number;
@@ -117,14 +117,14 @@ export function FanChart({
   const accent = colors.line;
   const signal = colors.signal;
 
-  // Animate the entry like the Invest chart, but only on first paint: this chart
-  // recomputes on every lever move, and re-animating each settle would be janky.
-  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  // Animate once after the browser reports its preference. The chart recomputes
+  // on every lever move, so subsequent updates stay still.
+  const reducedMotion = usePrefersReducedMotion();
   const firstPaintRef = useRef(true);
-  const animate = !reducedMotion && firstPaintRef.current;
+  const animate = reducedMotion === false && firstPaintRef.current;
   useEffect(() => {
-    firstPaintRef.current = false;
-  }, []);
+    if (reducedMotion !== null) firstPaintRef.current = false;
+  }, [reducedMotion]);
 
   const chartData = useMemo<FanChartPoint[]>(() => {
     const points: FanChartPoint[] = [];

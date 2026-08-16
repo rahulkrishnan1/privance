@@ -7,7 +7,11 @@ import {
   SCALE_CRYPTO,
 } from "@privance/core";
 
-type Delta = { dollar: Decimal; pct: number };
+export type AggregateDelta = { dollar: Decimal; pct: number };
+export type AggregateDeltas = {
+  investments: AggregateDelta | null;
+  netWorth: AggregateDelta | null;
+};
 
 type Breakdown = ReturnType<typeof computeNetWorth>;
 
@@ -61,7 +65,7 @@ export function computeDayChangeByHoldingId(
 export function deriveAggregateDeltas(
   breakdown: Breakdown,
   dayChangeByHoldingId: ReadonlyMap<HoldingId, Decimal>,
-): { investments: Delta | null; netWorth: Delta | null } {
+): AggregateDeltas {
   if (dayChangeByHoldingId.size === 0) return { investments: null, netWorth: null };
   let dollar = Decimal.zero(SCALE_CENTS);
   let mvCovered = Decimal.zero(SCALE_CENTS);
@@ -77,11 +81,11 @@ export function deriveAggregateDeltas(
   // zero). Dollar change still surfaces via the investments slot for net worth.
   if (prev.isZero() || prev.isNegative()) return { investments: null, netWorth: null };
 
-  const investments: Delta = { dollar, pct: dollar.toFloat() / prev.toFloat() };
+  const investments: AggregateDelta = { dollar, pct: dollar.toFloat() / prev.toFloat() };
 
   const otherKinds = breakdown.netWorth.sub(mvCovered);
   const prevNetWorth = prev.add(otherKinds);
-  const netWorth: Delta | null =
+  const netWorth: AggregateDelta | null =
     prevNetWorth.isZero() || prevNetWorth.isNegative()
       ? null
       : { dollar, pct: dollar.toFloat() / prevNetWorth.toFloat() };

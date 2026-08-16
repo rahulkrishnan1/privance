@@ -35,6 +35,20 @@ function renderPanel(overrides?: Partial<Parameters<typeof AdjustPanel>[0]>) {
   );
 }
 
+/** Drives Base UI's visually hidden range input through its native input path. */
+function setSliderValue(slider: { element(): HTMLElement | SVGElement }, value: number) {
+  const element = slider.element();
+  const input =
+    element instanceof HTMLInputElement
+      ? element
+      : element.querySelector<HTMLInputElement>('input[type="range"]');
+  if (!input) throw new Error("Expected a Base UI slider range input");
+  const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+  if (!desc?.set) return;
+  desc.set.call(input, String(value));
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 test("readout shows the current FIRE age with no delta when it matches the saved plan", async () => {
   const screen = await renderPanel({ currentFireAge: 49, baselineFireAge: 49 });
   await expect.element(screen.getByText("FI age")).toBeVisible();
@@ -121,7 +135,7 @@ test("slider ranges reach realistic values from a default plan", async () => {
 test("starting-portfolio source switches to manual, prefilling from accounts", async () => {
   const onChange = vi.fn();
   const screen = await renderPanel({ onChange });
-  await screen.getByRole("radio", { name: "Manual" }).click();
+  await screen.getByRole("button", { name: "Manual" }).click();
   expect(onChange).toHaveBeenCalledWith({ manualStartingDollars: 500000 });
 });
 
@@ -131,7 +145,7 @@ test("switching the source back to accounts clears the manual amount", async () 
     values: { ...VALUES, manualStartingDollars: 12345 },
     onChange,
   });
-  await screen.getByRole("radio", { name: "Accounts" }).click();
+  await screen.getByRole("button", { name: "Accounts" }).click();
   expect(onChange).toHaveBeenCalledWith({ manualStartingDollars: undefined });
 });
 
@@ -140,10 +154,10 @@ test("save control is enabled for unsaved, savable changes", async () => {
   await expect.element(screen.getByRole("button", { name: "Save plan" })).toBeEnabled();
 });
 
-test("save control is disabled while saving and reads as in-progress", async () => {
+test("save control stays labeled Save plan while saving and is disabled", async () => {
   const screen = await renderPanel({ dirty: true, saving: true });
   await expect.element(screen.getByRole("button", { name: "Save plan" })).toBeDisabled();
-  await expect.element(screen.getByText("Saving…")).toBeVisible();
+  await expect.element(screen.getByText("Save plan")).toBeVisible();
 });
 
 test("save control is disabled when saving is blocked by an error", async () => {
@@ -165,7 +179,7 @@ test("a failed save surfaces a retry prompt", async () => {
 test("the Cautious snap selects the conservative preset", async () => {
   const onChange = vi.fn();
   const screen = await renderPanel({ onChange });
-  await screen.getByRole("radio", { name: "Cautious" }).click();
+  await screen.getByRole("button", { name: "Cautious" }).click();
   expect(onChange).toHaveBeenCalledWith({ preset: "conservative" });
 });
 
@@ -173,35 +187,38 @@ test("the Balanced snap selects the balanced preset", async () => {
   const onChange = vi.fn();
   // Start from a non-balanced plan so the Balanced snap is not already active.
   const screen = await renderPanel({ onChange, values: { ...VALUES, preset: "aggressive" } });
-  await screen.getByRole("radio", { name: "Balanced" }).click();
+  await screen.getByRole("button", { name: "Balanced" }).click();
   expect(onChange).toHaveBeenCalledWith({ preset: "balanced" });
 });
 
 test("the Aggressive snap selects the aggressive preset", async () => {
   const onChange = vi.fn();
   const screen = await renderPanel({ onChange });
-  await screen.getByRole("radio", { name: "Aggressive" }).click();
+  await screen.getByRole("button", { name: "Aggressive" }).click();
   expect(onChange).toHaveBeenCalledWith({ preset: "aggressive" });
 });
 
 test("the monthly-contribution lever reports its new value on change", async () => {
   const onChange = vi.fn();
   const screen = await renderPanel({ onChange });
-  await screen.getByRole("slider", { name: "Monthly contribution" }).fill("2000");
+  await setSliderValue(screen.getByRole("slider", { name: "Monthly contribution" }), 2000);
   expect(onChange).toHaveBeenCalledWith({ monthlyContribution: 2000 });
 });
 
 test("the annual-spend lever reports its new value on change", async () => {
   const onChange = vi.fn();
   const screen = await renderPanel({ onChange });
-  await screen.getByRole("slider", { name: "Target annual spend" }).fill("60000");
+  await setSliderValue(screen.getByRole("slider", { name: "Target annual spend" }), 60000);
   expect(onChange).toHaveBeenCalledWith({ annualSpend: 60000 });
 });
 
 test("dragging the stock-allocation lever switches to a custom preset with the chosen weight", async () => {
   const onChange = vi.fn();
   const screen = await renderPanel({ onChange });
-  await screen.getByRole("slider", { name: "Stock allocation (percent stocks)" }).fill("75");
+  await setSliderValue(
+    screen.getByRole("slider", { name: "Stock allocation (percent stocks)" }),
+    75,
+  );
   expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ preset: "custom" }));
   const patch = onChange.mock.calls.at(-1)?.[0] as { stockWeightPercent: number };
   expect(patch.stockWeightPercent).toBe(75);

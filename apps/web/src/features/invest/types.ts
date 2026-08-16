@@ -3,11 +3,6 @@ import type { TaxTreatment } from "./_constants";
 
 export type { TaxTreatment };
 
-/** Set by Overview's "+ Add holding" to auto-open the add drawer once Holdings
- *  mounts (the drawer + its save pipeline live inside HoldingsView, which only
- *  mounts on the Holdings route). Read-once on the other side. */
-export const OPEN_ADD_HOLDING_KEY = "privance.openAddHolding.v1";
-
 export type TaxBucket = {
   key: TaxTreatment | "cash" | "property";
   label: string;

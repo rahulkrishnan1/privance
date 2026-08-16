@@ -327,4 +327,54 @@ test.describe("holdings", () => {
     await expect(holdingsTable).toBeVisible({ timeout: 10_000 });
     await expect(holdingsTable.getByText(ticker)).not.toBeVisible({ timeout: 5_000 });
   });
+
+  test("deep-link from top-holdings row highlights the row then clears", async ({ page }) => {
+    // Create a holding so the dashboard overview shows it in the top-holdings table.
+    await goToHoldings(page);
+    const ticker = `HL${RUN.slice(-4).toUpperCase()}`;
+    await addStockHolding(page, { ticker, shares: "5", avgCost: "100.00" });
+
+    // Navigate to the dashboard (overview) page.
+    await page.goto("/app/");
+    await expect(page).toHaveURL(/\/app\/?$/, { timeout: 10_000 });
+    await waitForSynced(page);
+
+    // Wait for the top-holdings table to appear.
+    const topTable = page.getByRole("table", { name: "Top holdings" });
+    await expect(topTable).toBeVisible({ timeout: 15_000 });
+
+    // Click the row for our holding.
+    const topRow = page.getByRole("button", {
+      name: new RegExp(`${ticker}\\b.*open holding details`),
+    });
+    await expect(topRow).toBeVisible();
+    await topRow.first().click();
+
+    // Should land on the full holdings list.
+    await expect(page).toHaveURL(/\/app\/holdings\/?$/, { timeout: 10_000 });
+    await waitForSynced(page);
+
+    // The targeted row should show the highlight attribute.
+    // Playwright locators are lazy — re-queries the DOM after the second
+    // navigation below, so this reference is still valid.
+    const holdingsTable = page.getByRole("table", { name: "Holdings" });
+    await expect(holdingsTable).toBeVisible({ timeout: 10_000 });
+    await expect(holdingsTable.locator('tr[data-highlight="true"]')).toBeVisible({
+      timeout: 3_000,
+    });
+
+    // After the ~2s flash animation completes, the attribute should be gone.
+    await expect(holdingsTable.locator('tr[data-highlight="true"]')).not.toBeVisible({
+      timeout: 3_500,
+    });
+
+    // Direct navigation must NOT show any highlighted row.
+    await page.goto("/app/holdings/");
+    await expect(page).toHaveURL(/\/app\/holdings\/?$/, { timeout: 10_000 });
+    await waitForSynced(page);
+    await expect(holdingsTable).toBeVisible({ timeout: 10_000 });
+    await expect(holdingsTable.locator('tr[data-highlight="true"]')).not.toBeVisible({
+      timeout: 2_000,
+    });
+  });
 });

@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { formatCurrencyCompact, formatPercent } from "@/lib/format";
+import { usePrefersReducedMotion } from "@/lib/use-media-query";
 import { assignColors, PALETTE_FALLBACK_GRAY } from "../palette";
 import { AllocationLegend } from "./allocation-legend";
 
@@ -33,6 +34,7 @@ const REST_LABEL: Record<AllocationMode, string> = {
 export function AllocationPie({ title, classSlices, sectorSlices }: AllocationPieProps) {
   const [mode, setMode] = useState<AllocationMode>("class");
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const reducedMotion = usePrefersReducedMotion();
 
   const slices = mode === "class" ? classSlices : sectorSlices;
   const isEmpty = slices.length === 0;
@@ -72,14 +74,15 @@ export function AllocationPie({ title, classSlices, sectorSlices }: AllocationPi
           }}
           aria-label="Allocation view"
           className="rounded-full border border-line bg-panel-2 p-[3px] gap-0"
+          // Active fill matches the primary nav (cream, not the teal segment default).
+          style={{ "--segment-active-bg": "var(--color-cream)" } as React.CSSProperties}
         >
           {MODES.map((m) => (
             <ToggleGroupItem
               key={m.value}
               value={m.value}
               size="sm"
-              // Active fill matches the primary nav (cream, not the teal segment default).
-              className="rounded-full px-3 py-1 data-[checked]:bg-cream data-[checked]:hover:text-vault"
+              className="rounded-full px-3 py-1 data-[checked]:hover:text-vault"
             >
               {m.label}
             </ToggleGroupItem>
@@ -90,7 +93,7 @@ export function AllocationPie({ title, classSlices, sectorSlices }: AllocationPi
       {isEmpty ? (
         <p className="text-sm text-dim text-center py-8">Add holdings to see allocation</p>
       ) : (
-        <div key={mode} className="swap-in flex flex-col items-center gap-[18px]">
+        <div className="flex flex-col items-center gap-[18px]">
           {/* Donut on top, center label/figure/pct swap to the hovered slice */}
           <div className="relative w-full max-w-[228px] aspect-square">
             <ResponsiveContainer
@@ -109,7 +112,9 @@ export function AllocationPie({ title, classSlices, sectorSlices }: AllocationPi
                   outerRadius="96%"
                   paddingAngle={0}
                   stroke="none"
-                  isAnimationActive={false}
+                  isAnimationActive={reducedMotion === false}
+                  animationDuration={450}
+                  animationEasing="ease-out"
                   onMouseEnter={(_entry, index) => setHoveredIndex(index)}
                   onMouseLeave={() => setHoveredIndex(null)}
                 >

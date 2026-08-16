@@ -52,12 +52,12 @@ test("ToggleGroup (single) reflects the selected item as pressed", async () => {
     );
   }
   const screen = await render(<Harness />);
-  await screen.getByRole("radio", { name: "By sector" }).click();
+  await screen.getByRole("button", { name: "By sector" }).click();
   expect(
-    screen.getByRole("radio", { name: "By sector" }).element().getAttribute("aria-checked"),
+    screen.getByRole("button", { name: "By sector" }).element().getAttribute("aria-pressed"),
   ).toBe("true");
   expect(
-    screen.getByRole("radio", { name: "By class" }).element().getAttribute("aria-checked"),
+    screen.getByRole("button", { name: "By class" }).element().getAttribute("aria-pressed"),
   ).toBe("false");
 });
 
@@ -77,15 +77,12 @@ test("ToggleGroup (single) keeps its selection when the active item is re-clicke
     );
   }
   const screen = await render(<Harness />);
-  const byClass = screen.getByRole("radio", { name: "By class" });
-  expect(byClass.element().getAttribute("aria-checked")).toBe("true");
-  // Radio semantics: re-clicking the already-selected item must not clear the
-  // selection (a segmented control that dropped to no-selection would be a bug),
-  // and must not flip its sibling on.
+  const byClass = screen.getByRole("button", { name: "By class" });
+  expect(byClass.element().getAttribute("aria-pressed")).toBe("true");
   await byClass.click();
-  await expect.poll(() => byClass.element().getAttribute("aria-checked")).toBe("true");
+  await expect.poll(() => byClass.element().getAttribute("aria-pressed")).toBe("true");
   expect(
-    screen.getByRole("radio", { name: "By sector" }).element().getAttribute("aria-checked"),
+    screen.getByRole("button", { name: "By sector" }).element().getAttribute("aria-pressed"),
   ).toBe("false");
 });
 

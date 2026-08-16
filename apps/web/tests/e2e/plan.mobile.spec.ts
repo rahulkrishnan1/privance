@@ -139,9 +139,9 @@ test.describe("plan mobile: F1 + AE6", () => {
     expect(fireAge).toBeGreaterThanOrEqual(35);
     expect(fireAge).toBeLessThanOrEqual(95);
 
-    // Confidence toggle
-    const method = page.getByRole("radiogroup", { name: "Projection method" });
-    await method.getByRole("radio", { name: "Monte Carlo" }).click();
+    // Confidence is a single-select toggle group.
+    const method = page.getByRole("button", { name: "Monte Carlo" });
+    await method.click();
     const confidence = page.getByTestId("confidence-rate");
     await expect(confidence).toBeVisible({ timeout: 20_000 });
     expect((await confidence.textContent())?.trim()).toMatch(/%/);

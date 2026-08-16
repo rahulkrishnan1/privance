@@ -47,7 +47,7 @@ export function Row({
       <button
         type="button"
         onClick={onClick}
-        className="flex w-full items-center gap-4 border-b border-line-soft px-[22px] py-[18px] last:border-b-0 cursor-pointer bg-transparent transition ease-out duration-150 hover:bg-cream/2 active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
+        className="flex w-full items-center gap-4 border-b border-line-soft px-[22px] py-[18px] last:border-b-0 cursor-pointer bg-transparent transition ease-out duration-150 pointer-fine:hover:bg-panel-2 active:bg-panel-2 active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
       >
         {inner}
       </button>

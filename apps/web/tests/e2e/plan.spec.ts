@@ -184,17 +184,19 @@ test.describe
 
       // Confidence is a single toggle between Monte Carlo and Historical replay;
       // the active method's percentage renders in `confidence-rate`. Read both.
-      const method = page.getByRole("radiogroup", { name: "Projection method" });
+      // The projection method is a single-select toggle group.
+      const method = page.getByRole("button", { name: "Monte Carlo" });
       await expect(method).toBeVisible({ timeout: SIM_TIMEOUT });
 
-      await method.getByRole("radio", { name: "Monte Carlo" }).click();
+      await method.click();
       const mcRate = page.getByTestId("confidence-rate");
       await expect(mcRate).toBeVisible({ timeout: SIM_TIMEOUT });
       const mcPct = Number((await mcRate.textContent())?.replace(/[^0-9.]/g, ""));
       expect(mcPct).toBeGreaterThanOrEqual(1);
       expect(mcPct).toBeLessThanOrEqual(100);
 
-      await method.getByRole("radio", { name: "Historical replay" }).click();
+      const historical = page.getByRole("button", { name: "Historical replay" });
+      await historical.click();
       const replayRate = page.getByTestId("confidence-rate");
       await expect(replayRate).toBeVisible({ timeout: SIM_TIMEOUT });
       const replayPct = Number((await replayRate.textContent())?.replace(/[^0-9.]/g, ""));
@@ -220,7 +222,7 @@ test.describe
 
       // A lever edit reruns the engine
       const headlineAge = Number((await page.getByTestId("fire-age-value").textContent())?.trim());
-      await page.getByRole("radio", { name: "Aggressive" }).click();
+      await page.getByRole("button", { name: "Aggressive" }).click();
       await expect(async () => {
         const t = Number((await page.getByTestId("fire-age-value").textContent())?.trim());
         expect(t).not.toBe(headlineAge);

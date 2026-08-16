@@ -11,7 +11,7 @@
     "start": "bun src/index.ts",
     "build": "bun build src/index.ts --target=bun --outfile=dist/server.js",
     "typecheck": "tsc --noEmit",
-    "test": "bun test",
+    "test": "bun scripts/test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",

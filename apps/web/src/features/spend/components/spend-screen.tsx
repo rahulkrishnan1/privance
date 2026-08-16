@@ -78,7 +78,7 @@ function RecurringRow({
       type="button"
       onClick={onClick}
       className={[
-        "flex items-center gap-3.5 w-full py-3 border-b border-line-soft text-left cursor-pointer hover:bg-white/1 transition ease-out duration-150 active:scale-[0.98] motion-reduce:active:scale-100",
+        "flex items-center gap-3.5 w-full py-3 border-b border-line-soft text-left cursor-pointer pointer-fine:hover:bg-panel-2 active:bg-panel-2 transition ease-out duration-150 active:scale-[0.98] motion-reduce:active:scale-100",
         "last:border-b-0",
         isPaused ? "opacity-45" : "",
       ]
@@ -186,12 +186,12 @@ function Panel({
 function SkeletonRow() {
   return (
     <div className="flex items-center gap-3.5 py-3 border-b border-line-soft last:border-b-0">
-      <div className="w-[34px] h-[34px] rounded-[8px] bg-white/5 animate-pulse flex-none" />
+      <div className="w-[34px] h-[34px] rounded-[8px] skeleton flex-none" />
       <div className="flex-1">
-        <div className="h-3 w-32 rounded bg-white/5 animate-pulse mb-2" />
-        <div className="h-2.5 w-20 rounded bg-white/5 animate-pulse" />
+        <div className="h-3 w-32 rounded skeleton mb-2" />
+        <div className="h-2.5 w-20 rounded skeleton" />
       </div>
-      <div className="h-3 w-14 rounded bg-white/5 animate-pulse" />
+      <div className="h-3 w-14 rounded skeleton" />
     </div>
   );
 }
@@ -199,9 +199,9 @@ function SkeletonRow() {
 function LoadingSkeleton() {
   return (
     <div className={`${MAX_WIDTH} pt-6`}>
-      <div className="h-2.5 w-16 rounded bg-white/5 animate-pulse mb-4" />
-      <div className="h-16 w-52 rounded bg-white/5 animate-pulse mb-2" />
-      <div className="h-3 w-48 rounded bg-white/5 animate-pulse mb-8" />
+      <div className="h-2.5 w-16 rounded skeleton mb-4" />
+      <div className="h-16 w-52 rounded skeleton mb-2" />
+      <div className="h-3 w-48 rounded skeleton mb-8" />
       <div className="grid grid-cols-12 gap-4 mt-4">
         <div className="col-span-7 max-[880px]:col-span-12 glass rounded-[10px] p-6">
           {[...Array(4)].map((_, i) => (

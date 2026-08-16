@@ -12,6 +12,10 @@ export default function AuthLayout() {
     else if (state === "locked") navigate("/unlock", { replace: true });
   }, [state, navigate]);
 
+  if (state !== "unauthenticated") {
+    return <div className="dark min-h-svh bg-vault" />;
+  }
+
   return (
     <div className="relative flex min-h-svh flex-col bg-vault text-cream">
       <AuthBackdrop />

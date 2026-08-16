@@ -1,7 +1,5 @@
 function SkeletonBox({ className }: { className?: string }) {
-  return (
-    <div className={["bg-white/5 rounded animate-pulse", className].filter(Boolean).join(" ")} />
-  );
+  return <div className={["skeleton rounded", className].filter(Boolean).join(" ")} />;
 }
 
 /** Placeholder for the answer headline (eyebrow + h1 + anchors), in layout. */
