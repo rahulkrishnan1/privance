@@ -35,7 +35,7 @@ export function InvestHero({ breakdown, delta, historyPoints }: InvestHeroProps)
       : "border-line bg-panel-2";
 
   return (
-    <section className="pt-6 pb-0 relative" style={{ viewTransitionName: "invest-hero" }}>
+    <section className="pt-6 pb-0 relative">
       <p className="font-mono text-xs tracking-label uppercase text-faint">Net worth</p>
 
       <div className="flex items-end gap-5 flex-wrap mt-3">

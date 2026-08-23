@@ -114,6 +114,7 @@ export function OverviewView() {
               onRowClick={(holding) => {
                 navigate("/app/holdings", {
                   viewTransition: true,
+                  preventScrollReset: true,
                   state: { highlightId: holding.id },
                 });
               }}

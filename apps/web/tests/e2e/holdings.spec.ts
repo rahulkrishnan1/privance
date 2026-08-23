@@ -126,6 +126,28 @@ test.describe("holdings", () => {
     await expect(holdingsTable.getByText("AAPL").first()).toBeVisible();
   });
 
+  test("top holding navigation preserves the current Invest scroll", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 600 });
+    await page.goto("/app/");
+    await expect(page).toHaveURL(/\/app\/?$/, { timeout: 10_000 });
+    await expect(page.getByRole("table", { name: "Top holdings" })).toBeVisible({
+      timeout: 15_000,
+    });
+    await waitForSynced(page);
+
+    await page.evaluate(() => {
+      document.documentElement.style.scrollBehavior = "auto";
+      window.scrollTo(0, 320);
+    });
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    const initialScroll = await page.evaluate(() => window.scrollY);
+
+    await page.getByRole("button", { name: /AAPL, open holding details/ }).click();
+    await expect(page).toHaveURL(/\/app\/holdings\/?$/);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(initialScroll);
+    await expect(page.locator("main")).toBeFocused();
+  });
+
   test("edits a holding's shares and cost basis", async ({ page }) => {
     await goToHoldings(page);
 

@@ -7,8 +7,8 @@ const LOCAL_WORKER = path.join(__dirname, "..", "..", "public", "sqlite", "priva
 
 async function loadLocalWorker(page: import("@playwright/test").Page) {
   const src = await fs.readFile(LOCAL_WORKER, "utf-8");
-  await page.route("**/sqlite/privance-worker.mjs", (route) => {
-    route.fulfill({ status: 200, contentType: "text/javascript", body: src });
+  await page.route("**/sqlite/privance-worker.mjs", async (route) => {
+    await route.fulfill({ status: 200, contentType: "text/javascript", body: src });
   });
 }
 

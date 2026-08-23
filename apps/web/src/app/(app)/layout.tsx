@@ -97,6 +97,16 @@ const NAV_ITEMS: NavItem[] = [
     match: (p) => p.startsWith("/app/settings"),
   },
 ];
+const TOP_LEVEL_APP_PATHS = ["/app/plan", "/app/spend", "/app/settings"];
+
+function isInvestPath(pathname: string): boolean {
+  const normalized = pathname.replace(/\/+$/, "") || "/";
+  return (
+    normalized === "/app" ||
+    (normalized.startsWith("/app/") &&
+      !TOP_LEVEL_APP_PATHS.some((path) => normalized === path || normalized.startsWith(`${path}/`)))
+  );
+}
 
 function TopBar({
   veiled,
@@ -115,7 +125,11 @@ function TopBar({
         style={{ viewTransitionName: "top-bar" }}
         className="mx-auto flex h-[62px] max-w-[1120px] items-center justify-between px-7 max-[760px]:h-14"
       >
-        <Link to="/app" className="flex items-center gap-[9px] text-cream">
+        <Link
+          to="/app"
+          preventScrollReset={isInvestPath(location.pathname)}
+          className="flex items-center gap-[9px] text-cream"
+        >
           <Logo size={23} className="text-cream" />
           <span className="font-serif text-2xl">Privance</span>
         </Link>
@@ -131,6 +145,7 @@ function TopBar({
                 key={href}
                 to={href}
                 viewTransition
+                preventScrollReset={isInvestPath(location.pathname) && isInvestPath(href)}
                 aria-current={active ? "page" : undefined}
                 className={[
                   "rounded-full px-[18px] py-2 font-mono text-xs uppercase tracking-button transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
@@ -198,6 +213,7 @@ function BottomNav() {
               key={href}
               to={href}
               viewTransition
+              preventScrollReset={isInvestPath(location.pathname) && isInvestPath(href)}
               aria-current={active ? "page" : undefined}
               className={[
                 "flex flex-1 flex-col items-center gap-1 py-1.5 font-mono text-xs uppercase tracking-button focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent",
@@ -231,7 +247,8 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const pathnameChanged = previousPathnameRef.current !== pathname;
+    const previousPathname = previousPathnameRef.current;
+    const pathnameChanged = previousPathname !== pathname;
     previousPathnameRef.current = pathname;
     if (!pathnameChanged || navigationType === "POP") return;
 
@@ -242,7 +259,9 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
       activeElement instanceof HTMLSelectElement ||
       (activeElement instanceof HTMLElement && activeElement.isContentEditable);
     if (!skipFocus) {
-      mainRef.current?.focus();
+      mainRef.current?.focus({
+        preventScroll: isInvestPath(previousPathname) && isInvestPath(pathname),
+      });
     }
   }, [pathname, navigationType]);
 

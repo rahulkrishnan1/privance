@@ -221,7 +221,11 @@ export function HoldingsView() {
     const state = location.state as { highlightId?: string; openAddHolding?: boolean } | null;
     if (state && (state.highlightId || state.openAddHolding)) {
       stateConsumedRef.current = true;
-      navigate(location.pathname, { replace: true, viewTransition: false });
+      navigate(location.pathname, {
+        replace: true,
+        viewTransition: false,
+        preventScrollReset: true,
+      });
       if (state.highlightId) setHighlightId(state.highlightId);
       if (state.openAddHolding) openDialog({ kind: "add" });
     }
