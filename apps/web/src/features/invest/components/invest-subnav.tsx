@@ -34,7 +34,11 @@ export function InvestSubnav() {
             // This action opens a modal on the destination route. Keep the
             // route change synchronous so the modal's own sheet animation is
             // not composited into the page view transition.
-            navigate("/app/holdings", { viewTransition: false, state: { openAddHolding: true } });
+            navigate("/app/holdings", {
+              viewTransition: false,
+              preventScrollReset: true,
+              state: { openAddHolding: true },
+            });
           };
 
   const addLabel = active === "accounts" ? "account" : "holding";
@@ -46,7 +50,6 @@ export function InvestSubnav() {
     <nav
       ref={navRef}
       aria-label="Invest sub-navigation"
-      style={{ viewTransitionName: "subnav" }}
       className="relative flex gap-[30px] max-[760px]:gap-4 border-b border-line mt-2 sticky top-[62px] max-[760px]:top-14 bg-[color-mix(in_srgb,var(--color-vault)_92%,transparent)] backdrop-blur-[8px] z-[15]"
     >
       {NAV_ITEMS.map(({ view, label, href }) => {
@@ -56,6 +59,7 @@ export function InvestSubnav() {
             key={view}
             to={href}
             viewTransition
+            preventScrollReset
             aria-current={isActive ? "page" : undefined}
             className={[
               "font-mono text-xs tracking-button uppercase py-4 px-0.5 transition ease-out duration-150 whitespace-nowrap active:scale-[0.97] motion-reduce:active:scale-100",

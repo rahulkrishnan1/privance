@@ -134,6 +134,7 @@ export function TopHoldingsTable({
         <Link
           to="/app/holdings"
           viewTransition
+          preventScrollReset
           className="font-mono text-xs tracking-button uppercase text-faint hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded"
           aria-label="View all holdings"
         >

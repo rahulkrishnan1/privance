@@ -410,9 +410,10 @@ html {
 /* ── Route crossfade (React Router native View Transitions) ──────────────
    Old page exits 250ms as the new enters 450ms; vertical drift only —
    horizontal slide implies drill-down, and no nav level in this app is a
-   drill-down. Persistent chrome (top bar, bottom nav, subnav) is isolated
-   via viewTransitionName inline styles (layout.tsx, invest-subnav.tsx) so
-   it never participates in the crossfade.
+   drill-down. Persistent chrome (top bar and bottom nav) is isolated via
+   viewTransitionName inline styles in layout.tsx so it never participates
+   in the crossfade. Route-local surfaces stay in the root crossfade; naming
+   elements that unmount between sibling routes leaves stale snapshots behind.
    Reduced motion: 150ms opacity-only fades (Emil: keep fades, drop movement). */
 ::view-transition-old(root) {
   animation: 250ms var(--ease-out) both vt-fade-out;
