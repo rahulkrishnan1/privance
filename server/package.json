@@ -18,11 +18,11 @@
     "mint:invite": "bun scripts/mint-invite.ts"
   },
   "dependencies": {
-    "@noble/hashes": "2.3.0",
+    "@noble/hashes": "2.4.0",
     "@privance/core": "workspace:*",
     "drizzle-orm": "0.45.2",
     "hash-wasm": "4.12.0",
-    "hono": "4.13.1",
+    "hono": "4.13.7",
     "pino": "10.3.1",
     "postgres": "3.4.9"
   },
