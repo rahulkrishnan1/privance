@@ -21,9 +21,9 @@
     "prepare": "test -d .git && lefthook install || true"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.7",
-    "lefthook": "2.1.10",
-    "turbo": "2.10.8",
+    "@biomejs/biome": "2.5.12",
+    "lefthook": "2.1.12",
+    "turbo": "2.10.12",
     "typescript": "7.0.2"
   }
 }
