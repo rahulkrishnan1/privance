@@ -76,8 +76,7 @@ export function PhraseCheckDialog({
       <DialogContent aria-labelledby="phrase-title">
         <SettingsDialogHeader title="Phrase check" titleId="phrase-title" onClose={handleClose} />
         <p className="text-sm leading-[1.6] text-dim">
-          Type all twelve words in order to confirm your spare key still works. Nothing leaves this
-          device.
+          Enter all 12 words in order. Your phrase is checked locally and never leaves this device.
         </p>
 
         <form onSubmit={(e) => void onVerify(e)} noValidate>

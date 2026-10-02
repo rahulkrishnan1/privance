@@ -8,6 +8,10 @@ export default defineConfig({
   // Dedupe React so component deps (e.g. react-hook-form) share the single React
   // instance the test renderer uses; otherwise hooks see a null dispatcher.
   resolve: { alias, dedupe: ["react", "react-dom"] },
+  // Browser-mode tests must optimize Drawer before the suite starts. Allowing
+  // Vite to discover it mid-run reloads the test page and can split React
+  // context between the renderer and Base UI.
+  optimizeDeps: { include: ["@base-ui/react/drawer"] },
   // Vite inlines VITE_* at build time; the browser test bundle has no
   // process, so inline a stand-in version the way the build would.
   define: { "import.meta.env.VITE_APP_VERSION": JSON.stringify("0.0.0-test") },
@@ -31,6 +35,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: "browser",
+          fileParallelism: false,
           include: ["src/**/*.browser.test.ts", "src/**/*.browser.test.tsx"],
           browser: {
             enabled: true,

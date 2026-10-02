@@ -1,6 +1,7 @@
 import { deriveBiometricKek, sealProtectorKey } from "@privance/core";
 import { useEffect, useState } from "react";
 import { Screen } from "@/components/index";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import * as authApi from "@/lib/api/auth";
 import {
   BiometricCancelledError,
@@ -16,6 +17,7 @@ import {
   saveEnrollment,
   wrapItemsKeyRsa,
 } from "@/lib/storage/biometric-store";
+import { isThemePreference, type ThemePreference, useThemePreference } from "@/lib/theme";
 import { useHydrated } from "@/lib/use-hydrated";
 import { readStartVeil, writeStartVeil } from "@/lib/veil";
 import { readItemsKey, useAuth } from "@/providers/auth-context";
@@ -31,9 +33,53 @@ const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? "unknown";
 const SOURCE_URL = "https://github.com/rahulkrishnan1/privance";
 const COINGECKO_URL = "https://www.coingecko.com";
 
+const THEME_OPTIONS: readonly { value: ThemePreference; label: string }[] = [
+  { value: "system", label: "System" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+];
+
+function ThemeSelector({
+  value,
+  onChange,
+}: {
+  value: ThemePreference;
+  onChange: (value: ThemePreference) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3 border-b border-line-soft px-[22px] py-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
+      <span className="text-[15px] leading-5 text-cream">Appearance</span>
+      <ToggleGroup
+        type="single"
+        value={value}
+        onValueChange={(next) => {
+          if (isThemePreference(next)) onChange(next);
+        }}
+        aria-label="Appearance"
+        className="grid w-full max-w-[360px] grid-cols-3 gap-0 rounded-[11px] border border-line bg-panel-2 p-1 sm:w-[280px]"
+        style={{ "--segment-active-bg": "var(--color-control-primary)" } as React.CSSProperties}
+      >
+        {THEME_OPTIONS.map((option) => {
+          return (
+            <ToggleGroupItem
+              key={option.value}
+              value={option.value}
+              size="sm"
+              className="z-0 min-h-9 w-full rounded-[7px] px-3 py-1.5 font-sans text-[13px] font-medium normal-case tracking-normal"
+            >
+              {option.label}
+            </ToggleGroupItem>
+          );
+        })}
+      </ToggleGroup>
+    </div>
+  );
+}
+
 export function SettingsScreen() {
   const { logout, user } = useAuth();
   const hydrated = useHydrated();
+  const [themePreference, setThemePreference] = useThemePreference();
 
   const [dialog, setDialog] = useState<Dialog>(null);
   const closeDialog = () => setDialog(null);
@@ -170,14 +216,6 @@ export function SettingsScreen() {
     ) : phase === "checking" ? null : (
       <Badge label="Off" variant="off" />
     );
-
-  const bioDescription =
-    phase === "enrolled"
-      ? "Face ID on this device, password check every 14 days"
-      : phase === "unsupported"
-        ? "not available in this browser"
-        : "unlock without typing the master password";
-
   return (
     <Screen>
       <div className="mb-8">
@@ -188,8 +226,8 @@ export function SettingsScreen() {
       </div>
 
       <div className="flex flex-col gap-8">
-        <section>
-          <SectionLabel>Security</SectionLabel>
+        <section aria-labelledby="settings-security">
+          <SectionLabel id="settings-security">Security</SectionLabel>
           <SettingsCard>
             <Row
               icon={
@@ -206,7 +244,6 @@ export function SettingsScreen() {
                 </svg>
               }
               name="Master password"
-              description="change your master password"
               trailing={<Caret />}
               onClick={() => setDialog("password")}
             />
@@ -226,7 +263,6 @@ export function SettingsScreen() {
                   </svg>
                 }
                 name="Biometric unlock"
-                description={bioDescription}
                 trailing={bioBadge}
                 onClick={phase === "unsupported" ? undefined : () => setDialog("biometric")}
               />
@@ -246,7 +282,6 @@ export function SettingsScreen() {
                 </svg>
               }
               name="Recovery phrase"
-              description="verify you still have it"
               trailing={<Badge label="Check" variant="off" />}
               onClick={() => setDialog("phrase")}
             />
@@ -265,16 +300,16 @@ export function SettingsScreen() {
                 </svg>
               }
               name="Sign out"
-              description="forget this device"
               trailing={<Caret />}
               onClick={() => setDialog("signout")}
             />
           </SettingsCard>
         </section>
 
-        <section>
-          <SectionLabel>Display</SectionLabel>
+        <section aria-labelledby="settings-display">
+          <SectionLabel id="settings-display">Display</SectionLabel>
           <SettingsCard>
+            <ThemeSelector value={themePreference} onChange={setThemePreference} />
             <Row
               icon={
                 <svg
@@ -290,7 +325,6 @@ export function SettingsScreen() {
                 </svg>
               }
               name="Start veiled"
-              description="open every session with figures hidden"
               trailing={
                 hydrated ? (
                   <Toggle on={veilStart} onToggle={toggleVeilStart} label="Start veiled" />
@@ -300,8 +334,8 @@ export function SettingsScreen() {
           </SettingsCard>
         </section>
 
-        <section>
-          <SectionLabel>Data</SectionLabel>
+        <section aria-labelledby="settings-data">
+          <SectionLabel id="settings-data">Data</SectionLabel>
           <SettingsCard>
             <Row
               danger
@@ -318,15 +352,14 @@ export function SettingsScreen() {
                 </svg>
               }
               name="Destroy vault"
-              description="erase ciphertext everywhere, forever, no undo"
               trailing={<Caret />}
               onClick={() => setDialog("destroy")}
             />
           </SettingsCard>
         </section>
 
-        <section>
-          <SectionLabel>About</SectionLabel>
+        <section aria-labelledby="settings-about">
+          <SectionLabel id="settings-about">About</SectionLabel>
           <SettingsCard>
             <Row
               icon={
@@ -343,7 +376,6 @@ export function SettingsScreen() {
                 </svg>
               }
               name="Version"
-              description={hydrated ? `running at ${window.location.host}` : "running"}
               trailing={<span className="shrink-0 font-mono text-xs text-dim">v{APP_VERSION}</span>}
             />
             <Row
@@ -360,9 +392,8 @@ export function SettingsScreen() {
                 </svg>
               }
               name="Source"
-              description="read the code"
               trailing={<Caret />}
-              onClick={() => window.open(SOURCE_URL, "_blank", "noopener,noreferrer")}
+              href={SOURCE_URL}
             />
             <Row
               icon={
@@ -379,9 +410,8 @@ export function SettingsScreen() {
                 </svg>
               }
               name="Data sources"
-              description="Data provided by CoinGecko"
               trailing={<Caret />}
-              onClick={() => window.open(COINGECKO_URL, "_blank", "noopener,noreferrer")}
+              href={COINGECKO_URL}
             />
           </SettingsCard>
         </section>

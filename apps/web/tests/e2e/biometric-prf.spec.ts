@@ -58,7 +58,9 @@ async function lockViaNav(page: import("@playwright/test").Page): Promise<void> 
 // Open the Biometric unlock dialog from its settings row.
 async function openBiometricDialog(page: import("@playwright/test").Page): Promise<void> {
   await page.goto("/app/settings/");
-  await expect(page.getByRole("heading", { name: /The vault/ })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("heading", { name: "The vault, your way." })).toBeVisible({
+    timeout: 15_000,
+  });
   await page.getByRole("button", { name: /Biometric unlock/ }).click();
 }
 
@@ -124,7 +126,9 @@ test.describe("biometric PRF (CDP)", () => {
       await enrollBiometric(page);
       await lockViaNav(page);
 
-      await page.getByRole("button", { name: "Sign out" }).click();
+      const signOut = page.getByRole("button", { name: "Sign out" });
+      await expect(signOut).toBeVisible();
+      await signOut.click();
       await expect(page).toHaveURL(/\/auth\/login\/?$/, { timeout: 15_000 });
 
       const record = await readIdbEnrollment(page);

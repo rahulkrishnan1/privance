@@ -1,68 +1,97 @@
+import type { ComponentType } from "react";
 import { createBrowserRouter } from "react-router";
-
-// All pages are eager imports: auth-state transitions (login, unlock, logout)
-// must not flash a blank Suspense fallback. Chart-heavy components are
-// code-split inside each page (React.lazy), as they were pre-migration.
-
-// Invest: layout route keeps hero + subnav mounted across tab switches.
-import { InvestLayout } from "@/features/invest";
-import { AccountsView } from "@/features/invest/components/accounts-view";
-import { HoldingsView } from "@/features/invest/components/holdings-view";
-import { OverviewView } from "@/features/invest/components/overview-view";
-// Sibling app routes (plan, spend, settings) are flat — they don't share
-// the invest layout.
-import PlanPage from "./app/(app)/app/plan/page";
-import SettingsPage from "./app/(app)/app/settings/page";
-import SpendPage from "./app/(app)/app/spend/page";
-import AppLayout from "./app/(app)/layout";
-import LandingLayout from "./app/(landing)/layout";
-import LandingPage from "./app/(landing)/page";
-import AuthLayout from "./app/auth/layout";
-import LoginPage from "./app/auth/login/page";
-import RecoveryPage from "./app/auth/recovery/page";
-import SignupPage from "./app/auth/signup/page";
-// Layout shells
 import RootShell from "./app/root-shell";
-import UnlockPage from "./app/unlock/page";
+import { RouteLoading } from "./components/RouteLoading";
 
+function lazyDefault(load: () => Promise<{ default: ComponentType }>) {
+  return async () => ({ Component: (await load()).default });
+}
+
+// Keep only the route map and root shell on the startup path. React Router
+// resolves every matched lazy route in parallel, so direct links still render
+// in one pass while unrelated auth, planning, settings, and investing code stay
+// out of the initial bundle.
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <RootShell />,
+    Component: RootShell,
+    HydrateFallback: RouteLoading,
     children: [
-      // Landing
       {
-        element: <LandingLayout />,
-        children: [{ index: true, element: <LandingPage /> }],
-      },
-      // Auth routes
-      {
-        path: "auth",
-        element: <AuthLayout />,
+        lazy: lazyDefault(() => import("./app/(landing)/layout")),
         children: [
-          { path: "login", element: <LoginPage /> },
-          { path: "signup", element: <SignupPage /> },
-          { path: "recovery", element: <RecoveryPage /> },
+          {
+            index: true,
+            lazy: lazyDefault(() => import("./app/(landing)/page")),
+          },
         ],
       },
-      // Unlock
-      { path: "unlock", element: <UnlockPage /> },
-      // Auth-gated app routes
       {
-        element: <AppLayout />,
+        path: "auth",
+        lazy: lazyDefault(() => import("./app/auth/layout")),
+        children: [
+          {
+            path: "login",
+            lazy: lazyDefault(() => import("./app/auth/login/page")),
+          },
+          {
+            path: "signup",
+            lazy: lazyDefault(() => import("./app/auth/signup/page")),
+          },
+          {
+            path: "recovery",
+            lazy: lazyDefault(() => import("./app/auth/recovery/page")),
+          },
+        ],
+      },
+      {
+        path: "unlock",
+        lazy: lazyDefault(() => import("./app/unlock/page")),
+      },
+      {
+        lazy: lazyDefault(() => import("./app/(app)/layout")),
         children: [
           {
             path: "app",
-            element: <InvestLayout />,
+            lazy: async () => ({
+              Component: (await import("./features/invest/invest-layout")).InvestLayout,
+            }),
             children: [
-              { index: true, element: <OverviewView /> },
-              { path: "holdings", element: <HoldingsView /> },
-              { path: "accounts", element: <AccountsView /> },
+              {
+                index: true,
+                lazy: async () => ({
+                  Component: (await import("./features/invest/components/overview-view"))
+                    .OverviewView,
+                }),
+              },
+              {
+                path: "holdings",
+                lazy: async () => ({
+                  Component: (await import("./features/invest/components/holdings-view"))
+                    .HoldingsView,
+                }),
+              },
+              {
+                path: "accounts",
+                lazy: async () => ({
+                  Component: (await import("./features/invest/components/accounts-view"))
+                    .AccountsView,
+                }),
+              },
             ],
           },
-          { path: "app/plan", element: <PlanPage /> },
-          { path: "app/spend", element: <SpendPage /> },
-          { path: "app/settings", element: <SettingsPage /> },
+          {
+            path: "app/plan",
+            lazy: lazyDefault(() => import("./app/(app)/app/plan/page")),
+          },
+          {
+            path: "app/spend",
+            lazy: lazyDefault(() => import("./app/(app)/app/spend/page")),
+          },
+          {
+            path: "app/settings",
+            lazy: lazyDefault(() => import("./app/(app)/app/settings/page")),
+          },
         ],
       },
     ],

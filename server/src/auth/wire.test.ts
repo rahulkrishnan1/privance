@@ -82,8 +82,9 @@ const mockClaimInviteToken = mock(
 const mockCreateInviteToken = mock(
   async (): Promise<{ tokenId: string }> => ({ tokenId: "tok-mocked" }),
 );
-
+const mockPurgeUserData = mock(async () => undefined);
 mock.module("./repo.js", () => ({
+  purgeUserData: mockPurgeUserData,
   AuthRepo: class {
     getUserByUsername = mockGetUserByUsername;
     getUserAuthHashById = mockGetUserAuthHashById;

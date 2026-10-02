@@ -66,6 +66,7 @@ type AuthContextValue = {
   state: AuthState;
   user: AuthUser | null;
   persistence: PersistenceLevel;
+  lockFailed: boolean;
   login: (payload: AuthPayload) => Promise<void>;
   unlock: (payload: AuthPayload) => Promise<void>;
   lock: () => Promise<void>;
@@ -79,10 +80,28 @@ type AuthContextValue = {
 /** Idle auto-lock shares the session window: the same elapsed-time budget
  *  governs going idle while open and reopening after a close. */
 const DEFAULT_AUTO_LOCK_MS = SESSION_TTL_MS;
+const LOCK_SESSION_CLEAR_TIMEOUT_MS = 1_000;
+const LOCK_CHANNEL_NAME = "privance.auth";
 
 /** Throttle for sliding the persisted window forward on activity. Far below the
  *  15-minute budget, so a worst-case-stale lastActiveAt is negligible. */
 const VAULT_TOUCH_THROTTLE_MS = 60 * 1000;
+
+function clearSessionForLock(): Promise<void> {
+  return new Promise((resolve) => {
+    const timeout = setTimeout(resolve, LOCK_SESSION_CLEAR_TIMEOUT_MS);
+    void clearSession().then(
+      () => {
+        clearTimeout(timeout);
+        resolve();
+      },
+      () => {
+        clearTimeout(timeout);
+        resolve();
+      },
+    );
+  });
+}
 
 /** Non-secret username in localStorage. Doubles as the "this device has an
  *  account" marker that decides locked vs unauthenticated on boot, and pre-fills
@@ -90,15 +109,87 @@ const VAULT_TOUCH_THROTTLE_MS = 60 * 1000;
  *  close, which is what lets lock-on-close land on /unlock rather than login. */
 export const USERNAME_KEY = "privance.username";
 
+/** Non-secret boot marker set before a deliberate lock. It makes a hard reload
+ * fail closed even if a browser stalls the best-effort IndexedDB purge. */
+const LOCKED_KEY = "privance.locked";
+
 /** Non-secret account id in localStorage, so the locked-screen sign-out can
  *  derive the per-user OPFS filename and erase local ciphertext after a close
  *  wipes it from memory. The server already knows it; never key material. */
 export const USER_ID_KEY = "privance.userId";
 
-/** Written on an explicit lock to broadcast it to other same-origin tabs (a
- *  `storage` event fires only in the tabs that did not make the change). Carries
- *  a changing timestamp, never key material. */
+function readLocalStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/** Written on an explicit lock to notify other same-origin tabs via `storage`. */
 const LOCK_BROADCAST_KEY = "privance.lockBroadcast";
+
+type LockMarkerWrites = { local: boolean; session: boolean };
+
+type LockOutcome = "locked" | "signed-out" | "failed";
+
+function lockToken(prefix: "auth" | "lock"): string {
+  return `${prefix}:${crypto.randomUUID()}`;
+}
+
+function hasLockMarker(): boolean {
+  let storageFailed = false;
+  try {
+    const marker = localStorage.getItem(LOCKED_KEY);
+    if (marker !== null) return true;
+  } catch {
+    storageFailed = true;
+  }
+  try {
+    const marker = sessionStorage.getItem(LOCKED_KEY);
+    if (marker !== null) return true;
+  } catch {
+    storageFailed = true;
+  }
+  return storageFailed;
+}
+
+function writeLockMarkers(token: string): LockMarkerWrites {
+  const writes = { local: false, session: false };
+  try {
+    localStorage.setItem(LOCKED_KEY, token);
+    writes.local = true;
+  } catch {}
+  try {
+    sessionStorage.setItem(LOCKED_KEY, token);
+    writes.session = true;
+  } catch {}
+  return writes;
+}
+
+function stillOwnsLockMarkers(token: string, writes: LockMarkerWrites): boolean {
+  try {
+    return (
+      (!writes.local || localStorage.getItem(LOCKED_KEY) === token) &&
+      (!writes.session || sessionStorage.getItem(LOCKED_KEY) === token)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function clearLockMarkers(token?: string): void {
+  try {
+    if (token === undefined || localStorage.getItem(LOCKED_KEY) === token) {
+      localStorage.removeItem(LOCKED_KEY);
+    }
+  } catch {}
+  try {
+    if (token === undefined || sessionStorage.getItem(LOCKED_KEY) === token) {
+      sessionStorage.removeItem(LOCKED_KEY);
+    }
+  } catch {}
+}
 
 /** True when the current document load was a reload (F5 / pull-to-refresh)
  *  rather than a fresh navigation or cold app launch. Survive-refresh restores
@@ -114,7 +205,15 @@ function isReloadNavigation(): boolean {
  *  other engines report it through the display-mode media query. */
 function isStandalonePwa(): boolean {
   const iosStandalone = (navigator as Navigator & { standalone?: boolean }).standalone === true;
-  return iosStandalone || window.matchMedia("(display-mode: standalone)").matches;
+  if (iosStandalone) return true;
+  try {
+    return (
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(display-mode: standalone)").matches
+    );
+  } catch {
+    return false;
+  }
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -130,24 +229,28 @@ export function AuthProvider({
     // Guard against SSR: globalThis DEK store and Web Storage are unavailable in
     // Node during the static export build, window is undefined in that context.
     if (typeof window === "undefined") return "unauthenticated";
-    if (getDekStore() !== undefined) return "unlocked";
     // A persisted username means this device has an account; whether it is
     // locked or still unlocked is decided asynchronously from the session vault
     // (see the rehydrate effect), so hold in "loading" until then. No username
     // means never authenticated here, so stay public with no async work.
-    if (localStorage.getItem(USERNAME_KEY) !== null) return "loading";
-    return "unauthenticated";
+    const hasDek = getDekStore() !== undefined;
+    if (readLocalStorage(USERNAME_KEY) === null) return hasDek ? "unlocked" : "unauthenticated";
+    if (hasLockMarker()) return "locked";
+    return hasDek ? "unlocked" : "loading";
   });
   const [user, setUser] = useState<AuthUser | null>(() => {
     if (typeof window === "undefined") return null;
-    const username = localStorage.getItem(USERNAME_KEY);
+    const username = readLocalStorage(USERNAME_KEY);
     return username !== null ? { username } : null;
   });
   const [persistence, setPersistence] = useState<PersistenceLevel>("memory");
+  const [lockFailed, setLockFailed] = useState(false);
   const autoLockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastActivityMs = useRef<number>(Date.now());
   const lastVaultTouchMs = useRef<number>(0);
   const logoutCleanupsRef = useRef<Set<() => void | Promise<void>>>(new Set());
+  const lockRevision = useRef(0);
+  const lockChannel = useRef<BroadcastChannel | null>(null);
 
   const registerLogoutCleanup = useCallback((cb: () => void | Promise<void>) => {
     logoutCleanupsRef.current.add(cb);
@@ -156,22 +259,74 @@ export function AuthProvider({
     };
   }, []);
 
-  const triggerLockReload = useCallback(async () => {
-    clearDekStore();
-    // Purge before reload: a not-yet-committed delete would leave a fresh vault
-    // and the reboot would auto-unlock instead of locking.
-    await clearSession();
-    setState("locked");
-    if (typeof window !== "undefined") {
-      window.location.reload();
-    }
-  }, []);
+  const clearForLock = useCallback(
+    async (announce?: (token: string) => void): Promise<LockOutcome> => {
+      lockRevision.current += 1;
+      setLockFailed(false);
+      const token = lockToken("lock");
+      const markerWrites = writeLockMarkers(token);
+      announce?.(token);
 
-  const resetIdleTimer = useCallback(() => {
-    if (autoLockTimer.current !== null) clearTimeout(autoLockTimer.current);
-    lastActivityMs.current = Date.now();
-    autoLockTimer.current = setTimeout(triggerLockReload, autoLockMs);
-  }, [autoLockMs, triggerLockReload]);
+      if (markerWrites.local) {
+        clearDekStore();
+        setState("locked");
+        await clearSessionForLock();
+        return "locked";
+      }
+
+      try {
+        localStorage.removeItem(USERNAME_KEY);
+      } catch {
+        setLockFailed(true);
+        void clearSessionForLock();
+        return "failed";
+      }
+      try {
+        localStorage.removeItem(USER_ID_KEY);
+      } catch {}
+
+      clearDekStore();
+      setUser(null);
+      setState("unauthenticated");
+      void clearSessionForLock();
+      return "signed-out";
+    },
+    [],
+  );
+
+  const scheduleIdleLock = useCallback(
+    (callback: () => void) => {
+      if (autoLockTimer.current !== null) clearTimeout(autoLockTimer.current);
+      lastActivityMs.current = Date.now();
+      autoLockTimer.current = setTimeout(callback, autoLockMs);
+    },
+    [autoLockMs],
+  );
+
+  const triggerLockReload = useCallback(async () => {
+    const revision = lockRevision.current + 1;
+    const outcome = await clearForLock();
+    // The marker and locked UI fail closed even if IndexedDB stalls. Purge before
+    // reload when it responds so the stale vault record is not left behind.
+    if (
+      outcome === "locked" &&
+      revision === lockRevision.current &&
+      typeof window !== "undefined"
+    ) {
+      window.location.reload();
+    } else if (
+      outcome === "failed" &&
+      revision === lockRevision.current &&
+      getDekStore() !== undefined
+    ) {
+      scheduleIdleLock(() => void triggerLockReload());
+    }
+  }, [clearForLock, scheduleIdleLock]);
+
+  const resetIdleTimer = useCallback(
+    () => scheduleIdleLock(() => void triggerLockReload()),
+    [scheduleIdleLock, triggerLockReload],
+  );
 
   const clearIdleTimer = useCallback(() => {
     if (autoLockTimer.current !== null) {
@@ -195,13 +350,24 @@ export function AuthProvider({
         // reload (type "reload") still restores below. Browser tabs keep the
         // timer-bounded behavior; private browsing wipes storage on close anyway.
         if (isStandalonePwa() && !isReloadNavigation()) {
-          await clearSession();
+          lockRevision.current += 1;
+          writeLockMarkers(lockToken("lock"));
+          await clearSessionForLock();
           if (cancelled) return;
+          setState("locked");
+          return;
+        }
+        const revision = lockRevision.current;
+        if (hasLockMarker()) {
           setState("locked");
           return;
         }
         const itemsKey = await loadSession(Date.now());
         if (cancelled) return;
+        if (revision !== lockRevision.current || hasLockMarker()) {
+          setState("locked");
+          return;
+        }
         if (itemsKey === null) {
           setState("locked");
           return;
@@ -228,26 +394,59 @@ export function AuthProvider({
     };
   }, [state]);
 
-  // Cross-tab lock/logout. A `storage` event fires only in the OTHER tabs, so
-  // when one tab locks (broadcast key) or logs out (username removed), scrub the
-  // in-memory DEK here too and reload to clear V8 internals, matching the active
-  // tab's lock path. Without this, "Lock"/"Sign out" would only affect the tab
-  // the user clicked while siblings kept a live, decrypting DEK. Idle auto-lock
-  // is deliberately per-tab and does not broadcast.
+  // Idle auto-lock is deliberately per-tab; explicit locks also use a channel
+  // so siblings are notified if localStorage events are unavailable.
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const pendingLocks = new Set<string>();
+    const lockSibling = (token: string) => {
+      if (pendingLocks.has(token)) return;
+      pendingLocks.add(token);
+      clearIdleTimer();
+      const revision = lockRevision.current + 1;
+      void clearForLock()
+        .then((outcome) => {
+          if (outcome === "locked" && revision === lockRevision.current) {
+            window.location.reload();
+          } else if (
+            outcome === "failed" &&
+            revision === lockRevision.current &&
+            getDekStore() !== undefined
+          ) {
+            resetIdleTimer();
+          }
+        })
+        .finally(() => pendingLocks.delete(token));
+    };
     const onStorage = (e: StorageEvent) => {
       const loggedOut = e.key === USERNAME_KEY && e.newValue === null;
-      const locked = e.key === LOCK_BROADCAST_KEY && e.newValue !== null;
-      if (!loggedOut && !locked) return;
-      clearDekStore();
-      clearIdleTimer();
-      setState(loggedOut ? "unauthenticated" : "locked");
-      window.location.reload();
+      if (loggedOut) {
+        lockRevision.current += 1;
+        clearDekStore();
+        clearIdleTimer();
+        setState("unauthenticated");
+        window.location.reload();
+        return;
+      }
+      if (e.key === LOCK_BROADCAST_KEY && e.newValue !== null) lockSibling(e.newValue);
     };
+    const onMessage = (event: MessageEvent<{ type?: string; token?: string }>) => {
+      if (event.data?.type === "lock" && typeof event.data.token === "string") {
+        lockSibling(event.data.token);
+      }
+    };
+    const channel =
+      typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel(LOCK_CHANNEL_NAME);
+    lockChannel.current = channel;
+    channel?.addEventListener("message", onMessage);
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, [clearIdleTimer]);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      channel?.removeEventListener("message", onMessage);
+      channel?.close();
+      if (lockChannel.current === channel) lockChannel.current = null;
+    };
+  }, [clearForLock, clearIdleTimer, resetIdleTimer]);
 
   useEffect(() => {
     if (state !== "unlocked") {
@@ -310,52 +509,91 @@ export function AuthProvider({
   // redirect itself is a soft client-side navigation that preserves the
   // in-memory DEK, so login does not rely on the vault for its own transition.
   const login = useCallback(async (payload: AuthPayload) => {
-    setDekStore({ itemsKey: payload.itemsKey });
+    const revision = ++lockRevision.current;
+    const token = lockToken("auth");
+    const markerWrites = writeLockMarkers(token);
     localStorage.setItem(USERNAME_KEY, payload.user.username);
     if (payload.user.userId !== undefined) {
       localStorage.setItem(USER_ID_KEY, payload.user.userId);
     }
     const now = Date.now();
-    await persistSession(payload.itemsKey, now);
+    const persisted = await persistSession(payload.itemsKey, now, {
+      shouldPersist: () =>
+        revision === lockRevision.current && stillOwnsLockMarkers(token, markerWrites),
+    });
+    if (revision !== lockRevision.current || !stillOwnsLockMarkers(token, markerWrites)) return;
     if (payload.user.userId !== undefined) {
       await reArm({ itemsKey: payload.itemsKey, userId: payload.user.userId, now });
     }
+    if (revision !== lockRevision.current || !stillOwnsLockMarkers(token, markerWrites)) return;
+    if (persisted) clearLockMarkers(token);
+    setDekStore({ itemsKey: payload.itemsKey });
     setUser(payload.user);
     setPersistence(payload.persistence);
     resetPricesCache();
     resetProfilesCache();
+    setLockFailed(false);
     applyStartVeilOnAuth();
     setState("unlocked");
   }, []);
 
   const unlock = useCallback(async (payload: AuthPayload) => {
-    setDekStore({ itemsKey: payload.itemsKey });
+    const revision = ++lockRevision.current;
+    const token = lockToken("auth");
+    const markerWrites = writeLockMarkers(token);
     localStorage.setItem(USERNAME_KEY, payload.user.username);
     if (payload.user.userId !== undefined) {
       localStorage.setItem(USER_ID_KEY, payload.user.userId);
     }
     const now = Date.now();
-    await persistSession(payload.itemsKey, now);
+    const persisted = await persistSession(payload.itemsKey, now, {
+      shouldPersist: () =>
+        revision === lockRevision.current && stillOwnsLockMarkers(token, markerWrites),
+    });
+    if (revision !== lockRevision.current || !stillOwnsLockMarkers(token, markerWrites)) return;
     // A biometric unlock never extends its own cadence; only password-derived unlocks re-arm.
     if (payload.persistence !== "biometric" && payload.user.userId !== undefined) {
       await reArm({ itemsKey: payload.itemsKey, userId: payload.user.userId, now });
     }
+    if (revision !== lockRevision.current || !stillOwnsLockMarkers(token, markerWrites)) return;
+    if (persisted) clearLockMarkers(token);
+    setDekStore({ itemsKey: payload.itemsKey });
     setUser(payload.user);
     setPersistence(payload.persistence);
+    setLockFailed(false);
     applyStartVeilOnAuth();
     setState("unlocked");
   }, []);
 
   const lock = useCallback(async () => {
-    clearDekStore();
     clearIdleTimer();
-    await clearSession();
-    localStorage.setItem(LOCK_BROADCAST_KEY, String(Date.now()));
-    setState("locked");
-    if (typeof window !== "undefined") {
-      window.location.reload();
+    const revision = lockRevision.current + 1;
+    const outcome = await clearForLock((token) => {
+      try {
+        localStorage.setItem(LOCK_BROADCAST_KEY, token);
+      } catch {
+        // BroadcastChannel below remains available when storage is blocked.
+      }
+      try {
+        lockChannel.current?.postMessage({ type: "lock", token });
+      } catch {
+        // The current tab still locks when sibling notifications are unavailable.
+      }
+    });
+    if (
+      outcome === "locked" &&
+      revision === lockRevision.current &&
+      typeof window !== "undefined"
+    ) {
+      window.location.replace("/unlock");
+    } else if (
+      outcome === "failed" &&
+      revision === lockRevision.current &&
+      getDekStore() !== undefined
+    ) {
+      resetIdleTimer();
     }
-  }, [clearIdleTimer]);
+  }, [clearForLock, clearIdleTimer, resetIdleTimer]);
 
   // allSettled (not a sequential await) so the worker's openDbWithRetry
   // contention loop sees the destroys as one cluster on a fast
@@ -379,7 +617,9 @@ export function AuthProvider({
     resetProfilesCache();
     localStorage.removeItem(USERNAME_KEY);
     localStorage.removeItem(USER_ID_KEY);
+    clearLockMarkers();
     setUser(null);
+    setLockFailed(false);
     setState("unauthenticated");
   }, [clearIdleTimer]);
 
@@ -392,6 +632,7 @@ export function AuthProvider({
   // the user to re-enroll. Explicit sign-out keeps the default (purge).
   const logout = useCallback(
     async ({ keepEnrollment = false }: { keepEnrollment?: boolean } = {}) => {
+      lockRevision.current += 1;
       await runLogoutCleanups();
       await clearSession();
       // Purge before finishLogout removes USERNAME_KEY and broadcasts to sibling
@@ -408,13 +649,14 @@ export function AuthProvider({
       state,
       user,
       persistence,
+      lockFailed,
       login,
       unlock,
       lock,
       logout,
       registerLogoutCleanup,
     }),
-    [state, user, persistence, login, unlock, lock, logout, registerLogoutCleanup],
+    [state, user, persistence, lockFailed, login, unlock, lock, logout, registerLogoutCleanup],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

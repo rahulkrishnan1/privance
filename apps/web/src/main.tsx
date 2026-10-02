@@ -4,6 +4,7 @@ import { RouterProvider } from "react-router";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { SwUpdateBanner } from "@/components/SwUpdateBanner";
+import { startThemeController } from "@/lib/theme";
 import { AuthProvider } from "@/providers/auth-context";
 import { QueryProvider } from "@/providers/query-client";
 import { SyncProvider } from "@/providers/sync-context";
@@ -13,6 +14,8 @@ import "@fontsource-variable/spline-sans-mono/index.css";
 import "@fontsource/instrument-serif/400.css";
 import "@fontsource/instrument-serif/400-italic.css";
 import "./app/globals.css";
+
+startThemeController();
 
 // index.html always renders <div id="root">, so the element is guaranteed.
 // biome-ignore lint/style/noNonNullAssertion: Vite entry root is static.

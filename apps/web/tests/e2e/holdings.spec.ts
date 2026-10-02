@@ -144,7 +144,22 @@ test.describe("holdings", () => {
 
     await page.getByRole("button", { name: /AAPL, open holding details/ }).click();
     await expect(page).toHaveURL(/\/app\/holdings\/?$/);
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(initialScroll);
+    await expect(page.getByRole("table", { name: "Holdings" })).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.getByRole("table", { name: "Holdings" }).getByText("AAPL").first(),
+    ).toBeVisible({
+      timeout: 15_000,
+    });
+    // The destination can be shorter than the source after the compact empty
+    // history state; browsers clamp scrollY to the destination's max scroll.
+    await expect
+      .poll(() =>
+        page.evaluate((initial) => {
+          const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+          return window.scrollY === Math.min(initial, maxScroll);
+        }, initialScroll),
+      )
+      .toBe(true);
     await expect(page.locator("main")).toBeFocused();
   });
 

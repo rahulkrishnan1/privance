@@ -39,8 +39,7 @@ export function BiometricDialog({
           </p>
         ) : (
           <p className="text-sm leading-[1.6] text-dim">
-            Enable Face ID or Touch ID to unlock without typing the master password. Your OS will
-            prompt for the gesture.
+            Enable Face ID or Touch ID to unlock without typing the master password.
           </p>
         )}
 

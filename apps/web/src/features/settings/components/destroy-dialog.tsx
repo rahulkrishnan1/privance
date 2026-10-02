@@ -84,13 +84,12 @@ export function DestroyDialog({
           danger
         />
         <p className="text-sm leading-[1.6] text-dim">
-          Erases every record from the server and this device. No backup, no undo. That's the point
-          of Privance, so we make you type it.
+          Erases every encrypted record from the server and this device. This cannot be undone.
         </p>
 
         <form onSubmit={(e) => void onDestroy(e)} noValidate>
           <div className="mt-4 flex flex-col gap-2">
-            <Label htmlFor="dv-username">Type your username to arm</Label>
+            <Label htmlFor="dv-username">Type your username to confirm</Label>
             <Input
               id="dv-username"
               type="text"
@@ -125,7 +124,7 @@ export function DestroyDialog({
               Keep my vault
             </Button>
             <Button type="submit" variant="danger" disabled={!armed} loading={pending}>
-              {pending ? "Destroying…" : "Destroy forever"}
+              {pending ? "Destroying…" : "Destroy vault"}
             </Button>
           </DialogFooter>
         </form>

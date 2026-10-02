@@ -1,8 +1,9 @@
-import { CalendarDays } from "lucide-react";
-import { useState } from "react";
-import { Button } from "@/components";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { lazy, Suspense, useState } from "react";
+import { DateFieldTrigger } from "./date-field-trigger";
+
+const DateFieldPicker = lazy(() =>
+  import("./date-field-picker").then((module) => ({ default: module.DateFieldPicker })),
+);
 
 type DateFieldProps = {
   id?: string;
@@ -13,30 +14,15 @@ type DateFieldProps = {
   placeholder?: string;
 };
 
-// `YYYY-MM-DD` <-> Date at local midnight, so the displayed day never shifts
-// across a timezone boundary the way `new Date("2026-06-25")` (parsed as UTC) would.
-function toDate(value: string): Date | undefined {
-  if (!value) return undefined;
-  const [y, m, d] = value.split("-").map(Number);
-  if (!y || !m || !d) return undefined;
-  return new Date(y, m - 1, d);
-}
-
-function toValue(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
 const DATE_DISPLAY = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
-const THIS_YEAR = new Date().getFullYear();
-const CALENDAR_START = new Date(THIS_YEAR - 20, 0);
-const CALENDAR_END = new Date(THIS_YEAR + 10, 11);
 
-function display(value: string): string | null {
-  const date = toDate(value);
-  return date ? DATE_DISPLAY.format(date) : null;
+// Parse at local midnight so the displayed day never shifts across a timezone
+// boundary the way a UTC-parsed YYYY-MM-DD value can.
+function parseDate(value: string): Date | undefined {
+  if (!value) return undefined;
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return undefined;
+  return new Date(year, month - 1, day);
 }
 
 export function DateField({
@@ -46,57 +32,44 @@ export function DateField({
   onBlur,
   placeholder = "Select a date",
 }: DateFieldProps) {
-  const [open, setOpen] = useState(false);
-  const selected = toDate(value);
-  const label = display(value);
+  const [activated, setActivated] = useState(false);
+  const selectedDate = parseDate(value);
+  const label = selectedDate ? DATE_DISPLAY.format(selectedDate) : null;
+
+  if (!activated) {
+    return (
+      <DateFieldTrigger
+        id={id}
+        label={label}
+        placeholder={placeholder}
+        aria-haspopup="dialog"
+        onClick={() => setActivated(true)}
+      />
+    );
+  }
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (!next) onBlur?.();
-      }}
-    >
-      <PopoverTrigger
-        id={id}
-        className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-line bg-panel-2 px-3.5 py-3 text-left font-mono text-base text-cream outline-none transition-colors focus:border-accent-dim"
-      >
-        <span className={label ? "" : "text-faint"}>{label ?? placeholder}</span>
-        <CalendarDays size={16} className="text-faint shrink-0" aria-hidden="true" />
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-0" initialFocus={false}>
-        <Calendar
-          mode="single"
-          captionLayout="dropdown"
-          startMonth={CALENDAR_START}
-          endMonth={CALENDAR_END}
-          selected={selected}
-          defaultMonth={selected}
-          onSelect={(date) => {
-            onChange(date ? toValue(date) : "");
-            setOpen(false);
-          }}
-          // `accent` is our brand teal, so the default today highlight (a teal box)
-          // would clash with the selected day. Mark today with teal text instead.
-          classNames={{ today: "text-accent" }}
+    <Suspense
+      fallback={
+        <DateFieldTrigger
+          id={id}
+          label={label}
+          placeholder={placeholder}
+          aria-haspopup="dialog"
+          loading
+          disabled
         />
-        {value && (
-          <div className="border-t border-line px-2 py-1.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start text-left"
-              onClick={() => {
-                onChange("");
-                setOpen(false);
-              }}
-            >
-              Clear
-            </Button>
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
+      }
+    >
+      <DateFieldPicker
+        id={id}
+        value={value}
+        selectedDate={selectedDate}
+        label={label}
+        placeholder={placeholder}
+        onChange={onChange}
+        onBlur={onBlur}
+      />
+    </Suspense>
   );
 }

@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
 
-import { purgeUserData as purgeAuthData } from "../auth/index.js";
+import { purgeUserData as purgeAuthData } from "../auth/repo.js";
 import { users } from "../auth/schema.js";
 import type { Db } from "../core/db.js";
-import { purgeUserData as purgeSyncData } from "../sync/index.js";
+import { purgeUserData as purgeSyncData } from "../sync/repo.js";
 
 export class AccountRepo {
   constructor(private readonly db: Db) {}

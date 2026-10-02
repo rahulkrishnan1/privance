@@ -13,7 +13,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 import type { Fixtures } from "../../playwright/global-setup";
-import { fillLoginForm } from "./helpers/auth";
+import { clickNavLink, fillLoginForm } from "./helpers/auth";
 
 function loadFixtures(): Fixtures {
   const p = path.join(__dirname, "../../.playwright-fixtures.json");
@@ -33,12 +33,15 @@ test.describe("AE1: no biometric UI on non-PRF browsers", () => {
 
     await page.goto("/auth/login/");
     await fillLoginForm(page, bioUser.username, bioUser.password);
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.getByLabel("Master password").press("Enter");
     await expect(page).toHaveURL(/\/app\/?$/, { timeout: 30_000 });
     await expect(page.getByLabel("Lock")).toBeVisible({ timeout: 10_000 });
 
-    await page.goto("/app/settings/");
-    await expect(page.getByRole("heading", { name: /The vault/ })).toBeVisible({
+    // Keep this as a client-side navigation: WebKit does not retain the
+    // in-memory DEK across a hard navigation, while the user-visible route
+    // transition must remain unlocked.
+    await clickNavLink(page, page.getByRole("link", { name: "Settings" }), /\/app\/settings\/?$/);
+    await expect(page.getByRole("heading", { name: "The vault, your way." })).toBeVisible({
       timeout: 15_000,
     });
 

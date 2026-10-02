@@ -26,6 +26,7 @@ export default defineConfig({
         "icon-512.png",
         "icon-maskable-512.png",
         "manifest.json",
+        "manifest-light.json",
         "sqlite/**",
         "kdf/**",
         "sim/**",

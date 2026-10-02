@@ -133,7 +133,7 @@ export function ChangePasswordDialog({
                 value={next}
                 onChange={(e) => setNext(e.target.value)}
                 autoComplete="new-password"
-                placeholder="long and memorable beats short and clever"
+                placeholder="Use a long, memorable passphrase"
               />
               <PasswordStrength password={next} />
             </div>

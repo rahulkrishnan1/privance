@@ -313,8 +313,68 @@ describe("taxBuckets", () => {
     const cash = buckets.find((b) => b.key === "cash");
     expect(taxable?.valueCents.toMinorUnits()).toBe(80000n);
     expect(cash?.valueCents.toMinorUnits()).toBe(20000n);
+    expect(
+      taxable?.accounts.map(({ accountId, name, valueCents, detail }) => ({
+        accountId,
+        name,
+        valueCents: valueCents.toMinorUnits(),
+        detail,
+      })),
+    ).toEqual([
+      { accountId: brokerage.id, name: "Brokerage", valueCents: 80000n, detail: "investments" },
+    ]);
+    expect(
+      cash?.accounts.map(({ accountId, name, valueCents, detail }) => ({
+        accountId,
+        name,
+        valueCents: valueCents.toMinorUnits(),
+        detail,
+      })),
+    ).toEqual([
+      { accountId: brokerage.id, name: "Brokerage", valueCents: 20000n, detail: "cash balance" },
+    ]);
     // reachable total is unchanged (sweep is just reclassified within the reachable set).
     expect(reachableBeforeFiftyNineHalfCents.toMinorUnits()).toBe(100000n);
+  });
+
+  it("clamps taxable cash sweeps to the account value and rejects negatives", () => {
+    const negativeSweep: Account = {
+      ...makeInvestmentAccount({ id: "negative", name: "Negative", subKind: "brokerage" }),
+      payload: {
+        kind: "investment",
+        subKind: "brokerage",
+        name: "Negative",
+        cashBalanceCents: "-1",
+        currency: "USD",
+        assetType: "stock",
+      },
+    } as Account;
+    const oversizedSweep: Account = {
+      ...makeInvestmentAccount({ id: "oversized", name: "Oversized", subKind: "brokerage" }),
+      payload: {
+        kind: "investment",
+        subKind: "brokerage",
+        name: "Oversized",
+        cashBalanceCents: "200000",
+        currency: "USD",
+        assetType: "stock",
+      },
+    } as Account;
+
+    const { buckets, reachableBeforeFiftyNineHalfCents } = taxBuckets({
+      accounts: [negativeSweep, oversizedSweep],
+      breakdown: makeBreakdown(
+        [],
+        [
+          { accountId: "negative", value: 100000n, kind: "investment" },
+          { accountId: "oversized", value: 100000n, kind: "investment" },
+        ],
+      ),
+    });
+
+    expect(buckets.find((b) => b.key === "taxable")?.valueCents.toMinorUnits()).toBe(100000n);
+    expect(buckets.find((b) => b.key === "cash")?.valueCents.toMinorUnits()).toBe(100000n);
+    expect(reachableBeforeFiftyNineHalfCents.toMinorUnits()).toBe(200000n);
   });
 
   it("keeps pretax account sweep in pretax bucket (not freely reachable)", () => {

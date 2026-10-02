@@ -4,7 +4,7 @@ const env = Object.fromEntries(
 delete env.TRUSTED_PROXY_HOPS;
 env.ENUMERATION_SECRET ??= Buffer.alloc(32, 0x42).toString("base64");
 
-const subprocess = Bun.spawn(["bun", "--no-env-file", "test"], {
+const subprocess = Bun.spawn(["bun", "--no-env-file", "--isolate", "test"], {
   cwd: `${import.meta.dir}/..`,
   env,
   stderr: "inherit",

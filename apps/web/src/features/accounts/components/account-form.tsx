@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 import { Controller, type Resolver, useForm } from "react-hook-form";
 import { DateField } from "@/components/DateField";
 import { Button, Input, Select } from "@/components/index";
-import { Dialog, DialogContent, DialogTitleRow } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Sheet, SheetBody, SheetContent, SheetFooter, SheetTitleRow } from "@/components/ui/sheet";
 import {
   CASH_TYPE_OPTIONS,
   INVESTMENT_TYPE_OPTIONS,
@@ -210,244 +210,249 @@ export function AccountForm({
   });
 
   return (
-    <Dialog
+    <Sheet
       open={open}
       onOpenChange={(o) => {
         if (!o) onClose();
       }}
     >
-      <DialogContent aria-labelledby="account-form-title">
-        <div className="flex flex-col gap-5">
-          <DialogTitleRow
-            titleId="account-form-title"
-            title={isEditMode ? "Edit account" : "Add account"}
-            onClose={onClose}
-          />
-
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void submit();
-            }}
-            className="flex flex-col gap-5"
-            noValidate
-          >
-            <Controller
-              control={control}
-              name="kind"
-              render={({ field }) => (
-                <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
-                  <legend className="font-mono text-xs tracking-label uppercase text-dim mb-2">
-                    Kind
-                  </legend>
-                  <RadioGroup
-                    value={field.value}
-                    onValueChange={(k) => {
-                      field.onChange(k);
-                      // Clear the type so the placeholder shows and the user picks
-                      // one valid for the new kind.
-                      setValue("subKind", undefined);
-                    }}
-                    disabled={isEditMode}
-                    className="grid grid-cols-4 max-[560px]:grid-cols-2 bg-panel-2 border border-line rounded-lg p-1 w-full"
-                  >
-                    {SECTION_ORDER.map((k) => (
-                      <RadioGroupItem key={k} value={k} size="sm">
-                        {KIND_DISPLAY[k]}
-                      </RadioGroupItem>
-                    ))}
-                  </RadioGroup>
-                </fieldset>
-              )}
-            />
-
-            {selectedKind === "investment" && (
-              <Controller
-                control={control}
-                name="subKind"
-                render={({ field }) => (
-                  <SubKindSelect
-                    value={(field.value ?? "") as InvestmentAccountSubKind | ""}
-                    onChange={(v) => {
-                      field.onChange(v);
-                    }}
-                    error={errors.subKind?.message}
-                  />
-                )}
+      <SheetContent aria-labelledby="account-form-title" scrollable={false}>
+        <SheetBody>
+          <div className="flex flex-col">
+            <div className="mb-5 shrink-0">
+              <SheetTitleRow
+                titleId="account-form-title"
+                title={isEditMode ? "Edit account" : "Add account"}
+                onClose={onClose}
               />
-            )}
-
-            {selectedKind === "cash" && (
-              <Controller
-                control={control}
-                name="subKind"
-                render={({ field }) => (
-                  <CashSubKindSelect
-                    value={(field.value ?? "") as CashSubKindValue | ""}
-                    onChange={(v) => {
-                      field.onChange(v);
-                    }}
-                    error={errors.subKind?.message}
-                  />
-                )}
-              />
-            )}
-
-            <Controller
-              control={control}
-              name="name"
-              render={({ field }) => (
-                <Input
-                  label="Name"
-                  {...field}
-                  autoCapitalize="words"
-                  maxLength={64}
-                  error={errors.name?.message}
-                />
-              )}
-            />
-
-            {showSweepField && (
-              <div className="flex flex-col gap-1">
-                <Controller
-                  control={control}
-                  name="balance"
-                  render={({ field }) => (
-                    <Input
-                      label="Cash balance (optional)"
-                      {...field}
-                      inputMode="decimal"
-                      placeholder="0.00"
-                      error={errors.balance?.message}
-                    />
-                  )}
-                />
-              </div>
-            )}
-
-            {showBalanceField && (
-              <div className="flex flex-col gap-1">
-                <Controller
-                  control={control}
-                  name="balance"
-                  render={({ field }) => (
-                    <Input
-                      label={balanceLabel}
-                      {...field}
-                      inputMode="decimal"
-                      placeholder="0.00"
-                      error={errors.balance?.message}
-                    />
-                  )}
-                />
-              </div>
-            )}
-
-            {(selectedKind === "cash" || selectedKind === "investment") && (
-              <div className="flex flex-col gap-1">
-                <Controller
-                  control={control}
-                  name="apy"
-                  render={({ field }) => (
-                    <Input
-                      label={
-                        selectedKind === "investment" ? "Cash APY (optional)" : "APY (optional)"
-                      }
-                      {...field}
-                      value={field.value ?? ""}
-                      inputMode="decimal"
-                      placeholder="e.g. 4.10"
-                    />
-                  )}
-                />
-              </div>
-            )}
-
-            {selectedKind === "liability" && (
-              <div className="flex flex-col gap-5">
-                <div className="flex flex-col gap-1">
-                  <Controller
-                    control={control}
-                    name="interestRate"
-                    render={({ field }) => (
-                      <Input
-                        label="Rate (optional)"
-                        {...field}
-                        value={field.value ?? ""}
-                        inputMode="decimal"
-                        placeholder="e.g. 6.25"
-                      />
-                    )}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Controller
-                    control={control}
-                    name="termYears"
-                    render={({ field }) => (
-                      <Input
-                        label="Years left (optional)"
-                        {...field}
-                        value={field.value ?? ""}
-                        inputMode="decimal"
-                        placeholder="e.g. 22"
-                      />
-                    )}
-                  />
-                </div>
-              </div>
-            )}
-
-            {selectedKind === "manual_asset" && (
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="valued-at">Valued date (optional)</Label>
-                <Controller
-                  control={control}
-                  name="valuedAt"
-                  render={({ field }) => (
-                    <DateField
-                      id="valued-at"
-                      value={field.value ?? ""}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                    />
-                  )}
-                />
-              </div>
-            )}
-
-            {saveError !== null && (
-              <div
-                role="alert"
-                className="rounded-lg border border-signal/40 bg-signal/10 px-4 py-3"
-              >
-                <p className="text-sm text-signal">{saveError}</p>
-              </div>
-            )}
-
-            <div className="flex gap-2.5 pt-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={onClose}
-                disabled={submitting}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                loading={submitting}
-                disabled={submitting}
-                className="flex-1"
-              >
-                {submitting ? "Saving..." : isEditMode ? "Save changes" : "Add account"}
-              </Button>
             </div>
-          </form>
-        </div>
-      </DialogContent>
-    </Dialog>
+
+            <form
+              id="account-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void submit();
+              }}
+              className="flex flex-col gap-4 px-1"
+              noValidate
+            >
+              <Controller
+                control={control}
+                name="kind"
+                render={({ field }) => (
+                  <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
+                    <legend className="font-mono text-xs tracking-label uppercase text-dim mb-2">
+                      Kind
+                    </legend>
+                    <RadioGroup
+                      value={field.value}
+                      onValueChange={(k) => {
+                        field.onChange(k);
+                        // Clear the type so the placeholder shows and the user picks
+                        // one valid for the new kind.
+                        setValue("subKind", undefined);
+                      }}
+                      disabled={isEditMode}
+                      className="grid grid-cols-4 max-[560px]:grid-cols-2 bg-panel-2 border border-line rounded-lg p-1 w-full"
+                    >
+                      {SECTION_ORDER.map((k) => (
+                        <RadioGroupItem key={k} value={k} size="sm">
+                          {KIND_DISPLAY[k]}
+                        </RadioGroupItem>
+                      ))}
+                    </RadioGroup>
+                  </fieldset>
+                )}
+              />
+
+              {selectedKind === "investment" && (
+                <Controller
+                  control={control}
+                  name="subKind"
+                  render={({ field }) => (
+                    <SubKindSelect
+                      value={(field.value ?? "") as InvestmentAccountSubKind | ""}
+                      onChange={(v) => {
+                        field.onChange(v);
+                      }}
+                      error={errors.subKind?.message}
+                    />
+                  )}
+                />
+              )}
+
+              {selectedKind === "cash" && (
+                <Controller
+                  control={control}
+                  name="subKind"
+                  render={({ field }) => (
+                    <CashSubKindSelect
+                      value={(field.value ?? "") as CashSubKindValue | ""}
+                      onChange={(v) => {
+                        field.onChange(v);
+                      }}
+                      error={errors.subKind?.message}
+                    />
+                  )}
+                />
+              )}
+
+              <Controller
+                control={control}
+                name="name"
+                render={({ field }) => (
+                  <Input
+                    label="Name"
+                    {...field}
+                    autoCapitalize="words"
+                    maxLength={64}
+                    error={errors.name?.message}
+                  />
+                )}
+              />
+
+              {showSweepField && (
+                <div className="flex flex-col gap-1">
+                  <Controller
+                    control={control}
+                    name="balance"
+                    render={({ field }) => (
+                      <Input
+                        label="Cash balance (optional)"
+                        {...field}
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        error={errors.balance?.message}
+                      />
+                    )}
+                  />
+                </div>
+              )}
+
+              {showBalanceField && (
+                <div className="flex flex-col gap-1">
+                  <Controller
+                    control={control}
+                    name="balance"
+                    render={({ field }) => (
+                      <Input
+                        label={balanceLabel}
+                        {...field}
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        error={errors.balance?.message}
+                      />
+                    )}
+                  />
+                </div>
+              )}
+
+              {(selectedKind === "cash" || selectedKind === "investment") && (
+                <div className="flex flex-col gap-1">
+                  <Controller
+                    control={control}
+                    name="apy"
+                    render={({ field }) => (
+                      <Input
+                        label={
+                          selectedKind === "investment" ? "Cash APY (optional)" : "APY (optional)"
+                        }
+                        {...field}
+                        value={field.value ?? ""}
+                        inputMode="decimal"
+                        placeholder="e.g. 4.10"
+                      />
+                    )}
+                  />
+                </div>
+              )}
+
+              {selectedKind === "liability" && (
+                <div className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-1">
+                    <Controller
+                      control={control}
+                      name="interestRate"
+                      render={({ field }) => (
+                        <Input
+                          label="Rate (optional)"
+                          {...field}
+                          value={field.value ?? ""}
+                          inputMode="decimal"
+                          placeholder="e.g. 6.25"
+                        />
+                      )}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Controller
+                      control={control}
+                      name="termYears"
+                      render={({ field }) => (
+                        <Input
+                          label="Years left (optional)"
+                          {...field}
+                          value={field.value ?? ""}
+                          inputMode="decimal"
+                          placeholder="e.g. 22"
+                        />
+                      )}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {selectedKind === "manual_asset" && (
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="valued-at">Valued date (optional)</Label>
+                  <Controller
+                    control={control}
+                    name="valuedAt"
+                    render={({ field }) => (
+                      <DateField
+                        id="valued-at"
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                      />
+                    )}
+                  />
+                </div>
+              )}
+
+              {saveError !== null && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-signal/40 bg-signal/10 px-4 py-3"
+                >
+                  <p className="text-sm text-signal">{saveError}</p>
+                </div>
+              )}
+            </form>
+          </div>
+        </SheetBody>
+        <SheetFooter className="static mt-4 shrink-0">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={submitting}
+            className="flex-1"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="account-form"
+            variant="primary"
+            loading={submitting}
+            disabled={submitting}
+            className="flex-1"
+          >
+            {submitting ? "Saving..." : isEditMode ? "Save changes" : "Add account"}
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

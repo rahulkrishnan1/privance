@@ -184,7 +184,7 @@ export function HoldingsTable({
             </th>
             <th
               scope="col"
-              className="text-right pb-3 pl-8 whitespace-nowrap"
+              className="text-right pb-3 pl-2 md:pl-8 whitespace-nowrap"
               aria-sort={ariaSort("gainDollar", sort)}
             >
               <SortableHeader
@@ -203,7 +203,7 @@ export function HoldingsTable({
             </th>
             <th
               scope="col"
-              className="text-right pb-3 pl-8 whitespace-nowrap"
+              className="text-right pb-3 pl-2 md:pl-8 whitespace-nowrap"
               aria-sort={ariaSort("marketValue", sort)}
             >
               <SortableHeader

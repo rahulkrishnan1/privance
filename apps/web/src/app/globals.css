@@ -4,8 +4,8 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #07080a;
-  --foreground: #f2f4f5;
+  --background: #f6f7f5;
+  --foreground: #101416;
 
   /* Font family CSS variables — loaded via @fontsource in main.tsx; defined
      here so the @theme block below picks them up. */
@@ -25,24 +25,53 @@
   --font-serif: var(--font-instrument-serif);
   --font-editorial: var(--font-instrument-serif);
 
-  /* Privance 2026 palette, "Signal". Near-black vault + luminous mint accent,
-     violet as the secondary data hue. These names mirror the design mocks
-     one-to-one. */
-  --color-vault: #07080a;
-  --color-panel: #101216;
-  --color-panel-2: #171a20;
-  --color-cream: #f2f4f5;
-  --color-cream-soft: #c9ced2;
-  --color-dim: #8b939b;
-  --color-faint: #5b636b;
-  --color-line: rgba(255, 255, 255, 0.09);
-  --color-line-soft: rgba(255, 255, 255, 0.05);
-  --color-accent: #5eead4;
-  --color-accent-dim: #2dd4bf;
-  --color-accent-hover: #8cf5e4;
-  --color-up: #4ade80;
-  --color-down: #fb7185;
-  --color-signal: #fb923c;
+  /* Light mode is the readable baseline; .dark below swaps the same semantic
+     roles. The aliases keep Tailwind utilities runtime-theme-aware instead of
+     baking the light values into generated CSS. */
+  --surface-vault: #f6f7f5;
+  --surface-panel: #ffffff;
+  --surface-panel-2: #eef1ef;
+  --text-cream: #101416;
+  --text-cream-soft: #3f4b4e;
+  --text-dim: #667477;
+  --text-faint: #636f72;
+  --border-line: rgba(16, 20, 22, 0.14);
+  --border-line-soft: rgba(16, 20, 22, 0.08);
+  --brand-accent: #087f73;
+  --brand-accent-dim: #0f766e;
+  --brand-accent-hover: #056b61;
+  --control-primary: #087f73;
+  --data-primary: #128f84;
+  --status-up: #15803d;
+  --status-down: #be123c;
+  --status-signal: #b45309;
+  --surface-highlight: rgba(255, 255, 255, 0.8);
+  --surface-shadow: rgba(15, 23, 42, 0.14);
+  --mobile-nav-clearance: calc(5rem + env(safe-area-inset-bottom));
+}
+
+.dark {
+  --background: #07080a;
+  --foreground: #f2f4f5;
+  --surface-vault: #07080a;
+  --surface-panel: #101216;
+  --surface-panel-2: #171a20;
+  --text-cream: #f2f4f5;
+  --text-cream-soft: #c9ced2;
+  --text-dim: #8b939b;
+  --text-faint: #7b858e;
+  --border-line: rgba(255, 255, 255, 0.09);
+  --border-line-soft: rgba(255, 255, 255, 0.05);
+  --brand-accent: #5eead4;
+  --brand-accent-dim: #2dd4bf;
+  --brand-accent-hover: #8cf5e4;
+  --control-primary: #f2f4f5;
+  --data-primary: #5eead4;
+  --status-up: #4ade80;
+  --status-down: #fb7185;
+  --status-signal: #fb923c;
+  --surface-highlight: rgba(255, 255, 255, 0.05);
+  --surface-shadow: rgba(0, 0, 0, 0.55);
 }
 
 /* shadcn/ui semantic tokens mapped onto the Privance palette. Only names that
@@ -69,6 +98,23 @@
   --accent-foreground: var(--color-vault);
 }
 @theme inline {
+  --color-vault: var(--surface-vault);
+  --color-panel: var(--surface-panel);
+  --color-panel-2: var(--surface-panel-2);
+  --color-cream: var(--text-cream);
+  --color-cream-soft: var(--text-cream-soft);
+  --color-dim: var(--text-dim);
+  --color-faint: var(--text-faint);
+  --color-line: var(--border-line);
+  --color-line-soft: var(--border-line-soft);
+  --color-accent: var(--brand-accent);
+  --color-accent-dim: var(--brand-accent-dim);
+  --color-accent-hover: var(--brand-accent-hover);
+  --color-control-primary: var(--control-primary);
+  --color-up: var(--status-up);
+  --color-down: var(--status-down);
+  --color-signal: var(--status-signal);
+
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -88,9 +134,8 @@
 }
 
 /* Type scale. One ladder; every step a canonical value (Tailwind / Material /
-   iOS). The migration only ever lifts a size UP this ladder, never down, the
-   app read too small before, so nothing ends smaller than it was. Apply by role
-   (guidance, not extra tokens):
+   iOS). These explicit values normalize the app's oversized and undersized
+   defaults into a consistent range. Apply by role (guidance, not extra tokens):
      xs   12  eyebrow / micro-label / caption  (the floor, nothing smaller)
      sm   14  dense data, table rows, secondary
      base 16  body, row labels, inputs (iOS zoom floor), reading prose
@@ -115,8 +160,8 @@
   /* One source of truth for letter-spacing so uppercase labels and buttons
      never drift again. `label` = static eyebrows/headers; `button` = clickable
      uppercase controls. Subtle mono spacing on tickers/badges stays inline. */
-  --tracking-label: 0.2em;
-  --tracking-button: 0.14em;
+  --tracking-label: 0.12em;
+  --tracking-button: 0.08em;
 }
 
 /* Motion. One curve set so every transition shares a personality: a strong
@@ -132,10 +177,19 @@
 }
 
 body {
+  position: relative;
   background-color: var(--background);
   background-image:
-    radial-gradient(900px 520px at 82% 4%, rgba(94, 234, 212, 0.06), transparent 60%),
-    radial-gradient(820px 640px at 6% 94%, rgba(94, 234, 212, 0.035), transparent 55%);
+    radial-gradient(
+      900px 520px at 82% 4%,
+      color-mix(in srgb, var(--color-accent) 6%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      820px 640px at 6% 94%,
+      color-mix(in srgb, var(--color-accent) 3.5%, transparent),
+      transparent 55%
+    );
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
@@ -213,12 +267,50 @@ html {
   background: var(--color-panel);
   border: 1px solid var(--color-line);
   box-shadow:
-    0 12px 32px -14px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 12px 32px -14px var(--surface-shadow),
+    inset 0 1px 0 var(--surface-highlight);
 }
 
-/* The Veil: frost every figure on the surface. Toggled by adding `veil-on` to a
-   container; each masked value carries the `vfig` class. */
+@utility floating-material {
+  background: var(--color-panel);
+  border: 1px solid color-mix(in srgb, var(--color-cream) 14%, transparent);
+  box-shadow:
+    0 18px 42px -20px var(--surface-shadow),
+    inset 0 1px 0 var(--surface-highlight);
+  backdrop-filter: blur(24px) saturate(1.35);
+  -webkit-backdrop-filter: blur(24px) saturate(1.35);
+}
+
+@supports (background: color-mix(in srgb, white 50%, transparent)) {
+  .floating-material {
+    background: color-mix(in srgb, var(--color-panel) 94%, transparent);
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .floating-material {
+    background: var(--color-panel);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .floating-material {
+    background: var(--color-panel);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .floating-material {
+    background: var(--color-panel);
+    border-color: var(--color-cream-soft);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* Toggled on body so figures in portaled drawers and dialogs are masked too. */
 .veil-on .vfig {
   filter: blur(clamp(7px, 0.35em, 18px));
   opacity: 0.7;

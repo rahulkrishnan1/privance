@@ -32,8 +32,12 @@ function readRawRecord(): Promise<{ key: CryptoKey } | undefined> {
   });
 }
 
-beforeEach(() => clearSession());
-afterEach(() => clearSession());
+beforeEach(async () => {
+  await clearSession();
+});
+afterEach(async () => {
+  await clearSession();
+});
 
 describe("session vault round-trip", () => {
   it("loads back the exact items key within the window", async () => {

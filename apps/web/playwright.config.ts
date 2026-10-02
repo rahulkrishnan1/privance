@@ -88,12 +88,12 @@ export default defineConfig({
     {
       // Curated critical-user-journey subset (Testing Trophy: E2E is the tip).
       // Auth (incl. recovery), accounts, holdings (+ regressions), dashboard,
-      // session, landing, plan, spend, settings, biometric PRF.
+      // session, landing, plan, spend, settings, theme bootstrap, biometric PRF.
       // CDP (WebAuthn/PRF) and the recovered journeys live here only.
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
       testMatch:
-        /(auth|accounts|holdings|dashboard|session-persistence|landing|plan|spend|settings|biometric-prf)\.spec\.ts$/,
+        /(auth|accounts|holdings|dashboard|session-persistence|landing|plan|spend|settings|theme-bootstrap|biometric-prf)\.spec\.ts$/,
     },
     {
       // Auth smoke only: cookie behaviour, WebAuthn, storage APIs are where
@@ -128,7 +128,7 @@ export default defineConfig({
       // Bun API server
       command: `bun run src/index.ts`,
       cwd: path.join(MONOREPO_ROOT, "server"),
-      url: `${SERVER_URL}/api/auth/session`,
+      url: `${SERVER_URL}/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
       env: { ...serverEnv, PORT: String(SERVER_PORT) },

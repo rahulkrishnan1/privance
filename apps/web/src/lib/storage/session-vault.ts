@@ -11,6 +11,7 @@ const DB_NAME = "privance.session";
 const STORE = "vault";
 const RECORD_KEY = "current";
 const IV_BYTES = 12;
+let mutationRevision = 0;
 
 /** The single window that governs both idle-while-open and time-since-last-seen
  *  across a reload or close. Reopening within it auto-unlocks; past it, the
@@ -69,8 +70,8 @@ function withStore<T>(
 
 /** Atomic read-modify-write in one readwrite transaction. `decide` runs
  *  synchronously between the get and the put, so a concurrent clear (auto-lock)
- *  cannot interleave and get resurrected; returning null skips the write. */
-function updateRecord(decide: (current: unknown) => VaultRecord | null): Promise<void> {
+ *  cannot interleave and get resurrected. */
+function updateRecord(decide: (current: unknown) => VaultRecord | null | undefined): Promise<void> {
   return openDb().then(
     (db) =>
       new Promise<void>((resolve, reject) => {
@@ -79,7 +80,8 @@ function updateRecord(decide: (current: unknown) => VaultRecord | null): Promise
         const get = store.get(RECORD_KEY);
         get.onsuccess = () => {
           const updated = decide(get.result);
-          if (updated !== null) store.put(updated, RECORD_KEY);
+          if (updated === null) store.delete(RECORD_KEY);
+          else if (updated !== undefined) store.put(updated, RECORD_KEY);
         };
         tx.oncomplete = () => {
           db.close();
@@ -108,10 +110,14 @@ function warnDev(op: string, err: unknown): void {
   }
 }
 
-/** Wrap the items key under a fresh non-extractable AES-GCM key and store it,
- *  replacing any prior record. Best-effort: on failure, survive-refresh is
- *  simply unavailable for this session. */
-export async function persistSession(itemsKey: ItemsKey, now: number): Promise<void> {
+/** Wrap and store the items key, replacing any prior record. Returns false when
+ *  persistence failed so auth can keep the boot-lock marker in place. */
+export async function persistSession(
+  itemsKey: ItemsKey,
+  now: number,
+  opts: { shouldPersist?: () => boolean } = {},
+): Promise<boolean> {
+  const revision = ++mutationRevision;
   try {
     const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, [
       "encrypt",
@@ -125,9 +131,14 @@ export async function persistSession(itemsKey: ItemsKey, now: number): Promise<v
     const wrapped = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plain);
     plain.fill(0);
     const record: VaultRecord = { wrapped, iv, key, lastActiveAt: now };
-    await withStore("readwrite", (s) => s.put(record, RECORD_KEY));
+    await updateRecord(() => {
+      if (revision !== mutationRevision || opts.shouldPersist?.() === false) return undefined;
+      return record;
+    });
+    return true;
   } catch (err) {
     warnDev("persist", err);
+    return false;
   }
 }
 
@@ -166,9 +177,11 @@ export async function loadSession(now: number): Promise<ItemsKey | null> {
 
 /** Slide the window forward to `now`. No-op if no session is stored or IDB fails. */
 export async function touchSession(now: number): Promise<void> {
+  const revision = ++mutationRevision;
   try {
     await updateRecord((current) => {
       const record = current as VaultRecord | undefined;
+      if (revision !== mutationRevision) return undefined;
       if (record === undefined) return null;
       record.lastActiveAt = now;
       return record;
@@ -178,9 +191,11 @@ export async function touchSession(now: number): Promise<void> {
   }
 }
 
+/** Delete the wrapped key. */
 export async function clearSession(): Promise<void> {
+  const revision = ++mutationRevision;
   try {
-    await withStore("readwrite", (s) => s.delete(RECORD_KEY));
+    await updateRecord(() => (revision === mutationRevision ? null : undefined));
   } catch (err) {
     warnDev("clear", err);
   }

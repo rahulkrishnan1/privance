@@ -143,9 +143,11 @@ function Lever({
   const clamped = Math.min(max, Math.max(min, value));
   return (
     <div className="border-b border-line-soft py-4 last:border-b-0 last:pb-0">
-      <div className="flex items-baseline justify-between">
-        <span className="text-sm text-cream">{name}</span>
-        <span className={`font-mono text-sm tabular-nums text-accent${veiled ? " vfig" : ""}`}>
+      <div className="flex items-baseline justify-between gap-4">
+        <span className="text-[15px] leading-5 text-cream">{name}</span>
+        <span
+          className={`font-mono text-[15px] leading-5 tabular-nums text-accent${veiled ? " vfig" : ""}`}
+        >
           {readout}
         </span>
       </div>
@@ -437,7 +439,7 @@ export function AdjustPanel({
               key={s.pct}
               value={s.preset}
               size="sm"
-              className="rounded-full border border-line px-3 py-1 data-[checked]:border-accent data-[checked]:bg-accent/10 data-[checked]:text-accent"
+              className="rounded-full border border-line px-3 py-1 data-[pressed]:border-accent data-[pressed]:bg-accent/10 data-[pressed]:text-accent"
             >
               {s.label}
             </ToggleGroupItem>

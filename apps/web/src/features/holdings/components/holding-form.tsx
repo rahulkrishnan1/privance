@@ -14,8 +14,6 @@ type HoldingFormProps = {
   investmentAccounts: InvestmentAccount[];
   groups: LocalGroup[];
   isEdit: boolean;
-  submitting: boolean;
-  onCancel: () => void;
   onSubmit: (values: HoldingFormValues, opts: { proxyPrice?: string }) => void | Promise<void>;
   onLookupProxyPrice?: (ticker: string) => Promise<string | null>;
   onCreateGroup: (name: string) => Promise<string>;
@@ -26,8 +24,6 @@ export function HoldingForm({
   investmentAccounts,
   groups,
   isEdit,
-  submitting,
-  onCancel,
   onSubmit,
   onLookupProxyPrice,
   onCreateGroup,
@@ -38,7 +34,6 @@ export function HoldingForm({
   const [newGroupName, setNewGroupName] = useState("");
   const [groupNameError, setGroupNameError] = useState<string | undefined>(undefined);
   const [creatingGroup, setCreatingGroup] = useState(false);
-  const [lookingUp, setLookingUp] = useState(false);
 
   const {
     control,
@@ -111,21 +106,16 @@ export function HoldingForm({
     }
 
     if (proxyTicker && navFilled && onLookupProxyPrice !== undefined) {
-      setLookingUp(true);
-      try {
-        const price = await onLookupProxyPrice(proxyTicker);
-        if (price === null) {
-          setError("proxyTicker", {
-            type: "manual",
-            message:
-              "We couldn't get a current price for this proxy. Try a different ticker or come back in a few minutes.",
-          });
-          return;
-        }
-        await onSubmit(values, { proxyPrice: price });
-      } finally {
-        setLookingUp(false);
+      const price = await onLookupProxyPrice(proxyTicker);
+      if (price === null) {
+        setError("proxyTicker", {
+          type: "manual",
+          message:
+            "We couldn't get a current price for this proxy. Try a different ticker or come back in a few minutes.",
+        });
+        return;
       }
+      await onSubmit(values, { proxyPrice: price });
       return;
     }
 
@@ -134,11 +124,12 @@ export function HoldingForm({
 
   return (
     <form
+      id="holding-form"
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
       }}
-      className="flex flex-col gap-4 pb-8"
+      className="flex flex-col gap-4 px-1"
       noValidate
     >
       {/* Asset type */}
@@ -350,17 +341,19 @@ export function HoldingForm({
       )}
 
       {/* Advanced section */}
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         onClick={() => setAdvancedOpen((o) => !o)}
         aria-label={advancedOpen ? "Collapse advanced options" : "Expand advanced options"}
         aria-expanded={advancedOpen}
         aria-controls="holding-advanced-panel"
-        className="flex items-center gap-1 font-mono text-xs tracking-button uppercase text-accent-dim hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent focus-visible:rounded rounded min-h-9 cursor-pointer transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100"
+        className="justify-start gap-1 px-0 text-accent-dim hover:text-accent"
       >
         <span>No public ticker? Use a price proxy</span>
         {advancedOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-      </button>
+      </Button>
 
       {advancedOpen && (
         <div id="holding-advanced-panel" className="flex flex-col gap-4 pl-3 border-l border-line">
@@ -387,27 +380,6 @@ export function HoldingForm({
           />
         </div>
       )}
-
-      <div className="flex gap-2.5 pt-2">
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={onCancel}
-          disabled={submitting || lookingUp}
-          className="flex-1"
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          variant="primary"
-          disabled={submitting || lookingUp}
-          loading={submitting || lookingUp}
-          className="flex-1"
-        >
-          {submitting || lookingUp ? "Saving..." : isEdit ? "Save changes" : "Add holding"}
-        </Button>
-      </div>
     </form>
   );
 }

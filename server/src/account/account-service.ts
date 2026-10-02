@@ -1,4 +1,4 @@
-import { verifyAuthHash } from "../auth/kdf.js";
+import type { verifyAuthHash } from "../auth/kdf.js";
 import { logger } from "../core/logger.js";
 import type { AccountRepo } from "./repo.js";
 import type { DestroyResult } from "./types.js";
@@ -6,16 +6,18 @@ import { InvalidPasswordError } from "./types.js";
 
 export class AccountService {
   private readonly repo: AccountRepo;
+  private readonly verifyAuthHash: typeof verifyAuthHash;
 
-  constructor(opts: { repo: AccountRepo }) {
+  constructor(opts: { repo: AccountRepo; verifyAuthHash: typeof verifyAuthHash }) {
     this.repo = opts.repo;
+    this.verifyAuthHash = opts.verifyAuthHash;
   }
 
   async destroy(opts: { userId: string; currentAuthHash: Buffer }): Promise<DestroyResult> {
     const storedHash = await this.repo.getUserAuthHashById({ userId: opts.userId });
     const ok =
       storedHash !== null &&
-      (await verifyAuthHash({
+      (await this.verifyAuthHash({
         encoded: storedHash.toString("utf8"),
         authHash: opts.currentAuthHash,
       }));

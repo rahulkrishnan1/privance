@@ -108,7 +108,7 @@ function ScrambleWidget() {
       }}
     >
       <span
-        className={`font-mono text-xs tracking-label uppercase text-left flex-none w-[160px] whitespace-nowrap transition-colors duration-[400ms] ${
+        className={`font-sans text-xs font-medium tracking-label uppercase text-left flex-none w-[160px] whitespace-nowrap transition-colors duration-[400ms] ${
           youSide ? "text-accent" : "text-faint"
         }`}
       >
@@ -134,7 +134,7 @@ function Hero() {
       }}
     >
       <div className="max-w-[1160px] mx-auto px-8">
-        <p className="reveal-up font-mono text-xs tracking-label uppercase text-accent-dim whitespace-nowrap max-[480px]:text-xs max-[480px]:tracking-[0.18em]">
+        <p className="reveal-up font-sans text-xs font-medium tracking-label uppercase text-accent-dim whitespace-nowrap max-[480px]:text-xs max-[480px]:tracking-[0.18em]">
           Open source, zero&#8209;knowledge, yours
         </p>
         <h1
@@ -316,7 +316,7 @@ function AppFrame() {
                 ].map(([color, label]) => (
                   <span
                     key={label}
-                    className="font-mono text-xs tracking-label uppercase text-faint flex gap-[7px] items-center"
+                    className="font-sans text-xs font-medium tracking-label uppercase text-faint flex gap-[7px] items-center"
                   >
                     <span className="w-2 h-2 rounded-[2px]" style={{ background: color }} />
                     {label}
@@ -336,7 +336,7 @@ function AppFrame() {
           </div>
         </div>
       </div>
-      <div className="flex justify-end mt-[18px] font-mono text-xs tracking-label uppercase text-faint flex-wrap gap-2">
+      <div className="flex justify-end mt-[18px] font-sans text-xs font-medium tracking-label uppercase text-faint flex-wrap gap-2">
         <span className={`text-accent transition-opacity ${veiled ? "opacity-0" : ""}`}>
           &#9650; tap the veil, numbers off, shape on
         </span>
@@ -362,7 +362,7 @@ function CipherBelt() {
       style={{ background: "#101216" }}
     >
       <span
-        className="absolute left-0 top-0 bottom-0 z-[2] flex items-center font-mono text-xs tracking-label uppercase text-accent"
+        className="absolute left-0 top-0 bottom-0 z-[2] flex items-center font-sans text-xs font-medium tracking-label uppercase text-accent"
         style={{
           padding: "0 22px 0 32px",
           background: "linear-gradient(to right, #101216 72%, transparent)",
@@ -418,7 +418,9 @@ function Tenets() {
     <section id="tenets" className="py-12">
       <div className="max-w-[1160px] mx-auto px-8">
         <div className="mb-9">
-          <p className="font-mono text-xs tracking-label uppercase text-accent-dim">Three tenets</p>
+          <p className="font-sans text-xs font-medium tracking-label uppercase text-accent-dim">
+            Three tenets
+          </p>
           <h2
             className="font-serif font-normal leading-[1.03] tracking-[-0.015em] mt-[14px]"
             style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
@@ -465,7 +467,9 @@ function Protocol() {
       />
       <div className="max-w-[1160px] mx-auto px-8 grid gap-12 items-start grid-cols-[.9fr_1.1fr] max-[920px]:grid-cols-1 max-[920px]:gap-11">
         <div>
-          <p className="font-mono text-xs tracking-label uppercase text-accent-dim">The protocol</p>
+          <p className="font-sans text-xs font-medium tracking-label uppercase text-accent-dim">
+            The protocol
+          </p>
           <h2
             className="font-serif font-normal leading-[1.05] tracking-[-0.015em] mt-[14px]"
             style={{ fontSize: "clamp(34px, 4.6vw, 54px)" }}
@@ -483,7 +487,7 @@ function Protocol() {
             >
               github.com/rahulkrishnan1/privance
             </code>
-            <span className="block mt-[10px] font-mono text-xs tracking-label uppercase text-faint">
+            <span className="block mt-[10px] font-sans text-xs font-medium tracking-label uppercase text-faint">
               audit it, fork it, run it
             </span>
           </div>
@@ -520,7 +524,7 @@ function Protocol() {
                 {step.n}
               </span>
               <div>
-                <h4 className="font-mono text-xs tracking-label uppercase text-cream">
+                <h4 className="font-sans text-xs font-medium tracking-label uppercase text-cream">
                   {step.title}
                 </h4>
                 <p className="mt-[7px] text-sm text-dim leading-[1.6]">{step.body}</p>
@@ -529,7 +533,7 @@ function Protocol() {
           ))}
           <div className="grid grid-cols-2 gap-[14px] mt-[22px] max-[560px]:grid-cols-1">
             <div className="rounded-[11px] px-[22px] py-5 border border-accent/30 bg-accent/5">
-              <span className="font-mono text-xs tracking-label uppercase text-accent">
+              <span className="font-sans text-xs font-medium tracking-label uppercase text-accent">
                 Server holds
               </span>
               <p className="font-mono text-sm mt-[9px] text-cream-soft leading-[1.7]">
@@ -541,7 +545,7 @@ function Protocol() {
               </p>
             </div>
             <div className="rounded-[11px] px-[22px] py-5 border border-line">
-              <span className="font-mono text-xs tracking-label uppercase text-faint">
+              <span className="font-sans text-xs font-medium tracking-label uppercase text-faint">
                 Server never holds
               </span>
               <p className="font-mono text-sm mt-[9px] text-cream-soft leading-[1.7]">
@@ -564,7 +568,9 @@ function Deploy() {
     <section id="deploy" className="py-12 border-t border-line-soft">
       <div className="max-w-[1160px] mx-auto px-8">
         <div className="mb-9">
-          <p className="font-mono text-xs tracking-label uppercase text-accent-dim">Two ways in</p>
+          <p className="font-sans text-xs font-medium tracking-label uppercase text-accent-dim">
+            Two ways in
+          </p>
           <h2
             className="font-serif font-normal leading-[1.03] tracking-[-0.015em] mt-[14px] max-w-[20ch] md:max-w-none"
             style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
@@ -617,7 +623,7 @@ function Features() {
     <section id="features" className="py-12 border-t border-line-soft">
       <div className="max-w-[1160px] mx-auto px-8">
         <div className="mb-9">
-          <p className="font-mono text-xs tracking-label uppercase text-accent-dim">
+          <p className="font-sans text-xs font-medium tracking-label uppercase text-accent-dim">
             Inside the vault
           </p>
           <h2
@@ -775,7 +781,7 @@ function Features() {
               key={f.tag}
               className={`${f.cls} border border-line rounded-[12px] p-[30px] bg-panel relative overflow-hidden transition-[transform,border-color] duration-[250ms] ease-in-out hover:-translate-y-1 hover:border-accent/35 motion-reduce:hover:translate-y-0 motion-reduce:transition-none`}
             >
-              <span className="font-mono text-xs tracking-label uppercase text-accent">
+              <span className="font-sans text-xs font-medium tracking-label uppercase text-accent">
                 {f.tag}
               </span>
               <h3 className="font-serif font-normal text-2xl mt-[10px] tracking-[-0.01em]">

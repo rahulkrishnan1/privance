@@ -44,16 +44,6 @@ export function totalAnnualCents(
   return totalMonthlyCents(items).mul(Decimal.fromMinorUnits(12n, 0));
 }
 
-// Monthly spend reframed to a smaller grain: per day (monthly * 12 / 365) and
-// per week (* 12 / 52). Display-only views of the same total.
-export function dailyEquivalentCents(monthly: Decimal): Decimal {
-  return monthly.mul(Decimal.fromMinorUnits(12n, 0)).div(Decimal.fromMinorUnits(365n, 0), "banker");
-}
-
-export function weeklyEquivalentCents(monthly: Decimal): Decimal {
-  return monthly.mul(Decimal.fromMinorUnits(12n, 0)).div(Decimal.fromMinorUnits(52n, 0), "banker");
-}
-
 // Subscriptions as a whole-number percent of total monthly spend; 0 when there
 // is no active spend. A ratio, not a money figure, so it is not veiled.
 export function subscriptionSharePct(subscriptionMonthly: Decimal, totalMonthly: Decimal): number {
@@ -61,18 +51,6 @@ export function subscriptionSharePct(subscriptionMonthly: Decimal, totalMonthly:
   return Math.round(
     subscriptionMonthly.mul(Decimal.fromMinorUnits(100n, 0)).div(totalMonthly, "banker").toFloat(),
   );
-}
-
-// The per-cycle billed amount for an item that is not billed plainly monthly
-// (e.g. the $216 a yearly item charges), or null for the every-1-month case.
-// The caller formats it at the UI boundary; money stays a Decimal here.
-export function billedAmountCents(
-  amountCents: string,
-  intervalCount: number,
-  intervalUnit: BillingUnit,
-): Decimal | null {
-  if (intervalCount === 1 && intervalUnit === "month") return null;
-  return Decimal.fromMinorUnits(BigInt(amountCents), SCALE_CENTS);
 }
 
 // Suggested panel for a category when adding an item; the user can override.

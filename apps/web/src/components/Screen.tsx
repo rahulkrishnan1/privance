@@ -25,7 +25,7 @@ export function Screen({ children, scrollable = true, width = "sm", className }:
     return (
       <div className={base}>
         <div
-          className={["px-7 max-[760px]:px-4 pt-6 mx-auto w-full", widthClass, className]
+          className={["px-7 max-md:px-4 pt-6 mx-auto w-full", widthClass, className]
             .filter(Boolean)
             .join(" ")}
         >
@@ -39,7 +39,7 @@ export function Screen({ children, scrollable = true, width = "sm", className }:
     <div className={[base, "flex flex-col h-[calc(100svh-4rem)] overflow-hidden"].join(" ")}>
       <div
         className={[
-          "flex-1 px-7 max-[760px]:px-4 py-8 overflow-hidden mx-auto w-full",
+          "flex-1 px-7 max-md:px-4 py-8 overflow-hidden mx-auto w-full",
           widthClass,
           className,
         ]

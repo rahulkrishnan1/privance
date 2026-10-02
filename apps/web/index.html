@@ -15,7 +15,6 @@
       content="A self-hostable, zero-knowledge personal finance app. Open source, end-to-end encrypted, yours."
     />
     <meta property="og:type" content="website" />
-    <link rel="manifest" href="/manifest.json" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Privance" />
@@ -23,13 +22,27 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
-    <!-- Inline ThemeScript: sets class="dark" before React mounts to prevent FOUC -->
+    <!-- Inline ThemeScript: resolves the persisted display preference before React mounts. -->
     <script>
+      const manifest = document.createElement("link");
+      manifest.rel = "manifest";
+      let isDark = true;
       try {
-        if (window.matchMedia("(prefers-color-scheme:dark)").matches) {
-          document.documentElement.classList.add("dark");
+        const stored = localStorage.getItem("privance.theme.v1");
+        if (stored === "light") isDark = false;
+        else if (stored === "system") {
+          isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
         }
-      } catch {}
+      } catch {
+        // Keep first paint aligned with the runtime's safe fallback when
+        // storage or matchMedia is unavailable in private/restricted hosts.
+      }
+      manifest.href = isDark ? "/manifest.json" : "/manifest-light.json";
+      document.head.append(manifest);
+      if (isDark) document.documentElement.classList.add("dark");
+      document.documentElement.dataset.theme = isDark ? "dark" : "light";
+      document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+      document.querySelector('meta[name="theme-color"]').content = isDark ? "#07080a" : "#f6f7f5";
     </script>
   </head>
   <body class="min-h-full flex flex-col">

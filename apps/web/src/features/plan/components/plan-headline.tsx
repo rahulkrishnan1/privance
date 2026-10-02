@@ -25,7 +25,7 @@ function Progress({ potCents, fireNumber }: { potCents: Decimal; fireNumber: Dec
   const pct = Math.min(100, Math.max(0, ratioPct));
   const pctLabel = Math.max(1, Math.round(pct));
   return (
-    <div className="mt-6 max-w-[680px]">
+    <div className="mt-6 max-w-[680px]" data-testid="plan-progress">
       <div className="flex items-end justify-between gap-3">
         <span className="flex flex-col gap-[3px]">
           <span className="font-mono text-xs uppercase tracking-label text-faint">Today</span>
@@ -124,17 +124,39 @@ export function PlanHeadline({
 
       <div key={state} className="swap-in">
         {state === "normal" && (
-          <h1 className={`${H1} mt-3.5 max-w-[21ch]`}>
-            Independent by{" "}
-            <em className="text-accent" data-testid="fire-year">
-              {fireYear}
-            </em>
-            , at age{" "}
-            <em className="text-accent" data-testid="fire-age-value">
-              {fireAge}
-            </em>
-            , spending <span className="vfig">{formatCurrencyWhole(annualSpendCents)}</span> a year.
-          </h1>
+          <div className="w-full max-w-[680px]">
+            <h1 className={`${H1} mt-3.5 max-w-[min(24ch,100%)]`}>
+              Independent by{" "}
+              <em className="text-accent" data-testid="fire-year">
+                {fireYear}.
+              </em>
+            </h1>
+            <dl
+              className="mt-5 flex w-fit max-w-full flex-wrap items-baseline gap-x-6 gap-y-2 sm:gap-x-8"
+              data-testid="plan-metrics"
+            >
+              <div className="flex shrink-0 items-baseline gap-1.5 sm:gap-2">
+                <dt className="font-mono text-xs uppercase tracking-label text-faint">FI Age</dt>
+                <dd
+                  className="font-mono text-sm leading-tight tabular-nums text-accent"
+                  data-testid="fire-age-value"
+                >
+                  {fireAge}
+                </dd>
+              </div>
+              <div className="flex shrink-0 items-baseline gap-1.5 sm:gap-2">
+                <dt className="font-mono text-xs uppercase tracking-label text-faint">
+                  Spend Target
+                </dt>
+                <dd className="whitespace-nowrap font-mono text-sm leading-tight tabular-nums text-cream">
+                  <span className="vfig text-accent" data-testid="spend-target-value">
+                    {formatCurrencyWhole(annualSpendCents)}
+                  </span>
+                  <span className="text-xs text-dim">/yr</span>
+                </dd>
+              </div>
+            </dl>
+          </div>
         )}
         {state === "alreadyFi" && (
           <h1 className={`${H1} mt-3.5`}>

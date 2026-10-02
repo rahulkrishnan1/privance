@@ -9,6 +9,7 @@ export function Row({
   description,
   trailing,
   onClick,
+  href,
   danger = false,
 }: {
   icon: React.ReactNode;
@@ -16,20 +17,23 @@ export function Row({
   description?: React.ReactNode;
   trailing?: React.ReactNode;
   onClick?: () => void;
+  href?: string;
   danger?: boolean;
 }) {
   const inner = (
     <>
       <span
         className={[
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line bg-panel-2",
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border border-line bg-panel-2",
           danger ? "text-down" : "text-accent",
         ].join(" ")}
       >
         {icon}
       </span>
       <span className="min-w-0 flex-1 text-left">
-        <span className={["block text-base", danger ? "text-down" : "text-cream"].join(" ")}>
+        <span
+          className={["block text-[15px] leading-5", danger ? "text-down" : "text-cream"].join(" ")}
+        >
           {name}
         </span>
         {description && (
@@ -41,21 +45,27 @@ export function Row({
       {trailing}
     </>
   );
+  const interactiveRowClassName =
+    "flex w-full items-center gap-3.5 border-b border-line-soft px-[18px] py-4 last:border-b-0 cursor-pointer bg-transparent transition ease-out duration-150 pointer-fine:hover:bg-panel-2 active:bg-panel-2 active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent";
 
   if (onClick) {
     return (
-      <button
-        type="button"
-        onClick={onClick}
-        className="flex w-full items-center gap-4 border-b border-line-soft px-[22px] py-[18px] last:border-b-0 cursor-pointer bg-transparent transition ease-out duration-150 pointer-fine:hover:bg-panel-2 active:bg-panel-2 active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
-      >
+      <button type="button" onClick={onClick} className={interactiveRowClassName}>
         {inner}
       </button>
     );
   }
 
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={interactiveRowClassName}>
+        {inner}
+      </a>
+    );
+  }
+
   return (
-    <div className="flex items-center gap-4 border-b border-line-soft px-[22px] py-[18px] last:border-b-0">
+    <div className="flex items-center gap-3.5 border-b border-line-soft px-[18px] py-4 last:border-b-0">
       {inner}
     </div>
   );
@@ -85,14 +95,16 @@ export function Caret() {
   return <span className="shrink-0 text-faint text-lg leading-none">&rsaquo;</span>;
 }
 
-export function SectionLabel({ children }: { children: React.ReactNode }) {
+export function SectionLabel({ children, id }: { children: React.ReactNode; id?: string }) {
   return (
-    <p className="mb-3 font-mono text-xs uppercase tracking-[0.24em] text-faint">{children}</p>
+    <h2 id={id} className="mb-3 font-mono text-xs uppercase tracking-[0.24em] text-faint">
+      {children}
+    </h2>
   );
 }
 
 export function SettingsCard({ children }: { children: React.ReactNode }) {
-  return <div className="overflow-hidden glass rounded-[10px]">{children}</div>;
+  return <div className="overflow-hidden glass rounded-[14px]">{children}</div>;
 }
 
 export function Toggle({

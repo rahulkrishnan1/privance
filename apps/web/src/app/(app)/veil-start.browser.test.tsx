@@ -1,17 +1,20 @@
 /**
  * Browser tests for the figures-veil toggle in the app shell: the layout
- * restores the persisted toggle on mount and the `veil-on` container actually
- * obscures `vfig` figures. Start-veiled-at-auth is covered in
+ * restores the persisted toggle on mount and obscures `vfig` figures, including
+ * portaled sheets. Start-veiled-at-auth is covered in
  * auth-context.veil.browser.test.tsx.
  */
 
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 // Import the real stylesheet so `.veil-on .vfig { filter: blur }` is in effect
 // and getComputedStyle reports the actual obscuring, not just a class marker.
 import "@/app/globals.css";
 
 const mockReplace = vi.hoisted(() => vi.fn());
+const mockAuth = vi.hoisted(() => ({ lockFailed: false }));
 vi.mock("react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-router")>();
   return {
@@ -23,7 +26,7 @@ vi.mock("react-router", async (importOriginal) => {
 });
 
 vi.mock("@/providers/auth-context", () => ({
-  useAuth: () => ({ state: "unlocked" as const, lock: vi.fn() }),
+  useAuth: () => ({ state: "unlocked" as const, lock: vi.fn(), lockFailed: mockAuth.lockFailed }),
 }));
 
 // The TopBar children reach for query + sync providers we do not exercise here.
@@ -47,12 +50,48 @@ function filterOf(el: Element): string {
   return getComputedStyle(el).filter;
 }
 
+function PortaledFigureSheet() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Open test sheet
+      </button>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent>
+          <SheetTitle>Expense details</SheetTitle>
+          <span className="vfig" data-testid="portal-figure">
+            $20.00
+          </span>
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+}
+
+function createMediaQueryList(matches: boolean): MediaQueryList {
+  return {
+    matches,
+    media: "(min-width: 768px)",
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => true,
+  } as MediaQueryList;
+}
+
 beforeEach(() => {
   localStorage.clear();
+  mockAuth.lockFailed = false;
 });
 
 afterEach(() => {
   localStorage.clear();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("app shell figures veil", () => {
@@ -61,7 +100,10 @@ describe("app shell figures veil", () => {
 
     const screen = await render(
       <MemoryRouter>
-        <AppLayout>{figure}</AppLayout>
+        <AppLayout>
+          {figure}
+          <PortaledFigureSheet />
+        </AppLayout>
       </MemoryRouter>,
     );
 
@@ -72,6 +114,11 @@ describe("app shell figures veil", () => {
     const fig = screen.container.querySelector("[data-testid='figure']");
     if (fig === null) throw new Error("figure not rendered");
     expect(filterOf(fig)).toContain("blur");
+
+    await screen.getByRole("button", { name: "Open test sheet" }).click();
+    const portalFigure = document.querySelector("[data-testid='portal-figure']");
+    if (portalFigure === null) throw new Error("portaled figure not rendered");
+    expect(filterOf(portalFigure)).toContain("blur");
   });
 
   it("starts revealed and leaves figures sharp when the toggle is unset", async () => {
@@ -88,6 +135,36 @@ describe("app shell figures veil", () => {
     const fig = screen.container.querySelector("[data-testid='figure']");
     if (fig === null) throw new Error("figure not rendered");
     expect(filterOf(fig)).toBe("none");
+  });
+
+  it("explains when browser storage prevents a secure lock", async () => {
+    mockAuth.lockFailed = true;
+
+    const screen = await render(
+      <MemoryRouter>
+        <AppLayout>{figure}</AppLayout>
+      </MemoryRouter>,
+    );
+
+    await expect
+      .element(screen.getByRole("alert"))
+      .toHaveTextContent("Couldn’t lock securely. Your session is still open.");
+  });
+
+  it("keeps the mobile navigation discoverable with one selected destination", async () => {
+    const screen = await render(
+      <MemoryRouter>
+        <AppLayout>{figure}</AppLayout>
+      </MemoryRouter>,
+    );
+
+    const nav = screen.container.querySelector('nav[aria-label="Mobile navigation"]');
+    expect(nav).not.toBeNull();
+    if (!nav) throw new Error("mobile navigation not rendered");
+    const links = nav.querySelectorAll("a");
+    expect(links).toHaveLength(4);
+    expect(links[0]).toHaveAttribute("aria-current", "page");
+    expect(links[0]).toHaveTextContent("Invest");
   });
 
   it("blurs figures the moment the user veils and persists the choice", async () => {
@@ -107,5 +184,71 @@ describe("app shell figures veil", () => {
     await expect.element(toggle).toHaveAttribute("aria-pressed", "true");
     expect(filterOf(fig)).toContain("blur");
     expect(localStorage.getItem(VEIL_KEY)).toBe("1");
+  });
+
+  it("reserves measured clearance for the floating bar and cleans it up", async () => {
+    vi.spyOn(window, "matchMedia").mockReturnValue(createMediaQueryList(false));
+
+    let observer:
+      | { disconnect: ReturnType<typeof vi.fn>; observe: ReturnType<typeof vi.fn> }
+      | undefined;
+    let resizeCallback: ResizeObserverCallback | undefined;
+    let navHeight = 80;
+    class TestResizeObserver {
+      disconnect = vi.fn();
+      observe = vi.fn();
+      constructor(callback: ResizeObserverCallback) {
+        observer = this;
+        resizeCallback = callback;
+      }
+    }
+    vi.stubGlobal("ResizeObserver", TestResizeObserver);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.getAttribute("aria-label") === "Mobile navigation") {
+        return { top: window.innerHeight - navHeight } as DOMRect;
+      }
+      return new DOMRect();
+    });
+
+    const screen = await render(
+      <MemoryRouter>
+        <AppLayout>{figure}</AppLayout>
+      </MemoryRouter>,
+    );
+
+    await expect
+      .poll(() => document.documentElement.style.getPropertyValue("--mobile-nav-clearance"))
+      .toBe("92px");
+    const nav = screen.container.querySelector('nav[aria-label="Mobile navigation"]');
+    expect(nav).not.toBeNull();
+    if (!observer) throw new Error("ResizeObserver was not constructed");
+    expect(observer.observe).toHaveBeenCalledWith(nav);
+
+    navHeight = 112;
+    resizeCallback?.([], observer as unknown as ResizeObserver);
+    await expect
+      .poll(() => document.documentElement.style.getPropertyValue("--mobile-nav-clearance"))
+      .toBe("124px");
+
+    screen.unmount();
+    expect(observer.disconnect).toHaveBeenCalledOnce();
+    expect(document.documentElement.style.getPropertyValue("--mobile-nav-clearance")).toBe("");
+  });
+
+  it("does not reserve mobile clearance for the desktop shell", async () => {
+    vi.spyOn(window, "matchMedia").mockReturnValue(createMediaQueryList(true));
+
+    const screen = await render(
+      <MemoryRouter>
+        <AppLayout>{figure}</AppLayout>
+      </MemoryRouter>,
+    );
+
+    await expect
+      .poll(() => document.documentElement.style.getPropertyValue("--mobile-nav-clearance"))
+      .toBe("");
+    screen.unmount();
   });
 });

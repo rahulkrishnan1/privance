@@ -10,6 +10,8 @@ vi.mock("../queries", () => ({
   useSpendItemsQuery: vi.fn(),
 }));
 
+const mutationMocks = vi.hoisted(() => ({ deleteItem: vi.fn() }));
+
 // Mock the mutations module (no-ops for component tests)
 vi.mock("../mutations", () => ({
   useSpendMutations: vi.fn(() => ({
@@ -18,7 +20,7 @@ vi.mock("../mutations", () => ({
     deleting: false,
     createItem: vi.fn(),
     updateItem: vi.fn(),
-    deleteItem: vi.fn(),
+    deleteItem: mutationMocks.deleteItem,
   })),
 }));
 
@@ -76,23 +78,81 @@ test("populated state renders both group panels", async () => {
   await expect.element(screen.getByText("Netflix")).toBeVisible();
 });
 
-test("split cards show subscription share and per-day, not annualized", async () => {
+test("category panel matches Invest allocation rows and expands one category at a time", async () => {
+  mockQueryReturn([
+    makeTestItem({
+      id: "1",
+      name: "Rent",
+      amountCents: "100000",
+      group: "essentials",
+      nextRenewalAt: "2099-10-01",
+    }),
+    makeTestItem({
+      id: "2",
+      name: "Netflix",
+      amountCents: "10000",
+      category: "streaming",
+      group: "subscriptions",
+      nextRenewalAt: "2099-10-02",
+    }),
+  ]);
+  const screen = await render(<SpendScreen />);
+
+  await expect.element(screen.getByRole("heading", { name: "By category" })).toBeVisible();
+  await expect.element(screen.getByText("90.91%")).toBeVisible();
+
+  const housing = screen.getByRole("button", { name: /Housing \$1,000\/mo/ });
+  const streaming = screen.getByRole("button", { name: /Streaming \$100\/mo/ });
+  await housing.click();
+  await expect.element(housing).toHaveAttribute("aria-expanded", "true");
+  await expect.element(screen.getByText("due Oct 1, 2099", { exact: true }).last()).toBeVisible();
+
+  await streaming.click();
+  await expect.element(streaming).toHaveAttribute("aria-expanded", "true");
+  await expect.element(housing).toHaveAttribute("aria-expanded", "false");
+  await expect
+    .element(screen.getByText("renews Oct 2, 2099", { exact: true }).last())
+    .toBeVisible();
+});
+
+test("summary cards show the group split and next upcoming bill", async () => {
   // Equal active monthly in each group -> subscriptions are 50% of spend.
   mockQueryReturn([
-    makeTestItem({ id: "1", name: "Rent", amountCents: "100000", group: "essentials" }),
+    makeTestItem({
+      id: "1",
+      name: "Rent",
+      amountCents: "100000",
+      group: "essentials",
+      nextRenewalAt: "2099-10-01",
+    }),
     makeTestItem({
       id: "2",
       name: "Netflix",
       amountCents: "100000",
       category: "streaming",
       group: "subscriptions",
+      nextRenewalAt: "2099-10-02",
     }),
   ]);
   const screen = await render(<SpendScreen />);
   await expect.element(screen.getByText("Subs share")).toBeVisible();
   await expect.element(screen.getByText("50%")).toBeVisible();
-  await expect.element(screen.getByText("Per day")).toBeVisible();
+  await expect.element(screen.getByText("Next bill")).toBeVisible();
+  await expect.element(screen.getByText("Due Oct 1, 2099", { exact: true })).toBeVisible();
   expect(screen.getByText("Annualized").query()).toBeNull();
+});
+
+test("next bill card asks for a date when active expenses are undated", async () => {
+  mockQueryReturn([makeTestItem({ id: "1", name: "Rent" })]);
+  const screen = await render(<SpendScreen />);
+  await expect.element(screen.getByText("Next bill")).toBeVisible();
+  await expect.element(screen.getByText("Set a date to see upcoming bills")).toBeVisible();
+});
+
+test("next bill card says there are no upcoming bills when nothing is active", async () => {
+  mockQueryReturn([makeTestItem({ id: "1", name: "Paused gym", status: "paused" })]);
+  const screen = await render(<SpendScreen />);
+  await expect.element(screen.getByText("No upcoming bills")).toBeVisible();
 });
 
 test("rows within a panel are sorted by monthly value, highest first", async () => {
@@ -171,7 +231,7 @@ test("paused item row swaps the cadence sub-line for a resume hint", async () =>
   await expect.element(screen.getByText(/resumes when you do/)).toBeVisible();
 });
 
-test("yearly item shows the per-cycle amount with cadence and monthly equivalent", async () => {
+test("yearly item keeps the per-cycle amount out of the regular row", async () => {
   mockQueryReturn([
     makeTestItem({
       id: "1",
@@ -184,13 +244,12 @@ test("yearly item shows the per-cycle amount with cadence and monthly equivalent
   ]);
   const screen = await render(<SpendScreen />);
   const row = screen.getByRole("button", { name: /Prime/ });
-  // Sub-line shows the per-cycle billed amount with its cadence ($139/yr); the
-  // figure shows the monthly equivalent ($139 / 12 = $11.58), never the raw $139.
-  await expect.element(row).toHaveTextContent("$139/yr");
+  // The regular row shows the comparable monthly figure, not the per-cycle yearly amount.
+  await expect.element(row).not.toHaveTextContent("$139/yr");
   await expect.element(row).toHaveTextContent("$11.58");
 });
 
-test("multi-unit cadence shows as '/2yr' on the per-cycle amount", async () => {
+test("multi-unit cadence keeps the per-cycle amount out of the regular row", async () => {
   mockQueryReturn([
     makeTestItem({
       id: "1",
@@ -204,12 +263,12 @@ test("multi-unit cadence shows as '/2yr' on the per-cycle amount", async () => {
   ]);
   const screen = await render(<SpendScreen />);
   const row = screen.getByRole("button", { name: /Domain/ });
-  // $240 every 2 years = $120/yr = $10/mo; the sub-line reads "$240/2yr".
-  await expect.element(row).toHaveTextContent("$240/2yr");
+  // $240 every 2 years = $120/yr = $10/mo; the regular row only shows the comparable monthly figure.
+  await expect.element(row).not.toHaveTextContent("$240/2yr");
   await expect.element(row).toHaveTextContent("$10");
 });
 
-test("non-monthly amount wraps in parens only when a bill date is set", async () => {
+test("regular rows show the next bill date without the per-cycle amount", async () => {
   mockQueryReturn([
     makeTestItem({
       id: "1",
@@ -231,14 +290,16 @@ test("non-monthly amount wraps in parens only when a bill date is set", async ()
     }),
   ]);
   const screen = await render(<SpendScreen />);
-  // Dated: verb + always-year date + amount/cadence in parens.
+  // Dated: verb + always-year date, without the per-cycle amount.
   await expect
     .element(screen.getByRole("button", { name: /Prime/ }))
-    .toHaveTextContent("renews Mar 15, 2099 ($139/yr)");
-  // Dateless: bare amount/cadence, never an orphaned "($139/yr)" with no prefix.
+    .toHaveTextContent("renews Mar 15, 2099");
+  await expect
+    .element(screen.getByRole("button", { name: /Prime/ }))
+    .not.toHaveTextContent("$139/yr");
+  // Dateless: no orphaned per-cycle amount is rendered.
   const dateless = screen.getByRole("button", { name: /Domain/ });
-  await expect.element(dateless).toHaveTextContent("$139/yr");
-  await expect.element(dateless).not.toHaveTextContent("($139");
+  await expect.element(dateless).not.toHaveTextContent("$139/yr");
 });
 
 test("category stays in the row accessible name for screen readers", async () => {
@@ -250,7 +311,7 @@ test("category stays in the row accessible name for screen readers", async () =>
   await expect.element(screen.getByRole("button", { name: /Rent.*Housing/i })).toBeVisible();
 });
 
-test("billed amount in the row sub-line is veil-blurred (no privacy leak)", async () => {
+test("yearly billed amount is only shown after opening details", async () => {
   mockQueryReturn([
     makeTestItem({
       id: "1",
@@ -261,19 +322,13 @@ test("billed amount in the row sub-line is veil-blurred (no privacy leak)", asyn
       intervalUnit: "year",
     }),
   ]);
-  // Render under a veil-on ancestor so the actual obscuring is observable: an
-  // unblurred money figure would leak under the Veil.
-  const screen = await render(
-    <div className="veil-on">
-      <SpendScreen />
-    </div>,
-  );
-  const billed = [...screen.container.querySelectorAll(".vfig")].find((n) =>
-    n.textContent?.includes("$139"),
-  );
-  expect(billed).toBeDefined();
-  if (billed === undefined) throw new Error("billed figure not rendered");
-  expect(getComputedStyle(billed).filter).toContain("blur");
+  const screen = await render(<SpendScreen />);
+  const row = screen.getByRole("button", { name: /Prime/ });
+  await expect.element(row).not.toHaveTextContent("$139/yr");
+  await row.click();
+  const detail = screen.getByRole("dialog", { name: "Prime" });
+  await expect.element(detail.getByTestId("spend-detail-amount")).toHaveTextContent("$139/year");
+  await expect.element(detail).toHaveTextContent("Every year");
 });
 
 test("weekly item renders the rounded monthly equivalent ($43.33)", async () => {
@@ -289,12 +344,13 @@ test("weekly item renders the rounded monthly equivalent ($43.33)", async () => 
   ]);
   const screen = await render(<SpendScreen />);
   // $10/week * 52 / 12 = $43.33 (banker rounding), shown with cents.
-  await expect.element(screen.getByText("$43.33")).toBeVisible();
-  // The per-cycle billed amount carries the "/wk" cadence suffix.
-  await expect.element(screen.getByRole("button", { name: /Locker/ })).toHaveTextContent("$10/wk");
+  const row = screen.getByRole("button", { name: /Locker/ });
+  await expect.element(row).toHaveTextContent("$43.33");
+  // The regular row omits the per-cycle amount; open the item to see its cadence.
+  await expect.element(row).not.toHaveTextContent("$10/wk");
 });
 
-test("cadence units render with a tight slash; the summary cards spell out the period", async () => {
+test("cadence units render with a tight slash across the overview and rows", async () => {
   mockQueryReturn([
     makeTestItem({
       id: "1",
@@ -307,12 +363,10 @@ test("cadence units render with a tight slash; the summary cards spell out the p
   ]);
   const screen = await render(<SpendScreen />);
   const text = (screen.container.textContent ?? "").replace(/\s+/g, " ");
-  // Hero + Essentials card spell out the period, slash tight against the figure.
+  // Hero spells out the period, slash tight against the figure.
   expect(text).toContain("$1,500/month");
-  // Annual restatement (card sub-line + subtitle) and the per-day card spell out too.
+  // The annual equivalent appears once in the headline context.
   expect(text).toContain("$18,000/year");
-  expect(text).toContain("/day");
-  expect(text).toContain("/week");
   // The compact item row keeps the abbreviation, same tight slash.
   await expect.element(screen.getByRole("button", { name: /Rent/ })).toHaveTextContent("$1,500/mo");
   // Guards the spacing: no figure may render the spaced "$1,500 / mo" form.
@@ -388,7 +442,7 @@ test("add form exposes the group toggle", async () => {
   await expect.element(screen.getByRole("radiogroup", { name: "Group" })).toBeVisible();
 });
 
-test("clicking a row opens the edit dialog pre-populated with the item's values", async () => {
+test("clicking a row opens read-only details before edit", async () => {
   mockQueryReturn([
     makeTestItem({
       id: "1",
@@ -400,9 +454,78 @@ test("clicking a row opens the edit dialog pre-populated with the item's values"
   ]);
   const screen = await render(<SpendScreen />);
   await screen.getByText("Netflix").click();
-  await expect.element(screen.getByRole("heading", { name: "Edit Netflix" })).toBeVisible();
-  // The Amount field is pre-filled from the stored cents ("1549" -> "15.49").
-  await expect.element(screen.getByRole("textbox", { name: "Amount" })).toHaveValue("15.49");
+  const detail = screen.getByRole("dialog", { name: "Netflix" });
+  await expect.element(screen.getByRole("heading", { name: "Netflix" })).toBeVisible();
+  await expect.element(detail).toHaveTextContent("Streaming");
+  await expect.element(detail).toHaveTextContent("Active");
+  await expect.element(detail.getByTestId("spend-detail-amount")).toHaveTextContent("$15.49/month");
+  expect(detail).not.toHaveTextContent("Monthly equivalent");
+  expect(detail).not.toHaveTextContent("Annual equivalent");
+  expect(screen.getByRole("textbox", { name: "Amount" }).query()).toBeNull();
+  await expect.element(screen.getByRole("button", { name: "Edit expense" })).toBeVisible();
+});
+
+test("shows a deletion error and keeps expense details open when delete fails", async () => {
+  mockQueryReturn([makeTestItem({ id: "1", name: "Rent" })]);
+  mutationMocks.deleteItem.mockRejectedValueOnce(new Error("delete failed"));
+  const screen = await render(<SpendScreen />);
+
+  await screen.getByRole("button", { name: /Rent/ }).click();
+  const detail = screen.getByRole("dialog", { name: "Rent" });
+  await detail.getByRole("button", { name: "Delete" }).click();
+  await detail.getByRole("button", { name: "Tap again to delete" }).click();
+
+  await expect
+    .element(detail.getByRole("alert"))
+    .toHaveTextContent("Couldn't delete this expense. Please try again.");
+  await expect.element(detail).toBeVisible();
+});
+
+test("a pending delete for an old expense does not close the newly selected expense", async () => {
+  mockQueryReturn([
+    makeTestItem({ id: "1", name: "Rent" }),
+    makeTestItem({ id: "2", name: "Netflix", category: "streaming", group: "subscriptions" }),
+  ]);
+  let resolveDelete: () => void = () => {};
+  mutationMocks.deleteItem.mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        resolveDelete = () => resolve();
+      }),
+  );
+  const screen = await render(<SpendScreen />);
+
+  await screen.getByRole("button", { name: /Rent/ }).click();
+  const rentDetail = screen.getByRole("dialog", { name: "Rent" });
+  await rentDetail.getByRole("button", { name: "Delete" }).click();
+  await rentDetail.getByRole("button", { name: "Tap again to delete" }).click();
+  expect(mutationMocks.deleteItem).toHaveBeenCalledWith("1");
+
+  await rentDetail.getByRole("button", { name: "Close expense details" }).click();
+  await screen.getByRole("button", { name: /Netflix/ }).click();
+  const netflixDetail = screen.getByRole("dialog", { name: "Netflix" });
+  await expect.element(netflixDetail).toBeVisible();
+
+  resolveDelete();
+  await expect.element(netflixDetail).toBeVisible();
+});
+
+test("paused expense details do not present its old date as a scheduled bill", async () => {
+  mockQueryReturn([
+    makeTestItem({
+      id: "1",
+      name: "Paused gym",
+      category: "fitness",
+      group: "essentials",
+      status: "paused",
+      nextRenewalAt: "2099-10-01",
+    }),
+  ]);
+  const screen = await render(<SpendScreen />);
+  await screen.getByText("Paused gym").click();
+  const detail = screen.getByRole("dialog", { name: "Paused gym" });
+  await expect.element(detail).toHaveTextContent("Not scheduled");
+  await expect.element(detail).not.toHaveTextContent("Oct 1, 2099");
 });
 
 test("edit dialog pre-populates cadence, interval count, and group from the item", async () => {
@@ -419,6 +542,7 @@ test("edit dialog pre-populates cadence, interval count, and group from the item
   ]);
   const screen = await render(<SpendScreen />);
   await screen.getByText("Domain").click();
+  await screen.getByRole("button", { name: "Edit expense" }).click();
   await expect.element(screen.getByRole("heading", { name: "Edit Domain" })).toBeVisible();
   await expect.element(screen.getByRole("combobox", { name: "Interval unit" })).toHaveValue("year");
   await expect.element(screen.getByRole("textbox", { name: "Interval count" })).toHaveValue("2");
@@ -457,6 +581,7 @@ test("status toggle present in edit mode", async () => {
   ]);
   const screen = await render(<SpendScreen />);
   await screen.getByText("Spotify").click();
+  await screen.getByRole("button", { name: "Edit expense" }).click();
   await expect.element(screen.getByRole("radiogroup", { name: "Status" })).toBeVisible();
 });
 

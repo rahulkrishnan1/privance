@@ -144,7 +144,7 @@ describe("login() re-arms the biometric record", () => {
       getApi().login({ user: { userId, username }, itemsKey, persistence: "session" }),
     ).resolves.toBeUndefined();
 
-    expect(getApi().state).toBe("unlocked");
+    await vi.waitFor(() => expect(getApi().state).toBe("unlocked"));
     openSpy.mockRestore();
   });
 });

@@ -1,26 +1,25 @@
-import type { BillingUnit } from "@privance/core";
 import { useMemo, useState } from "react";
 import { Button, CadenceSuffix } from "@/components";
-import { formatCurrency, formatCurrencyWhole } from "@/lib/format";
+import { formatCurrencyWhole } from "@/lib/format";
 import { useSync } from "@/providers";
 import { CATEGORY_LABELS } from "../_constants";
 import { useSpendMutations } from "../mutations";
 import { useSpendItemsQuery } from "../queries";
 import type { LocalSpendItem, SpendFormValues } from "../types";
+import { formatSpendAmount, formatSpendDate, spendScheduleLine } from "./_spend-format";
 import {
-  billedAmountCents,
-  dailyEquivalentCents,
   monthlyEquivalentCents,
   nextBillDate,
   subscriptionSharePct,
   totalAnnualCents,
   totalMonthlyCents,
-  weeklyEquivalentCents,
 } from "./_spend-math";
 import { CategoryIcon } from "./category-icon";
+import { CategorySpendPanel } from "./category-spend-panel";
+import { SpendDetailSheet } from "./spend-detail-sheet";
 import { SpendForm } from "./spend-form";
 
-const MAX_WIDTH = "max-w-[1120px] mx-auto px-7 max-[760px]:px-4";
+const MAX_WIDTH = "max-w-[1120px] mx-auto px-7 max-md:px-4";
 
 // Order a panel's rows by monthly-equivalent value, highest first, matching how
 // holdings and accounts sort by value.
@@ -28,35 +27,6 @@ function byMonthlyDesc(a: LocalSpendItem, b: LocalSpendItem): number {
   return monthlyEquivalentCents(b.amountCents, b.intervalCount, b.intervalUnit).cmp(
     monthlyEquivalentCents(a.amountCents, a.intervalCount, a.intervalUnit),
   );
-}
-
-// The next bill date, always with the year so any cadence reads unambiguously.
-function formatBillDate(date: Date): string {
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-// Category is shown by the icon and the amount is rendered separately (vfig), so
-// this line carries only the bill-date verb.
-function subLine(item: LocalSpendItem, now: Date): string {
-  if (item.status === "paused") return "resumes when you do";
-  if (!item.nextRenewalAt) return "";
-  const verb = item.group === "essentials" ? "due" : "renews";
-  const next = nextBillDate(item.nextRenewalAt, item.intervalCount, item.intervalUnit, now);
-  return `${verb} ${formatBillDate(next)}`;
-}
-
-// Money figure shows cents only when the value is not a whole dollar, so
-// "$1,450" and "$15.49" read as in the mock. Branches on Decimal minor units to
-// avoid any float comparison.
-function formatMoney(d: ReturnType<typeof monthlyEquivalentCents>): string {
-  return d.toMinorUnits() % 100n === 0n ? formatCurrencyWhole(d) : formatCurrency(d);
-}
-
-const UNIT_ABBR: Record<BillingUnit, string> = { day: "day", week: "wk", month: "mo", year: "yr" };
-
-function cadenceUnit(item: LocalSpendItem): string {
-  const unit = UNIT_ABBR[item.intervalUnit];
-  return item.intervalCount === 1 ? unit : `${item.intervalCount}${unit}`;
 }
 
 function RecurringRow({
@@ -70,8 +40,7 @@ function RecurringRow({
 }) {
   const isPaused = item.status === "paused";
   const monthly = monthlyEquivalentCents(item.amountCents, item.intervalCount, item.intervalUnit);
-  const billed = billedAmountCents(item.amountCents, item.intervalCount, item.intervalUnit);
-  const sub = subLine(item, now);
+  const sub = spendScheduleLine(item, now);
 
   return (
     <button
@@ -99,19 +68,7 @@ function RecurringRow({
             </span>
           )}
         </span>
-        {(sub || (!isPaused && billed !== null)) && (
-          <span className="block font-mono text-xs text-faint mt-[3px]">
-            {sub}
-            {!isPaused && billed !== null && (
-              <>
-                {sub && " ("}
-                <span className="vfig">{formatMoney(billed)}</span>
-                <CadenceSuffix unit={cadenceUnit(item)} />
-                {sub && ")"}
-              </>
-            )}
-          </span>
-        )}
+        {sub && <span className="block font-mono text-xs text-faint mt-[3px]">{sub}</span>}
       </span>
       <span
         className={[
@@ -121,7 +78,7 @@ function RecurringRow({
           .join(" ")
           .trim()}
       >
-        <span className="vfig">{formatMoney(monthly)}</span>
+        <span className="vfig">{formatSpendAmount(monthly)}</span>
         <CadenceSuffix unit="mo" className="text-xs text-faint" />
       </span>
     </button>
@@ -225,8 +182,9 @@ export function SpendScreen() {
   const { tick } = useSync();
   const [formOpen, setFormOpen] = useState(false);
   const [editItem, setEditItem] = useState<LocalSpendItem | undefined>(undefined);
+  const [detailItem, setDetailItem] = useState<LocalSpendItem | null>(null);
 
-  const { creating, updating, deleting, createItem, updateItem, deleteItem } = useSpendMutations();
+  const { creating, updating, createItem, updateItem, deleteItem } = useSpendMutations();
 
   const essentialItems = useMemo(
     () => items.filter((i) => i.group === "essentials").sort(byMonthlyDesc),
@@ -254,12 +212,21 @@ export function SpendScreen() {
     () => subscriptionSharePct(subscriptionMonthly, monthlyTotal),
     [subscriptionMonthly, monthlyTotal],
   );
-  const dailyBurn = useMemo(() => dailyEquivalentCents(monthlyTotal), [monthlyTotal]);
-  const weeklyBurn = useMemo(() => weeklyEquivalentCents(monthlyTotal), [monthlyTotal]);
 
   // One clock value per render so every row's next-bill date resolves against
   // the same "today", even across a midnight boundary.
   const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const nextBill = useMemo(() => {
+    let earliest: { item: LocalSpendItem; date: Date } | undefined;
+    const today = new Date(todayStart);
+    for (const item of items) {
+      if (item.status !== "active" || item.nextRenewalAt === undefined) continue;
+      const date = nextBillDate(item.nextRenewalAt, item.intervalCount, item.intervalUnit, today);
+      if (earliest === undefined || date < earliest.date) earliest = { item, date };
+    }
+    return earliest;
+  }, [items, todayStart]);
 
   function openAdd() {
     setEditItem(undefined);
@@ -267,6 +234,7 @@ export function SpendScreen() {
   }
 
   function openEdit(item: LocalSpendItem) {
+    setDetailItem(null);
     setEditItem(item);
     setFormOpen(true);
   }
@@ -285,10 +253,9 @@ export function SpendScreen() {
     handleClose();
   }
 
-  async function handleDelete() {
-    if (editItem === undefined) return;
-    await deleteItem(editItem.id);
-    handleClose();
+  async function handleDelete(item: LocalSpendItem) {
+    await deleteItem(item.id);
+    setDetailItem((current) => (current?.id === item.id ? null : current));
   }
 
   if (loading) return <LoadingSkeleton />;
@@ -299,13 +266,9 @@ export function SpendScreen() {
         <p className="font-mono text-xs text-down" role="alert">
           Failed to load. {error.message}
         </p>
-        <button
-          type="button"
-          onClick={tick}
-          className="mt-3 font-mono text-xs tracking-button uppercase text-accent border border-accent/30 rounded-md px-4 py-2 cursor-pointer hover:bg-accent/8 transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100"
-        >
+        <Button type="button" variant="secondary" size="sm" onClick={tick} className="mt-3">
           Retry
-        </button>
+        </Button>
       </div>
     );
   }
@@ -313,7 +276,7 @@ export function SpendScreen() {
   if (items.length === 0) {
     return (
       <div className={`${MAX_WIDTH} pt-20 text-center`}>
-        <div className="w-[84px] h-[84px] rounded-full border border-dashed border-white/22 flex items-center justify-center text-accent mx-auto mb-7">
+        <div className="w-[84px] h-[84px] rounded-full border border-dashed border-cream/[0.22] flex items-center justify-center text-accent mx-auto mb-7">
           <svg
             aria-hidden="true"
             viewBox="0 0 24 24"
@@ -398,15 +361,22 @@ export function SpendScreen() {
           <p className="font-mono text-xs mt-1 text-dim">of monthly spend</p>
         </div>
         <div className="glass rounded-[10px] px-5 py-5 max-[480px]:px-4 max-[480px]:py-4">
-          <p className="font-mono text-xs tracking-label uppercase text-faint">Per day</p>
-          <p className="font-serif text-3xl mt-2 max-[480px]:text-2xl">
-            <span className="vfig">{formatCurrencyWhole(dailyBurn)}</span>
-            <CadenceSuffix unit="day" className="font-mono text-xs text-faint" />
-          </p>
-          <p className="font-mono text-xs mt-1 text-dim">
-            <span className="vfig">{formatCurrencyWhole(weeklyBurn)}</span>
-            <CadenceSuffix unit="week" className="text-faint" />
-          </p>
+          <p className="font-mono text-xs tracking-label uppercase text-faint">Next bill</p>
+          {nextBill === undefined ? (
+            <p className="font-mono text-sm text-dim mt-3">
+              {activeCount > 0 ? "Set a date to see upcoming bills" : "No upcoming bills"}
+            </p>
+          ) : (
+            <>
+              <p className="font-serif text-2xl mt-2 truncate max-[480px]:text-xl">
+                {nextBill.item.name}
+              </p>
+              <p className="font-mono text-xs mt-1 text-dim truncate">
+                {nextBill.item.group === "essentials" ? "Due" : "Renews"}{" "}
+                {formatSpendDate(nextBill.date)}
+              </p>
+            </>
+          )}
         </div>
       </div>
 
@@ -417,7 +387,7 @@ export function SpendScreen() {
             title="Essentials"
             items={essentialItems}
             now={now}
-            onRowClick={openEdit}
+            onRowClick={setDetailItem}
             className={`max-[880px]:col-span-12 ${
               subscriptionItems.length > 0 ? "col-span-6" : "col-span-12"
             }`}
@@ -428,7 +398,7 @@ export function SpendScreen() {
             title="Subscriptions"
             items={subscriptionItems}
             now={now}
-            onRowClick={openEdit}
+            onRowClick={setDetailItem}
             className={`max-[880px]:col-span-12 ${
               essentialItems.length > 0 ? "col-span-6" : "col-span-12"
             }`}
@@ -436,14 +406,21 @@ export function SpendScreen() {
         )}
       </div>
 
+      <CategorySpendPanel items={items} now={now} />
+
       <SpendForm
         open={formOpen}
         onClose={handleClose}
         item={editItem}
         submitting={editItem !== undefined ? updating : creating}
         onSave={handleSave}
-        onDelete={editItem !== undefined ? handleDelete : undefined}
-        deleting={deleting}
+      />
+      <SpendDetailSheet
+        open={detailItem !== null}
+        item={detailItem}
+        onClose={() => setDetailItem(null)}
+        onEdit={openEdit}
+        onDelete={handleDelete}
       />
     </div>
   );
