@@ -20,7 +20,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       ref={ref}
       aria-invalid={invalid || undefined}
       className={cn(
-        "min-h-11 w-full cursor-pointer appearance-none rounded-lg border bg-panel-2 pr-9 pl-3.5 py-3 font-mono text-base text-cream outline-none transition-colors focus:border-accent-dim disabled:cursor-not-allowed disabled:opacity-50",
+        "min-h-11 w-full cursor-pointer appearance-none rounded-lg border bg-panel-2 pr-9 pl-3.5 py-3 font-mono text-base text-cream outline-none transition-[border-color,box-shadow] focus:border-accent-dim focus-visible:ring-2 focus-visible:ring-accent/25 focus-visible:ring-offset-2 focus-visible:ring-offset-panel disabled:cursor-not-allowed disabled:opacity-50",
         invalid ? "border-signal" : "border-line",
         className,
       )}

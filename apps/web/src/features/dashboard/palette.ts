@@ -2,7 +2,7 @@
 // given position is identical across the allocation donut (class + sector) and
 // the "Where it lives" bar, so the three views share one color order.
 const allocationPalette = [
-  "#5eead4", // mint (brand)
+  "var(--data-primary)", // mint (data)
   "#a78bfa", // violet
   "#fbbf24", // amber
   "#7dd3fc", // sky

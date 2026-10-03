@@ -1,13 +1,42 @@
 import { Decimal, SCALE_CENTS } from "@privance/core";
-import { useState } from "react";
+import { memo, useState } from "react";
+import { ExpandableAllocationRow } from "@/components/ui/expandable-allocation-row";
 import { assignColors } from "@/features/dashboard/palette";
 import { formatCurrencyWhole, formatPercent } from "@/lib/format";
 import type { TaxBucket } from "../_invest-math";
+import type { TaxBucketAccount } from "../types";
 
 type TaxBucketsPanelProps = {
   buckets: TaxBucket[];
   reachableBeforeFiftyNineHalfCents: Decimal;
 };
+
+const AccountContributions = memo(function AccountContributions({
+  accounts,
+}: {
+  accounts: TaxBucketAccount[];
+}) {
+  return (
+    <div className="ml-[21px] border-l border-line-soft pb-2 pl-4">
+      {accounts.map((account) => (
+        <div
+          key={account.accountId}
+          className="grid min-h-[42px] grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-line-soft py-2 pr-7 last:border-b-0 max-[520px]:pr-3"
+        >
+          <div className="min-w-0">
+            <p className="break-words text-sm text-cream">{account.name}</p>
+            {account.detail && (
+              <p className="font-mono text-xs tracking-[.03em] text-faint">{account.detail}</p>
+            )}
+          </div>
+          <span className="vfig shrink-0 text-right font-mono text-xs tabular-nums text-cream">
+            {formatCurrencyWhole(account.valueCents)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+});
 
 export function TaxBucketsPanel({
   buckets,
@@ -18,7 +47,9 @@ export function TaxBucketsPanel({
   const totalCents = buckets.reduce((sum, b) => sum.add(b.valueCents), Decimal.zero(SCALE_CENTS));
   const total = totalCents.toFloat();
   const colors = assignColors(buckets.map((b) => b.label));
+  const shares = buckets.map((bucket) => (total > 0 ? bucket.valueCents.toFloat() / total : 0));
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [openBucket, setOpenBucket] = useState<TaxBucket["key"] | null>(null);
 
   return (
     <div className="glass rounded-[10px] p-6 h-full">
@@ -36,7 +67,6 @@ export function TaxBucketsPanel({
           aria-label="Tax bucket allocation bar"
         >
           {buckets.map((b, i) => {
-            const widthPct = total > 0 ? (b.valueCents.toFloat() / total) * 100 : 0;
             const color = colors[i];
             return (
               <span
@@ -45,7 +75,7 @@ export function TaxBucketsPanel({
                 onMouseLeave={() => setHoveredIndex(null)}
                 className="transition-opacity duration-100"
                 style={{
-                  width: `${widthPct.toFixed(1)}%`,
+                  width: `${(shares[i] * 100).toFixed(1)}%`,
                   background: color,
                   opacity: hoveredIndex === null || hoveredIndex === i ? 1 : 0.5,
                 }}
@@ -56,46 +86,30 @@ export function TaxBucketsPanel({
         </div>
       )}
 
-      {/* One grid with subgrid rows so the value/percent columns align across
-          rows (a per-row grid sizes each row's columns independently). */}
-      {/* -mx-1 cancels the rows' px-1 so columns align with the other panels
-          while the hover highlight bleeds past the text edge. */}
-      <ul className="grid grid-cols-[1fr_auto_auto] gap-x-8 my-0 -mx-1 list-none p-0">
+      <ul className="-mx-1 my-0 grid list-none grid-cols-[minmax(0,1fr)_auto_7ch_18px] gap-x-8 p-0 max-[520px]:gap-x-3 max-[360px]:grid-cols-[minmax(0,1fr)_auto_18px] max-[360px]:gap-x-2">
         {buckets.map((b, i) => {
-          const share = total > 0 ? b.valueCents.toFloat() / total : 0;
+          const share = shares[i];
           const isActive = hoveredIndex === i;
           const isDim = hoveredIndex !== null && hoveredIndex !== i;
+          const isOpen = openBucket === b.key;
+          const detailsId = `tax-bucket-details-${b.key}`;
           return (
-            <li
+            <ExpandableAllocationRow
               key={b.key}
+              detailsId={detailsId}
+              isOpen={isOpen}
+              color={colors[i]}
+              label={<span className="break-words text-cream">{b.label}</span>}
+              amount={formatCurrencyWhole(b.valueCents)}
+              share={formatPercent(share)}
+              details={<AccountContributions accounts={b.accounts} />}
+              amountTestId={`tax-bucket-${b.key}`}
+              isHighlighted={isActive}
+              isDimmed={isDim}
+              onToggle={() => setOpenBucket(isOpen ? null : b.key)}
               onMouseEnter={() => setHoveredIndex(i)}
               onMouseLeave={() => setHoveredIndex(null)}
-              className={[
-                "col-span-3 grid grid-cols-subgrid items-center text-sm py-[11px] px-1 rounded-[5px] border-b border-line-soft last:border-b-0 transition-[background-color,opacity] duration-100 motion-reduce:transition-none",
-                isActive ? "bg-panel-2" : "",
-                isDim ? "opacity-50" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            >
-              <span className="flex items-center gap-2.5 min-w-0">
-                <span
-                  className="w-[9px] h-[9px] rounded-[2px] flex-none"
-                  style={{ background: colors[i] }}
-                  aria-hidden="true"
-                />
-                <span className="text-cream truncate">{b.label}</span>
-              </span>
-              <span
-                data-testid={`tax-bucket-${b.key}`}
-                className="vfig font-mono text-sm text-cream tabular-nums text-right"
-              >
-                {formatCurrencyWhole(b.valueCents)}
-              </span>
-              <span className="font-mono text-sm text-dim tabular-nums text-right">
-                {formatPercent(share)}
-              </span>
-            </li>
+            />
           );
         })}
       </ul>

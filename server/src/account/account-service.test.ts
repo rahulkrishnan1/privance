@@ -1,10 +1,6 @@
 import { describe, expect, it, mock } from "bun:test";
 
-// Mock the auth KDF so verifyAuthHash is deterministic without hashing.
 const mockVerifyAuthHash = mock(async (): Promise<boolean> => true);
-mock.module("../auth/kdf.js", () => ({
-  verifyAuthHash: mockVerifyAuthHash,
-}));
 
 import { AccountService } from "./account-service.js";
 import { InvalidPasswordError } from "./types.js";
@@ -22,7 +18,7 @@ describe("AccountService.destroy", () => {
   it("verifies the password then deletes all data for the user", async () => {
     mockVerifyAuthHash.mockResolvedValueOnce(true);
     const repo = makeRepo();
-    const svc = new AccountService({ repo: repo as never });
+    const svc = new AccountService({ repo: repo as never, verifyAuthHash: mockVerifyAuthHash });
 
     const result = await svc.destroy({
       userId: "user-1",
@@ -38,7 +34,7 @@ describe("AccountService.destroy", () => {
   it("rejects a wrong password and deletes nothing", async () => {
     mockVerifyAuthHash.mockResolvedValueOnce(false);
     const repo = makeRepo();
-    const svc = new AccountService({ repo: repo as never });
+    const svc = new AccountService({ repo: repo as never, verifyAuthHash: mockVerifyAuthHash });
 
     await expect(
       svc.destroy({ userId: "user-1", currentAuthHash: Buffer.alloc(64, 0x00) }),
@@ -51,7 +47,7 @@ describe("AccountService.destroy", () => {
     mockVerifyAuthHash.mockResolvedValueOnce(true);
     const repo = makeRepo();
     repo.getUserAuthHashById.mockResolvedValueOnce(null);
-    const svc = new AccountService({ repo: repo as never });
+    const svc = new AccountService({ repo: repo as never, verifyAuthHash: mockVerifyAuthHash });
 
     await expect(
       svc.destroy({ userId: "ghost", currentAuthHash: Buffer.alloc(64, 0xab) }),

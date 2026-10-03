@@ -1,7 +1,7 @@
 import type { Account, Decimal, HoldingValuation } from "@privance/core";
 import { useState } from "react";
 import { Button, CloseButton, ConfirmDeleteButton } from "@/components";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetFooter, SheetTitle } from "@/components/ui/sheet";
 import { CASH_TYPE_LABEL, SUBKIND_TYPE_LABEL } from "@/features/accounts";
 import { formatAccountBalanceWhole } from "@/features/accounts/balance";
 import { centsToDecimal } from "@/features/accounts/queries";
@@ -95,8 +95,10 @@ function AccountDetailSheetBody({
         <div>
           <AccountTypeTag account={account} />
           <SheetTitle
-            // biome-ignore lint/a11y/useHeadingContent: heading text is injected as children by Base UI's render prop
-            render={<h3 className="font-serif text-3xl font-light tracking-[-0.01em] mt-1.5" />}
+            render={
+              // biome-ignore lint/a11y/useHeadingContent: heading text is injected as children by Base UI's render prop
+              <h3 className="font-serif text-3xl font-light tracking-[-0.01em] mt-1.5" />
+            }
           >
             {account.payload.name}
           </SheetTitle>
@@ -191,7 +193,7 @@ function AccountDetailSheetBody({
         </>
       )}
 
-      <div className="flex gap-2.5 mt-6">
+      <SheetFooter className="border-t-0">
         <Button variant="secondary" onClick={() => onEdit(account)} className="flex-1">
           Edit account
         </Button>
@@ -200,7 +202,7 @@ function AccountDetailSheetBody({
           pending={deleting}
           className="flex-1"
         />
-      </div>
+      </SheetFooter>
     </>
   );
 }

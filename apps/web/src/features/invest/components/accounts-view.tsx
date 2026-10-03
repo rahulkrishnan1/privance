@@ -37,8 +37,8 @@ const KIND_ICONS: Record<AccountKind, typeof Wallet> = {
 // accounts list reads as one family with the donut. Liability is the down tone.
 const KIND_ICON_COLOR: Record<AccountKind, string> = {
   investment: "text-accent",
-  cash: "text-[#a78bfa]",
-  manual_asset: "text-[#fbbf24]",
+  cash: "text-accent-dim",
+  manual_asset: "text-signal",
   liability: "text-down",
 };
 

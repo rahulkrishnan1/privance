@@ -142,6 +142,50 @@ describe("start veiled toggle", () => {
   });
 });
 
+describe("appearance preference", () => {
+  it("switches themes locally and keeps the selected option pressed", async () => {
+    const screen = await render(<SettingsPage />);
+
+    const light = screen.getByRole("button", { name: "Light" });
+    const dark = screen.getByRole("button", { name: "Dark" });
+    await expect.element(dark).toHaveAttribute("aria-pressed", "true");
+
+    await light.click();
+
+    await expect.element(light).toHaveAttribute("aria-pressed", "true");
+    await expect.element(dark).toHaveAttribute("aria-pressed", "false");
+    expect(localStorage.getItem("privance.theme.v1")).toBe("light");
+    expect(document.documentElement.dataset.theme).toBe("light");
+  });
+});
+
+describe("external resources", () => {
+  it("exposes source links with opener isolation", async () => {
+    const screen = await render(<SettingsPage />);
+
+    const source = screen.getByRole("link", { name: /Source/ });
+    await expect.element(source).toHaveAttribute("target", "_blank");
+    await expect.element(source).toHaveAttribute("rel", "noopener noreferrer");
+  });
+});
+
+describe("sign out", () => {
+  it("keeps the confirmation concise while preserving the re-entry requirement", async () => {
+    const screen = await render(<SettingsPage />);
+
+    await screen.getByRole("button", { name: /Sign out/ }).click();
+
+    const dialog = screen.getByRole("dialog", { name: "Sign out" });
+    await expect
+      .element(dialog)
+      .toHaveTextContent(
+        "Clears this device. You’ll need your master password or recovery phrase to get back in.",
+      );
+    await expect.element(dialog).not.toHaveTextContent("Everything stays encrypted");
+    await expect.element(dialog).not.toHaveTextContent("Know your password");
+  });
+});
+
 describe("version row", () => {
   it("shows the injected build version, not the 'unknown' fallback", async () => {
     const screen = await render(<SettingsPage />);
@@ -284,7 +328,7 @@ describe("destroy vault", () => {
 
     await screen.getByRole("button", { name: /Destroy vault/ }).click();
 
-    const destroyBtn = screen.getByRole("button", { name: "Destroy forever" });
+    const destroyBtn = screen.getByRole("button", { name: "Destroy vault", exact: true });
     await expect.element(destroyBtn).toBeDisabled();
 
     await screen.getByLabelText(/Type your username/).fill("alice");
@@ -302,7 +346,9 @@ describe("destroy vault", () => {
     await screen.getByLabelText(/Type your username/).fill("bob");
     await screen.getByLabelText("Master password").fill("secret");
 
-    await expect.element(screen.getByRole("button", { name: "Destroy forever" })).toBeDisabled();
+    await expect
+      .element(screen.getByRole("button", { name: "Destroy vault", exact: true }))
+      .toBeDisabled();
   });
 
   it("surfaces a wrong-password message on a 401 and does not log out", async () => {
@@ -312,7 +358,7 @@ describe("destroy vault", () => {
     await screen.getByRole("button", { name: /Destroy vault/ }).click();
     await screen.getByLabelText(/Type your username/).fill("alice");
     await screen.getByLabelText("Master password").fill("wrong");
-    await screen.getByRole("button", { name: "Destroy forever" }).click();
+    await screen.getByRole("button", { name: "Destroy vault", exact: true }).click();
 
     await expect.element(screen.getByText("Password is incorrect.")).toBeVisible();
     expect(authCtxMock.logout).not.toHaveBeenCalled();
@@ -325,7 +371,7 @@ describe("destroy vault", () => {
     await screen.getByRole("button", { name: /Destroy vault/ }).click();
     await screen.getByLabelText(/Type your username/).fill("alice");
     await screen.getByLabelText("Master password").fill("secret");
-    await screen.getByRole("button", { name: "Destroy forever" }).click();
+    await screen.getByRole("button", { name: "Destroy vault", exact: true }).click();
 
     await vi.waitFor(() => {
       expect(navigateMock.hardRedirect).toHaveBeenCalledWith("/auth/login/");
@@ -346,7 +392,7 @@ describe("destroy vault", () => {
     await screen.getByRole("button", { name: /Destroy vault/ }).click();
     await screen.getByLabelText(/Type your username/).fill("alice");
     await screen.getByLabelText("Master password").fill("secret");
-    await screen.getByRole("button", { name: "Destroy forever" }).click();
+    await screen.getByRole("button", { name: "Destroy vault", exact: true }).click();
 
     await vi.waitFor(() => {
       expect(navigateMock.hardRedirect).toHaveBeenCalledWith("/auth/login/");

@@ -33,13 +33,9 @@ export function SignOutDialog({
       <DialogContent aria-labelledby="signout-title">
         <SettingsDialogHeader title="Sign out" titleId="signout-title" onClose={onClose} />
         <p className="text-sm leading-[1.6] text-dim">
-          Clears the decrypted data and biometric unlock from this device. Everything stays
-          encrypted on the server and returns when you sign back in.
+          Clears this device. You&rsquo;ll need your master password or recovery phrase to get back
+          in.
         </p>
-        <div className="mt-[18px] rounded-lg border border-signal/30 bg-signal/6 px-4 py-[13px] text-sm leading-[1.55] text-cream-soft">
-          <strong className="font-medium text-signal">Know your password.</strong> Getting back in
-          needs your master password or recovery phrase, nothing else.
-        </div>
         <DialogFooter className="mt-[26px]">
           <Button variant="secondary" onClick={onClose}>
             Stay

@@ -68,7 +68,7 @@ test.describe("mobile navigation", () => {
     // Lock affordance lives only in the top bar now, not as a settings row.
     await tapNav(nav.getByRole("link", { name: "Settings" }));
     await expect(page).toHaveURL(/\/app\/settings\/?$/, { timeout: 10_000 });
-    await expect(page.getByRole("heading", { name: /The vault/i })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "The vault, your way." })).toBeVisible({
       timeout: 10_000,
     });
 

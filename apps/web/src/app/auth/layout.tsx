@@ -13,7 +13,7 @@ export default function AuthLayout() {
   }, [state, navigate]);
 
   if (state !== "unauthenticated") {
-    return <div className="dark min-h-svh bg-vault" />;
+    return <div className="min-h-svh bg-vault" />;
   }
 
   return (

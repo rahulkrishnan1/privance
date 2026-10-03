@@ -6,9 +6,16 @@ import type {
   NetWorthBreakdown,
 } from "@privance/core";
 import { Decimal, SCALE_CENTS } from "@privance/core";
+import { centsToDecimal } from "@/features/accounts/balance";
 import type { SymbolProfileEntry } from "@/lib/api/symbol-profiles";
 import { TAX_TREATMENT_BY_SUBKIND, TAX_TREATMENT_LABEL } from "./_constants";
-import type { EstimatedIncomeResult, IncomePayer, TaxBucket, TaxBucketsResult } from "./types";
+import type {
+  EstimatedIncomeResult,
+  IncomePayer,
+  TaxBucket,
+  TaxBucketAccount,
+  TaxBucketsResult,
+} from "./types";
 
 export type { EstimatedIncomeResult, TaxBucket };
 
@@ -48,8 +55,8 @@ export function subsetGain(valuations: NetWorthBreakdown["byHolding"]): {
  * Bucket each account's value by tax treatment.
  *
  * Investment accounts are valued via breakdown.byAccount (already includes cash sweep).
- * Cash bucket = cash accounts only (investment account value already includes sweep in breakdown,
- * so we do not double-count the sweep by putting it in Cash).
+ * Cash includes cash accounts and taxable investment-account sweeps; the latter are split from
+ * their investment value so the total is unchanged.
  * Property = manual_asset accounts. Liabilities are excluded.
  */
 export function taxBuckets({
@@ -74,6 +81,31 @@ export function taxBuckets({
     cash: Decimal.zero(SCALE_CENTS),
     property: Decimal.zero(SCALE_CENTS),
   };
+  const accountContributions: Record<BucketKey, TaxBucketAccount[]> = {
+    taxable: [],
+    pretax: [],
+    roth: [],
+    hsa: [],
+    college: [],
+    cash: [],
+    property: [],
+  };
+
+  const addAccountContribution = (
+    key: BucketKey,
+    account: Account,
+    valueCents: Decimal,
+    detail?: TaxBucketAccount["detail"],
+  ) => {
+    if (valueCents.isZero()) return;
+    totals[key] = totals[key].add(valueCents);
+    accountContributions[key].push({
+      accountId: account.id,
+      name: account.payload.name,
+      valueCents,
+      ...(detail !== undefined ? { detail } : {}),
+    });
+  };
 
   for (const account of accounts) {
     const value = accountValueMap.get(account.id) ?? Decimal.zero(SCALE_CENTS);
@@ -86,10 +118,7 @@ export function taxBuckets({
         if (treatment === "taxable") {
           // Split the cash sweep into the Cash bucket so it shows as freely
           // reachable cash rather than as invested taxable assets.
-          const rawSweep = Decimal.fromMinorUnits(
-            BigInt(account.payload.cashBalanceCents ?? "0"),
-            SCALE_CENTS,
-          );
+          const rawSweep = centsToDecimal(account.payload.cashBalanceCents ?? "0");
           // Clamp: sweep cannot exceed the account value or be negative.
           const sweep =
             rawSweep.isNegative() || rawSweep.isZero()
@@ -97,26 +126,30 @@ export function taxBuckets({
               : rawSweep.cmp(value) > 0
                 ? value
                 : rawSweep;
-          totals.taxable = totals.taxable.add(value.sub(sweep));
-          totals.cash = totals.cash.add(sweep);
+          const hasCashSweep = !sweep.isZero();
+          addAccountContribution(
+            "taxable",
+            account,
+            value.sub(sweep),
+            hasCashSweep ? "investments" : undefined,
+          );
+          addAccountContribution("cash", account, sweep, "cash balance");
         } else {
-          totals[treatment] = totals[treatment].add(value);
+          addAccountContribution(treatment, account, value);
         }
         break;
       }
       case "cash":
-        totals.cash = totals.cash.add(value);
+        addAccountContribution("cash", account, value);
         break;
       case "manual_asset":
-        totals.property = totals.property.add(value);
+        addAccountContribution("property", account, value);
         break;
       case "liability":
         // Liabilities excluded from the tax-bucket view.
         break;
     }
   }
-
-  const ALL_KEYS: BucketKey[] = ["taxable", "pretax", "roth", "hsa", "college", "cash", "property"];
 
   const labelFor = (key: BucketKey): string => {
     if (key === "cash") return "Cash";
@@ -126,11 +159,13 @@ export function taxBuckets({
 
   // Sorted desc so the panel can color by index from the shared palette
   // (brightest tone anchors the largest bucket), matching the allocation donut.
-  const buckets: TaxBucket[] = ALL_KEYS.filter((key) => !totals[key].isZero())
+  const buckets: TaxBucket[] = (Object.keys(totals) as BucketKey[])
+    .filter((key) => !totals[key].isZero())
     .map((key) => ({
       key,
       label: labelFor(key),
       valueCents: totals[key],
+      accounts: accountContributions[key].sort((a, b) => b.valueCents.cmp(a.valueCents)),
     }))
     .sort((a, b) => b.valueCents.cmp(a.valueCents));
 

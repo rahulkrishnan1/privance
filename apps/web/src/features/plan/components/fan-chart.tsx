@@ -244,7 +244,7 @@ export function FanChart({
             </defs>
             {/* Barely-there horizontal rules; the dollar labels at the right edge
                 carry the scale and keep the plot airy. */}
-            <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
+            <CartesianGrid vertical={false} stroke={colors.grid} strokeWidth={1} />
             <XAxis
               dataKey="age"
               type="number"
@@ -340,7 +340,7 @@ export function FanChart({
             {showFireMarker && fireNumberDisplay !== undefined && (
               <>
                 <ReferenceLine
-                  stroke="rgba(255,255,255,0.14)"
+                  stroke="var(--color-line)"
                   strokeDasharray="2 4"
                   segment={[
                     { x: medianFireAge, y: 0 },
@@ -352,7 +352,7 @@ export function FanChart({
                   y={fireNumberDisplay}
                   r={5}
                   fill={signal}
-                  stroke="#07080a"
+                  stroke="var(--color-vault)"
                   strokeWidth={2}
                   label={{
                     value: fireYear !== undefined ? `FI ${fireYear}` : "FI",
@@ -391,14 +391,14 @@ export function FanChart({
         <span className="flex items-center gap-2">
           <span
             className="inline-block h-[3px] w-4 rounded-sm"
-            style={{ background: "rgba(94,234,212,0.3)" }}
+            style={{ background: "color-mix(in srgb, var(--color-accent) 30%, transparent)" }}
           />
           Likely range (25 to 75)
         </span>
         <span className="flex items-center gap-2">
           <span
             className="inline-block h-[3px] w-4 rounded-sm"
-            style={{ background: "rgba(94,234,212,0.12)" }}
+            style={{ background: "color-mix(in srgb, var(--color-accent) 12%, transparent)" }}
           />
           Possible range (10 to 90)
         </span>

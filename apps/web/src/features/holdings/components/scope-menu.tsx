@@ -170,7 +170,7 @@ export function ScopeMenu({
             aria-label="Filter holdings by scope"
             align="start"
             sideOffset={8}
-            className="w-[320px] max-w-[calc(100vw-3rem)] rounded-xl p-1.5 shadow-[0_26px_52px_-18px_rgba(0,0,0,0.78)]"
+            className="w-[320px] max-w-[calc(100vw-3rem)] rounded-xl p-1.5 shadow-[0_26px_52px_-18px_var(--surface-shadow)]"
           >
             {body}
           </PopoverContent>

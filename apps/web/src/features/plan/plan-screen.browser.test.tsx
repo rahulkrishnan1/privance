@@ -3,6 +3,7 @@ import { asId, asIsoDateTime, Decimal, SCALE_CENTS } from "@privance/core";
 import type { SimulateResult, YearBand } from "@privance/core/projection";
 import { deriveAllocationParams } from "@privance/core/projection";
 import { expect, test, vi } from "vitest";
+import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
 // Load the real stylesheet so a `veil-on` ancestor actually blurs `.vfig`
 // figures and getComputedStyle reports it, not just a class marker.
@@ -181,7 +182,39 @@ async function waitForHeadline(screen: Awaited<ReturnType<typeof render>>) {
   );
 }
 
-test("accounts present and no plan auto-seeds the panel and renders the headline sentence", async () => {
+function expectInlineMetrics(container: HTMLElement) {
+  const metrics = container.querySelector("[data-testid='plan-metrics']");
+  const heading = container.querySelector("h1");
+  const divider = container.querySelector("[data-testid='plan-headline-divider']");
+  const progressValue = container.querySelector("[data-testid='starting-pot']");
+  if (!metrics || !heading || !progressValue) {
+    throw new Error("plan headline metrics did not render");
+  }
+  expect(divider).toBeNull();
+  const labels = metrics.querySelectorAll("dt");
+  const values = metrics.querySelectorAll("dd");
+  if (labels.length !== 2 || values.length !== 2) throw new Error("plan metrics did not render");
+  const textBounds = (element: Element) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    return range.getBoundingClientRect();
+  };
+  const metricsBounds = metrics.getBoundingClientRect();
+  const headingBounds = textBounds(heading);
+  const metricLabelBounds = Array.from(labels, textBounds);
+  const metricValueBounds = Array.from(values, textBounds);
+  const progressFontSize = getComputedStyle(progressValue).fontSize;
+  expect(Math.abs(metricsBounds.left - headingBounds.left)).toBeLessThan(2);
+  expect(metricsBounds.right).toBeLessThanOrEqual(headingBounds.right + 2);
+  for (let i = 0; i < labels.length; i++) {
+    expect(metricLabelBounds[i].right).toBeLessThanOrEqual(metricValueBounds[i].left);
+    expect(Math.abs(metricLabelBounds[i].top - metricValueBounds[i].top)).toBeLessThan(4);
+    expect(getComputedStyle(values[i]).fontSize).toBe(progressFontSize);
+  }
+  expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth);
+}
+
+test("accounts present and no plan render the FI summary", async () => {
   h.accounts = { status: "success", data: [makeCashAccount("c1", "Checking", "50000000")] };
   h.planRecord = { status: "none" };
   h.simulateResult = null;
@@ -189,10 +222,34 @@ test("accounts present and no plan auto-seeds the panel and renders the headline
   const screen = await render(<PlanScreen />);
   await waitForHeadline(screen);
 
-  expect(screen.container.textContent).toContain("Independent by");
+  expect(screen.container.querySelector("h1")?.textContent?.replace(/\s+/g, " ").trim()).toMatch(
+    /^Independent by \d{4}\.$/,
+  );
   expect(screen.container.querySelector("[data-testid='fire-age-value']")?.textContent).toBe("52");
+  expect(screen.container.textContent).toContain("FI Age");
+  expect(screen.container.textContent).toContain("Spend Target");
+  expectInlineMetrics(screen.container);
+  expect(screen.container.querySelector("[data-testid='spend-target-value']")?.textContent).toMatch(
+    /^\$[\d,]+$/,
+  );
+  expect(screen.container.textContent).toContain("/yr");
   // The progress anchor shows the account-derived pot as "Today".
   expect(screen.container.textContent).toContain("$500,000");
+});
+
+test("FI metrics stay in bounds and match progress typography at phone width", async () => {
+  await page.viewport(373, 780);
+  try {
+    h.accounts = { status: "success", data: [makeCashAccount("c1", "Checking", "50000000")] };
+    h.planRecord = { status: "none" };
+    h.simulateResult = null;
+
+    const screen = await render(<PlanScreen />);
+    await waitForHeadline(screen);
+    expectInlineMetrics(screen.container);
+  } finally {
+    await page.viewport(1280, 800);
+  }
 });
 
 test("a holding whose price never resolves does not wedge the projection on a skeleton", async () => {
@@ -260,8 +317,8 @@ test("the headline veils money only, not the FI age or year", async () => {
   expect(blurOf(year)).toBe("none");
   expect(blurOf(age)).toBe("none");
 
-  // The spending figure in the same sentence is money, so it is actually blurred.
-  const moneyFigure = screen.container.querySelector("h1 .vfig");
+  // Spending is money, so the target remains obscured by the privacy veil.
+  const moneyFigure = screen.container.querySelector("[data-testid='spend-target-value']");
   expect(moneyFigure).not.toBeNull();
   expect(blurOf(moneyFigure)).toContain("blur");
 });

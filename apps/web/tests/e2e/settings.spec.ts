@@ -32,7 +32,7 @@ const NEW_PASS = "Privance-e2e-new-password-2026!";
 
 async function openSettings(page: import("@playwright/test").Page): Promise<void> {
   await page.goto("/app/settings/");
-  await expect(page.getByRole("heading", { name: /The vault/ })).toBeVisible({
+  await expect(page.getByRole("heading", { name: "The vault, your way." })).toBeVisible({
     timeout: 15_000,
   });
 }

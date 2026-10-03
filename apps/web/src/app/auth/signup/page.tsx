@@ -353,7 +353,7 @@ export default function SignupPage() {
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
             maxLength={PASSWORD_MAX}
-            placeholder="long and memorable beats short and clever"
+            placeholder="Use a long, memorable passphrase"
             aria-invalid={errors.password !== undefined}
             aria-describedby={errors.password !== undefined ? "signup-password-error" : undefined}
           />
@@ -397,7 +397,7 @@ export default function SignupPage() {
             aria-describedby={errors.inviteToken !== undefined ? "signup-invite-error" : undefined}
           />
           <p className="font-mono text-xs text-faint tracking-[0.04em]">
-            invite&#8209;only for now, self&#8209;hosters skip this
+            Only required on hosted Privance.
           </p>
           {errors.inviteToken && (
             <p
@@ -422,7 +422,7 @@ export default function SignupPage() {
       </form>
 
       <p className="text-center font-mono text-xs tracking-[0.04em] text-faint mt-[26px]">
-        Already vaulted?{" "}
+        Already have a vault?{" "}
         <Link
           to="/auth/login"
           className="text-accent-dim no-underline hover:text-accent transition-colors"

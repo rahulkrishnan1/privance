@@ -62,6 +62,22 @@ function makeCashAccount(): Account {
   } as Account;
 }
 
+function makeLiabilityAccount(): Account {
+  return {
+    id: asId<AccountId>("acct-3"),
+    userId: asId<UserId>("user-1"),
+    createdAt: TS,
+    lastUpdatedAt: TS,
+    payload: {
+      kind: "liability",
+      subKind: "auto_loan",
+      name: "Car loan",
+      balanceCents: "2000000",
+      currency: "USD",
+    },
+  } as Account;
+}
+
 test("renders account type tag, name, and value for an investment account", async () => {
   const account = makeInvestAccount();
   const screen = await render(
@@ -101,6 +117,27 @@ test("renders the cash sub-type as the blue type tag", async () => {
 
   await expect.element(screen.getByText("CHECKING", { exact: true })).toBeVisible();
   await expect.element(screen.getByRole("heading", { name: "BoA Checking" })).toBeVisible();
+});
+
+test("cash and liability detail actions have no divider above them", async () => {
+  for (const account of [makeCashAccount(), makeLiabilityAccount()]) {
+    const screen = await render(
+      <AccountDetailSheet
+        open
+        account={account}
+        totalValue={dec(3_000_000n)}
+        holdingValuations={[]}
+        holdingsByAccount={[]}
+        onClose={() => {}}
+        onEdit={() => {}}
+        onDelete={vi.fn(() => Promise.resolve())}
+      />,
+    );
+
+    const footer = screen.getByRole("button", { name: "Edit account" }).element().parentElement;
+    expect(footer).not.toBeNull();
+    expect(getComputedStyle(footer as HTMLElement).borderTopWidth).toBe("0px");
+  }
 });
 
 test("shows a positive unrealized gain with the dollar amount and percent", async () => {

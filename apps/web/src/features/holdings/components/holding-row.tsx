@@ -85,13 +85,8 @@ export function HoldingRow({
       clearHighlight();
     }
   };
+  const handleAnimationCancel = () => clearHighlight();
 
-  // If reduced-motion is toggled on mid-flash, CSS animation:none cancels
-  // the animation (animationcancel, not animationend) — clear so
-  // highlightActive isn't stranded.
-  const handleAnimationCancel = () => {
-    clearHighlight();
-  };
   const priceTicker = holding.proxyTicker ?? holding.ticker;
   const priceEntry = prices.get(priceTicker);
 
@@ -159,14 +154,14 @@ export function HoldingRow({
       onClick={handleClick}
       onKeyDown={onRowKeyDown}
       onAnimationEnd={handleAnimationEnd}
-      // @ts-expect-error onAnimationCancel is a standard DOM event; @types/react 19.2.18 omits it
+      // @ts-expect-error onAnimationCancel is a standard DOM event; @types/react omits it
       onAnimationCancel={handleAnimationCancel}
       {...(highlightActive ? { "data-highlight": "true" } : {})}
       tabIndex={0}
       aria-label={`${holding.ticker}, open holding details`}
     >
       {/* Holding: ticker (cream, mono) + name, or "Proxy: TICKER" when proxied */}
-      <td className="border-t border-line-soft py-[13px] tabular-nums text-left max-w-0">
+      <td className="border-t border-line-soft py-[13px] pr-2 tabular-nums text-left max-w-0">
         <div className="font-mono text-sm tracking-[.04em] text-cream truncate">
           {holding.ticker}
         </div>
@@ -232,7 +227,7 @@ export function HoldingRow({
       </td>
 
       {/* G/L -- percent only on mobile, dollar over percent on desktop */}
-      <td className="border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8">
+      <td className="border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-2 md:pl-8">
         {noPrice || gain === null ? (
           <span className="text-faint">—</span>
         ) : (
@@ -254,11 +249,12 @@ export function HoldingRow({
 
       <td
         data-testid="holding-value"
-        className="border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-8"
+        className="border-t border-line-soft py-[13px] tabular-nums text-right whitespace-nowrap pl-2 md:pl-8"
       >
         {noPrice ? (
           <span className="font-mono text-xs tracking-[.08em] uppercase text-down border border-down/30 rounded-[5px] px-2 py-1 whitespace-nowrap">
-            no price, set one
+            <span className="md:hidden">Add price</span>
+            <span className="hidden md:inline">no price, set one</span>
           </span>
         ) : (
           <span className="vfig font-mono text-sm text-cream">

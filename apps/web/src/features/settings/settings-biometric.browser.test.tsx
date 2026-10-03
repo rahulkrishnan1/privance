@@ -119,12 +119,15 @@ describe("biometric row visibility", () => {
     webauthnMock.isBiometricSupported.mockResolvedValue(false);
     const screen = await render(<SettingsPage />);
 
-    await expect.element(screen.getByText("Unavailable")).toBeVisible();
+    await expect.element(screen.getByText("Unavailable", { exact: true })).toBeVisible();
     // The row is not actionable, so the dialog's controls never appear.
     await expect
       .element(screen.getByRole("button", { name: "Enable biometric unlock" }))
       .not.toBeInTheDocument();
-    await expect.element(screen.getByRole("heading", { name: /your way/i })).toBeVisible();
+    await expect.element(screen.getByText("Settings", { exact: true })).toBeVisible();
+    await expect
+      .element(screen.getByRole("heading", { name: "The vault, your way." }))
+      .toBeVisible();
   });
 
   it("shows an Off badge and reveals the enroll button in the dialog when not enrolled", async () => {
@@ -136,6 +139,14 @@ describe("biometric row visibility", () => {
     await expect
       .element(screen.getByRole("button", { name: "Enable biometric unlock" }))
       .toBeVisible();
+    await expect
+      .element(
+        screen.getByText(
+          "Enable Face ID or Touch ID to unlock without typing the master password.",
+        ),
+      )
+      .toBeVisible();
+    await expect.element(screen.getByText(/OS will prompt/)).not.toBeInTheDocument();
   });
 
   it("shows an Enabled badge when a fresh record exists", async () => {

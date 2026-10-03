@@ -104,6 +104,7 @@ export function useSegmentPosition(
   React.useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(() => {
       setPos(measureSegmentIndicator(container, selector));
     });
@@ -136,7 +137,7 @@ export function useSegmentIndicator(
   return (
     <span
       aria-hidden
-      className="absolute top-0 left-0 pointer-events-none bg-[var(--segment-active-bg,var(--color-accent))] transition-transform duration-200 ease-[var(--ease-in-out)] will-change-transform motion-reduce:transition-none"
+      className="absolute top-0 left-0 pointer-events-none bg-[var(--segment-active-bg,var(--color-control-primary))] transition-transform duration-200 ease-[var(--ease-in-out)] will-change-transform motion-reduce:transition-none"
       style={style}
     />
   );

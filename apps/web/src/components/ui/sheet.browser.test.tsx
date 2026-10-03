@@ -4,9 +4,8 @@ import { render } from "vitest-browser-react";
 import "@/app/globals.css";
 import { Sheet, SheetContent, SheetTitle } from "./sheet";
 
-// The Sheet shares the Dialog primitive but ships its own Popup positioning, so
-// it gets its own dismissal + focus coverage. Escape must close it (the default
-// modal dismissal that the detail sheets rely on alongside their Close button).
+// The responsive Sheet uses Base UI's Drawer primitive. Escape dismissal and
+// focus containment are contracts that every account/holding detail relies on.
 test("Sheet closes on Escape", async () => {
   const onOpenChange = vi.fn();
   function Harness() {

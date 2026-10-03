@@ -1,4 +1,4 @@
-import type { Decimal } from "@privance/core";
+import type { AccountId, Decimal } from "@privance/core";
 import type { TaxTreatment } from "./_constants";
 
 export type { TaxTreatment };
@@ -7,6 +7,14 @@ export type TaxBucket = {
   key: TaxTreatment | "cash" | "property";
   label: string;
   valueCents: Decimal;
+  accounts: TaxBucketAccount[];
+};
+
+export type TaxBucketAccount = {
+  accountId: AccountId;
+  name: string;
+  valueCents: Decimal;
+  detail?: "investments" | "cash balance";
 };
 
 export type TaxBucketsResult = {

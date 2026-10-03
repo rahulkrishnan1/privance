@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 
+import { Button } from "@/components";
 import { useSegmentPosition } from "@/components/ui/radio-group";
 import { useInvestDashboard } from "../invest-context";
 
@@ -50,7 +51,7 @@ export function InvestSubnav() {
     <nav
       ref={navRef}
       aria-label="Invest sub-navigation"
-      className="relative flex gap-[30px] max-[760px]:gap-4 border-b border-line mt-2 sticky top-[62px] max-[760px]:top-14 bg-[color-mix(in_srgb,var(--color-vault)_92%,transparent)] backdrop-blur-[8px] z-[15]"
+      className="relative flex gap-[30px] max-md:gap-4 border-b border-line mt-2 sticky top-14 md:top-[62px] bg-[color-mix(in_srgb,var(--color-vault)_92%,transparent)] backdrop-blur-[8px] z-[15]"
     >
       {NAV_ITEMS.map(({ view, label, href }) => {
         const isActive = active === view;
@@ -84,17 +85,19 @@ export function InvestSubnav() {
           }}
         />
       )}
-      <button
+      <Button
         type="button"
+        variant="primary"
+        size="sm"
         onClick={onAdd}
         aria-label={`+ Add ${addLabel}`}
-        className="font-mono text-xs tracking-button uppercase text-vault bg-accent rounded-md px-4 py-2 self-center cursor-pointer hover:bg-cream transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100"
+        className="self-center px-4"
       >
         <span className="max-[560px]:hidden">+ Add {addLabel}</span>
         <span className="hidden max-[560px]:inline" aria-hidden="true">
           +
         </span>
-      </button>
+      </Button>
     </nav>
   );
 }

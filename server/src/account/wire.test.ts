@@ -3,11 +3,6 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { MiddlewareHandler } from "hono/types";
 
-// Mock `../core/db.js` with a stub that satisfies the real AccountRepo's calls,
-// and `../auth/kdf.js` so password verification is deterministic. The real
-// AccountRepo + AccountService run, giving repo + service + wire coverage in one
-// pass. We don't mock `./repo.js` so repo.test.ts can still import the real
-// module (bun shares the module cache across test files).
 const STORED_HASH = Buffer.from("$argon2id$v=19$m=65536,t=3,p=4$abc$def", "utf8");
 
 let mockStoredHash: Buffer | null = STORED_HASH;
@@ -35,10 +30,6 @@ const dbStub = {
 mock.module("../core/db.js", () => ({ db: dbStub }));
 
 const mockVerifyAuthHash = mock(async (): Promise<boolean> => true);
-mock.module("../auth/kdf.js", () => ({
-  verifyAuthHash: mockVerifyAuthHash,
-}));
-
 // The password-verify throttle window is fixed at 3 via the test preload
 // (bunfig.toml -> test-setup.ts) so this file's throttling test is deterministic.
 const { resetAll: resetRateLimit } = await import("../auth/rate-limit.js");
@@ -56,7 +47,9 @@ const { createFeatureRouter } = await import("./wire.js");
 const { secureHeaders } = await import("hono/secure-headers");
 const { requireCsrfHeader } = await import("../core/middleware.js");
 
-const { router: accountRouter } = createFeatureRouter(mockAuthMiddleware());
+const { router: accountRouter } = createFeatureRouter(mockAuthMiddleware(), {
+  verifyAuthHash: mockVerifyAuthHash,
+});
 
 const testApp = new Hono();
 testApp.use("*", secureHeaders());

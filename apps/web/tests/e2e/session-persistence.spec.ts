@@ -247,4 +247,61 @@ test.describe("session persistence + auto-lock", () => {
 
     await ctx.close();
   });
+
+  test("BroadcastChannel locks a sibling when local storage is unavailable", async ({
+    browser,
+  }) => {
+    const { duplicateUser } = loadFixtures();
+    const ctx = await browser.newContext({ baseURL: BASE_URL });
+    const tab1 = await ctx.newPage();
+    await tab1.goto("/auth/login/");
+    await tab1.getByLabel("Username").fill(duplicateUser.username);
+    await tab1.getByLabel("Master password").fill(duplicateUser.password);
+    await tab1.getByRole("button", { name: "Sign in" }).click();
+    await expect(tab1).toHaveURL(/\/app\/?$/, { timeout: 30_000 });
+
+    const tab2 = await ctx.newPage();
+    await tab2.goto("/app/");
+    await expect(tab2.getByRole("button", { name: "Lock" })).toBeVisible({ timeout: 15_000 });
+    const dekIsPresent = () =>
+      tab2.evaluate(
+        () =>
+          (globalThis as typeof globalThis & Record<symbol, unknown>)[
+            Symbol.for("privance.dekStore.v1")
+          ] !== undefined,
+      );
+    expect(await dekIsPresent()).toBe(true);
+
+    await tab1.evaluate(() => {
+      const setItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key, value) {
+        if (this === localStorage && ["privance.locked", "privance.lockBroadcast"].includes(key)) {
+          throw new DOMException("storage unavailable", "QuotaExceededError");
+        }
+        return setItem.call(this, key, value);
+      };
+      const removeItem = Storage.prototype.removeItem;
+      Storage.prototype.removeItem = function (key) {
+        if (this === localStorage && key === "privance.username") {
+          throw new DOMException("storage unavailable", "SecurityError");
+        }
+        return removeItem.call(this, key);
+      };
+    });
+    await tab2.evaluate(() => {
+      const setItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key, value) {
+        if (this === localStorage && key === "privance.locked") {
+          throw new DOMException("storage unavailable", "QuotaExceededError");
+        }
+        return setItem.call(this, key, value);
+      };
+    });
+
+    await tab1.getByRole("button", { name: "Lock" }).click();
+    await expect(tab2).toHaveURL(/\/auth\/login\/?$/, { timeout: 15_000 });
+    expect(await dekIsPresent()).toBe(false);
+
+    await ctx.close();
+  });
 });

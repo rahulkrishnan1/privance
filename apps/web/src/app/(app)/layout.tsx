@@ -1,6 +1,7 @@
 import type { ReactNode, SVGProps } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate, useNavigationType } from "react-router";
+import { AuthErrorBar } from "@/components/auth/AuthErrorBar";
 import { Logo, RoundIconButton } from "@/components/index";
 import { SyncStatus } from "@/components/SyncStatus";
 import { RefreshPricesButton } from "@/features/invest/components/refresh-prices-button";
@@ -123,7 +124,7 @@ function TopBar({
     <header className="sticky top-0 z-20 border-b border-line-soft bg-[color-mix(in_srgb,var(--color-vault)_88%,transparent)] backdrop-blur-[12px] [padding-top:env(safe-area-inset-top)]">
       <div
         style={{ viewTransitionName: "top-bar" }}
-        className="mx-auto flex h-[62px] max-w-[1120px] items-center justify-between px-7 max-[760px]:h-14"
+        className="mx-auto flex h-[62px] max-w-[1120px] items-center justify-between px-7 max-md:h-14"
       >
         <Link
           to="/app"
@@ -135,7 +136,7 @@ function TopBar({
         </Link>
 
         <nav
-          className="flex gap-1 rounded-full border border-line bg-panel p-1 max-[760px]:hidden"
+          className="flex gap-1 rounded-full border border-line bg-panel p-1 max-md:hidden"
           aria-label="Primary navigation"
         >
           {NAV_ITEMS.map(({ label, href, match }) => {
@@ -149,7 +150,7 @@ function TopBar({
                 aria-current={active ? "page" : undefined}
                 className={[
                   "rounded-full px-[18px] py-2 font-mono text-xs uppercase tracking-button transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-                  active ? "bg-cream text-vault" : "text-dim hover:text-cream",
+                  active ? "bg-control-primary text-vault" : "text-dim hover:text-cream",
                 ].join(" ")}
               >
                 {label}
@@ -199,13 +200,44 @@ function TopBar({
 
 function BottomNav() {
   const location = useLocation();
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+
+    const root = document.documentElement;
+    const updateClearance = () => {
+      if (window.matchMedia("(min-width: 768px)").matches) {
+        root.style.removeProperty("--mobile-nav-clearance");
+        return;
+      }
+      const { top } = nav.getBoundingClientRect();
+      const clearance = `${Math.ceil(window.innerHeight - top + 12)}px`;
+      if (root.style.getPropertyValue("--mobile-nav-clearance") !== clearance) {
+        root.style.setProperty("--mobile-nav-clearance", clearance);
+      }
+    };
+
+    updateClearance();
+    const observer =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateClearance);
+    observer?.observe(nav);
+    window.addEventListener("resize", updateClearance);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", updateClearance);
+      root.style.removeProperty("--mobile-nav-clearance");
+    };
+  }, []);
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-30 hidden border-t border-line bg-[color-mix(in_srgb,var(--color-vault)_90%,transparent)] px-2.5 backdrop-blur-[14px] max-[760px]:flex [padding-bottom:max(0.5rem,env(safe-area-inset-bottom))]"
+      ref={navRef}
+      className="floating-material fixed inset-x-3 bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-[45] hidden rounded-[22px] p-1.5 max-md:flex"
       aria-label="Mobile navigation"
     >
-      <div className="flex w-full" style={{ viewTransitionName: "bottom-nav" }}>
+      <div className="flex w-full items-stretch" style={{ viewTransitionName: "bottom-nav" }}>
         {NAV_ITEMS.map(({ label, href, Icon, match }) => {
           const active = match(location.pathname);
           return (
@@ -216,12 +248,19 @@ function BottomNav() {
               preventScrollReset={isInvestPath(location.pathname) && isInvestPath(href)}
               aria-current={active ? "page" : undefined}
               className={[
-                "flex flex-1 flex-col items-center gap-1 py-1.5 font-mono text-xs uppercase tracking-button focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent",
-                active ? "text-accent" : "text-faint",
+                "flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-[17px] font-sans text-xs font-medium leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",
+                active ? "text-cream" : "text-dim",
               ].join(" ")}
             >
-              <Icon className="h-[19px] w-[19px]" aria-hidden="true" />
-              {label}
+              <span
+                className={[
+                  "flex h-8 w-12 items-center justify-center rounded-[14px] transition-colors motion-reduce:transition-none",
+                  active ? "bg-control-primary text-vault" : "",
+                ].join(" ")}
+              >
+                <Icon className="h-[19px] w-[19px]" aria-hidden="true" />
+              </span>
+              <span>{label}</span>
             </Link>
           );
         })}
@@ -233,18 +272,19 @@ function BottomNav() {
 // children is a test-only escape hatch: the router renders routes via
 // <Outlet />, but browser tests mount AppLayout directly with children.
 export default function AppLayout({ children }: { children?: ReactNode }) {
-  const { state, lock } = useAuth();
+  const { state, lock, lockFailed } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const navigationType = useNavigationType();
   const hydrated = useHydrated();
-  const [veiled, setVeiled] = useState(false);
+  const [veiled, setVeiled] = useState(readVeil);
   const mainRef = useRef<HTMLElement>(null);
   const previousPathnameRef = useRef(pathname);
 
-  useEffect(() => {
-    setVeiled(readVeil());
-  }, []);
+  useLayoutEffect(() => {
+    document.body.classList.toggle("veil-on", veiled);
+    return () => document.body.classList.remove("veil-on");
+  }, [veiled]);
 
   useEffect(() => {
     const previousPathname = previousPathnameRef.current;
@@ -282,17 +322,24 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
   }, [state, navigate]);
 
   if (!hydrated || state !== "unlocked") {
-    return <div className="dark min-h-svh bg-vault" />;
+    return <div className="min-h-svh bg-vault" />;
   }
 
   return (
-    <div className={`dark min-h-svh bg-vault text-cream${veiled ? " veil-on" : ""}`}>
+    <div className="min-h-svh bg-vault text-cream">
       <TopBar veiled={veiled} onToggleVeil={toggleVeil} onLock={lock} />
+      {lockFailed && (
+        <div className="mx-4 md:mx-8">
+          <AuthErrorBar lead="Couldn’t lock securely.">
+            Your session is still open. Check browser storage, then try again.
+          </AuthErrorBar>
+        </div>
+      )}
       <SyncStatus />
       <main
         ref={mainRef}
         tabIndex={-1}
-        className="outline-none [padding-bottom:calc(4rem+env(safe-area-inset-bottom))] min-[760px]:pb-4"
+        className="outline-none pb-[var(--mobile-nav-clearance)] md:pb-4"
       >
         {children ?? <Outlet />}
       </main>

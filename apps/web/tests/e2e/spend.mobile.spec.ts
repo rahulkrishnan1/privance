@@ -77,6 +77,85 @@ test.describe("spend mobile", () => {
     await expect(primeRow).toContainText("$11.58");
     await expect(page.getByTestId("spend-monthly-total")).toContainText("$1,462");
 
+    for (const expense of [
+      { name: "Insurance", amount: "250", category: "insurance" },
+      { name: "Streaming", amount: "20", category: "streaming" },
+    ]) {
+      await page.getByRole("button", { name: "+ Add expense" }).click();
+      dialog = page.getByRole("dialog");
+      await dialog.getByLabel("Amount").fill(expense.amount);
+      await dialog.getByLabel("Interval unit").selectOption("month");
+      await dialog.getByLabel("Name").fill(expense.name);
+      await dialog.getByLabel("Category").selectOption(expense.category);
+      await dialog.getByRole("button", { name: "Add expense", exact: true }).click();
+      await expect(dialog).not.toBeVisible({ timeout: 15_000 });
+    }
+
+    // At the narrowest supported viewport, category labels must remain fully
+    // readable rather than being squeezed between amount, share, and disclosure.
+    await page.setViewportSize({ width: 320, height: 760 });
+    const labelWidths = await Promise.all(
+      ["Housing", "Insurance", "Streaming"].map(async (label) => {
+        const text = page
+          .locator("button[aria-controls^='category-details-']")
+          .filter({ hasText: label })
+          .getByText(label, { exact: true });
+        const { clientWidth, scrollWidth } = await text.evaluate((element) => ({
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+        }));
+        return { label, clientWidth, clipped: scrollWidth > clientWidth };
+      }),
+    );
+    expect(labelWidths.every(({ clientWidth, clipped }) => clientWidth > 0 && !clipped)).toBe(true);
+    await page.setViewportSize({ width: 390, height: 844 });
+
+    await rentRow.click();
+    const details = page.getByRole("dialog", { name: "Rent" });
+    await expect(details).toBeVisible();
+    const bounds = await details.boundingBox();
+    if (!bounds) throw new Error("expense details sheet has no layout bounds");
+    await page.evaluate(
+      ({ x, startY, endY }) => {
+        const target = document.elementFromPoint(x, startY);
+        if (!target) throw new Error("could not find the sheet swipe target");
+        const touchAt = (clientY: number) => ({
+          identifier: 1,
+          target,
+          clientX: x,
+          clientY,
+          screenX: x,
+          screenY: clientY,
+          pageX: x,
+          pageY: clientY,
+        });
+        const dispatchTouch = (type: string, touches: object[], changed: object[]) => {
+          const event = new Event(type, { bubbles: true, cancelable: true });
+          Object.defineProperties(event, {
+            touches: { value: touches },
+            targetTouches: { value: touches },
+            changedTouches: { value: changed },
+          });
+          target.dispatchEvent(event);
+        };
+        const start = touchAt(startY);
+        dispatchTouch("touchstart", [start], [start]);
+        for (let step = 1; step <= 8; step++) {
+          const touch = touchAt(startY + ((endY - startY) * step) / 8);
+          dispatchTouch("touchmove", [touch], [touch]);
+        }
+        const end = touchAt(endY);
+        dispatchTouch("touchend", [], [end]);
+      },
+      {
+        x: bounds.x + 60,
+        startY: bounds.y + 40,
+        endY: bounds.y + 260,
+      },
+    );
+    await expect(details).not.toBeVisible();
+    await expect(rentRow).toBeVisible();
+
     await ctx.close();
   });
 });

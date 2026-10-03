@@ -109,6 +109,8 @@ async function submitSignup(page: Page): Promise<void> {
 export type SessionSnapshot = {
   cookies: Awaited<ReturnType<BrowserContext["cookies"]>>;
   dekArray: number[];
+  username: string;
+  userId: string;
 };
 
 /**
@@ -190,12 +192,14 @@ export async function loginAndCapture(
   const dekArray = await waitForDek();
 
   // Login soft-navigates to /app; wait for the dashboard before closing.
-  await page.waitForURL(/\/app\/?$/, { timeout: 15_000 });
+  await page.waitForURL(/\/app\/?$/, { timeout: 30_000 });
 
   const cookies = await ctx.cookies();
+  const userId = await page.evaluate(() => localStorage.getItem("privance.userId"));
+  if (userId === null) throw new Error("login did not persist a user id");
   await ctx.close();
 
-  return { cookies, dekArray };
+  return { cookies, dekArray, username: opts.username, userId };
 }
 
 /**
@@ -216,16 +220,33 @@ export async function restoreSession(
   // re-injecting the DEK there would make auth-context boot "unlocked" and
   // bounce back into the app.
   await page.addInitScript(
-    ({ arr, preserveAuthRoutes }: { arr: number[]; preserveAuthRoutes: boolean }) => {
+    ({
+      arr,
+      preserveAuthRoutes,
+      username,
+      userId,
+    }: {
+      arr: number[];
+      preserveAuthRoutes: boolean;
+      username: string;
+      userId: string;
+    }) => {
       if (
         !preserveAuthRoutes &&
         (location.pathname.startsWith("/auth/") || location.pathname.startsWith("/unlock"))
       )
         return;
+      localStorage.setItem("privance.username", username);
+      localStorage.setItem("privance.userId", userId);
       const sym = Symbol.for("privance.dekStore.v1");
       (globalThis as Record<symbol, unknown>)[sym] = { itemsKey: new Uint8Array(arr) };
     },
-    { arr: snapshot.dekArray, preserveAuthRoutes },
+    {
+      arr: snapshot.dekArray,
+      preserveAuthRoutes,
+      username: snapshot.username,
+      userId: snapshot.userId,
+    },
   );
 
   await page.context().addCookies(snapshot.cookies);

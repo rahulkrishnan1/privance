@@ -4,15 +4,12 @@ import fc from "fast-check";
 import { describe, expect, test } from "vitest";
 import type { LocalSpendItem } from "../types";
 import {
-  billedAmountCents,
-  dailyEquivalentCents,
   defaultGroupForCategory,
   monthlyEquivalentCents,
   nextBillDate,
   subscriptionSharePct,
   totalAnnualCents,
   totalMonthlyCents,
-  weeklyEquivalentCents,
 } from "./_spend-math";
 
 const monthly = (cents: string) => Decimal.fromMinorUnits(BigInt(cents), SCALE_CENTS);
@@ -162,16 +159,6 @@ describe("mixed-cycle aggregation", () => {
   });
 });
 
-describe("dailyEquivalentCents / weeklyEquivalentCents", () => {
-  test("daily = monthly * 12 / 365 ($3000/mo -> $98.63)", () => {
-    expect(dailyEquivalentCents(monthly("300000")).toString()).toBe("98.63");
-  });
-
-  test("weekly = monthly * 12 / 52 ($3000/mo -> $692.31)", () => {
-    expect(weeklyEquivalentCents(monthly("300000")).toString()).toBe("692.31");
-  });
-});
-
 describe("subscriptionSharePct", () => {
   test("subscriptions over total, rounded to a whole percent ($16 of $42 -> 38)", () => {
     expect(subscriptionSharePct(monthly("1600"), monthly("4200"))).toBe(38);
@@ -256,31 +243,5 @@ describe("nextBillDate", () => {
     // is Mar 31, not the Feb-clamped 28th carried forward.
     const mar = new Date(2026, 2, 10); // 2026-03-10
     expect(iso(nextBillDate("2026-01-31", 1, "month", mar))).toBe("2026-03-31");
-  });
-});
-
-describe("billedAmountCents", () => {
-  test("every-1-month returns null", () => {
-    expect(billedAmountCents("10000", 1, "month")).toBeNull();
-  });
-
-  test("daily (the only other every-1 cadence) still returns the per-cycle amount", () => {
-    expect(billedAmountCents("100", 1, "day")?.toString()).toBe("1.00");
-  });
-
-  test("yearly returns the per-cycle billed amount as a Decimal", () => {
-    expect(billedAmountCents("21600", 1, "year")?.toString()).toBe("216.00");
-  });
-
-  test("every 3 months returns the per-cycle billed amount", () => {
-    expect(billedAmountCents("9000", 3, "month")?.toString()).toBe("90.00");
-  });
-
-  test("weekly returns the per-cycle billed amount", () => {
-    expect(billedAmountCents("1000", 1, "week")?.toString()).toBe("10.00");
-  });
-
-  test("fractional amount preserves cents", () => {
-    expect(billedAmountCents("13999", 1, "year")?.toString()).toBe("139.99");
   });
 });

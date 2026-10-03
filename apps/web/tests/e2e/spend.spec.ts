@@ -74,6 +74,11 @@ test.describe("spend -- happy path", () => {
     // Step 4: edit Rent's amount; the row and headline total recompute.
     await rentRow.click();
     dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: "Rent" })).toBeVisible({
+      timeout: 5_000,
+    });
+    await dialog.getByRole("button", { name: "Edit expense" }).click();
+    dialog = page.getByRole("dialog");
     await expect(dialog.getByRole("heading", { name: "Edit Rent" })).toBeVisible({
       timeout: 5_000,
     });
@@ -86,6 +91,11 @@ test.describe("spend -- happy path", () => {
     // Step 5: pause Prime; it drops out of the total but stays listed.
     await primeRow.click();
     dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: "Prime" })).toBeVisible({
+      timeout: 5_000,
+    });
+    await dialog.getByRole("button", { name: "Edit expense" }).click();
+    dialog = page.getByRole("dialog");
     await expect(dialog.getByRole("heading", { name: "Edit Prime" })).toBeVisible({
       timeout: 5_000,
     });
@@ -97,7 +107,7 @@ test.describe("spend -- happy path", () => {
     // Step 6: remove Prime via the two-tap confirm.
     await primeRow.click();
     dialog = page.getByRole("dialog");
-    await expect(dialog.getByRole("heading", { name: "Edit Prime" })).toBeVisible({
+    await expect(dialog.getByRole("heading", { name: "Prime" })).toBeVisible({
       timeout: 5_000,
     });
     await dialog.getByRole("button", { name: "Delete" }).click();
@@ -109,7 +119,7 @@ test.describe("spend -- happy path", () => {
     // Step 7: remove the last item (Rent); the empty state returns.
     await rentRow.click();
     dialog = page.getByRole("dialog");
-    await expect(dialog.getByRole("heading", { name: "Edit Rent" })).toBeVisible({
+    await expect(dialog.getByRole("heading", { name: "Rent" })).toBeVisible({
       timeout: 5_000,
     });
     await dialog.getByRole("button", { name: "Delete" }).click();

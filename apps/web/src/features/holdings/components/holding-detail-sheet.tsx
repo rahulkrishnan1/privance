@@ -1,7 +1,7 @@
 import type { Decimal } from "@privance/core";
 import { useState } from "react";
 import { Button, CloseButton, ConfirmDeleteButton } from "@/components";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetFooter, SheetTitle } from "@/components/ui/sheet";
 import { formatCurrency, formatPercentMagnitude, formatTrendCurrency } from "@/lib/format";
 import {
   computeAvgCost,
@@ -223,7 +223,7 @@ function HoldingDetailSheetBody({
         <span className="text-sm text-cream-soft">{accountName}</span>
       </div>
 
-      <div className="flex gap-2.5 mt-6">
+      <SheetFooter>
         <Button variant="secondary" onClick={() => onEdit(holding)} className="flex-1">
           Edit holding
         </Button>
@@ -232,7 +232,7 @@ function HoldingDetailSheetBody({
           pending={deleting}
           className="flex-1"
         />
-      </div>
+      </SheetFooter>
     </>
   );
 }

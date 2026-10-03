@@ -110,8 +110,8 @@ export function HistoryChart({ points, className }: HistoryChartProps) {
       <RangeSelector selected={range} onChange={setRange} ranges={HERO_RANGES} />
 
       {!hasEnoughData ? (
-        <div className="mt-1.5 flex h-[170px] items-center justify-center md:h-[240px]">
-          <p className="text-sm text-dim text-center">
+        <div className="mt-1.5 flex min-h-[112px] items-center justify-center border-y border-line-soft/60 md:min-h-[136px]">
+          <p className="max-w-[34ch] text-center text-sm leading-relaxed text-dim">
             {points.length < 2
               ? "Net worth history will appear after a few days of usage."
               : "Not enough data for this range yet."}
@@ -131,12 +131,12 @@ export function HistoryChart({ points, className }: HistoryChartProps) {
                   <stop offset="1" stopColor={colors.line} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
+              <CartesianGrid stroke={colors.grid} vertical={false} />
               <XAxis dataKey="dateLabel" hide />
               <YAxis hide domain={yDomain} width={0} />
               <Tooltip
                 content={<ChartTooltip />}
-                cursor={{ stroke: "rgba(255,255,255,0.18)", strokeWidth: 1 }}
+                cursor={{ stroke: "var(--color-line)", strokeWidth: 1 }}
               />
               <Area
                 type="monotone"

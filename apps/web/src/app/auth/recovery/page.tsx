@@ -357,7 +357,7 @@ export default function RecoveryPage() {
             onChange={(e) => setNewPassword(e.target.value)}
             autoComplete="new-password"
             maxLength={PASSWORD_MAX}
-            placeholder="a fresh one, not the forgotten one"
+            placeholder="Use a new passphrase"
             aria-invalid={passwordError !== undefined}
             aria-describedby={passwordError !== undefined ? "recovery-password-error" : undefined}
           />

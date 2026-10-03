@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { MiddlewareHandler } from "hono/types";
 
+import { verifyAuthHash } from "../auth/kdf.js";
 import * as rateLimit from "../auth/rate-limit.js";
 import { RateLimitedError, SESSION_COOKIE } from "../auth/types.js";
 import type { FeatureRouter } from "../core/app.js";
@@ -21,9 +22,9 @@ function clearSessionCookieHeader(c: { header: (k: string, v: string) => void })
   c.header("Set-Cookie", `${SESSION_COOKIE}=; HttpOnly${secure}; SameSite=Lax; Path=/; Max-Age=0`);
 }
 
-function makeService(): AccountService {
+function makeService(opts: { verifyAuthHash: typeof verifyAuthHash }): AccountService {
   const repo = new AccountRepo(db);
-  return new AccountService({ repo });
+  return new AccountService({ repo, verifyAuthHash: opts.verifyAuthHash });
 }
 
 function jsonError(error: string, status: number): Response {
@@ -41,7 +42,10 @@ function accountErrorToHttp(err: unknown): Response {
   throw err;
 }
 
-function buildRouter(sessionMiddleware: MiddlewareHandler): Hono {
+function buildRouter(
+  sessionMiddleware: MiddlewareHandler,
+  opts: { verifyAuthHash: typeof verifyAuthHash },
+): Hono {
   const router = new Hono();
   router.onError((err) => accountErrorToHttp(err));
   router.use("*", sessionMiddleware);
@@ -53,7 +57,7 @@ function buildRouter(sessionMiddleware: MiddlewareHandler): Hono {
 
     await rateLimit.gatePasswordVerify(userId);
 
-    const service = makeService();
+    const service = makeService(opts);
     try {
       await service.destroy({ userId, currentAuthHash });
       rateLimit.recordPasswordVerifySuccess(userId);
@@ -70,9 +74,14 @@ function buildRouter(sessionMiddleware: MiddlewareHandler): Hono {
   return router;
 }
 
-export function createFeatureRouter(sessionMiddleware: MiddlewareHandler): FeatureRouter {
+export function createFeatureRouter(
+  sessionMiddleware: MiddlewareHandler,
+  opts: { verifyAuthHash?: typeof verifyAuthHash } = {},
+): FeatureRouter {
   return {
     basePath: "/api/account",
-    router: buildRouter(sessionMiddleware),
+    router: buildRouter(sessionMiddleware, {
+      verifyAuthHash: opts.verifyAuthHash ?? verifyAuthHash,
+    }),
   };
 }

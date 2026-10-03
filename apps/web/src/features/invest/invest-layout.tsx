@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react";
 import { Outlet } from "react-router";
+import { Button } from "@/components";
 import { AccountForm, percentToFraction, trimToUndefined } from "@/features/accounts";
 import { useCreateAccount } from "@/features/accounts/mutations";
 import { useAccountsQuery } from "@/features/accounts/queries";
@@ -8,7 +9,7 @@ import { InvestHero } from "./components/invest-hero";
 import { InvestSubnav } from "./components/invest-subnav";
 import { InvestDashboardProvider, useInvestDashboard } from "./invest-context";
 
-const MAX_WIDTH = "max-w-[1120px] mx-auto px-7 max-[760px]:px-4";
+const MAX_WIDTH = "max-w-[1120px] mx-auto px-7 max-md:px-4";
 
 export function InvestLayout() {
   return (
@@ -65,13 +66,9 @@ function InvestLayoutInner() {
             Add your first account to start tracking net worth. Everything you enter is encrypted on
             this device before it is stored.
           </p>
-          <button
-            type="button"
-            onClick={openAddAccount}
-            className="inline-block mt-7 font-mono text-xs tracking-button uppercase bg-accent text-vault rounded-md px-[26px] py-3.5 cursor-pointer hover:bg-cream transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100"
-          >
+          <Button type="button" variant="primary" onClick={openAddAccount} className="mt-7">
             Add first account
-          </button>
+          </Button>
         </div>
       ) : (
         <>

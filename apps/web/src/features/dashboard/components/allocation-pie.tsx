@@ -74,8 +74,7 @@ export function AllocationPie({ title, classSlices, sectorSlices }: AllocationPi
           }}
           aria-label="Allocation view"
           className="rounded-full border border-line bg-panel-2 p-[3px] gap-0"
-          // Active fill matches the primary nav (cream, not the teal segment default).
-          style={{ "--segment-active-bg": "var(--color-cream)" } as React.CSSProperties}
+          style={{ "--segment-active-bg": "var(--color-control-primary)" } as React.CSSProperties}
         >
           {MODES.map((m) => (
             <ToggleGroupItem

@@ -19,7 +19,7 @@ const DialogBackdrop = React.forwardRef<
 DialogBackdrop.displayName = "DialogBackdrop";
 
 /**
- * Centered dialog on desktop; bottom sheet on phones (<=560px), matching the
+ * Centered dialog on desktop; bottom sheet below the md breakpoint, matching the
  * app's modal feel. No built-in close button: call sites render their own (the
  * shared settings DialogHeader, form headers), so this stays out of their way.
  */
@@ -37,8 +37,8 @@ const DialogContent = React.forwardRef<
         // when none is shown); see keyboardInsetStyle.
         style={{ ...keyboardInsetStyle(kb, "90vh"), ...style }}
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-line bg-panel p-6 text-cream shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)] outline-none transition-[opacity,transform] duration-200 ease-out data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 data-[ending-style]:duration-150 min-[561px]:data-[starting-style]:scale-95 min-[561px]:data-[ending-style]:scale-95 motion-reduce:data-[starting-style]:scale-100 motion-reduce:data-[ending-style]:scale-100 max-[560px]:transition-transform max-[560px]:duration-300 max-[560px]:ease-drawer max-[560px]:motion-reduce:transition-opacity max-[560px]:motion-reduce:duration-150",
-          "max-[560px]:left-0 max-[560px]:top-auto max-[560px]:bottom-(--kb-bottom) max-[560px]:max-h-(--kb-maxh) max-[560px]:max-w-none max-[560px]:translate-x-0 max-[560px]:translate-y-0 max-[560px]:rounded-b-none max-[560px]:rounded-t-2xl max-[560px]:border-x-0 max-[560px]:border-b-0 max-[560px]:data-[starting-style]:translate-y-full max-[560px]:data-[ending-style]:translate-y-full motion-reduce:max-[560px]:data-[starting-style]:translate-y-0 motion-reduce:max-[560px]:data-[ending-style]:translate-y-0",
+          "fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-line bg-panel p-6 text-cream shadow-[0_24px_60px_-20px_var(--surface-shadow)] outline-none transition-[opacity,transform] duration-200 ease-out data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 data-[ending-style]:duration-150 md:data-[starting-style]:scale-95 md:data-[ending-style]:scale-95 motion-reduce:data-[starting-style]:scale-100 motion-reduce:data-[ending-style]:scale-100 max-md:transition-transform max-md:duration-300 max-md:ease-drawer max-md:motion-reduce:transition-opacity max-md:motion-reduce:duration-150",
+          "max-md:left-0 max-md:top-auto max-md:bottom-(--kb-bottom) max-md:max-h-(--kb-maxh) max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-2xl max-md:border-x-0 max-md:border-b-0 max-md:data-[starting-style]:translate-y-full max-md:data-[ending-style]:translate-y-full motion-reduce:max-md:data-[starting-style]:translate-y-0 motion-reduce:max-md:data-[ending-style]:translate-y-0",
           className,
         )}
         {...props}
@@ -51,9 +51,23 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = "DialogContent";
 
 // Equal-width buttons on one row at every width (the app's dialog-footer
-// convention), not shadcn's stack-on-mobile / right-align default.
-const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex gap-2.5 [&>*]:flex-1", className)} {...props} />
+// convention), not shadcn's stack-on-mobile / right-align default. Form
+// dialogs and sheets use the sticky treatment so actions remain reachable while
+// their content scrolls.
+const DialogFooter = ({
+  className,
+  sticky = false,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement> & { sticky?: boolean }) => (
+  <div
+    className={cn(
+      "flex gap-2.5 [&>*]:flex-1",
+      sticky &&
+        "sticky bottom-0 z-10 -mx-1 mt-5 border-t border-line bg-panel/95 px-1 pt-4 pb-[max(0px,env(safe-area-inset-bottom))] backdrop-blur-md",
+      className,
+    )}
+    {...props}
+  />
 );
 DialogFooter.displayName = "DialogFooter";
 
