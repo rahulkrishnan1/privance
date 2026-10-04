@@ -1,7 +1,13 @@
 import type { Decimal } from "@privance/core";
 import { useState } from "react";
 import { Button, CloseButton, ConfirmDeleteButton } from "@/components";
-import { Sheet, SheetContent, SheetFooter, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetTitle,
+  useSheetCloseAction,
+} from "@/components/ui/sheet";
 import { formatCurrency, formatPercentMagnitude, formatTrendCurrency } from "@/lib/format";
 import {
   computeAvgCost,
@@ -248,9 +254,12 @@ export function HoldingDetailSheet({
   onEdit,
   onDelete,
 }: HoldingDetailSheetProps) {
+  const editAfterClose = useSheetCloseAction(onEdit);
+
   return (
     <Sheet
       open={open}
+      onOpenChangeComplete={editAfterClose.onOpenChangeComplete}
       onOpenChange={(o) => {
         if (!o) onClose();
       }}
@@ -264,7 +273,10 @@ export function HoldingDetailSheet({
             totalInvestmentsCents={totalInvestmentsCents}
             accountName={accountName}
             onClose={onClose}
-            onEdit={onEdit}
+            onEdit={(holdingToEdit) => {
+              editAfterClose.defer(holdingToEdit);
+              onClose();
+            }}
             onDelete={onDelete}
           />
         )}

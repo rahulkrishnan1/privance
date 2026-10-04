@@ -162,13 +162,13 @@ function LoadingSkeleton() {
       <div className="grid grid-cols-12 gap-4 mt-4">
         <div className="col-span-7 max-[880px]:col-span-12 glass rounded-[10px] p-6">
           {[...Array(4)].map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton rows
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed skeleton rows
             <SkeletonRow key={i} />
           ))}
         </div>
         <div className="col-span-5 max-[880px]:col-span-12 glass rounded-[10px] p-6">
           {[...Array(3)].map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton rows
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed skeleton rows
             <SkeletonRow key={i} />
           ))}
         </div>
@@ -234,14 +234,12 @@ export function SpendScreen() {
   }
 
   function openEdit(item: LocalSpendItem) {
-    setDetailItem(null);
     setEditItem(item);
     setFormOpen(true);
   }
 
   function handleClose() {
     setFormOpen(false);
-    setEditItem(undefined);
   }
 
   async function handleSave(values: SpendFormValues) {

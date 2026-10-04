@@ -1,4 +1,5 @@
 import { expect, test, vi } from "vitest";
+import { userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import type { LocalSpendItem } from "../types";
 import { SpendScreen } from "./spend-screen";
@@ -78,6 +79,24 @@ test("populated state renders both group panels", async () => {
   await expect.element(screen.getByText("Netflix")).toBeVisible();
 });
 
+test("keeps expense details mounted through the edit close transition", async () => {
+  mockQueryReturn([makeTestItem()]);
+  const screen = await render(<SpendScreen />);
+
+  await screen.getByRole("button", { name: /Rent/ }).click();
+  const details = screen.getByRole("dialog", { name: "Rent" });
+  await expect.element(details).toBeVisible();
+  await details.getByRole("button", { name: "Edit expense" }).click();
+
+  const editDialog = screen.getByRole("dialog", { name: "Edit Rent" });
+  await expect.poll(() => details.element().hasAttribute("data-ending-style")).toBe(true);
+  expect(editDialog.query()).toBeNull();
+  await expect.poll(() => details.element().hasAttribute("data-ending-style")).toBe(false);
+  await expect.element(editDialog).toBeVisible();
+  await editDialog.getByRole("button", { name: "Close" }).click();
+  await expect.poll(() => editDialog.query()).toBeNull();
+});
+
 test("category panel matches Invest allocation rows and expands one category at a time", async () => {
   mockQueryReturn([
     makeTestItem({
@@ -103,16 +122,60 @@ test("category panel matches Invest allocation rows and expands one category at 
 
   const housing = screen.getByRole("button", { name: /Housing \$1,000\/mo/ });
   const streaming = screen.getByRole("button", { name: /Streaming \$100\/mo/ });
+  const bar = screen.getByRole("img", { name: "Category spend allocation bar" });
+  const housingSegment = bar.element().querySelectorAll("span").item(0);
+  const streamingSegment = bar.element().querySelectorAll("span").item(1);
+  if (!housingSegment || !streamingSegment) throw new Error("expected two allocation segments");
+  const housingRow = housing.element().closest("li");
+  const streamingRow = streaming.element().closest("li");
+  const opacity = (element: Element | null) =>
+    element ? getComputedStyle(element).opacity : "missing";
+  const background = (element: Element | null) =>
+    element ? getComputedStyle(element).backgroundColor : "missing";
+
+  await housing.hover();
+  await expect.poll(() => background(housingRow)).not.toBe("rgba(0, 0, 0, 0)");
+  await expect.poll(() => getComputedStyle(housingSegment).opacity).toBe("1");
+  await expect.poll(() => opacity(streamingRow)).toBe("0.5");
+  await expect.poll(() => getComputedStyle(streamingSegment).opacity).toBe("0.5");
+
+  await userEvent.hover(streamingSegment);
+  await expect.poll(() => background(streamingRow)).not.toBe("rgba(0, 0, 0, 0)");
+  await expect.poll(() => opacity(housingRow)).toBe("0.5");
+  await expect.poll(() => getComputedStyle(housingSegment).opacity).toBe("0.5");
+
+  await screen.getByRole("heading", { name: "By category" }).hover();
+  await expect.poll(() => background(housingRow)).toBe("rgba(0, 0, 0, 0)");
+  await expect.poll(() => getComputedStyle(housingSegment).opacity).toBe("1");
+  await expect.poll(() => opacity(streamingRow)).toBe("1");
+
+  housing.element().focus();
+  await expect.poll(() => getComputedStyle(housingSegment).opacity).toBe("1");
+  await expect.poll(() => getComputedStyle(streamingSegment).opacity).toBe("0.5");
+  housing.element().blur();
+  await expect.poll(() => getComputedStyle(streamingSegment).opacity).toBe("1");
+
   await housing.click();
   await expect.element(housing).toHaveAttribute("aria-expanded", "true");
   await expect.element(screen.getByText("due Oct 1, 2099", { exact: true }).last()).toBeVisible();
+  await screen.getByRole("heading", { name: "By category" }).hover();
+  await expect.poll(() => getComputedStyle(housingSegment).opacity).toBe("1");
+  await expect.poll(() => getComputedStyle(streamingSegment).opacity).toBe("0.5");
+  housing.element().blur();
+  await expect.poll(() => getComputedStyle(housingSegment).opacity).toBe("1");
+  await expect.poll(() => getComputedStyle(streamingSegment).opacity).toBe("0.5");
 
   await streaming.click();
   await expect.element(streaming).toHaveAttribute("aria-expanded", "true");
   await expect.element(housing).toHaveAttribute("aria-expanded", "false");
+  await expect.poll(() => getComputedStyle(streamingSegment).opacity).toBe("1");
   await expect
     .element(screen.getByText("renews Oct 2, 2099", { exact: true }).last())
     .toBeVisible();
+  await streaming.click();
+  await screen.getByRole("heading", { name: "By category" }).hover();
+  await expect.poll(() => getComputedStyle(housingSegment).opacity).toBe("1");
+  await expect.poll(() => getComputedStyle(streamingSegment).opacity).toBe("1");
 });
 
 test("summary cards show the group split and next upcoming bill", async () => {
@@ -526,6 +589,8 @@ test("paused expense details do not present its old date as a scheduled bill", a
   const detail = screen.getByRole("dialog", { name: "Paused gym" });
   await expect.element(detail).toHaveTextContent("Not scheduled");
   await expect.element(detail).not.toHaveTextContent("Oct 1, 2099");
+  await detail.getByRole("button", { name: "Close expense details" }).click();
+  await expect.poll(() => detail.query()).toBeNull();
 });
 
 test("edit dialog pre-populates cadence, interval count, and group from the item", async () => {
@@ -541,14 +606,23 @@ test("edit dialog pre-populates cadence, interval count, and group from the item
     }),
   ]);
   const screen = await render(<SpendScreen />);
-  await screen.getByText("Domain").click();
-  await screen.getByRole("button", { name: "Edit expense" }).click();
-  await expect.element(screen.getByRole("heading", { name: "Edit Domain" })).toBeVisible();
-  await expect.element(screen.getByRole("combobox", { name: "Interval unit" })).toHaveValue("year");
-  await expect.element(screen.getByRole("textbox", { name: "Interval count" })).toHaveValue("2");
+  await screen.getByRole("button", { name: /Domain/ }).click();
+  const details = screen.getByRole("dialog", { name: "Domain" });
+  await expect.element(details).toBeVisible();
+  await details.getByRole("button", { name: "Edit expense" }).click();
+  const editDialog = screen.getByRole("dialog", { name: "Edit Domain" });
+  await expect.element(editDialog).toBeVisible();
   await expect
-    .element(screen.getByRole("radio", { name: "Subscriptions" }))
+    .element(editDialog.getByRole("combobox", { name: "Interval unit" }))
+    .toHaveValue("year");
+  await expect
+    .element(editDialog.getByRole("textbox", { name: "Interval count" }))
+    .toHaveValue("2");
+  await expect
+    .element(editDialog.getByRole("radio", { name: "Subscriptions" }))
     .toHaveAttribute("aria-checked", "true");
+  await editDialog.getByRole("button", { name: "Close" }).click();
+  await expect.poll(() => editDialog.query()).toBeNull();
 });
 
 test("in add mode, choosing a category auto-selects its default group", async () => {

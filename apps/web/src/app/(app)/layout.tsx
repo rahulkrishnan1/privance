@@ -1,4 +1,5 @@
-import type { ReactNode, SVGProps } from "react";
+import { CreditCard, type LucideIcon, Settings, Target, TrendingUp } from "lucide-react";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate, useNavigationType } from "react-router";
 import { AuthErrorBar } from "@/components/auth/AuthErrorBar";
@@ -9,72 +10,10 @@ import { useHydrated } from "@/lib/use-hydrated";
 import { readVeil, writeVeil } from "@/lib/veil";
 import { useAuth } from "@/providers/auth-context";
 
-type IconProps = SVGProps<SVGSVGElement>;
-
-function InvestIcon(props: IconProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.7}
-      aria-hidden="true"
-      {...props}
-    >
-      <path d="M3 17l5-6 4 3 6-8 3 4" />
-    </svg>
-  );
-}
-function SpendIcon(props: IconProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.7}
-      aria-hidden="true"
-      {...props}
-    >
-      <rect x="3" y="6" width="18" height="13" rx="2" />
-      <path d="M3 10h18" />
-    </svg>
-  );
-}
-function PlanIcon(props: IconProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.7}
-      aria-hidden="true"
-      {...props}
-    >
-      <path d="M4 19c4-1 7-4 8-8m4-4c-1 2-2 4-4 4" />
-      <circle cx="18" cy="5" r="2.4" />
-    </svg>
-  );
-}
-function SettingsIcon(props: IconProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.7}
-      aria-hidden="true"
-      {...props}
-    >
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2Z" />
-    </svg>
-  );
-}
-
 type NavItem = {
   label: string;
   href: string;
-  Icon: (props: IconProps) => ReactNode;
+  Icon: LucideIcon;
   match: (pathname: string) => boolean;
 };
 
@@ -82,19 +21,24 @@ const NAV_ITEMS: NavItem[] = [
   {
     label: "Invest",
     href: "/app",
-    Icon: InvestIcon,
+    Icon: TrendingUp,
     match: (p) =>
       p === "/app" ||
       p === "/app/" ||
       p.startsWith("/app/holdings") ||
       p.startsWith("/app/accounts"),
   },
-  { label: "Spend", href: "/app/spend", Icon: SpendIcon, match: (p) => p.startsWith("/app/spend") },
-  { label: "Plan", href: "/app/plan", Icon: PlanIcon, match: (p) => p.startsWith("/app/plan") },
+  {
+    label: "Spend",
+    href: "/app/spend",
+    Icon: CreditCard,
+    match: (p) => p.startsWith("/app/spend"),
+  },
+  { label: "Plan", href: "/app/plan", Icon: Target, match: (p) => p.startsWith("/app/plan") },
   {
     label: "Settings",
     href: "/app/settings",
-    Icon: SettingsIcon,
+    Icon: Settings,
     match: (p) => p.startsWith("/app/settings"),
   },
 ];
@@ -200,44 +144,16 @@ function TopBar({
 
 function BottomNav() {
   const location = useLocation();
-  const navRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const nav = navRef.current;
-    if (!nav) return;
-
-    const root = document.documentElement;
-    const updateClearance = () => {
-      if (window.matchMedia("(min-width: 768px)").matches) {
-        root.style.removeProperty("--mobile-nav-clearance");
-        return;
-      }
-      const { top } = nav.getBoundingClientRect();
-      const clearance = `${Math.ceil(window.innerHeight - top + 12)}px`;
-      if (root.style.getPropertyValue("--mobile-nav-clearance") !== clearance) {
-        root.style.setProperty("--mobile-nav-clearance", clearance);
-      }
-    };
-
-    updateClearance();
-    const observer =
-      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateClearance);
-    observer?.observe(nav);
-    window.addEventListener("resize", updateClearance);
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener("resize", updateClearance);
-      root.style.removeProperty("--mobile-nav-clearance");
-    };
-  }, []);
 
   return (
     <nav
-      ref={navRef}
-      className="floating-material fixed inset-x-3 bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-[45] hidden rounded-[22px] p-1.5 max-md:flex"
+      className="fixed inset-x-0 bottom-0 z-[45] hidden border-t border-line bg-panel pb-[env(safe-area-inset-bottom)] max-md:block"
       aria-label="Mobile navigation"
     >
-      <div className="flex w-full items-stretch" style={{ viewTransitionName: "bottom-nav" }}>
+      <div
+        className="mx-auto flex w-full max-w-[1120px] items-stretch [padding-left:max(0.5rem,env(safe-area-inset-left))] [padding-right:max(0.5rem,env(safe-area-inset-right))]"
+        style={{ viewTransitionName: "bottom-nav" }}
+      >
         {NAV_ITEMS.map(({ label, href, Icon, match }) => {
           const active = match(location.pathname);
           return (
@@ -248,17 +164,17 @@ function BottomNav() {
               preventScrollReset={isInvestPath(location.pathname) && isInvestPath(href)}
               aria-current={active ? "page" : undefined}
               className={[
-                "flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-[17px] font-sans text-xs font-medium leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",
+                "flex min-h-[var(--mobile-nav-height)] flex-1 flex-col items-center justify-center gap-0.5 rounded-md font-sans text-xs font-medium leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",
                 active ? "text-cream" : "text-dim",
               ].join(" ")}
             >
               <span
                 className={[
-                  "flex h-8 w-12 items-center justify-center rounded-[14px] transition-colors motion-reduce:transition-none",
+                  "flex h-7 w-10 items-center justify-center rounded-md transition-colors motion-reduce:transition-none",
                   active ? "bg-control-primary text-vault" : "",
                 ].join(" ")}
               >
-                <Icon className="h-[19px] w-[19px]" aria-hidden="true" />
+                <Icon className="h-5 w-5" aria-hidden="true" />
               </span>
               <span>{label}</span>
             </Link>
@@ -339,7 +255,7 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
       <main
         ref={mainRef}
         tabIndex={-1}
-        className="outline-none pb-[var(--mobile-nav-clearance)] md:pb-4"
+        className="outline-none pb-[calc(var(--mobile-nav-height)_+_1px_+_env(safe-area-inset-bottom))] md:pb-4"
       >
         {children ?? <Outlet />}
       </main>

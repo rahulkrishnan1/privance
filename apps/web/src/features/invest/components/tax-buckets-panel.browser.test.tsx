@@ -46,6 +46,17 @@ test("tax bucket rows expand to show contributing accounts and values", async ()
   const cash = screen.getByRole("button", { name: /Cash/ });
 
   expect(screen.getByText("investments", { exact: true }).query()).toBeNull();
+  cash.element().focus();
+  const bar = screen.getByRole("img", { name: "Tax bucket allocation bar" });
+  const taxableSegment = bar.element().querySelectorAll("span").item(0);
+  const cashSegment = bar.element().querySelectorAll("span").item(1);
+  if (!taxableSegment || !cashSegment) throw new Error("expected two allocation segments");
+  await expect.poll(() => getComputedStyle(cashSegment).opacity).toBe("1");
+  await expect.poll(() => getComputedStyle(taxableSegment).opacity).toBe("0.5");
+  cash.element().blur();
+  await expect.poll(() => getComputedStyle(cashSegment).opacity).toBe("1");
+  await expect.poll(() => getComputedStyle(taxableSegment).opacity).toBe("1");
+
   await taxable.click();
   await expect.element(taxable).toHaveAttribute("aria-expanded", "true");
   await expect.element(screen.getByText("investments", { exact: true })).toBeVisible();
@@ -57,6 +68,13 @@ test("tax bucket rows expand to show contributing accounts and values", async ()
   await expect.element(screen.getByText("cash balance", { exact: true })).toBeVisible();
   await expect.element(screen.getByText("$200", { exact: true }).last()).toBeVisible();
 
+  await screen.getByRole("heading", { name: "Where it lives" }).hover();
+  await expect.poll(() => getComputedStyle(cashSegment).opacity).toBe("1");
+  await expect.poll(() => getComputedStyle(taxableSegment).opacity).toBe("0.5");
+  await cash.element().blur();
+  await expect.poll(() => getComputedStyle(cashSegment).opacity).toBe("1");
+  await expect.poll(() => getComputedStyle(taxableSegment).opacity).toBe("0.5");
+
   await page.viewport(360, 780);
   try {
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
@@ -65,4 +83,9 @@ test("tax bucket rows expand to show contributing accounts and values", async ()
   } finally {
     await page.viewport(1280, 800);
   }
+
+  await cash.click();
+  await screen.getByRole("heading", { name: "Where it lives" }).hover();
+  await expect.poll(() => getComputedStyle(cashSegment).opacity).toBe("1");
+  await expect.poll(() => getComputedStyle(taxableSegment).opacity).toBe("1");
 });

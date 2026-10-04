@@ -10,6 +10,7 @@ import { useEffect } from "react";
 import { Controller, type Resolver, useForm } from "react-hook-form";
 import { DateField } from "@/components/DateField";
 import { Button, Input, Select } from "@/components/index";
+import { Input as InputControl } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select as SelectControl } from "@/components/ui/select";
@@ -96,25 +97,25 @@ export function SpendForm({ open, onClose, item, submitting, onSave }: SpendForm
       }}
     >
       <SheetContent aria-labelledby={titleId} scrollable={false}>
-        <SheetBody>
-          <div className="mb-4 shrink-0">
-            <SheetTitleRow
-              titleId={titleId}
-              title={isEdit ? `Edit ${item.name}` : "Add expense"}
-              onClose={onClose}
-            />
-          </div>
+        <div className="mb-4 shrink-0">
+          <SheetTitleRow
+            titleId={titleId}
+            title={isEdit ? `Edit ${item.name}` : "Add expense"}
+            onClose={onClose}
+          />
+        </div>
 
+        <SheetBody>
           <form
             id={formId}
-            className="flex flex-col px-1"
+            className="flex flex-col gap-4 px-1 pb-1"
             onSubmit={(e) => {
               e.preventDefault();
               void onSubmit();
             }}
             noValidate
           >
-            <div className="mt-3">
+            <div>
               <label
                 htmlFor={`${formId}-amount`}
                 className="block font-mono text-xs tracking-label uppercase text-dim mb-2"
@@ -125,7 +126,7 @@ export function SpendForm({ open, onClose, item, submitting, onSave }: SpendForm
                 control={control}
                 name="amount"
                 render={({ field }) => (
-                  <input
+                  <InputControl
                     id={`${formId}-amount`}
                     {...field}
                     type="text"
@@ -134,7 +135,7 @@ export function SpendForm({ open, onClose, item, submitting, onSave }: SpendForm
                     aria-label="Amount"
                     aria-invalid={errors.amount !== undefined}
                     aria-describedby={errors.amount ? `${formId}-amount-error` : undefined}
-                    className="w-full bg-panel-2 border border-line rounded-[8px] text-cream font-serif text-5xl text-center tracking-[-0.01em] py-[18px] px-[14px] outline-none focus:border-accent/60 transition-colors placeholder:text-faint"
+                    className="rounded-[8px] px-[14px] py-[18px] text-center font-serif text-5xl tracking-[-0.01em]"
                   />
                 )}
               />
@@ -149,7 +150,7 @@ export function SpendForm({ open, onClose, item, submitting, onSave }: SpendForm
               )}
             </div>
 
-            <div className="mt-3">
+            <div>
               <span className="block font-mono text-xs tracking-label uppercase text-dim mb-2">
                 Bills every
               </span>
@@ -158,12 +159,13 @@ export function SpendForm({ open, onClose, item, submitting, onSave }: SpendForm
                   control={control}
                   name="intervalCount"
                   render={({ field }) => (
-                    <input
+                    <InputControl
                       {...field}
                       type="text"
                       inputMode="numeric"
                       aria-label="Interval count"
-                      className="w-[78px] bg-panel-2 border border-line rounded-[8px] text-cream font-mono text-base text-center py-[13px] px-[10px] outline-none focus:border-accent/60 transition-colors"
+                      aria-invalid={errors.intervalCount !== undefined}
+                      className="w-[78px] rounded-[8px] px-[10px] py-[13px] text-center font-mono text-base"
                     />
                   )}
                 />
@@ -196,7 +198,7 @@ export function SpendForm({ open, onClose, item, submitting, onSave }: SpendForm
               )}
             </div>
 
-            <div className="mt-3">
+            <div>
               <Controller
                 control={control}
                 name="name"
@@ -212,7 +214,7 @@ export function SpendForm({ open, onClose, item, submitting, onSave }: SpendForm
               />
             </div>
 
-            <div className="mt-3">
+            <div>
               <Controller
                 control={control}
                 name="category"
@@ -244,7 +246,7 @@ export function SpendForm({ open, onClose, item, submitting, onSave }: SpendForm
               />
             </div>
 
-            <div className="mt-3">
+            <div>
               <span className="block font-mono text-xs tracking-label uppercase text-dim mb-2">
                 Group
               </span>
@@ -268,7 +270,7 @@ export function SpendForm({ open, onClose, item, submitting, onSave }: SpendForm
               />
             </div>
 
-            <div className="mt-3">
+            <div>
               <Label htmlFor={`${formId}-renews`} className="block mb-2">
                 Next bill (optional)
               </Label>
@@ -292,7 +294,7 @@ export function SpendForm({ open, onClose, item, submitting, onSave }: SpendForm
             </div>
 
             {isEdit && (
-              <div className="mt-3">
+              <div>
                 <span className="block font-mono text-xs tracking-label uppercase text-dim mb-2">
                   Status
                 </span>

@@ -200,7 +200,7 @@ jobs:
           # Throwaway CI-only value; satisfies the 32-byte minimum guard.
           # wire.test.ts overrides this per-test for the HMAC coverage it needs.
           ENUMERATION_SECRET: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-        run: bun test
+        run: bun run test
 
   test-e2e:
     name: E2E (${{ matrix.project }})

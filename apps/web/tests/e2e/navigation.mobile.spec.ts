@@ -41,6 +41,14 @@ test.describe("mobile navigation", () => {
     await page.goto("/app/");
     const nav = page.getByRole("navigation", { name: "Mobile navigation" });
     await expect(nav).toBeVisible({ timeout: 15_000 });
+    const navBounds = await nav.boundingBox();
+    if (!navBounds) throw new Error("mobile navigation has no layout bounds");
+    const viewportHeight = await page.evaluate(() => window.innerHeight);
+    expect(navBounds.y + navBounds.height).toBeCloseTo(viewportHeight, 0);
+    const mainPaddingBottom = await page
+      .getByRole("main")
+      .evaluate((main) => Number.parseFloat(getComputedStyle(main).paddingBottom));
+    expect(mainPaddingBottom).toBeGreaterThanOrEqual(navBounds.height);
     // Settle the initial local-store load + first sync before asserting per-screen
     // content: the Plan heading is gated on the accounts/plan queries leaving
     // "initialising", so navigating before sync races them on a slow runner.

@@ -1,7 +1,14 @@
 import { Decimal, SCALE_CENTS } from "@privance/core";
 import { useState } from "react";
 import { Button, CadenceSuffix, CloseButton, ConfirmDeleteButton } from "@/components";
-import { Sheet, SheetContent, SheetFooter, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetTitle,
+  useSheetCloseAction,
+} from "@/components/ui/sheet";
+import { useKeepLastNonNull } from "@/lib/use-keep-last";
 import { BILLING_UNIT_LABELS, CATEGORY_LABELS, GROUP_LABELS } from "../_constants";
 import type { LocalSpendItem } from "../types";
 import { formatSpendAmount, formatSpendDate } from "./_spend-format";
@@ -110,16 +117,28 @@ function SpendDetailBody({
 }
 
 export function SpendDetailSheet({ open, item, onClose, onEdit, onDelete }: SpendDetailSheetProps) {
+  const editAfterClose = useSheetCloseAction(onEdit);
+  const shownItem = useKeepLastNonNull(item);
+
   return (
     <Sheet
       open={open}
+      onOpenChangeComplete={editAfterClose.onOpenChangeComplete}
       onOpenChange={(nextOpen) => {
         if (!nextOpen) onClose();
       }}
     >
       <SheetContent>
-        {item !== null && (
-          <SpendDetailBody item={item} onClose={onClose} onEdit={onEdit} onDelete={onDelete} />
+        {shownItem !== null && (
+          <SpendDetailBody
+            item={shownItem}
+            onClose={onClose}
+            onEdit={(itemToEdit) => {
+              editAfterClose.defer(itemToEdit);
+              onClose();
+            }}
+            onDelete={onDelete}
+          />
         )}
       </SheetContent>
     </Sheet>

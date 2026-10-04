@@ -70,24 +70,10 @@ function PortaledFigureSheet() {
   );
 }
 
-function createMediaQueryList(matches: boolean): MediaQueryList {
-  return {
-    matches,
-    media: "(min-width: 768px)",
-    onchange: null,
-    addEventListener: () => undefined,
-    removeEventListener: () => undefined,
-    addListener: () => undefined,
-    removeListener: () => undefined,
-    dispatchEvent: () => true,
-  } as MediaQueryList;
-}
-
 beforeEach(() => {
   localStorage.clear();
   mockAuth.lockFailed = false;
 });
-
 afterEach(() => {
   localStorage.clear();
   vi.restoreAllMocks();
@@ -184,71 +170,5 @@ describe("app shell figures veil", () => {
     await expect.element(toggle).toHaveAttribute("aria-pressed", "true");
     expect(filterOf(fig)).toContain("blur");
     expect(localStorage.getItem(VEIL_KEY)).toBe("1");
-  });
-
-  it("reserves measured clearance for the floating bar and cleans it up", async () => {
-    vi.spyOn(window, "matchMedia").mockReturnValue(createMediaQueryList(false));
-
-    let observer:
-      | { disconnect: ReturnType<typeof vi.fn>; observe: ReturnType<typeof vi.fn> }
-      | undefined;
-    let resizeCallback: ResizeObserverCallback | undefined;
-    let navHeight = 80;
-    class TestResizeObserver {
-      disconnect = vi.fn();
-      observe = vi.fn();
-      constructor(callback: ResizeObserverCallback) {
-        observer = this;
-        resizeCallback = callback;
-      }
-    }
-    vi.stubGlobal("ResizeObserver", TestResizeObserver);
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
-      this: HTMLElement,
-    ) {
-      if (this.getAttribute("aria-label") === "Mobile navigation") {
-        return { top: window.innerHeight - navHeight } as DOMRect;
-      }
-      return new DOMRect();
-    });
-
-    const screen = await render(
-      <MemoryRouter>
-        <AppLayout>{figure}</AppLayout>
-      </MemoryRouter>,
-    );
-
-    await expect
-      .poll(() => document.documentElement.style.getPropertyValue("--mobile-nav-clearance"))
-      .toBe("92px");
-    const nav = screen.container.querySelector('nav[aria-label="Mobile navigation"]');
-    expect(nav).not.toBeNull();
-    if (!observer) throw new Error("ResizeObserver was not constructed");
-    expect(observer.observe).toHaveBeenCalledWith(nav);
-
-    navHeight = 112;
-    resizeCallback?.([], observer as unknown as ResizeObserver);
-    await expect
-      .poll(() => document.documentElement.style.getPropertyValue("--mobile-nav-clearance"))
-      .toBe("124px");
-
-    screen.unmount();
-    expect(observer.disconnect).toHaveBeenCalledOnce();
-    expect(document.documentElement.style.getPropertyValue("--mobile-nav-clearance")).toBe("");
-  });
-
-  it("does not reserve mobile clearance for the desktop shell", async () => {
-    vi.spyOn(window, "matchMedia").mockReturnValue(createMediaQueryList(true));
-
-    const screen = await render(
-      <MemoryRouter>
-        <AppLayout>{figure}</AppLayout>
-      </MemoryRouter>,
-    );
-
-    await expect
-      .poll(() => document.documentElement.style.getPropertyValue("--mobile-nav-clearance"))
-      .toBe("");
-    screen.unmount();
   });
 });

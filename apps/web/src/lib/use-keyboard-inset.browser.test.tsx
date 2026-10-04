@@ -1,5 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { render } from "vitest-browser-react";
+import "@/app/globals.css";
 import { useKeyboardInset } from "./use-keyboard-inset";
 
 // A controllable stand-in for window.visualViewport so we can simulate the

@@ -113,6 +113,17 @@ test.describe("spend mobile", () => {
     await rentRow.click();
     const details = page.getByRole("dialog", { name: "Rent" });
     await expect(details).toBeVisible();
+    await expect
+      .poll(() =>
+        details.evaluate((dialog) => {
+          const bounds = dialog.getBoundingClientRect();
+          const x = bounds.left + 60;
+          const y = bounds.top + 40;
+          if (x >= innerWidth || y >= innerHeight) return false;
+          return dialog.contains(document.elementFromPoint(x, y));
+        }),
+      )
+      .toBe(true);
     const bounds = await details.boundingBox();
     if (!bounds) throw new Error("expense details sheet has no layout bounds");
     await page.evaluate(

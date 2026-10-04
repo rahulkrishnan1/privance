@@ -1,5 +1,6 @@
 import { Decimal, SCALE_CENTS, type SpendCategory } from "@privance/core";
 import { useMemo, useState } from "react";
+import { CadenceSuffix } from "@/components";
 import { ExpandableAllocationRow } from "@/components/ui/expandable-allocation-row";
 import { assignColors } from "@/features/dashboard/palette";
 import { formatPercent } from "@/lib/format";
@@ -26,7 +27,7 @@ function formatBilledSpend(item: LocalSpendItem): { amount: string; cadence: str
   const value = Decimal.fromMinorUnits(BigInt(item.amountCents), SCALE_CENTS);
   const cadence = CADENCE_ABBREVIATIONS[item.intervalUnit];
   const count = item.intervalCount === 1 ? "" : String(item.intervalCount);
-  return { amount: formatSpendAmount(value), cadence: `/${count}${cadence}` };
+  return { amount: formatSpendAmount(value), cadence: `${count}${cadence}` };
 }
 
 function CategoryDetailItems({ items, now }: { items: LocalSpendItem[]; now: Date }) {
@@ -47,7 +48,7 @@ function CategoryDetailItems({ items, now }: { items: LocalSpendItem[]; now: Dat
             </div>
             <span className="vfig text-right font-mono text-xs tabular-nums text-cream">
               {spend.amount}
-              <span className="text-dim">{spend.cadence}</span>
+              <CadenceSuffix unit={spend.cadence} className="text-dim" />
             </span>
           </div>
         );
@@ -57,6 +58,8 @@ function CategoryDetailItems({ items, now }: { items: LocalSpendItem[]; now: Dat
 }
 
 export function CategorySpendPanel({ items, now }: { items: LocalSpendItem[]; now: Date }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [openCategory, setOpenCategory] = useState<SpendCategory | null>(null);
 
   const categories = useMemo(() => {
@@ -107,6 +110,8 @@ export function CategorySpendPanel({ items, now }: { items: LocalSpendItem[]; no
   if (categories.length === 0 || total.isZero()) return null;
 
   const colors = assignColors(categories.map(({ category }) => CATEGORY_LABELS[category]));
+  const openIndex = categories.findIndex(({ category }) => category === openCategory);
+  const activeIndex = hoveredIndex ?? focusedIndex ?? (openIndex < 0 ? null : openIndex);
 
   return (
     <section className="glass mt-4 rounded-[10px] p-6" aria-labelledby="category-spend-title">
@@ -132,8 +137,14 @@ export function CategorySpendPanel({ items, now }: { items: LocalSpendItem[]; no
           return (
             <span
               key={category.category}
+              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(null)}
               className="transition-opacity duration-100 motion-reduce:transition-none"
-              style={{ width: `${widthPct.toFixed(2)}%`, background: colors[index] }}
+              style={{
+                width: `${widthPct.toFixed(2)}%`,
+                background: colors[index],
+                opacity: activeIndex === null || activeIndex === index ? 1 : 0.5,
+              }}
               aria-hidden="true"
             />
           );
@@ -163,7 +174,16 @@ export function CategorySpendPanel({ items, now }: { items: LocalSpendItem[]; no
               }
               share={formatPercent(share)}
               details={<CategoryDetailItems items={category.items} now={now} />}
-              onToggle={() => setOpenCategory(isOpen ? null : category.category)}
+              isHighlighted={activeIndex === index}
+              isDimmed={activeIndex !== null && activeIndex !== index}
+              onToggle={() => {
+                if (isOpen) setFocusedIndex(null);
+                setOpenCategory(isOpen ? null : category.category);
+              }}
+              onFocus={() => setFocusedIndex(index)}
+              onBlur={() => setFocusedIndex(null)}
+              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(null)}
             />
           );
         })}
