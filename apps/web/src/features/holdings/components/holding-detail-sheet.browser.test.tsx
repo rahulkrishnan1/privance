@@ -1,4 +1,5 @@
 import { Decimal, SCALE_CENTS } from "@privance/core";
+import { useState } from "react";
 import { expect, test, vi } from "vitest";
 import { render } from "vitest-browser-react";
 // Real stylesheet so Tailwind positioning applies to the modal Popup; without it
@@ -235,21 +236,27 @@ test("two-tap delete: first tap shows Tap again to delete, second calls onDelete
 test("Edit holding button calls onEdit with the holding", async () => {
   const onEdit = vi.fn();
   const holding = makeHolding();
-  const screen = await render(
-    <HoldingDetailSheet
-      open
-      holding={holding}
-      prices={EMPTY_PRICES}
-      dayChangeCents={null}
-      totalInvestmentsCents={null}
-      accountName="Vanguard Brokerage"
-      onClose={() => {}}
-      onEdit={onEdit}
-      onDelete={vi.fn(() => Promise.resolve())}
-    />,
-  );
+  function Harness() {
+    const [open, setOpen] = useState(true);
+    return (
+      <HoldingDetailSheet
+        open={open}
+        holding={holding}
+        prices={EMPTY_PRICES}
+        dayChangeCents={null}
+        totalInvestmentsCents={null}
+        accountName="Vanguard Brokerage"
+        onClose={() => setOpen(false)}
+        onEdit={onEdit}
+        onDelete={vi.fn(() => Promise.resolve())}
+      />
+    );
+  }
+  const screen = await render(<Harness />);
 
   await screen.getByRole("button", { name: "Edit holding" }).click();
+  expect(onEdit).not.toHaveBeenCalled();
+  await expect.poll(() => onEdit.mock.calls.length).toBe(1);
   expect(onEdit).toHaveBeenCalledTimes(1);
   expect(onEdit).toHaveBeenCalledWith(holding);
 });

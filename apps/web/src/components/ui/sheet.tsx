@@ -12,7 +12,8 @@ type SheetProps = React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Root>;
 /**
  * Responsive detail drawer: a right-side rail on larger screens and a
  * swipe-to-dismiss bottom sheet on compact surfaces. Base UI owns focus, dismissal,
- * gestures, scroll locking, and software-keyboard behavior.
+ * gestures, and scroll locking; a shared viewport inset keeps mobile content above
+ * the software keyboard.
  */
 function Sheet({ swipeDirection, ...props }: SheetProps) {
   // Keep the JS behavior aligned with Tailwind's md breakpoint (768px).
@@ -25,6 +26,24 @@ function Sheet({ swipeDirection, ...props }: SheetProps) {
       {...props}
     />
   );
+}
+
+function useSheetCloseAction<T>(onComplete: (value: T) => void) {
+  const pending = React.useRef<{ value: T } | null>(null);
+  return {
+    defer: (value: T) => {
+      pending.current = { value };
+    },
+    onOpenChangeComplete: (open: boolean) => {
+      if (open) {
+        pending.current = null;
+        return;
+      }
+      const action = pending.current;
+      pending.current = null;
+      if (action !== null) onComplete(action.value);
+    },
+  };
 }
 
 const SheetBackdrop = React.forwardRef<
@@ -50,39 +69,42 @@ type SheetContentProps = React.ComponentPropsWithoutRef<typeof DrawerPrimitive.P
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Popup>,
   SheetContentProps
->(({ className, children, scrollable = true, ...props }, ref) => (
-  <DrawerPrimitive.VirtualKeyboardProvider>
-    <DrawerPrimitive.Portal>
-      <SheetBackdrop />
-      <DrawerPrimitive.Viewport className="fixed inset-0 z-50 flex items-stretch justify-end max-md:items-end max-md:justify-stretch">
-        <DrawerPrimitive.Popup
-          ref={ref}
-          className={cn(
-            "group/drawer-popup relative flex h-dvh w-[440px] max-w-[100vw] flex-col overflow-hidden border-l border-line bg-panel text-cream shadow-[0_24px_60px_-20px_var(--surface-shadow)] outline-none overscroll-contain touch-auto",
-            "[transform:translateX(var(--drawer-swipe-movement-x))] transition-transform duration-300 ease-drawer will-change-transform data-swiping:select-none data-swiping:duration-0 data-[swipe-axis=x]:data-[starting-style]:translate-x-full data-[swipe-axis=x]:data-[ending-style]:translate-x-full data-[ending-style]:duration-[calc(var(--drawer-swipe-strength)*300ms)]",
-            "max-md:h-auto max-md:max-h-[calc(100dvh-0.75rem)] max-md:w-full max-md:rounded-t-[22px] max-md:border-l-0 max-md:border-t max-md:[transform:translateY(var(--drawer-swipe-movement-y))] max-md:data-[swipe-axis=y]:data-[starting-style]:translate-y-full max-md:data-[swipe-axis=y]:data-[ending-style]:translate-y-full",
-            "motion-reduce:transition-opacity motion-reduce:duration-150 motion-reduce:data-[starting-style]:opacity-0 motion-reduce:data-[ending-style]:opacity-0 motion-reduce:data-[starting-style]:translate-x-0 motion-reduce:data-[ending-style]:translate-x-0 motion-reduce:max-md:data-[starting-style]:translate-y-0 motion-reduce:max-md:data-[ending-style]:translate-y-0",
-            className,
-          )}
-          {...props}
-        >
-          <div
-            aria-hidden
-            className="mx-auto mt-2.5 hidden h-1 w-9 shrink-0 rounded-full bg-cream/20 max-md:block"
-          />
-          <DrawerPrimitive.Content
+>(({ className, children, scrollable = true, style, ...props }, ref) => {
+  return (
+    <DrawerPrimitive.VirtualKeyboardProvider>
+      <DrawerPrimitive.Portal>
+        <SheetBackdrop />
+        <DrawerPrimitive.Viewport className="fixed inset-0 z-50 flex items-stretch justify-end max-md:items-end max-md:justify-stretch">
+          <DrawerPrimitive.Popup
+            ref={ref}
+            style={style}
             className={cn(
-              "flex min-h-0 flex-1 flex-col overscroll-contain p-7 max-md:p-5 max-md:pt-3",
-              scrollable ? "overflow-y-auto" : "overflow-hidden",
+              "group/drawer-popup relative flex h-dvh w-[440px] max-w-[100vw] flex-col overflow-hidden border-l border-line bg-panel text-cream shadow-[0_24px_60px_-20px_var(--surface-shadow)] outline-none overscroll-contain touch-auto",
+              "[transform:translateX(var(--drawer-swipe-movement-x))] transition-transform duration-[220ms] ease-drawer will-change-transform data-swiping:select-none data-swiping:duration-0 data-[swipe-direction=right]:data-[starting-style]:translate-x-full data-[swipe-direction=right]:data-[ending-style]:translate-x-full data-[ending-style]:duration-[calc(var(--drawer-swipe-strength)*220ms)]",
+              "max-md:mb-[var(--drawer-keyboard-inset,0px)] max-md:h-auto max-md:max-h-[min(82dvh,calc(100dvh-var(--drawer-keyboard-inset,0px)))] max-md:w-full max-md:rounded-t-[22px] max-md:border-l-0 max-md:border-t max-md:[transform:translateY(var(--drawer-swipe-movement-y))] max-md:data-[swipe-direction=down]:data-[starting-style]:translate-y-full max-md:data-[swipe-direction=down]:data-[ending-style]:translate-y-full",
+              "motion-reduce:transition-opacity motion-reduce:duration-150 motion-reduce:data-[starting-style]:opacity-0 motion-reduce:data-[ending-style]:opacity-0 motion-reduce:data-[starting-style]:translate-x-0 motion-reduce:data-[ending-style]:translate-x-0 motion-reduce:max-md:data-[starting-style]:translate-y-0 motion-reduce:max-md:data-[ending-style]:translate-y-0",
+              className,
             )}
+            {...props}
           >
-            {children}
-          </DrawerPrimitive.Content>
-        </DrawerPrimitive.Popup>
-      </DrawerPrimitive.Viewport>
-    </DrawerPrimitive.Portal>
-  </DrawerPrimitive.VirtualKeyboardProvider>
-));
+            <div
+              aria-hidden
+              className="mx-auto mt-2.5 hidden h-1 w-9 shrink-0 rounded-full bg-cream/20 max-md:block"
+            />
+            <DrawerPrimitive.Content
+              className={cn(
+                "flex min-h-0 flex-1 flex-col overscroll-contain p-7 max-md:p-5 max-md:pt-3",
+                scrollable ? "overflow-y-auto" : "overflow-hidden",
+              )}
+            >
+              {children}
+            </DrawerPrimitive.Content>
+          </DrawerPrimitive.Popup>
+        </DrawerPrimitive.Viewport>
+      </DrawerPrimitive.Portal>
+    </DrawerPrimitive.VirtualKeyboardProvider>
+  );
+});
 SheetContent.displayName = "SheetContent";
 
 const SheetTitle = React.forwardRef<
@@ -130,4 +152,12 @@ const SheetFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
 );
 SheetFooter.displayName = "SheetFooter";
 
-export { Sheet, SheetBody, SheetContent, SheetFooter, SheetTitle, SheetTitleRow };
+export {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetFooter,
+  SheetTitle,
+  SheetTitleRow,
+  useSheetCloseAction,
+};

@@ -1,8 +1,24 @@
 import { useState } from "react";
-import { expect, test, vi } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
+import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import "@/app/globals.css";
 import { Sheet, SheetContent, SheetTitle } from "./sheet";
+
+class FakeViewport extends EventTarget {
+  height = 800;
+  offsetTop = 0;
+  scale = 1;
+}
+
+const realViewport = Object.getOwnPropertyDescriptor(window, "visualViewport");
+const realInnerHeight = Object.getOwnPropertyDescriptor(window, "innerHeight");
+
+afterEach(async () => {
+  if (realViewport) Object.defineProperty(window, "visualViewport", realViewport);
+  if (realInnerHeight) Object.defineProperty(window, "innerHeight", realInnerHeight);
+  await page.viewport(1280, 800);
+});
 
 // The responsive Sheet uses Base UI's Drawer primitive. Escape dismissal and
 // focus containment are contracts that every account/holding detail relies on.
@@ -37,4 +53,29 @@ test("Sheet closes on Escape", async () => {
 
   await expect.poll(() => document.querySelector("[role=dialog]")).toBeNull();
   expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything());
+});
+
+test("Sheet stays above the software keyboard while editing", async () => {
+  await page.viewport(390, 800);
+  const viewport = new FakeViewport();
+  Object.defineProperty(window, "visualViewport", { configurable: true, value: viewport });
+  Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+  function Harness() {
+    return (
+      <Sheet open>
+        <SheetContent aria-labelledby="sheet-keyboard">
+          <SheetTitle id="sheet-keyboard">Keyboard test</SheetTitle>
+          <input aria-label="Amount" />
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  await render(<Harness />);
+  const popup = document.querySelector<HTMLElement>("[role=dialog]");
+  if (!popup) throw new Error("sheet not found");
+  await page.getByRole("textbox", { name: "Amount" }).click();
+  viewport.height = 500;
+  viewport.dispatchEvent(new Event("resize"));
+  await expect.poll(() => popup.getBoundingClientRect().bottom).toBeCloseTo(500, 0);
 });

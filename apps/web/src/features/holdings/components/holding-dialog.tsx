@@ -89,34 +89,31 @@ export function HoldingDialog({
       }}
     >
       <SheetContent aria-labelledby="holding-dialog-title" scrollable={false}>
+        <div className="mb-5 shrink-0">
+          <SheetTitleRow
+            titleId="holding-dialog-title"
+            title={mode.kind === "add" ? "Add holding" : "Edit holding"}
+            onClose={onClose}
+          />
+        </div>
         <SheetBody>
-          <div className="flex flex-col">
-            <div className="mb-5 shrink-0">
-              <SheetTitleRow
-                titleId="holding-dialog-title"
-                title={mode.kind === "add" ? "Add holding" : "Edit holding"}
-                onClose={onClose}
-              />
-            </div>
-
-            <HoldingForm
-              key={mode.kind === "edit" ? mode.holding.id : `new-${openVersion}`}
-              initialValues={deriveInitialValues(mode)}
-              investmentAccounts={investmentAccounts}
-              groups={groups}
-              isEdit={mode.kind === "edit"}
-              onSubmit={async (values, opts) => {
-                setLookingUp(true);
-                try {
-                  await onSubmit(values, mode, opts);
-                } finally {
-                  setLookingUp(false);
-                }
-              }}
-              onLookupProxyPrice={lookupProxyPrice}
-              onCreateGroup={onCreateGroup}
-            />
-          </div>
+          <HoldingForm
+            key={mode.kind === "edit" ? mode.holding.id : `new-${openVersion}`}
+            initialValues={deriveInitialValues(mode)}
+            investmentAccounts={investmentAccounts}
+            groups={groups}
+            isEdit={mode.kind === "edit"}
+            onSubmit={async (values, opts) => {
+              setLookingUp(true);
+              try {
+                await onSubmit(values, mode, opts);
+              } finally {
+                setLookingUp(false);
+              }
+            }}
+            onLookupProxyPrice={lookupProxyPrice}
+            onCreateGroup={onCreateGroup}
+          />
         </SheetBody>
         <SheetFooter className="static mt-4 shrink-0">
           <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>

@@ -18,7 +18,7 @@ const WIDTH_CLASS: Record<NonNullable<ScreenProps["width"]>, string> = {
 };
 
 export function Screen({ children, scrollable = true, width = "sm", className }: ScreenProps) {
-  const base = "bg-vault text-cream [padding-bottom:env(safe-area-inset-bottom)]";
+  const base = "bg-vault text-cream";
   const widthClass = WIDTH_CLASS[width];
 
   if (scrollable) {

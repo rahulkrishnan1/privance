@@ -414,7 +414,6 @@ export function HoldingsView() {
           }
           onClose={() => setDetailHolding(null)}
           onEdit={(h) => {
-            setDetailHolding(null);
             openDialog({ kind: "edit", holding: h });
           }}
           onDelete={handleDeleteHolding}

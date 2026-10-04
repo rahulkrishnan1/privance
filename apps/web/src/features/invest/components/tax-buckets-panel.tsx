@@ -49,7 +49,10 @@ export function TaxBucketsPanel({
   const colors = assignColors(buckets.map((b) => b.label));
   const shares = buckets.map((bucket) => (total > 0 ? bucket.valueCents.toFloat() / total : 0));
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [openBucket, setOpenBucket] = useState<TaxBucket["key"] | null>(null);
+  const openIndex = buckets.findIndex(({ key }) => key === openBucket);
+  const activeIndex = hoveredIndex ?? focusedIndex ?? (openIndex < 0 ? null : openIndex);
 
   return (
     <div className="glass rounded-[10px] p-6 h-full">
@@ -77,7 +80,7 @@ export function TaxBucketsPanel({
                 style={{
                   width: `${(shares[i] * 100).toFixed(1)}%`,
                   background: color,
-                  opacity: hoveredIndex === null || hoveredIndex === i ? 1 : 0.5,
+                  opacity: activeIndex === null || activeIndex === i ? 1 : 0.5,
                 }}
                 aria-hidden="true"
               />
@@ -89,8 +92,8 @@ export function TaxBucketsPanel({
       <ul className="-mx-1 my-0 grid list-none grid-cols-[minmax(0,1fr)_auto_7ch_18px] gap-x-8 p-0 max-[520px]:gap-x-3 max-[360px]:grid-cols-[minmax(0,1fr)_auto_18px] max-[360px]:gap-x-2">
         {buckets.map((b, i) => {
           const share = shares[i];
-          const isActive = hoveredIndex === i;
-          const isDim = hoveredIndex !== null && hoveredIndex !== i;
+          const isActive = activeIndex === i;
+          const isDim = activeIndex !== null && activeIndex !== i;
           const isOpen = openBucket === b.key;
           const detailsId = `tax-bucket-details-${b.key}`;
           return (
@@ -106,7 +109,12 @@ export function TaxBucketsPanel({
               amountTestId={`tax-bucket-${b.key}`}
               isHighlighted={isActive}
               isDimmed={isDim}
-              onToggle={() => setOpenBucket(isOpen ? null : b.key)}
+              onToggle={() => {
+                if (isOpen) setFocusedIndex(null);
+                setOpenBucket(isOpen ? null : b.key);
+              }}
+              onFocus={() => setFocusedIndex(i)}
+              onBlur={() => setFocusedIndex(null)}
               onMouseEnter={() => setHoveredIndex(i)}
               onMouseLeave={() => setHoveredIndex(null)}
             />
