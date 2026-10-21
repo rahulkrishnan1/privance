@@ -3,6 +3,7 @@ FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b44797113971
 WORKDIR /build
 RUN corepack enable
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY patches/ ./patches/
 COPY packages/core/package.json ./packages/core/
 COPY apps/web/package.json ./apps/web/
 RUN pnpm install --frozen-lockfile --shamefully-hoist
@@ -13,6 +14,7 @@ WORKDIR /build
 RUN corepack enable
 COPY --from=deps /build/node_modules ./node_modules
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY patches/ ./patches/
 COPY tsconfig.base.json ./tsconfig.base.json
 COPY packages/core/ ./packages/core/
 COPY apps/web/ ./apps/web/

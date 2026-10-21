@@ -3,6 +3,7 @@ FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b44797113971
 WORKDIR /build
 RUN corepack enable
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY patches/ ./patches/
 COPY packages/core/package.json ./packages/core/
 COPY server/package.json ./server/
 RUN pnpm install --frozen-lockfile --shamefully-hoist

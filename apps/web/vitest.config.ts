@@ -49,6 +49,12 @@ export default defineConfig({
             // is covered by the Playwright *.mobile specs.
             viewport,
             instances: [{ browser: "chromium" }],
+            commands: {
+              async clearModuleMockRoutes({ provider, sessionId }) {
+                if (!provider.mocker) throw new Error("Browser provider has no module mocker");
+                await provider.mocker.clear(sessionId);
+              },
+            },
           },
         },
       },
