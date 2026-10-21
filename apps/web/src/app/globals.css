@@ -9,8 +9,8 @@
 
   /* Font family CSS variables — loaded via @fontsource in main.tsx; defined
      here so the @theme block below picks them up. */
-  --font-schibsted: "Schibsted Grotesk", sans-serif;
-  --font-spline-mono: "Spline Sans Mono", monospace;
+  --font-schibsted: "Schibsted Grotesk Variable", sans-serif;
+  --font-spline-mono: "Spline Sans Mono Variable", monospace;
   --font-instrument-serif: "Instrument Serif", serif;
 }
 
@@ -191,7 +191,7 @@ body {
       transparent 55%
     );
   color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-schibsted);
 }
 
 /* iOS standalone WebKit zooms the whole page out on launch if any element is

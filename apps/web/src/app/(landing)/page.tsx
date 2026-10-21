@@ -134,7 +134,7 @@ function Hero() {
       }}
     >
       <div className="max-w-[1160px] mx-auto px-8">
-        <p className="reveal-up font-sans text-xs font-medium tracking-label uppercase text-accent-dim whitespace-nowrap max-[480px]:text-xs max-[480px]:tracking-[0.18em]">
+        <p className="reveal-up font-mono text-xs tracking-label uppercase text-accent-dim max-[480px]:text-xs max-[480px]:tracking-[0.18em]">
           Open source, zero&#8209;knowledge, yours
         </p>
         <h1
@@ -418,9 +418,7 @@ function Tenets() {
     <section id="tenets" className="py-12">
       <div className="max-w-[1160px] mx-auto px-8">
         <div className="mb-9">
-          <p className="font-sans text-xs font-medium tracking-label uppercase text-accent-dim">
-            Three tenets
-          </p>
+          <p className="font-mono text-xs tracking-label uppercase text-accent-dim">Three tenets</p>
           <h2
             className="font-serif font-normal leading-[1.03] tracking-[-0.015em] mt-[14px]"
             style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
@@ -467,9 +465,7 @@ function Protocol() {
       />
       <div className="max-w-[1160px] mx-auto px-8 grid gap-12 items-start grid-cols-[.9fr_1.1fr] max-[920px]:grid-cols-1 max-[920px]:gap-11">
         <div>
-          <p className="font-sans text-xs font-medium tracking-label uppercase text-accent-dim">
-            The protocol
-          </p>
+          <p className="font-mono text-xs tracking-label uppercase text-accent-dim">The protocol</p>
           <h2
             className="font-serif font-normal leading-[1.05] tracking-[-0.015em] mt-[14px]"
             style={{ fontSize: "clamp(34px, 4.6vw, 54px)" }}
@@ -481,12 +477,13 @@ function Protocol() {
             server&rsquo;s ignorance is provable from both.
           </p>
           <div className="mt-[34px]">
-            <code
-              className="block font-mono text-sm text-accent border border-accent/20 rounded-[8px] px-[18px] py-[13px]"
+            <a
+              href="https://github.com/rahulkrishnan1/privance"
+              className="block font-mono text-sm text-accent border border-accent/20 rounded-[8px] px-[18px] py-[13px] hover:underline focus-visible:outline-accent"
               style={{ background: "rgba(94,234,212,.06)" }}
             >
               github.com/rahulkrishnan1/privance
-            </code>
+            </a>
             <span className="block mt-[10px] font-sans text-xs font-medium tracking-label uppercase text-faint">
               audit it, fork it, run it
             </span>
@@ -568,9 +565,7 @@ function Deploy() {
     <section id="deploy" className="py-12 border-t border-line-soft">
       <div className="max-w-[1160px] mx-auto px-8">
         <div className="mb-9">
-          <p className="font-sans text-xs font-medium tracking-label uppercase text-accent-dim">
-            Two ways in
-          </p>
+          <p className="font-mono text-xs tracking-label uppercase text-accent-dim">Two ways in</p>
           <h2
             className="font-serif font-normal leading-[1.03] tracking-[-0.015em] mt-[14px] max-w-[20ch] md:max-w-none"
             style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
@@ -623,7 +618,7 @@ function Features() {
     <section id="features" className="py-12 border-t border-line-soft">
       <div className="max-w-[1160px] mx-auto px-8">
         <div className="mb-9">
-          <p className="font-sans text-xs font-medium tracking-label uppercase text-accent-dim">
+          <p className="font-mono text-xs tracking-label uppercase text-accent-dim">
             Inside the vault
           </p>
           <h2
@@ -781,7 +776,7 @@ function Features() {
               key={f.tag}
               className={`${f.cls} border border-line rounded-[12px] p-[30px] bg-panel relative overflow-hidden transition-[transform,border-color] duration-[250ms] ease-in-out hover:-translate-y-1 hover:border-accent/35 motion-reduce:hover:translate-y-0 motion-reduce:transition-none`}
             >
-              <span className="font-sans text-xs font-medium tracking-label uppercase text-accent">
+              <span className="font-mono text-xs tracking-label uppercase text-accent">
                 {f.tag}
               </span>
               <h3 className="font-serif font-normal text-2xl mt-[10px] tracking-[-0.01em]">
@@ -831,7 +826,10 @@ function LandingFooter() {
           </span>
           <div className="flex gap-[26px] flex-wrap">
             {[
-              { label: "Self‑host guide", href: "#deploy" },
+              {
+                label: "Self‑host guide",
+                href: "https://github.com/rahulkrishnan1/privance/blob/main/infra/README.md",
+              },
               { label: "Protocol", href: "#protocol" },
               {
                 label: "Threat model",
@@ -873,6 +871,15 @@ export default function LandingPage() {
     if (state === "unlocked") navigate("/app", { replace: true });
     else if (state === "locked") navigate("/unlock", { replace: true });
   }, [mounted, state, navigate]);
+
+  // ScrollRestoration runs before the auth-gated sections exist on a cold load.
+  useLayoutEffect(() => {
+    if (!(mounted && state === "unauthenticated")) return;
+    const id = window.location.hash.slice(1);
+    if (NAV_LINKS.some((link) => link.href === `#${id}`)) {
+      void document.fonts.ready.then(() => document.getElementById(id)?.scrollIntoView());
+    }
+  }, [mounted, state]);
 
   if (!(mounted && state === "unauthenticated")) return null;
 
