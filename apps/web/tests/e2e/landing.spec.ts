@@ -20,6 +20,15 @@ test.describe("landing page", () => {
     await expect(page.getByRole("link", { name: "Sign in" }).first()).toBeVisible();
   });
 
+  test("direct section links scroll after the landing page mounts", async ({ page }) => {
+    await page.goto("/#features");
+    const section = page.locator("#features");
+    await expect(section).toBeAttached();
+    await expect
+      .poll(() => section.evaluate((element) => Math.abs(element.getBoundingClientRect().top - 67)))
+      .toBeLessThan(5);
+  });
+
   test("signed-in user visiting / is redirected to /app/", async ({ browser }) => {
     const { sharedUser } = loadFixtures();
     const session = await loginAndCapture(browser, {
