@@ -4,6 +4,8 @@ import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
 import { alias } from "./vite.alias";
 
+const viewport = { width: 1280, height: 800 };
+
 export default defineConfig({
   // Dedupe React so component deps (e.g. react-hook-form) share the single React
   // instance the test renderer uses; otherwise hooks see a null dispatcher.
@@ -39,12 +41,13 @@ export default defineConfig({
           include: ["src/**/*.browser.test.ts", "src/**/*.browser.test.tsx"],
           browser: {
             enabled: true,
-            provider: playwright(),
+            // Avoid scaling the test iframe inside Playwright's smaller default window.
+            provider: playwright({ contextOptions: { viewport } }),
             headless: true,
             // Desktop viewport: these component tests assert the wide-screen
             // layout (e.g. the inline assumptions editor). The mobile sheet flow
             // is covered by the Playwright *.mobile specs.
-            viewport: { width: 1280, height: 800 },
+            viewport,
             instances: [{ browser: "chromium" }],
           },
         },
