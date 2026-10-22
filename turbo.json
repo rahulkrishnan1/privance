@@ -20,7 +20,7 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "inputs": ["src/**", "test/**", "vitest.config.ts", "package.json"],
+      "inputs": ["src/**", "test/**", "vitest.config.ts", "package.json", "../../patches/**"],
       "outputs": ["coverage/**"]
     },
     "lint": {

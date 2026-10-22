@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-05-31
+- **Last updated:** 2026-10-21
 
 ## Context
 
@@ -18,6 +19,7 @@ Run component rendering/interaction tests in Vitest Browser Mode (`vitest-browse
 - Render-sensitive bugs (charts, dialogs, focus) are caught automatically.
 - The `browser` project needs a Chromium binary in CI and runs slower than happy-dom, so pure logic stays in the fast `unit` project.
 - CSS-dependent outcomes (computed colors, tap-target sizes) are still asserted in E2E where the app's compiled Tailwind is present.
+- Request interception stays armed for the whole `browser` project (pinned `@vitest/browser-playwright` patch in `patches/`, see vitest-dev/vitest#11083), because disarming it between files can resume a module-mock request against the real server; Chromium therefore keeps HTTP caching off for these tests, which is acceptable since they assert rendering and interaction.
 - Reversing this means moving the browser tests to E2E and dropping the project.
 
 ## Alternatives considered
