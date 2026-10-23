@@ -9,7 +9,7 @@
 # Required env:
 #   PRIVANCE_DEPLOY_HOST  SSH alias or user@host
 # Optional env:
-#   PRIVANCE_DOMAIN       defaults to privance.app
+#   PRIVANCE_DOMAIN       health-check target; omit to skip the health check
 #   PRIVANCE_REMOTE_DIR   defaults to ~/privance
 set -euo pipefail
 
@@ -33,7 +33,7 @@ if [ -z "${PRIVANCE_DEPLOY_HOST:-}" ]; then
 fi
 
 HOST="$PRIVANCE_DEPLOY_HOST"
-DOMAIN="${PRIVANCE_DOMAIN:-privance.app}"
+DOMAIN="${PRIVANCE_DOMAIN:-}"
 REMOTE_DIR="${PRIVANCE_REMOTE_DIR:-~/privance}"
 
 echo "==> Verifying tag $VERSION exists on origin..."
@@ -107,6 +107,14 @@ ssh "$HOST" "
 
   docker compose -f compose.prod.yaml up -d
 "
+
+# Without a health-check target there is nothing to probe; report and stop so
+# the run does not curl an empty host.
+if [ -z "$DOMAIN" ]; then
+  echo "==> PRIVANCE_DOMAIN is not set; skipping the health check."
+  echo "==> Deploy complete: $VERSION"
+  exit 0
+fi
 
 # The server container needs a few seconds to pass its healthcheck after
 # recreate, so retry briefly.

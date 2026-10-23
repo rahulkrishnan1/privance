@@ -45,7 +45,7 @@ bun run typecheck
 |---|---|---|
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
 | `ENUMERATION_SECRET` | Yes | Base64-encoded secret >= 32 bytes; used for fake KDF salt derivation and IP hashing |
-| `TRUSTED_PROXY_HOPS` | No | Number of trusted reverse-proxy hops in front of the server, used to pick the real client IP from `X-Forwarded-For` for rate limiting. Default `1` (a single self-hosted reverse proxy like nginx/Caddy/Traefik). Set to the actual hop count if you chain more proxies, or `0` if the app is internet-facing with no proxy. SECURITY: the server must sit behind exactly this many trusted proxies; a wrong value lets a client forge its rate-limit identity via a spoofed `X-Forwarded-For`. |
+| `TRUSTED_PROXY_HOPS` | No | Right-counted `X-Forwarded-For` entry for auth rate limits. Default `1` (Caddy); keep it for the documented Tailscale setup, where clients share an IP bucket. `0` ignores the header and uses a shared `unknown` bucket, not the socket IP. Change only with a verified proxy chain that rejects forged headers. |
 | `NODE_ENV` | No | `production` enables Secure cookie flag |
 | `PORT` | No | Defaults to 3000 |
 | `SIGNUP_ALLOWLIST` | No | Comma-separated usernames allowed to sign up; empty = open registration |

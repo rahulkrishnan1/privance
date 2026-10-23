@@ -113,6 +113,16 @@ E2E specs live in `apps/web/tests/e2e/`. Auth flows go through the helpers in `a
 
 Playwright runs five projects with tiered coverage: `chromium` runs critical user journeys (auth, accounts, holdings, dashboard, session, landing, plan, spend, settings, biometric PRF), `firefox` runs auth + session smoke, `webkit` runs storage verification + auth smoke, and `mobile-safari` (iPhone) and `mobile-chrome` (Pixel 5) run `*.mobile.spec.ts` against the mobile UI. Target one with `pnpm --filter @privance/web e2e --project=<name>`. All five run locally (macOS/Linux) and in CI (KDF cost is reduced via `VITE_PRIVANCE_KDF_REDUCED=true`).
 
+### Deployment checks
+
+```sh
+bash infra/test.sh
+# With the local Docker trial running (see README):
+node infra/test-browser.mjs
+```
+
+The browser smoke checks the local Compose stack through Caddy in Chromium and WebKit.
+
 ---
 
 ## Lint and format

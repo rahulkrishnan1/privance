@@ -6,31 +6,31 @@
 
 ## Context
 
-Privance needs a live, reachable, backed-up instance at `https://privance.app` that a single operator can stand up, run, and maintain. The deployment architecture decisions are separate from the stack decisions in ADR-0001 (Bun + Hono + Vite); this ADR records what runs WHERE and how it gets there.
+Privance needs a self-hostable instance that an operator can stand up, run, and maintain, over a private network or a public HTTPS domain. The deployment architecture decisions are separate from the stack decisions in ADR-0001 (Bun + Hono + Vite); this ADR records what runs WHERE and how it gets there.
 
 Constraints that shaped the deployment:
 
 - Single operator, hobby budget. No PagerDuty rotation, no dedicated SRE.
 - One small VPS is enough for the foreseeable user count. Vertical scale before horizontal.
 - Privacy by construction. The server stores ciphertext only; the deployment must preserve this property end-to-end (no plaintext in logs, no plaintext in backups, no plaintext in any place reachable from a VPS compromise).
-- Invite-only signup at launch. Open signup is a separate decision; the deployment must enforce the gate.
+- Self-hosted signup is open by default. Operators can enable the invite-only gate or username allowlist if needed.
 - Post-Shai-Hulud supply-chain discipline. No auto-deploy from a CI runner with credentials that can reach production; operator-driven deploys, reviewed locally first.
-- TLS via Let's Encrypt, not a custom CA. No hand-rolled cert management.
-- DNS through Cloudflare for ergonomics (API + sane web UI), but DNS-only mode (no orange-cloud proxy) to avoid Cloudflare seeing decrypted-on-the-wire-to-the-VPS traffic. The wire is already TLS-terminated by Caddy on the VPS.
+- HTTPS via Caddy/Let's Encrypt for public access, or an upstream HTTPS proxy such as Tailscale Serve for private access.
+- Public-domain DNS is optional; private deployments can use the tailnet hostname.
 
 ## Decision
 
 | Layer | Choice |
 | ----- | ------ |
-| Host | Single Hetzner Cloud VPS (small shared-vCPU SKU, EU region; current sizing table in `infra/hetzner-vps.md`). |
-| OS | Ubuntu LTS. SSH-key-only login as a non-root deploy user; root SSH disabled; firewall open on 22/tcp, 80/tcp, 443/tcp, 443/udp only. |
-| Runtime | Docker Compose stack: `server` (Bun, multi-stage Dockerfile, non-root uid 10001, digest-pinned `oven/bun` base) + `postgres` (Postgres 17, loopback-only) + `caddy` + `restic-runner` (cron sidecar). |
-| TLS + ingress | Caddy with Let's Encrypt; serves the Vite static SPA at `/` and reverse-proxies `/api/*` to the server container; HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, CSP all set in `infra/Caddyfile`. |
-| DNS | Cloudflare, DNS-only (no proxy / orange cloud). A + AAAA records for apex + `www`. |
-| Secrets | `/etc/privance/env.d/` directory mode 700, owned by the deploy user. Postgres password as a Docker secret; restic password + Backblaze B2 keys + `ENUMERATION_SECRET` + `SIGNUP_ALLOWLIST` + `INVITE_REQUIRED` in env-d files mode 600. Nothing in the repo. |
+| Host | Single Linux host; `infra/hetzner-vps.md` is an optional VPS provisioning example. |
+| OS | Ubuntu LTS. SSH-key-only login as a non-root deploy user; root SSH disabled; firewall allows SSH and, for public HTTPS only, 80/tcp, 443/tcp, 443/udp. |
+| Runtime | Docker Compose stack: `server` (Bun, multi-stage Dockerfile, non-root uid 10001, digest-pinned `oven/bun` base) + `postgres` (Postgres 17, loopback-only) + `caddy` + optional `restic-runner` (cron sidecar). |
+| TLS + ingress | Caddy serves the SPA at `/` and proxies `/api/*`; it manages public HTTPS or listens on a loopback-published HTTP port behind an upstream HTTPS proxy. Security headers remain in `infra/Caddyfile`. |
+| DNS | Public mode: DNS-only records for the configured hostnames (AAAA only with reachable IPv6). Private mode: tailnet DNS. |
+| Secrets | `/etc/privance/env.d/` directory mode 700, owned by the deploy user. Postgres password mounted read-only, mode 600 and owned by UID 10001 for the API and migrations; restic password + Backblaze B2 keys + `ENUMERATION_SECRET` + `SIGNUP_ALLOWLIST` + `INVITE_REQUIRED` in env-d files mode 600. Nothing in the repo. |
 | Migrations | `server-migrate` one-shot Compose service runs `bun run db:migrate` before the API container accepts traffic. Failed migrations halt boot. |
-| Signup gating | Invite-only via the `InviteService` module. `INVITE_REQUIRED=true` enforced server-side; operator mints tokens via `docker compose -f compose.prod.yaml exec server bun dist/mint-invite.js` from the deploy directory on the VPS over SSH. Tokens are hashed at rest with SHA-256 and single-use via atomic UPDATE. |
-| Backups | Nightly `pg_dump --format=custom` piped to `restic backup --stdin-from-command`, encrypted and stored in Backblaze B2 (EU Central). Retention: 7 daily / 4 weekly / 6 monthly. Weekly structural `restic check`. In-place restore drill required during bring-up. |
+| Signup gating | Open by default (`INVITE_REQUIRED=false` in the template). When an operator enables the gate, `INVITE_REQUIRED=true` is enforced server-side; operator mints tokens via `docker compose -f compose.prod.yaml exec server bun dist/mint-invite.js` from the deploy directory on the VPS over SSH. Tokens are hashed at rest with SHA-256 and single-use via atomic UPDATE. |
+| Backups | Optional nightly `pg_dump --format=custom` piped to `restic backup --stdin-from-command`, encrypted and stored in Backblaze B2. Retention: 7 daily / 4 weekly / 6 monthly. Weekly structural `restic check`. In-place restore drill required during bring-up. |
 | PWA | Service worker generated by `vite-plugin-pwa` (Workbox) at build: precaches the full asset manifest (hashed chunks, SQLite WASM, KDF/sim workers) plus shell routes; registration via `ServiceWorkerRegistration.tsx`; no-skip-waiting update flow with the in-app update banner. Cache strategy: cache-first for precached assets, `navigateFallback` to the single shell, `NetworkOnly` for `/api/*`; cross-origin passes through. |
 | Deploys | Operator-initiated, image-based: GitHub Actions builds and pushes versioned images to GHCR on `v*` tags; the operator runs `infra/deploy.sh <version>` from the workstation, which makes the VPS pull the pinned images and recreate containers. No CI runner has VPS credentials; CI holds only GHCR `packages: write`. |
 
@@ -53,8 +53,8 @@ Constraints that shaped the deployment:
 **Locked out of (until reversed):**
 
 - Auto-deploy on merge. Every release is operator-typed. No "merge to main deploys to prod" semantics.
-- Multi-region presence. One Hetzner host, one B2 region. EU-resident at present.
-- Cloudflare-level WAF / bot protection. DNS-only mode bypasses Cloudflare's proxy features; the only edge protection is what Caddy + the Bun server enforce themselves.
+- Multi-region presence. The documented stack is a single host, with one optional backup repository.
+- Cloudflare-level WAF / bot protection. Direct-to-Caddy public mode uses DNS-only records and bypasses Cloudflare's proxy features; the only edge protection is what Caddy + the Bun server enforce themselves.
 
 **Reversal cost:**
 

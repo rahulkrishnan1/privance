@@ -1,4 +1,6 @@
-# {$LOCAL_HTTP_ONLY} is empty in production; "auto_https off" only for local smoke (never in prod).
+# {$LOCAL_HTTP_ONLY} holds "auto_https off" when TLS terminates upstream of Caddy
+# (the host proxies a loopback port over a private network); see infra/README.md.
+# Leave it empty when Caddy terminates TLS itself.
 {
 	email {$ACME_EMAIL}
 	{$LOCAL_HTTP_ONLY}
@@ -9,7 +11,7 @@
 	}
 }
 
-# Single site block covering apex + www produces a SAN cert for both hostnames.
+# Serve the primary hostname and optional alias from one site block.
 {$DOMAIN}, {$WWW_DOMAIN} {
 	encode gzip zstd
 
@@ -36,7 +38,9 @@
 		# worker-src 'self' covers all workers: SQLite (/sqlite/privance-worker.mjs),
 		# KDF (/kdf/kdf-worker.js) and sim (/sim/sim-worker.mjs) are module/classic
 		# workers from static URLs — none are blob-created.
-		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+		# WebKit upgrades even localhost assets with upgrade-insecure-requests,
+		# breaking the HTTP trial. HTTPS deployments retain HSTS and self-only sources.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 	}
 
 	# Preserve the /api prefix: Hono feature routers are mounted at /api/auth,

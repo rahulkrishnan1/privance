@@ -17,7 +17,7 @@ A clear description of the bug and what you expected instead.
 **Environment**
 
 - Privance version (Settings shows it, or the image tag you deployed):
-- Self-hosted or privance.app:
+- Deployment (self-hosted, private network, other):
 - Browser / OS / device:
 
 **Notes**

@@ -152,18 +152,19 @@ function Hero() {
           className="reveal-up mt-[22px] mx-auto max-w-[52ch] text-lg text-dim leading-[1.65]"
           style={{ animationDelay: "0.22s" }}
         >
-          Privance is a full command center for your money. Everything is encrypted in your browser
-          before it leaves. The server, ours or yours, holds ciphertext and nothing else.
+          Privance is a self-hosted command center for your money. Everything is encrypted in your
+          browser before it leaves. Your server stores that encrypted data, never the keys to unlock
+          it.
         </p>
         <div
           className="reveal-up flex gap-[14px] mt-[30px] justify-center flex-wrap"
           style={{ animationDelay: "0.34s" }}
         >
           <Button variant="primary" render={<Link to="/auth/signup" />}>
-            Have an invite?
+            Create an account
           </Button>
           <Button variant="secondary" render={<a href="#deploy" />}>
-            Self&#8209;host instead
+            Self&#8209;host guide
           </Button>
         </div>
 
@@ -206,7 +207,7 @@ function AppFrame() {
               <rect x="5" y="11" width="14" height="9" rx="2" />
               <path d="M8 11V8a4 4 0 0 1 8 0v3" />
             </svg>
-            privance.app
+            Privance
           </span>
         </div>
         <div
@@ -368,7 +369,7 @@ function CipherBelt() {
           background: "linear-gradient(to right, #101216 72%, transparent)",
         }}
       >
-        What our servers see
+        What your server stores
       </span>
       <div className="belt-marquee flex w-max">
         {doubled.map((chunk, i) => (
@@ -402,7 +403,7 @@ function Tenets() {
       title: "Yours,",
       titleEm: "either way",
       titleSuffix: "",
-      body: "Use privance.app, where we store ciphertext we cannot read, or run it yourself with one container. Same protocol, same blindness.",
+      body: "Run it yourself with Docker Compose. You control access, updates, and backups. Same protocol, same blindness.",
     },
     {
       idx: "iii.",
@@ -565,28 +566,32 @@ function Deploy() {
     <section id="deploy" className="py-12 border-t border-line-soft">
       <div className="max-w-[1160px] mx-auto px-8">
         <div className="mb-9">
-          <p className="font-mono text-xs tracking-label uppercase text-accent-dim">Two ways in</p>
+          <p className="font-mono text-xs tracking-label uppercase text-accent-dim">Self-hosting</p>
           <h2
             className="font-serif font-normal leading-[1.03] tracking-[-0.015em] mt-[14px] max-w-[20ch] md:max-w-none"
             style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
           >
-            Run it on our box, <em className="text-accent">or your own.</em>
+            Your money. <em className="text-accent">Your server.</em>
           </h2>
         </div>
         <div className="grid grid-cols-2 gap-4 max-[880px]:grid-cols-1">
           <div className="border border-line rounded-[12px] px-[30px] py-[30px] bg-panel relative group transition-[transform,border-color] duration-[250ms] ease-in-out hover:-translate-y-1 hover:border-accent/35 motion-reduce:hover:translate-y-0 motion-reduce:transition-none">
             <span className="absolute top-5 right-[22px] font-mono text-sm tracking-[0.18em] text-accent">
-              INVITE&#8209;ONLY
+              LOCAL TRIAL
             </span>
             <h3 className="font-serif font-normal text-3xl tracking-[-0.01em] mt-[26px]">
-              privance.app
+              Try it locally
             </h3>
             <p className="mt-3 text-sm text-dim max-w-[44ch] leading-[1.6]">
-              Sign up and go. We run the servers and keep the backups, and all we ever hold is
-              ciphertext. Zero knowledge means trusting the math, not us.
+              Build and run the Docker Compose stack on your machine, then open localhost:8080. No
+              invite required. For evaluation only; never expose this trial to a network.
             </p>
-            <Button variant="primary" className="mt-[26px]" render={<Link to="/auth/signup" />}>
-              Have an invite?
+            <Button
+              variant="primary"
+              className="mt-[26px]"
+              render={<a href="https://github.com/rahulkrishnan1/privance#try-it" />}
+            >
+              Quick start
             </Button>
           </div>
           <div className="border border-line rounded-[12px] px-[30px] py-[30px] bg-panel relative group transition-[transform,border-color] duration-[250ms] ease-in-out hover:-translate-y-1 hover:border-accent/35 motion-reduce:hover:translate-y-0 motion-reduce:transition-none">
@@ -597,15 +602,18 @@ function Deploy() {
               Your own box
             </h3>
             <p className="mt-3 text-sm text-dim max-w-[44ch] leading-[1.6]">
-              One container, one Postgres. A Raspberry Pi will do. Bring a domain and you own the
-              whole data path, end to end.
+              One server container, one Postgres, one Caddy. Bring a domain or use a private
+              network, and you own the whole data path, end to end.
             </p>
-            <code
-              className="block font-mono text-sm text-accent border border-accent/20 rounded-[8px] px-[18px] py-[13px] mt-[26px]"
-              style={{ background: "rgba(94,234,212,.06)" }}
+            <Button
+              variant="secondary"
+              className="mt-[26px]"
+              render={
+                <a href="https://github.com/rahulkrishnan1/privance/blob/main/infra/README.md" />
+              }
             >
-              $ docker compose up -d
-            </code>
+              Self-host guide
+            </Button>
           </div>
         </div>
       </div>
@@ -877,7 +885,10 @@ export default function LandingPage() {
     if (!(mounted && state === "unauthenticated")) return;
     const id = window.location.hash.slice(1);
     if (NAV_LINKS.some((link) => link.href === `#${id}`)) {
-      void document.fonts.ready.then(() => document.getElementById(id)?.scrollIntoView());
+      const section = document.getElementById(id);
+      // Start layout-dependent font loads before awaiting their completion.
+      section?.getBoundingClientRect();
+      void document.fonts.ready.then(() => section?.scrollIntoView({ behavior: "instant" }));
     }
   }, [mounted, state]);
 

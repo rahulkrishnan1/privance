@@ -397,7 +397,7 @@ export default function SignupPage() {
             aria-describedby={errors.inviteToken !== undefined ? "signup-invite-error" : undefined}
           />
           <p className="font-mono text-xs text-faint tracking-[0.04em]">
-            Only required on hosted Privance.
+            Only required if this instance uses invite-only signup.
           </p>
           {errors.inviteToken && (
             <p
