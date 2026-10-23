@@ -83,7 +83,7 @@ services:
       ACME_EMAIL: dev@localhost
       LOCAL_HTTP_ONLY: auto_https off
     ports:
-      - "8080:80"
+      - "127.0.0.1:8080:80"
     networks: [privance_net]
     restart: unless-stopped
     depends_on:

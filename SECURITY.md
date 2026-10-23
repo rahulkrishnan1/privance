@@ -2,9 +2,7 @@
 
 ## Reporting a vulnerability
 
-**Security contact:** security@privance.app
-
-You may also open a GitHub Security Advisory on this repository using the "Report a vulnerability" button. Do not open a public issue for security findings.
+Use [GitHub private vulnerability reporting](https://github.com/rahulkrishnan1/privance/security/advisories/new). Do not open a public issue for security findings.
 
 **Response SLA expectations:**
 - Acknowledgement: within 3 business days of receipt

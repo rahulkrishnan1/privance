@@ -18,7 +18,7 @@
   <img src="docs/screenshots/hero.png" alt="Privance: net worth, trend, and accounts at a glance" width="840">
 </p>
 
-Privance is a command center for your money: net worth, holdings, spending, and a financial independence planner. Everything is encrypted in your browser before it leaves. The server, ours or yours, stores that encrypted data but never the keys to unlock it. Even if it were breached, all anyone would find is your username and some timestamps. Not your balances, not your investments, not a single dollar.
+Privance is a command center for your money: net worth, holdings, spending, and a financial independence planner. Everything is encrypted in your browser before it leaves. Your server stores that encrypted data but never the keys to unlock it. Even if it were breached, all anyone would find is your username and some timestamps. Not your balances, not your investments, not a single dollar.
 
 ## Inside the vault
 
@@ -49,20 +49,19 @@ The code is open and the cryptography is standard, so you never have to take our
 
 ## Try it
 
-- **Hosted.** Sign up at [privance.app](https://privance.app) (invite-only). We run the servers and keep the backups; everything we store is encrypted, and we hold no key to read it.
-- **Local, one command.** Build and run the whole stack on your machine:
+- **Local, one command.** Build and run the whole stack on your machine with Docker Engine 28+ and Compose (or current Docker Desktop):
   ```sh
   git clone https://github.com/rahulkrishnan1/privance.git
   cd privance
   docker compose -f infra/compose.local.yaml up --build
   ```
-  Open `http://localhost:8080` and create an account. This runs over plain HTTP with a throwaway password and a fixed dev secret, for evaluation only, so never expose it to a network. Tear it down with `docker compose -f infra/compose.local.yaml down -v`.
+  Open `http://localhost:8080` and create an account; no invite is required. This binds to loopback and runs over plain HTTP with a throwaway password and a fixed dev secret, for evaluation only, so never expose it to a network. Tear it down with `docker compose -f infra/compose.local.yaml down -v` (**deletes the trial data**).
 
 ## Self-host
 
-One server container, one Postgres, one Caddy for automatic TLS. A small VPS or even a Raspberry Pi will do. Public images ship from GHCR (`ghcr.io/rahulkrishnan1/privance-{server,web,restic-runner}`), so there is nothing to build; bring a Linux host with Docker and a domain with A + AAAA records.
+One server container, one Postgres, one Caddy for automatic TLS. A small VPS or even a Raspberry Pi will do. Public images ship from GHCR (`ghcr.io/rahulkrishnan1/privance-{server,web,restic-runner}`), so there is nothing to build; bring a Linux host with Docker and either a private network or your own HTTPS domain.
 
-The full procedure (TLS, secrets, encrypted offsite backups, invite-only signup) is in [`infra/README.md`](infra/README.md).
+The full procedure (private or public HTTPS, secrets, optional encrypted offsite backups and invite-only signup) is in [`infra/README.md`](infra/README.md).
 
 ## Development
 
@@ -86,7 +85,7 @@ infra/         Compose stack, deploy procedure, env templates
 
 ## Architecture and security
 
-[ARCHITECTURE.md](ARCHITECTURE.md) maps the modules and data flow. [SECURITY.md](SECURITY.md) lists the guaranteed properties and [THREAT_MODEL.md](THREAT_MODEL.md) the full STRIDE analysis. Found a vulnerability? Email security@privance.app, and please do not open a public issue.
+[ARCHITECTURE.md](ARCHITECTURE.md) maps the modules and data flow. [SECURITY.md](SECURITY.md) lists the guaranteed properties and [THREAT_MODEL.md](THREAT_MODEL.md) the full STRIDE analysis. Found a vulnerability? Use [GitHub private vulnerability reporting](https://github.com/rahulkrishnan1/privance/security/advisories/new), not a public issue.
 
 ## License
 

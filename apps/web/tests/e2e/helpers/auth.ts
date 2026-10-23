@@ -278,11 +278,12 @@ export async function waitForSynced(page: Page): Promise<void> {
  */
 export async function signup(
   page: Page,
-  opts: { username: string; password: string },
+  opts: { username: string; password: string; inviteToken?: string },
 ): Promise<SignupResult> {
   await page.goto("/auth/signup/");
 
   await fillSignupForm(page, opts);
+  if (opts.inviteToken) await page.getByLabel("Invite code").fill(opts.inviteToken);
   await submitSignup(page);
 
   const phrase = await capturePhrase(page);

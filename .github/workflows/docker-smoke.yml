@@ -10,6 +10,11 @@ on:
       - "apps/web/Dockerfile"
       - "infra/restic-runner/**"
       - "infra/compose.prod.yaml"
+      - "infra/compose.local.yaml"
+      - "infra/deploy.sh"
+      - "infra/test.sh"
+      - "infra/env.d.example/**"
+      - "infra/Caddyfile"
       - ".dockerignore"
       - "pnpm-lock.yaml"
       - ".github/workflows/docker-smoke.yml"
@@ -63,11 +68,5 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Validate compose.prod.yaml
-        run: |
-          STUB=$(mktemp -d)
-          touch "$STUB"/server.env "$STUB"/postgres.env "$STUB"/caddy.env "$STUB"/restic.env "$STUB"/postgres_password "$STUB"/restic_password
-          PRIVANCE_ENV_DIR="$STUB" docker compose -f infra/compose.prod.yaml config --quiet
-          # COMPOSE_PROFILES=backups so the profiled restic-runner service is validated too.
-          PRIVANCE_ENV_DIR="$STUB" COMPOSE_PROFILES=backups PRIVANCE_IMAGE_PREFIX=ghcr.io/example/privance PRIVANCE_VERSION=v0.0.0 \
-            docker compose -f infra/compose.prod.yaml config --quiet
+      - name: Validate bindings, secrets, and deploy checks
+        run: bash infra/test.sh

@@ -47,6 +47,8 @@ services:
     restart: "no"
     env_file:
       - ${PRIVANCE_ENV_DIR:-/etc/privance/env.d}/server.env
+    environment:
+      PRIVANCE_SECRETS_DIR: /run/secrets
     volumes:
       - "${PRIVANCE_ENV_DIR:-/etc/privance/env.d}/postgres_password:/run/secrets/postgres_password:ro"
     networks:
@@ -85,9 +87,11 @@ services:
     env_file:
       - ${PRIVANCE_ENV_DIR:-/etc/privance/env.d}/caddy.env
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+      # Each value is a host binding, either "port" or "ip:port": "80" keeps the
+      # public default, "127.0.0.1:8080" serves behind an upstream that does TLS.
+      - "${PRIVANCE_HTTP_BIND:-80}:80"
+      - "${PRIVANCE_HTTPS_BIND:-443}:443"
+      - "${PRIVANCE_HTTPS_BIND:-443}:443/udp"
     networks:
       - privance_net
     restart: unless-stopped

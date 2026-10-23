@@ -16,8 +16,19 @@ test.describe("landing page", () => {
     await expect(page).toHaveURL("/");
 
     await expect(page.getByRole("heading", { name: /Personal finance/ }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: /Have an invite/i }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Sign in" }).first()).toBeVisible();
+    await expect(page.getByRole("main")).toContainText("self-hosted command center for your money");
+    await expect(page.getByRole("main")).not.toContainText("privance.app");
+    await expect(
+      page.getByRole("link", { name: "Self-host guide", exact: true }).first(),
+    ).toHaveAttribute(
+      "href",
+      "https://github.com/rahulkrishnan1/privance/blob/main/infra/README.md",
+    );
+    await page.getByRole("link", { name: "Create an account", exact: true }).click();
+    await expect(page).toHaveURL(/\/auth\/signup\/?$/);
+    await expect(
+      page.getByText("Only required if this instance uses invite-only signup."),
+    ).toBeVisible();
   });
 
   test("direct section links scroll after the landing page mounts", async ({ page }) => {

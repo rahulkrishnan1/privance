@@ -29,9 +29,11 @@ In the Hetzner Console, Firewalls > Create Firewall, name `privance-edge`, all i
 
 Outbound: defaults (allow all). Save; do not attach yet.
 
+For [private Tailscale access](README.md#private-network-tailscale), omit the three web rules. Keep a tested SSH/recovery path until private administration works.
+
 ## Step 3: Create the server
 
-In the Hetzner Console, Servers > Add Server: Ubuntu 24.04 LTS, the SKU and region from above, both IPv4 and IPv6, SSH key from Step 1, `privance-edge` firewall from Step 2, no volumes, Backups off, no placement group, name `privance-prod-01`, empty cloud config.
+In the Hetzner Console, Servers > Add Server: Ubuntu 24.04 LTS, the SKU and region from above, both IPv4 and IPv6, SSH key from Step 1, `privance-edge` firewall from Step 2, no volumes, Backups off, no placement group, a hostname of your choice, empty cloud config.
 
 Hetzner Backups are off because restic to a different provider handles backups (see the backup section in infra/README.md). Record the Public IPv4 and IPv6.
 
@@ -116,6 +118,7 @@ ssh -o PreferredAuthentications=password -o BatchMode=yes <deploy-user>@<ipv4> w
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 sudo ufw limit 22/tcp comment 'SSH (rate-limited)'
+# Public HTTPS only; omit the next three rules for private access.
 sudo ufw allow 80/tcp comment 'HTTP (LE challenge + redirect)'
 sudo ufw allow 443/tcp comment 'HTTPS'
 sudo ufw allow 443/udp comment 'HTTPS/3 (QUIC)'
@@ -123,6 +126,8 @@ sudo ufw --force enable
 sudo ufw status verbose
 # Expected: four rules each on IPv4 and IPv6: 22/tcp LIMIT, 80/tcp ALLOW, 443/tcp ALLOW, 443/udp ALLOW
 ```
+
+For private access, allow `tailscale0` in UFW and use the guide's loopback Docker bindings; UFW alone does not restrict published ports. If migrating an existing instance, remove public web rules from host and provider firewalls only after [verifying private browser access](README.md#step-6-verify).
 
 From your workstation, `nmap -Pn -p 5432 <ipv4>` should report 5432 as filtered.
 

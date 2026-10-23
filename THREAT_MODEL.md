@@ -12,7 +12,7 @@ This document covers the assets Privance protects, the actors that might threate
 | **User's browser / device** | Semi-trusted | Assumed not to be actively compromised; but browser extensions and tab-sharing are acknowledged risks |
 | **Passive network attacker** | Untrusted | Can observe ciphertext in transit; TLS is the primary control |
 | **Active network attacker (MITM)** | Untrusted | Can modify traffic if TLS is misconfigured; TLS + HSTS is the control |
-| **Self-host server operator** | Trusted by the user | In the canonical self-host model, operator = user; in any future hosted offering the operator is a separate party who sees only ciphertext |
+| **Self-host server operator** | Trusted by the user | In the self-host model, operator = user |
 | **Other users on the same server** | Untrusted | Privance is designed for single-user self-hosting; there are no cross-user data paths, but isolation relies on the server auth layer |
 | **Malicious browser extension** | Untrusted | Can read JavaScript memory and DOM; acknowledged residual risk |
 | **Supply-chain attacker** | Untrusted | Could inject malicious code into npm packages or the build pipeline |
