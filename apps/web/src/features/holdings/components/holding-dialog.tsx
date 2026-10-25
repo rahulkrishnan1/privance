@@ -6,7 +6,9 @@ import { parseCostBasisCents } from "../_helpers";
 import type { HoldingFormValues, LocalGroup, LocalHolding } from "../types";
 import { HoldingForm } from "./holding-form";
 
-export type HoldingDialogMode = { kind: "add" } | { kind: "edit"; holding: LocalHolding };
+export type HoldingDialogMode =
+  | { kind: "add"; id: string }
+  | { kind: "edit"; holding: LocalHolding };
 
 type HoldingDialogProps = {
   open: boolean;
@@ -20,8 +22,9 @@ type HoldingDialogProps = {
     opts: { proxyPrice?: string },
   ) => Promise<void>;
   onLookupProxyPrice?: (ticker: string) => Promise<string | null>;
-  onCreateGroup: (name: string) => Promise<string>;
+  onCreateGroup: (name: string, id: string) => Promise<string>;
   submitting: boolean;
+  error?: string | null;
 };
 
 function deriveInitialValues(mode: HoldingDialogMode): Partial<HoldingFormValues> {
@@ -60,6 +63,7 @@ export function HoldingDialog({
   onLookupProxyPrice,
   onCreateGroup,
   submitting,
+  error,
 }: HoldingDialogProps) {
   const [openVersion, setOpenVersion] = useState(0);
   const [lookingUp, setLookingUp] = useState(false);
@@ -96,9 +100,14 @@ export function HoldingDialog({
             onClose={onClose}
           />
         </div>
+        {error && (
+          <p role="alert" className="text-sm text-down">
+            {error}
+          </p>
+        )}
         <SheetBody>
           <HoldingForm
-            key={mode.kind === "edit" ? mode.holding.id : `new-${openVersion}`}
+            key={mode.kind === "edit" ? `${mode.holding.id}-${openVersion}` : mode.id}
             initialValues={deriveInitialValues(mode)}
             investmentAccounts={investmentAccounts}
             groups={groups}

@@ -41,6 +41,12 @@ export type RefreshResult = {
   unknown: string[];
 };
 
+export type StockPriceResult = {
+  prices: Map<string, UpstreamPrice>;
+  /** Provider metadata did not validate the currency as USD. */
+  unsupported: Set<string>;
+};
+
 export type UpstreamPrice = {
   price: string;
   previousPrice: string | null;

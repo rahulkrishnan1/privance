@@ -54,8 +54,14 @@ function getPrevSnapshot(): PricesMap {
 function commitFetched(
   fetched: ReadonlyMap<string, Decimal>,
   fetchedPrev: ReadonlyMap<string, Decimal>,
+  unknown: readonly string[],
 ): void {
   let changed = false;
+  for (const ticker of unknown) {
+    const removed = cache.delete(ticker);
+    const removedPrev = prevCache.delete(ticker);
+    if (removed || removedPrev) changed = true;
+  }
   for (const [ticker, price] of fetched) {
     if (!cache.get(ticker)?.eq(price)) {
       cache.set(ticker, price);
@@ -147,7 +153,11 @@ export function usePricesQuery(input: PricesQueryInput): PricesQueryResult {
       if (yahooRes.status === "fulfilled") ingest(yahooRes.value.prices);
       if (coingeckoRes.status === "fulfilled") ingest(coingeckoRes.value.prices);
       // Commit before any possible throw so successful prices survive in cache.
-      commitFetched(fetched, fetchedPrev);
+      const unknown = [
+        ...(yahooRes.status === "fulfilled" ? yahooRes.value.unknown : []),
+        ...(coingeckoRes.status === "fulfilled" ? coingeckoRes.value.unknown : []),
+      ];
+      commitFetched(fetched, fetchedPrev, unknown);
       const err = pickFailure(yahooRes, coingeckoRes, yahooSorted, coingeckoSorted, fetched);
       if (err !== null) throw err;
       return fetched;

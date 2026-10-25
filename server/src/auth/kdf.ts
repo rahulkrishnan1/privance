@@ -5,6 +5,7 @@ import { argon2id, argon2Verify } from "hash-wasm";
 
 import type { KdfParamsJson } from "./types.js";
 
+const SERVER_KDF_SALT_LENGTH = 16;
 const SERVER_KDF_PARAMS: KdfParamsJson = {
   memoryCost: 65536,
   timeCost: 3,
@@ -29,7 +30,7 @@ const FAKE_WRAPPED_DEK_RECOVERY_LABEL = utf8ToBytes("finance/fake-wrapped-dek-re
 const FAKE_WRAPPED_DEK_RECOVERY_IV_LABEL = utf8ToBytes("finance/fake-wrapped-dek-recovery-iv/v1");
 
 export async function hashAuthHash(authHash: Buffer): Promise<{ hash: string; salt: Buffer }> {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const salt = crypto.getRandomValues(new Uint8Array(SERVER_KDF_SALT_LENGTH));
   const hash = await argon2id({
     password: authHash,
     salt,
@@ -85,11 +86,30 @@ export function deriveFakeKdfSalt(username: string, enumerationSecret: Buffer): 
 export function deriveFakeRecoveryBlob(
   username: string,
   enumerationSecret: Buffer,
-): { wrappedBlob: Buffer; blobIv: Buffer } {
+): { recoveryBlob: Buffer; recoverySalt: Buffer } {
   const info = utf8ToBytes(username.toLowerCase());
-  const iv = hkdf(sha256, enumerationSecret, FAKE_RECOVERY_IV_LABEL, info, 12);
-  const wrapped = hkdf(sha256, enumerationSecret, FAKE_RECOVERY_WRAPPED_LABEL, info, 48);
-  return { wrappedBlob: Buffer.from(wrapped), blobIv: Buffer.from(iv) };
+  const recoverySalt = hkdf(
+    sha256,
+    enumerationSecret,
+    FAKE_RECOVERY_IV_LABEL,
+    info,
+    SERVER_KDF_SALT_LENGTH,
+  );
+  const verifier = Buffer.from(
+    hkdf(
+      sha256,
+      enumerationSecret,
+      FAKE_RECOVERY_WRAPPED_LABEL,
+      info,
+      SERVER_KDF_SALT_LENGTH + SERVER_KDF_PARAMS.hashLength,
+    ),
+  );
+  // Recovery exposes an Argon2id PHC verifier, whose salt and digest use unpadded Base64.
+  const salt = verifier.subarray(0, SERVER_KDF_SALT_LENGTH).toString("base64").replace(/=+$/, "");
+  const digest = verifier.subarray(SERVER_KDF_SALT_LENGTH).toString("base64").replace(/=+$/, "");
+  const { memoryCost, timeCost, parallelism } = SERVER_KDF_PARAMS;
+  const encoded = `$argon2id$v=19$m=${memoryCost},t=${timeCost},p=${parallelism}$${salt}$${digest}`;
+  return { recoveryBlob: Buffer.from(encoded), recoverySalt: Buffer.from(recoverySalt) };
 }
 
 // Lengths match real wrapped-DEK shapes: iv=12 (AES-GCM nonce), wrapped=48 (32-byte DEK + 16-byte GCM tag).

@@ -10,6 +10,7 @@ type StubRepo = {
   rows: Map<string, CachedPriceRow>;
   getMany(opts: { source: string; tickers: string[] }): Promise<CachedPriceRow[]>;
   upsertMany(rows: CachedPriceRow[]): Promise<void>;
+  deleteMany(opts: { source: string; tickers: string[] }): Promise<void>;
 };
 
 function createStubRepo(initial: CachedPriceRow[] = []): StubRepo {
@@ -23,6 +24,9 @@ function createStubRepo(initial: CachedPriceRow[] = []): StubRepo {
         if (r) out.push(r);
       }
       return out;
+    },
+    async deleteMany({ source, tickers }) {
+      for (const t of tickers) rows.delete(`${source} ${t}`);
     },
     async upsertMany(input) {
       for (const r of input) rows.set(`${r.source} ${r.ticker}`, r);
@@ -383,7 +387,7 @@ describe("PriceService, per-user cooldown", () => {
 
   it("within cooldown, serves a stale cached row rather than dropping it to unknown", async () => {
     const stale: CachedPriceRow = {
-      source: "yahoo",
+      source: "yahoo-usd-v1",
       ticker: "AAPL",
       price: "150.00",
       previousPrice: null,
@@ -551,7 +555,7 @@ describe("PriceService, cache layer", () => {
     const now = new Date();
     const repo = createStubRepo([
       {
-        source: "yahoo",
+        source: "yahoo-usd-v1",
         ticker: "AAPL",
         previousPrice: null,
         price: "100.00000000",
@@ -580,7 +584,7 @@ describe("PriceService, cache layer", () => {
     const staleDate = new Date(Date.now() - 10 * 60 * 1000);
     const repo = createStubRepo([
       {
-        source: "yahoo",
+        source: "yahoo-usd-v1",
         ticker: "AAPL",
         previousPrice: null,
         price: "99.00000000",
@@ -601,7 +605,7 @@ describe("PriceService, cache layer", () => {
 
     expect(result.prices).toHaveLength(1);
     expect(result.prices[0]?.price).toMatch(/^182\./);
-    expect(repo.rows.get("yahoo AAPL")?.price).toMatch(/^182\./);
+    expect(repo.rows.get("yahoo-usd-v1 AAPL")?.price).toMatch(/^182\./);
   });
 
   it("upstream success upserts cache", async () => {
@@ -614,7 +618,7 @@ describe("PriceService, cache layer", () => {
 
     await service.refresh({ userId: "cache-user-3", tickers: ["AAPL"], source: "yahoo" });
 
-    const cached = repo.rows.get("yahoo AAPL");
+    const cached = repo.rows.get("yahoo-usd-v1 AAPL");
     expect(cached).toBeDefined();
     expect(cached?.price).toMatch(/^180\./);
   });
@@ -623,7 +627,7 @@ describe("PriceService, cache layer", () => {
     const staleDate = new Date(Date.now() - 10 * 60 * 1000);
     const repo = createStubRepo([
       {
-        source: "yahoo",
+        source: "yahoo-usd-v1",
         ticker: "AAPL",
         previousPrice: null,
         price: "99.00000000",
@@ -668,7 +672,7 @@ describe("PriceService, cache layer", () => {
     const now = new Date();
     const repo = createStubRepo([
       {
-        source: "yahoo",
+        source: "yahoo-usd-v1",
         ticker: "AAPL",
         previousPrice: null,
         price: "100.00000000",
@@ -689,7 +693,7 @@ describe("PriceService, cache layer", () => {
 
     expect(result.prices).toHaveLength(2);
     expect(result.unknown).toEqual([]);
-    expect(repo.rows.has("yahoo MSFT")).toBe(true);
+    expect(repo.rows.has("yahoo-usd-v1 MSFT")).toBe(true);
     expect(service.msUntilNextRefresh("cache-user-6")).toBeGreaterThan(0);
   });
 
@@ -697,7 +701,7 @@ describe("PriceService, cache layer", () => {
     const now = new Date();
     const repo = createStubRepo([
       {
-        source: "yahoo",
+        source: "yahoo-usd-v1",
         ticker: "AAPL",
         previousPrice: null,
         price: "100.00000000",
@@ -777,7 +781,7 @@ describe("PriceService, cache layer", () => {
     });
 
     expect(result.prices[0]?.price).toMatch(/^180\./);
-    expect(repo.rows.has("yahoo AAPL")).toBe(true);
+    expect(repo.rows.has("yahoo-usd-v1 AAPL")).toBe(true);
     expect(repo.rows.has("coingecko AAPL")).toBe(true);
     expect(service.msUntilNextRefresh("cache-user-10")).toBeGreaterThan(0);
   });
@@ -795,7 +799,7 @@ describe("PriceService, previousPrice round-trip", () => {
     const result = await service.refresh({ userId: "pp-1", tickers: ["VOO"], source: "yahoo" });
 
     expect(result.prices[0]?.previousPrice).toBe("519.50000000");
-    expect(repo.rows.get("yahoo VOO")?.previousPrice).toBe("519.50000000");
+    expect(repo.rows.get("yahoo-usd-v1 VOO")?.previousPrice).toBe("519.50000000");
   });
 
   it("Yahoo prefers previousClose over chartPreviousClose (the VOO 2-day-stale bug)", async () => {
@@ -876,7 +880,7 @@ describe("PriceService, previousPrice round-trip", () => {
     const now = new Date();
     const repo = createStubRepo([
       {
-        source: "yahoo",
+        source: "yahoo-usd-v1",
         ticker: "AAPL",
         price: "180.00000000",
         previousPrice: "178.50000000",
@@ -897,7 +901,7 @@ describe("PriceService, previousPrice round-trip", () => {
     const staleDate = new Date(Date.now() - 10 * 60 * 1000);
     const repo = createStubRepo([
       {
-        source: "yahoo",
+        source: "yahoo-usd-v1",
         ticker: "AAPL",
         price: "99.00000000",
         previousPrice: "97.50000000",
@@ -944,6 +948,7 @@ describe("PriceService, Finnhub failover", () => {
       // Yahoo chart endpoint → 429
       if (u.includes("finance/chart")) return new Response("throttled", { status: 429 });
       // Finnhub quote endpoint → price
+      if (u.includes("stock/profile2")) return Response.json({ currency: "USD" });
       if (u.includes("finnhub.io")) return finnhubQuoteResponse(182.5, 180.0);
       return new Response("not found", { status: 404 });
     };
@@ -1014,6 +1019,7 @@ describe("PriceService, Finnhub failover", () => {
       if (u.includes("finance/chart") && u.includes("MSFT"))
         return new Response("not found", { status: 404 });
       // Finnhub serves MSFT
+      if (u.includes("stock/profile2")) return Response.json({ currency: "USD" });
       if (u.includes("finnhub.io") && u.includes("MSFT")) return finnhubQuoteResponse(420.0, 418.0);
       // Finnhub must NOT be called for AAPL (already covered)
       if (u.includes("finnhub.io") && u.includes("AAPL")) {
@@ -1038,4 +1044,196 @@ describe("PriceService, Finnhub failover", () => {
     expect(result.prices.find((p) => p.ticker === "AAPL")?.price).toMatch(/^182\./);
     expect(result.prices.find((p) => p.ticker === "MSFT")?.price).toMatch(/^420\./);
   });
+});
+
+describe("PriceService, USD-only cache and fallback", () => {
+  const savedKey = process.env.FINNHUB_API_KEY;
+  afterEach(() => {
+    if (savedKey === undefined) delete process.env.FINNHUB_API_KEY;
+    else process.env.FINNHUB_API_KEY = savedKey;
+  });
+
+  for (const fetchedAt of [new Date(), new Date(0)]) {
+    it(`never serves legacy ${fetchedAt.getTime() === 0 ? "stale" : "fresh"} Yahoo cache`, async () => {
+      delete process.env.FINNHUB_API_KEY;
+      const repo = createStubRepo([
+        {
+          source: "yahoo",
+          ticker: "TEST",
+          price: "100.00000000",
+          previousPrice: null,
+          fetchedAt,
+        },
+      ]);
+      let calls = 0;
+      const service = new PriceService({
+        pricesRepo: repo,
+        cooldownMs: 0,
+        fetcher: async () => {
+          calls++;
+          return new Response("unavailable", { status: 503 });
+        },
+      });
+      expect(
+        await service.refresh({ userId: "legacy", source: "yahoo", tickers: ["TEST"] }),
+      ).toEqual({ prices: [], unknown: ["TEST"] });
+      expect(calls).toBe(1);
+    });
+  }
+
+  for (const currency of ["GBp", "GBP", "EUR", undefined, null, 123]) {
+    it(`cannot refill rejected Yahoo currency ${String(currency)} from cache or Finnhub`, async () => {
+      process.env.FINNHUB_API_KEY = "test-key";
+      const repo = createStubRepo([
+        {
+          source: "yahoo-usd-v1",
+          ticker: "TEST",
+          price: "100.00000000",
+          previousPrice: null,
+          fetchedAt: new Date(0),
+        },
+      ]);
+      let finnhubCalls = 0;
+      const service = new PriceService({
+        pricesRepo: repo,
+        cooldownMs: TEST_COOLDOWN_MS,
+        fetcher: async (url) => {
+          if (String(url).includes("finnhub.io")) {
+            finnhubCalls++;
+            return String(url).includes("profile2")
+              ? Response.json({ currency: "USD" })
+              : finnhubQuoteResponse(100);
+          }
+          return Response.json({
+            chart: { result: [{ meta: { currency, regularMarketPrice: 100 } }] },
+          });
+        },
+      });
+      const input = { userId: "rejected", source: "yahoo", tickers: ["TEST"] };
+      expect(await service.refresh(input)).toEqual({ prices: [], unknown: ["TEST"] });
+      expect(finnhubCalls).toBe(0);
+      expect(repo.rows.has("yahoo-usd-v1 TEST")).toBe(false);
+      // A second request in cooldown must not resurrect a previously validated price.
+      expect(await service.refresh(input)).toEqual({ prices: [], unknown: ["TEST"] });
+    });
+  }
+
+  it("revalidates a legacy cache entry and stores only in the USD namespace", async () => {
+    const legacy: CachedPriceRow = {
+      source: "yahoo",
+      ticker: "AAPL",
+      price: "999.00000000",
+      previousPrice: null,
+      fetchedAt: new Date(),
+    };
+    const repo = createStubRepo([legacy]);
+    const service = new PriceService({
+      pricesRepo: repo,
+      cooldownMs: 0,
+      fetcher: async () => yahooResponse("AAPL", 100),
+    });
+    const result = await service.refresh({
+      userId: "revalidate",
+      source: "yahoo",
+      tickers: ["AAPL"],
+    });
+    expect(result.prices[0]?.price).toBe("100.00000000");
+    expect(repo.rows.get("yahoo-usd-v1 AAPL")?.price).toBe("100.00000000");
+    expect(repo.rows.get("yahoo AAPL")).toEqual(legacy);
+  });
+
+  for (const currency of ["GBP", "EUR", undefined, 123]) {
+    it(`does not accept unknown-currency Finnhub fallback (${String(currency)})`, async () => {
+      process.env.FINNHUB_API_KEY = "test-key";
+      const repo = createStubRepo();
+      const service = new PriceService({
+        pricesRepo: repo,
+        cooldownMs: 0,
+        fetcher: async (url) => {
+          if (String(url).includes("finance/chart"))
+            return new Response("unavailable", { status: 503 });
+          if (String(url).includes("profile2")) return Response.json({ currency });
+          return finnhubQuoteResponse(100);
+        },
+      });
+      expect(
+        await service.refresh({ userId: "fallback", source: "yahoo", tickers: ["TEST"] }),
+      ).toEqual({ prices: [], unknown: ["TEST"] });
+      expect(repo.rows.size).toBe(0);
+    });
+  }
+
+  it("evicts stale USD cache on explicit Finnhub currency rejection", async () => {
+    process.env.FINNHUB_API_KEY = "test-key";
+    const repo = createStubRepo([
+      {
+        source: "yahoo-usd-v1",
+        ticker: "TEST",
+        price: "100.00000000",
+        previousPrice: null,
+        fetchedAt: new Date(0),
+      },
+    ]);
+    const service = new PriceService({
+      pricesRepo: repo,
+      cooldownMs: 0,
+      fetcher: async (url) => {
+        if (String(url).includes("finance/chart"))
+          return new Response("unavailable", { status: 503 });
+        if (String(url).includes("profile2")) return Response.json({ currency: "EUR" });
+        return finnhubQuoteResponse(100);
+      },
+    });
+    expect(
+      await service.refresh({ userId: "fallback-reject", source: "yahoo", tickers: ["TEST"] }),
+    ).toEqual({ prices: [], unknown: ["TEST"] });
+    expect(repo.rows.size).toBe(0);
+  });
+});
+
+it("caches USD-verified Finnhub fallback and preserves it on later metadata outage", async () => {
+  const savedKey = process.env.FINNHUB_API_KEY;
+  process.env.FINNHUB_API_KEY = "test-key";
+  try {
+    let unavailable = false;
+    let calls = 0;
+    const repo = createStubRepo();
+    const service = new PriceService({
+      pricesRepo: repo,
+      cooldownMs: 0,
+      fetcher: async (url) => {
+        calls++;
+        if (unavailable || String(url).includes("finance/chart")) {
+          return new Response("unavailable", { status: 503 });
+        }
+        return String(url).includes("profile2")
+          ? Response.json({ currency: "USD" })
+          : finnhubQuoteResponse(182.5, 180);
+      },
+    });
+    const input = { userId: "fallback-cache", source: "yahoo", tickers: ["AAPL"] };
+    const first = await service.refresh(input);
+    expect(first.prices[0]?.price).toBe("182.50000000");
+    const cached = repo.rows.get("yahoo-usd-v1 AAPL");
+    expect(cached?.previousPrice).toBe("180.00000000");
+    expect(repo.rows.has("yahoo AAPL")).toBe(false);
+    const fetchCalls = calls;
+    expect(await service.refresh(input)).toEqual(first);
+    expect(calls).toBe(fetchCalls);
+    if (cached === undefined) throw new Error("expected validated USD cache row");
+    cached.fetchedAt = new Date(0);
+    unavailable = true;
+    const stale = await service.refresh(input);
+    expect(calls).toBeGreaterThan(fetchCalls);
+    expect(stale.unknown).toEqual([]);
+    expect(stale.prices[0]).toEqual({
+      ticker: "AAPL",
+      price: "182.50000000",
+      previousPrice: "180.00000000",
+      fetchedAt: new Date(0).toISOString(),
+    });
+  } finally {
+    if (savedKey === undefined) delete process.env.FINNHUB_API_KEY;
+    else process.env.FINNHUB_API_KEY = savedKey;
+  }
 });

@@ -37,7 +37,7 @@ export function useSavePlan(): {
   state: MutationState;
   error: Error | null;
 } {
-  const { store, client, tick } = useSync();
+  const { store, save } = useSync();
   const [state, setState] = useState<MutationState>("idle");
   const [error, setError] = useState<Error | null>(null);
 
@@ -57,16 +57,7 @@ export function useSavePlan(): {
 
         const { ciphertext, nonce } = encryptPlanPayload({ payload });
 
-        await store.put({
-          kind: KIND_PLAN,
-          objectId,
-          ciphertext,
-          nonce,
-          version,
-          tombstone: false,
-          updatedAt: Date.now(),
-        });
-        await store.enqueue({
+        await save({
           kind: KIND_PLAN,
           objectId,
           ciphertext,
@@ -76,8 +67,6 @@ export function useSavePlan(): {
           tombstone: false,
         });
         setState("idle");
-        tick();
-        void client?.pushPending();
       } catch (err) {
         const e = err instanceof Error ? err : new Error(String(err));
         setError(e);
@@ -85,7 +74,7 @@ export function useSavePlan(): {
         throw e;
       }
     },
-    [store, client, tick],
+    [store, save],
   );
 
   return { savePlan, state, error };

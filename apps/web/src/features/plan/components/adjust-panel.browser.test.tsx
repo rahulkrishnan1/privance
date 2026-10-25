@@ -251,3 +251,17 @@ test("typing keeps in-progress text even when the committed value clamps it", as
   await age.fill("4");
   await expect.element(age).toHaveValue("4");
 });
+
+test("shows the exact unconfirmed-save warning rather than a generic retry prompt", async () => {
+  const message = "Not saved to the server. Reloading can lose these changes.";
+  const screen = await renderPanel({ dirty: true, saveError: message });
+  await expect.element(screen.getByRole("alert")).toHaveTextContent(message);
+});
+
+test("never labels a locally observed but unconfirmed plan as Saved", async () => {
+  const onSave = vi.fn();
+  const screen = await renderPanel({ dirty: false, saveError: "Not saved to the server.", onSave });
+  expect(screen.getByRole("button", { name: "Plan saved" }).query()).toBeNull();
+  await screen.getByRole("button", { name: "Save plan", exact: true }).click();
+  expect(onSave).toHaveBeenCalledTimes(1);
+});

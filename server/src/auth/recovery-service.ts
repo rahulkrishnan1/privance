@@ -53,7 +53,7 @@ export class RecoveryService {
     }
 
     const fakeSalt = deriveFakeKdfSalt(username, this.enumerationSecret);
-    const { wrappedBlob, blobIv } = deriveFakeRecoveryBlob(username, this.enumerationSecret);
+    const { recoveryBlob, recoverySalt } = deriveFakeRecoveryBlob(username, this.enumerationSecret);
     const { wrappedDekRecovery, wrappedDekRecoveryIv } = deriveFakeWrappedDekRecovery(
       username,
       this.enumerationSecret,
@@ -61,8 +61,8 @@ export class RecoveryService {
     return {
       kdfSalt: fakeSalt,
       kdfParams: CLIENT_KDF_PARAMS,
-      recoveryBlob: wrappedBlob,
-      recoverySalt: blobIv,
+      recoveryBlob,
+      recoverySalt,
       recoveryParams: CLIENT_KDF_PARAMS,
       wrappedDekRecovery,
       wrappedDekRecoveryIv,

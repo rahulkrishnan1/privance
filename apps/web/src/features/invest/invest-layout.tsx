@@ -30,9 +30,9 @@ function InvestLayoutInner() {
     dashData.status === "empty" ||
     (accountsState.status === "success" && accountsState.data.length === 0);
 
-  async function handleAddAccountSubmit(values: AccountFormValues) {
+  async function handleAddAccountSubmit(values: AccountFormValues, id: string) {
     await create({
-      id: crypto.randomUUID(),
+      id,
       name: values.name,
       kind: values.kind,
       currency: values.currency,

@@ -123,43 +123,12 @@ export class AuthRepo {
     };
   }
 
-  async updateUserCredentials(opts: {
-    userId: string;
-    authHashHash: Buffer;
-    kdfParams: KdfParamsJson;
-    recoveryBlob: Buffer;
-    recoverySalt: Buffer;
-    recoveryParams: KdfParamsJson;
-    wrappedDek: Buffer;
-    wrappedDekIv: Buffer;
-    wrappedDekRecovery: Buffer;
-    wrappedDekRecoveryIv: Buffer;
-    kdfSalt: Buffer;
-  }): Promise<void> {
-    await this.db
-      .update(users)
-      .set({
-        authHashHash: opts.authHashHash,
-        kdfParams: opts.kdfParams,
-        recoveryBlob: opts.recoveryBlob,
-        recoverySalt: opts.recoverySalt,
-        recoveryParams: opts.recoveryParams,
-        wrappedDek: opts.wrappedDek,
-        wrappedDekIv: opts.wrappedDekIv,
-        wrappedDekRecovery: opts.wrappedDekRecovery,
-        wrappedDekRecoveryIv: opts.wrappedDekRecoveryIv,
-        kdfSalt: opts.kdfSalt,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.userId, opts.userId));
-  }
-
   // Rotates a user's credentials atomically: update the user row, revoke every
   // existing session, and insert the caller's new session in one transaction so
   // a failure mid-rotation can't leave updated credentials with a stale session
   // set. Returns the new session row.
   async rotateCredentials(opts: {
-    credentials: Parameters<AuthRepo["updateUserCredentials"]>[0];
+    credentials: Omit<UserRow, "username">;
     newSession: { userId: string; tokenHash: Buffer; expiresAt: Date };
   }): Promise<SessionRow> {
     return this.db.transaction(async (tx) => {

@@ -28,8 +28,8 @@ mock.module("./kdf.js", () => ({
   },
   deriveFakeKdfSalt: (_u: string, _s: Buffer) => Buffer.alloc(16, 0x11),
   deriveFakeRecoveryBlob: (_u: string, _s: Buffer) => ({
-    wrappedBlob: Buffer.alloc(48, 0x22),
-    blobIv: Buffer.alloc(12, 0x33),
+    recoveryBlob: Buffer.from(MOCK_ENCODED),
+    recoverySalt: Buffer.alloc(16, 0x33),
   }),
   deriveFakeWrappedDekRecovery: (_u: string, _s: Buffer) => ({
     wrappedDekRecovery: Buffer.alloc(48, 0x44),
@@ -69,7 +69,6 @@ const DEFAULT_SESSION: SessionRow = {
 const mockGetUserByUsername = mock(async (): Promise<UserRow | null> => null);
 const mockGetUserAuthHashById = mock(async (): Promise<Buffer | null> => Buffer.from(MOCK_ENCODED));
 const mockCreateUser = mock(async (): Promise<UserRow> => DEFAULT_USER);
-const mockUpdateUserCredentials = mock(async (): Promise<void> => undefined);
 const mockCreateSession = mock(async (): Promise<SessionRow> => DEFAULT_SESSION);
 const mockRotateCredentials = mock(async (): Promise<SessionRow> => DEFAULT_SESSION);
 const mockGetSessionByTokenHash = mock(async (): Promise<SessionRow | null> => DEFAULT_SESSION);
@@ -89,7 +88,6 @@ mock.module("./repo.js", () => ({
     getUserByUsername = mockGetUserByUsername;
     getUserAuthHashById = mockGetUserAuthHashById;
     createUser = mockCreateUser;
-    updateUserCredentials = mockUpdateUserCredentials;
     createSession = mockCreateSession;
     rotateCredentials = mockRotateCredentials;
     getSessionByTokenHash = mockGetSessionByTokenHash;
@@ -140,8 +138,6 @@ function resetMocks(): void {
   mockRotateCredentials.mockClear();
   mockTouchSession.mockImplementation(async () => undefined);
   mockLogEvent.mockImplementation(async () => undefined);
-  mockUpdateUserCredentials.mockImplementation(async () => undefined);
-  mockUpdateUserCredentials.mockClear();
   mockRevokeSession.mockImplementation(async () => undefined);
   mockRevokeSession.mockClear();
   mockVerifyAuthHash.mockImplementation(async () => true);

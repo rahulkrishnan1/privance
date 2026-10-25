@@ -1,8 +1,10 @@
 import type { LocalStore } from "../storage/types.js";
+import { handleConflict } from "./conflict-handler.js";
 import { pullChanges } from "./pull.js";
-import { pushPending } from "./push.js";
+import { pushPending, serializeSync } from "./push.js";
 import { applyReconcile } from "./reconcile.js";
 import {
+  type ConflictChoice,
   type ConflictResolutionCallback,
   type PullResult,
   type PushResult,
@@ -36,6 +38,11 @@ export interface SyncClient {
    */
   drainAllChanges(opts?: { maxPages?: number }): Promise<{ totalApplied: number }>;
   reconcile(input: ReconcileInput): Promise<void>;
+  /** Resolve just this queued revision, preserving later local edits. */
+  resolveConflict(
+    queueId: string,
+    choice: ConflictChoice,
+  ): Promise<{ confirmedQueueIds: string[] }>;
   onConflict(handler: ConflictResolutionCallback): void;
   start(opts?: { pollIntervalMs?: number }): void;
   stop(): void;
@@ -45,6 +52,7 @@ const DEFAULT_POLL_INTERVAL_MS = 30_000;
 
 class SyncClientImpl implements SyncClient {
   private conflictHandler: ConflictResolutionCallback | null = null;
+  private readonly conflictVersions = new Map<string, bigint>();
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private running = false;
   private tickInProgress = false;
@@ -57,7 +65,32 @@ class SyncClientImpl implements SyncClient {
   ) {}
 
   onConflict(handler: ConflictResolutionCallback): void {
-    this.conflictHandler = handler;
+    this.conflictHandler = async (input) => {
+      this.conflictVersions.set(input.queueId, input.theirVersion);
+      return handler(input);
+    };
+  }
+
+  async resolveConflict(
+    queueId: string,
+    choice: ConflictChoice,
+  ): Promise<{ confirmedQueueIds: string[] }> {
+    return serializeSync(this.store, async () => {
+      const item = (await this.store.drainQueue()).find((entry) => entry.id === queueId);
+      if (!item) return { confirmedQueueIds: [] };
+      const result = await handleConflict(item, this.conflictVersions.get(queueId) ?? -1n, {
+        config: this.config,
+        store: this.store,
+        encryptEnvelope: this.encryptEnvelope,
+        decryptEnvelope: this.decryptEnvelope,
+        onConflict: async () => choice,
+      });
+      if (choice.action !== "defer") {
+        this.conflictVersions.delete(queueId);
+        this.config.onApplied?.();
+      }
+      return { confirmedQueueIds: result.uploaded ? [queueId] : [] };
+    });
   }
 
   async pushPending(): Promise<PushResult> {
@@ -86,16 +119,21 @@ class SyncClientImpl implements SyncClient {
     // worker forever. At limit=100 changes per page this still covers ~100k
     // records in a single drain.
     const maxPages = opts?.maxPages ?? 1000;
-    do {
-      result = await pullChanges({
-        config: this.config,
-        store: this.store,
-        decryptEnvelope: this.decryptEnvelope,
-      });
-      totalApplied += result.applied;
-      pages++;
-      if (pages >= maxPages) break;
-    } while (result.nextCursor !== null);
+    const { onApplied, ...pullConfig } = this.config;
+    try {
+      do {
+        result = await pullChanges({
+          config: pullConfig,
+          store: this.store,
+          decryptEnvelope: this.decryptEnvelope,
+        });
+        totalApplied += result.applied;
+        pages++;
+        if (pages >= maxPages) break;
+      } while (result.nextCursor !== null);
+    } finally {
+      if (totalApplied > 0) onApplied?.();
+    }
     return { totalApplied };
   }
 

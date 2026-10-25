@@ -141,6 +141,9 @@ export function computeNetWorth(input: NetWorthInput): NetWorthBreakdown {
   const byHolding: HoldingValuation[] = [];
 
   for (const holding of holdings) {
+    const idx = investmentAccountIndexByAccountId.get(holding.payload.accountId);
+    if (idx === undefined) continue;
+
     const costBasis = parseCents(holding.payload.costBasisCents);
     const { value: marketValue, unknownTicker } = holdingMarketValue(holding, prices);
 
@@ -152,16 +155,13 @@ export function computeNetWorth(input: NetWorthInput): NetWorthBreakdown {
     byHolding.push({ holdingId: holding.id, marketValue, costBasis, unrealizedPnl });
 
     // Accumulate market value onto the parent account entry.
-    const idx = investmentAccountIndexByAccountId.get(holding.payload.accountId);
-    if (idx !== undefined) {
-      const existing = byAccount[idx];
-      if (existing !== undefined) {
-        byAccount[idx] = {
-          accountId: existing.accountId,
-          value: existing.value.add(marketValue),
-          kind: existing.kind,
-        };
-      }
+    const existing = byAccount[idx];
+    if (existing !== undefined) {
+      byAccount[idx] = {
+        accountId: existing.accountId,
+        value: existing.value.add(marketValue),
+        kind: existing.kind,
+      };
     }
 
     investmentTotal = investmentTotal.add(marketValue);

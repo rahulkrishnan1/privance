@@ -46,6 +46,11 @@ export type SyncClientConfig = {
    * dead credentials forever.
    */
   onAuthError?: (status: number) => void;
+  /** Once after a public pull/drain applies data (including background pulls). */
+  onApplied?: () => void;
+  /** Exact uploaded queue IDs, after each atomic acknowledgement commits.
+   * Also fires for background pushes and before any later batch can fail. */
+  onConfirmed?: (queueIds: string[]) => void;
 };
 
 export type PushItemResult =
@@ -55,6 +60,8 @@ export type PushItemResult =
 
 export type PushResult = {
   results: PushItemResult[];
+  /** Exact uploaded revisions; choosing the server copy is not an upload. */
+  confirmedQueueIds: string[];
 };
 
 export type PullChangeRecord = {
@@ -73,11 +80,17 @@ export type PullResult = {
 };
 
 export type ConflictChoice =
+  // Return promptly for UI decisions; resolve the captured queueId explicitly later.
+  | { action: "defer" }
   | { action: "keep-mine" }
   | { action: "keep-theirs" }
   | { action: "keep-both"; newObjectId: string };
 
 export type ConflictResolutionInput = {
+  queueId: string;
+  myTombstone: boolean;
+  theirTombstone: boolean;
+  theirVersion: bigint;
   objectId: string;
   kind: string;
   myPlaintext: Uint8Array;

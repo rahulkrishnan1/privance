@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Account, AccountKind, InvestmentAccountSubKind } from "@privance/core";
 import { Decimal, SCALE_CENTS } from "@privance/core";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, type Resolver, useForm } from "react-hook-form";
 import { DateField } from "@/components/DateField";
 import { Button, Input, Select } from "@/components/index";
@@ -135,7 +135,7 @@ type AccountFormProps = {
   defaultKind?: AccountKind;
   open: boolean;
   onClose: () => void;
-  onSubmit: (values: AccountFormValues) => Promise<void>;
+  onSubmit: (values: AccountFormValues, createId: string) => Promise<void>;
   submitting?: boolean;
 };
 
@@ -148,6 +148,7 @@ export function AccountForm({
   submitting = false,
 }: AccountFormProps) {
   const isEditMode = account !== undefined;
+  const createId = useRef<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const {
@@ -184,8 +185,8 @@ export function AccountForm({
         ? "Amount owed"
         : "Current balance";
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: open triggers reset
   useEffect(() => {
+    if (open) createId.current = crypto.randomUUID();
     reset({
       name: account?.payload.name ?? "",
       kind: account?.payload.kind ?? defaultKind,
@@ -203,9 +204,10 @@ export function AccountForm({
   const submit = handleSubmit(async (values) => {
     try {
       setSaveError(null);
-      await onSubmit(values);
-    } catch {
-      setSaveError("Could not save. Please try again.");
+      createId.current ??= crypto.randomUUID();
+      await onSubmit(values, createId.current);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Could not save. Please try again.");
     }
   });
 

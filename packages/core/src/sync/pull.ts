@@ -1,5 +1,6 @@
 import type { LocalStore } from "../storage/types.js";
 import { fromBase64, parseBigIntField, parseBoolField, parseStringField } from "./envelope.js";
+import { serializeSync } from "./push.js";
 import type { PullChangeRecord, PullResult, SyncClientConfig } from "./types.js";
 import { SyncNetworkError, SyncProtocolError } from "./types.js";
 
@@ -40,7 +41,15 @@ function parseChangeRecord(raw: unknown): PullChangeRecord {
  * the local store. Skips tombstoned objects by marking them deleted locally.
  * Advances the cursor to the last server_seq seen.
  */
-export async function pullChanges(deps: PullDeps): Promise<PullResult> {
+export function pullChanges(deps: PullDeps): Promise<PullResult> {
+  return serializeSync(deps.store, async () => {
+    const result = await pullPage(deps);
+    if (result.applied > 0) deps.config.onApplied?.();
+    return result;
+  });
+}
+
+async function pullPage(deps: PullDeps): Promise<PullResult> {
   const { config, store, decryptEnvelope } = deps;
   const fetchFn = config.fetch ?? fetch;
 
@@ -78,20 +87,24 @@ export async function pullChanges(deps: PullDeps): Promise<PullResult> {
     // Don't clobber a newer local revision (including an unacked tombstone
     // that hasn't been pushed yet). Push will reconcile when it drains.
     const existing = await store.get({ kind: change.kind, objectId: change.id });
-    if (existing !== null && existing.version > change.version) {
-      applied++;
+    if (
+      existing !== null &&
+      (existing.version > change.version ||
+        (existing.version === change.version && existing.serverSeq === change.serverSeq))
+    ) {
       if (safeMaxSeq === null || change.serverSeq > safeMaxSeq) {
         safeMaxSeq = change.serverSeq;
       }
       continue;
     }
 
+    let changed = false;
     if (change.tombstone) {
       // Discard the server's ciphertext on tombstones. Local code never reads
       // a tombstoned row's ciphertext (it's a deletion marker), and a hostile
       // or buggy server otherwise has a free injection vector here under cover
       // of the tombstone flag (the AAD tag isn't checked on this path).
-      await store.put({
+      changed = await store.applyRemote({
         kind: change.kind,
         objectId: change.id,
         ciphertext: new Uint8Array(0),
@@ -118,7 +131,7 @@ export async function pullChanges(deps: PullDeps): Promise<PullResult> {
         continue;
       }
 
-      await store.put({
+      changed = await store.applyRemote({
         kind: change.kind,
         objectId: change.id,
         ciphertext: change.ciphertext,
@@ -129,7 +142,7 @@ export async function pullChanges(deps: PullDeps): Promise<PullResult> {
       });
     }
 
-    applied++;
+    if (changed) applied++;
     if (safeMaxSeq === null || change.serverSeq > safeMaxSeq) {
       safeMaxSeq = change.serverSeq;
     }

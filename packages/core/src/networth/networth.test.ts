@@ -827,3 +827,29 @@ describe("property: allocation shares sum to 1 when investments present", () => 
     );
   });
 });
+
+it("excludes missing and non-investment parent holdings from every valuation without mutating input", () => {
+  const accounts = [makeCash("cash", "10000"), makeInvestment("invest", "5000")];
+  const holdings = [
+    makeHolding("orphan", "deleted", "ORPHAN", "1", "1000"),
+    makeHolding("wrong-kind", "cash", "WRONG", "1", "1000"),
+    makeHolding("valid", "invest", "VALID", "2", "1000"),
+  ];
+  const before = structuredClone(holdings);
+  const result = computeNetWorth({
+    accounts,
+    holdings,
+    prices: new Map([["VALID", Decimal.fromString("25.00", SCALE_CENTS)]]),
+    asOf: AS_OF,
+  });
+  expect(result.byHolding.map((entry) => entry.holdingId)).toEqual(["valid"]);
+  expect(result.byAccount.map((entry) => [entry.accountId, entry.value.toMinorUnits()])).toEqual([
+    ["cash", 10000n],
+    ["invest", 10000n],
+  ]);
+  expect(result.netWorth.toMinorUnits()).toBe(20000n);
+  expect(result.totalAssets.toMinorUnits()).toBe(20000n);
+  expect(result.byAccountKind.investment.toMinorUnits()).toBe(10000n);
+  expect(result.unknownTickers).toEqual([]);
+  expect(holdings).toEqual(before);
+});

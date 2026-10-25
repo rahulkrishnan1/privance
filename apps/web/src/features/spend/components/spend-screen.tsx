@@ -242,11 +242,11 @@ export function SpendScreen() {
     setFormOpen(false);
   }
 
-  async function handleSave(values: SpendFormValues) {
+  async function handleSave(values: SpendFormValues, createId: string) {
     if (editItem !== undefined) {
       await updateItem(editItem.id, values);
     } else {
-      await createItem(values);
+      await createItem(values, createId);
     }
     handleClose();
   }
@@ -256,58 +256,43 @@ export function SpendScreen() {
     setDetailItem((current) => (current?.id === item.id ? null : current));
   }
 
-  if (loading) return <LoadingSkeleton />;
-
-  if (error !== null) {
-    return (
-      <div className={`${MAX_WIDTH} pt-6`}>
-        <p className="font-mono text-xs text-down" role="alert">
-          Failed to load. {error.message}
-        </p>
-        <Button type="button" variant="secondary" size="sm" onClick={tick} className="mt-3">
-          Retry
-        </Button>
+  const content = loading ? (
+    <LoadingSkeleton />
+  ) : error !== null ? (
+    <div className={`${MAX_WIDTH} pt-6`}>
+      <p className="font-mono text-xs text-down" role="alert">
+        Failed to load. {error.message}
+      </p>
+      <Button type="button" variant="secondary" size="sm" onClick={tick} className="mt-3">
+        Retry
+      </Button>
+    </div>
+  ) : items.length === 0 ? (
+    <div className={`${MAX_WIDTH} pt-20 text-center`}>
+      <div className="w-[84px] h-[84px] rounded-full border border-dashed border-cream/[0.22] flex items-center justify-center text-accent mx-auto mb-7">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          className="w-[30px] h-[30px]"
+        >
+          <path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M12 7v5l3 2" />
+        </svg>
       </div>
-    );
-  }
-
-  if (items.length === 0) {
-    return (
-      <div className={`${MAX_WIDTH} pt-20 text-center`}>
-        <div className="w-[84px] h-[84px] rounded-full border border-dashed border-cream/[0.22] flex items-center justify-center text-accent mx-auto mb-7">
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            className="w-[30px] h-[30px]"
-          >
-            <path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M12 7v5l3 2" />
-          </svg>
-        </div>
-        <h2 className="font-serif text-4xl tracking-[-0.01em]">
-          Nothing recurring, <em className="text-accent">yet.</em>
-        </h2>
-        <p className="text-dim max-w-[44ch] mx-auto mt-3 text-base">
-          Add the costs that hit every month, rent, utilities, insurance, subscriptions, and
-          Privance keeps the running total. No bank linking, encrypted on this device.
-        </p>
-        <Button type="button" variant="primary" onClick={openAdd} className="mt-7">
-          Add a recurring expense
-        </Button>
-        <SpendForm
-          open={formOpen}
-          onClose={handleClose}
-          item={editItem}
-          submitting={creating}
-          onSave={handleSave}
-        />
-      </div>
-    );
-  }
-
-  return (
+      <h2 className="font-serif text-4xl tracking-[-0.01em]">
+        Nothing recurring, <em className="text-accent">yet.</em>
+      </h2>
+      <p className="text-dim max-w-[44ch] mx-auto mt-3 text-base">
+        Add the costs that hit every month, rent, utilities, insurance, subscriptions, and Privance
+        keeps the running total. No bank linking, encrypted on this device.
+      </p>
+      <Button type="button" variant="primary" onClick={openAdd} className="mt-7">
+        Add a recurring expense
+      </Button>
+    </div>
+  ) : (
     <div className={MAX_WIDTH}>
       <section className="pt-6 pb-0">
         <p className="font-mono text-xs tracking-label uppercase text-faint">Spend</p>
@@ -405,7 +390,13 @@ export function SpendScreen() {
       </div>
 
       <CategorySpendPanel items={items} now={now} />
+    </div>
+  );
 
+  return (
+    <>
+      {content}
+      {/* Keep sheets mounted through refetches so drafts, retry IDs, and errors survive. */}
       <SpendForm
         open={formOpen}
         onClose={handleClose}
@@ -420,6 +411,6 @@ export function SpendScreen() {
         onEdit={openEdit}
         onDelete={handleDelete}
       />
-    </div>
+    </>
   );
 }

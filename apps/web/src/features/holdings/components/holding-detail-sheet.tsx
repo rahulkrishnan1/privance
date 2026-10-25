@@ -59,6 +59,7 @@ function HoldingDetailSheetBody({
   onDelete,
 }: HoldingDetailSheetBodyProps) {
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const priceTicker = holding.proxyTicker ?? holding.ticker;
   const priceEntry = prices.get(priceTicker);
@@ -121,9 +122,12 @@ function HoldingDetailSheetBody({
 
   async function handleDelete() {
     setDeleting(true);
+    setDeleteError(null);
     try {
       await onDelete(holding);
       onClose();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Could not delete this holding.");
     } finally {
       setDeleting(false);
     }
@@ -229,6 +233,11 @@ function HoldingDetailSheetBody({
         <span className="text-sm text-cream-soft">{accountName}</span>
       </div>
 
+      {deleteError && (
+        <p role="alert" className="text-sm text-down">
+          {deleteError}
+        </p>
+      )}
       <SheetFooter>
         <Button variant="secondary" onClick={() => onEdit(holding)} className="flex-1">
           Edit holding

@@ -538,9 +538,7 @@ test("shows a deletion error and keeps expense details open when delete fails", 
   await detail.getByRole("button", { name: "Delete" }).click();
   await detail.getByRole("button", { name: "Tap again to delete" }).click();
 
-  await expect
-    .element(detail.getByRole("alert"))
-    .toHaveTextContent("Couldn't delete this expense. Please try again.");
+  await expect.element(detail.getByRole("alert")).toHaveTextContent("delete failed");
   await expect.element(detail).toBeVisible();
 });
 

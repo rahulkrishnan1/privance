@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import type { Fixtures } from "../../playwright/global-setup";
+import { SERVER_URL } from "../../playwright/ports";
 import type { SessionSnapshot } from "./helpers/auth";
 import { loginAndCapture, restoreSession } from "./helpers/auth";
 
@@ -21,6 +22,19 @@ const RUN = Date.now().toString(36);
 const SAVE_TIMEOUT = 30_000;
 
 let savedSession: SessionSnapshot;
+
+async function forceMemoryStorage(page: Page): Promise<void> {
+  const workerSource = fs.readFileSync(
+    path.join(__dirname, "../../public/sqlite/privance-worker.mjs"),
+    "utf8",
+  );
+  await page.context().route("**/sqlite/privance-worker.mjs", async (route) => {
+    await route.fulfill({
+      contentType: "text/javascript",
+      body: `Object.defineProperty(navigator.storage, "getDirectory", { value: async () => { throw new Error("OPFS disabled for durability regression"); } });\n${workerSource}`,
+    });
+  });
+}
 
 async function goToAccounts(page: import("@playwright/test").Page): Promise<void> {
   await page.goto("/app/accounts/");
@@ -248,4 +262,119 @@ test.describe("accounts", () => {
 
     await expect(page.getByText(deleteName)).not.toBeVisible({ timeout: SAVE_TIMEOUT });
   });
+});
+
+test("memory-mode saves require server confirmation and survive reload only when uploaded", async ({
+  page,
+}) => {
+  const { signup, waitForSynced } = await import("./helpers/auth");
+  await forceMemoryStorage(page);
+  await signup(page, {
+    username: `memory-save-${Date.now().toString(36)}`,
+    password: "Memory-save-e2e-passphrase-2026!",
+  });
+  await page.goto("/app/accounts/");
+  await waitForSynced(page);
+  await expect(page.getByText(/Temporary storage:/)).toContainText(
+    "saves require server confirmation",
+  );
+  await page
+    .getByRole("button", { name: /Add.*account/i })
+    .first()
+    .click();
+  let form = page.getByRole("dialog", { name: /Add account/i });
+  await form.getByLabel("Name").fill("Confirmed memory cash");
+  await form.getByRole("radio", { name: "Cash", exact: true }).click();
+  await form.getByLabel("Account type").selectOption("checking");
+  await form.getByLabel("Current balance").fill("123.45");
+  await form.getByRole("button", { name: "Add account" }).click();
+  await expect(form).not.toBeVisible({ timeout: SAVE_TIMEOUT });
+  await page.reload();
+  await waitForSynced(page);
+  await expect(page.getByRole("button", { name: /Confirmed memory cash,.*123/ })).toBeVisible({
+    timeout: SAVE_TIMEOUT,
+  });
+
+  // navigator.onLine remains true: only server acknowledgement proves durability.
+  await page.route("**/api/sync/**", (route) => route.abort("internetdisconnected"));
+  expect(await page.evaluate(() => navigator.onLine)).toBe(true);
+  await page
+    .getByRole("button", { name: /Add.*account/i })
+    .first()
+    .click();
+  form = page.getByRole("dialog", { name: /Add account/i });
+  await form.getByLabel("Name").fill("Unconfirmed memory cash");
+  await form.getByRole("radio", { name: "Cash", exact: true }).click();
+  await form.getByLabel("Account type").selectOption("checking");
+  await form.getByLabel("Current balance").fill("25.00");
+  await form.getByRole("button", { name: "Add account" }).click();
+  await expect(form.getByRole("alert")).toContainText("Not saved to the server");
+  await expect(form.getByRole("alert")).toContainText("Reloading can lose these changes");
+  await page.unroute("**/api/sync/**");
+  await page.reload();
+  await waitForSynced(page);
+  await expect(page.getByRole("button", { name: /Confirmed memory cash,/ })).toBeVisible({
+    timeout: SAVE_TIMEOUT,
+  });
+  await expect(page.getByRole("button", { name: /Unconfirmed memory cash,/ })).toHaveCount(0);
+});
+
+test("a lost memory-mode create response and edited retry never duplicate an account", async ({
+  page,
+}) => {
+  const { signup, waitForSynced } = await import("./helpers/auth");
+  await forceMemoryStorage(page);
+  await signup(page, {
+    username: `memory-retry-${Date.now().toString(36)}`,
+    password: "Memory-retry-e2e-passphrase-2026!",
+  });
+  await page.goto("/app/accounts/");
+  await waitForSynced(page);
+  let lostObjectId: string | null = null;
+  await page.route("**/api/sync/batch", async (route) => {
+    const body = route.request().postDataJSON() as { puts: { object_id: string; kind: string }[] };
+    const account = body.puts.find((row) => row.kind === "account");
+    if (account && lostObjectId === null) {
+      lostObjectId = account.object_id;
+      const response = await route.fetch();
+      expect(response.ok()).toBe(true);
+      await route.abort("failed");
+    } else await route.continue();
+  });
+  await page
+    .getByRole("button", { name: /Add.*account/i })
+    .first()
+    .click();
+  const form = page.getByRole("dialog", { name: /Add account/i });
+  await form.getByLabel("Name").fill("Lost response cash");
+  await form.getByRole("radio", { name: "Cash", exact: true }).click();
+  await form.getByLabel("Account type").selectOption("checking");
+  await form.getByLabel("Current balance").fill("100.00");
+  await form.getByRole("button", { name: "Add account" }).click();
+  await expect(form.getByRole("alert")).toContainText("Not saved to the server");
+  await form.getByLabel("Name").fill("Changed pending cash");
+  await form.getByRole("button", { name: "Add account" }).click();
+  await expect(form.getByRole("alert")).toContainText("Not saved to the server");
+  const serverAccounts = async () => {
+    const response = await page.request.get(`${SERVER_URL}/api/sync/changes?after=0`);
+    expect(response.ok()).toBe(true);
+    const body = (await response.json()) as { changes: { id: string; kind: string }[] };
+    return body.changes.filter((row) => row.kind === "account");
+  };
+  expect((await serverAccounts()).map((row) => row.id)).toEqual([lostObjectId]);
+  await form.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(form).not.toBeVisible();
+  await page
+    .getByRole("button", { name: /Add.*account/i })
+    .first()
+    .click();
+  await form.getByLabel("Name").fill("Fresh independent cash");
+  await form.getByRole("radio", { name: "Cash", exact: true }).click();
+  await form.getByLabel("Account type").selectOption("checking");
+  await form.getByLabel("Current balance").fill("50.00");
+  await form.getByRole("button", { name: "Add account" }).click();
+  await expect(form).not.toBeVisible({ timeout: SAVE_TIMEOUT });
+  const fresh = await serverAccounts();
+  expect(fresh).toHaveLength(2);
+  expect(new Set(fresh.map((row) => row.id)).size).toBe(2);
 });

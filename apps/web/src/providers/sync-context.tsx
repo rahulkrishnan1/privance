@@ -5,8 +5,8 @@ import {
   LABEL_VERSION,
   type Nonce,
 } from "@privance/core";
-import type { LocalStore } from "@privance/core/storage";
-import type { SyncClient } from "@privance/core/sync";
+import type { EnqueueInput, LocalStore } from "@privance/core/storage";
+import type { ConflictResolutionInput, SyncClient } from "@privance/core/sync";
 import type { ReactNode } from "react";
 import {
   createContext,
@@ -20,6 +20,11 @@ import {
 import { serverUrl } from "@/lib/api/client";
 import { perUserDbFilename } from "@/lib/storage/per-user-store";
 import { readItemsKey, USER_ID_KEY, useAuth } from "./auth-context";
+
+type ConflictNotice = Pick<
+  ConflictResolutionInput,
+  "queueId" | "objectId" | "kind" | "myTombstone" | "theirTombstone"
+>;
 
 type StoreState = {
   store: LocalStore | null;
@@ -35,9 +40,13 @@ type StoreState = {
 };
 
 type SyncContextValue = StoreState & {
-  /** Monotonically-increasing counter. Increments after every local mutation so
-   *  queries can add it to their useEffect dep array to re-run after a write. */
+  /** Increments after local mutations and applied remote pulls/drains so queries
+   *  can re-run without navigation. */
   storeClock: number;
+  conflicts: ConflictNotice[];
+  save: (input: EnqueueInput) => Promise<void>;
+  saveError: string | null;
+  resolveConflict: (queueId: string, action: "keep-mine" | "keep-theirs") => Promise<void>;
   /** Call after a successful mutation to trigger dependent query re-runs. */
   tick: () => void;
 };
@@ -53,6 +62,9 @@ function makeLockedDecrypt(): StoreState["decrypt"] {
 export function SyncProvider({ children }: { children: ReactNode }) {
   const { state, lock, user, registerLogoutCleanup } = useAuth();
 
+  const activeSaves = useRef(new Map<string, { confirmed: boolean }>());
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [conflicts, setConflicts] = useState<ConflictNotice[]>([]);
   const [storeClock, setStoreClock] = useState(0);
   const tick = useCallback(() => setStoreClock((c) => c + 1), []);
 
@@ -88,6 +100,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         decrypt: makeLockedDecrypt(),
       });
       setStoreClock(0);
+      setConflicts([]);
+      activeSaves.current.clear();
+      setSaveError(null);
       return;
     }
 
@@ -186,6 +201,16 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       const client = createSyncClient({
         config: {
           serverUrl: serverUrl(),
+          onConfirmed: (queueIds) => {
+            if (cancelled) return;
+            for (const id of queueIds) {
+              const save = activeSaves.current.get(id);
+              if (save) save.confirmed = true;
+            }
+          },
+          onApplied: () => {
+            if (!cancelled) tick();
+          },
           onAuthError: () => {
             // Background sync got a 401/403. The session is gone server-side;
             // lock so the user can re-authenticate instead of seeing a stuck UI.
@@ -208,6 +233,17 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         store,
         encryptEnvelope,
         decryptEnvelope,
+      });
+
+      client.onConflict(async ({ queueId, objectId, kind, myTombstone, theirTombstone }) => {
+        const notice = { queueId, objectId, kind, myTombstone, theirTombstone };
+        if (!cancelled)
+          setConflicts((previous) =>
+            previous.some((entry) => entry.queueId === queueId)
+              ? previous.map((entry) => (entry.queueId === queueId ? notice : entry))
+              : [...previous, notice],
+          );
+        return { action: "defer" };
       });
 
       const decrypt: StoreState["decrypt"] = (opts) => {
@@ -292,15 +328,72 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
+      activeSaves.current.clear();
     };
     // user.userId is in the dep array so signing out and back in as a
     // different user tears down the store and re-initialises under the new
     // namespace. State alone does not change on hot user switches.
   }, [state, user?.userId]);
 
+  const save = useCallback(
+    async (input: EnqueueInput) => {
+      const store = storeRef.current;
+      const client = clientRef.current;
+      if (!store) throw new Error("Store not ready");
+      const memory = store.mode === "memory";
+      const id = input.id ?? crypto.randomUUID();
+      const pending = { confirmed: false };
+      // Register before enqueue is visible to an already-running background push.
+      if (memory) activeSaves.current.set(id, pending);
+      try {
+        await store.putAndEnqueue({ ...input, id });
+        tick();
+        if (!memory) {
+          // The durable queue survives a network failure; polling retries it.
+          void client?.pushPending().catch(() => {});
+          return;
+        }
+        try {
+          await client?.pushPending();
+        } catch {
+          // An earlier batch (or overlapping background push) may have confirmed
+          // this exact ID before a later batch failed.
+        }
+        if (
+          !pending.confirmed ||
+          storeRef.current !== store ||
+          activeSaves.current.get(id) !== pending
+        )
+          throw new Error("Upload not confirmed");
+      } catch (cause) {
+        if (!memory) throw cause;
+        const message =
+          "Not saved to the server. Reloading can lose these changes. Check your connection or resolve sync conflicts before reloading.";
+        if (activeSaves.current.get(id) === pending)
+          setSaveError(
+            "A save could not be confirmed. Reloading can lose unconfirmed changes. Check your connection or resolve sync conflicts before reloading.",
+          );
+        throw new Error(message);
+      } finally {
+        if (activeSaves.current.get(id) === pending) activeSaves.current.delete(id);
+      }
+    },
+    [tick],
+  );
+
+  const resolveConflict = useCallback(
+    async (queueId: string, action: "keep-mine" | "keep-theirs") => {
+      const client = clientRef.current;
+      if (!client) throw new Error("Unlock to resolve this conflict.");
+      await client.resolveConflict(queueId, { action });
+      setConflicts((previous) => previous.filter((entry) => entry.queueId !== queueId));
+    },
+    [],
+  );
+
   const syncValue = useMemo<SyncContextValue>(
-    () => ({ ...storeState, storeClock, tick }),
-    [storeState, storeClock, tick],
+    () => ({ ...storeState, storeClock, tick, conflicts, resolveConflict, save, saveError }),
+    [storeState, storeClock, tick, conflicts, resolveConflict, save, saveError],
   );
 
   return <SyncContext.Provider value={syncValue}>{children}</SyncContext.Provider>;

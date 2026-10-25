@@ -280,3 +280,27 @@ test("Close button calls onClose", async () => {
   await screen.getByRole("button", { name: "Close holding details" }).click();
   expect(onClose).toHaveBeenCalledTimes(1);
 });
+
+test("keeps holding details open and shows the exact failed-save warning on delete rejection", async () => {
+  const onClose = vi.fn();
+  const message = "Not saved to the server. Reloading can lose these changes.";
+  const screen = await render(
+    <HoldingDetailSheet
+      open
+      holding={makeHolding()}
+      prices={EMPTY_PRICES}
+      dayChangeCents={null}
+      totalInvestmentsCents={null}
+      accountName="Brokerage"
+      onClose={onClose}
+      onEdit={() => {}}
+      onDelete={async () => {
+        throw new Error(message);
+      }}
+    />,
+  );
+  await screen.getByRole("button", { name: "Delete", exact: true }).click();
+  await screen.getByRole("button", { name: "Tap again to delete" }).click();
+  await expect.element(screen.getByRole("dialog").getByRole("alert")).toHaveTextContent(message);
+  expect(onClose).not.toHaveBeenCalled();
+});

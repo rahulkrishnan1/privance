@@ -289,7 +289,7 @@ export function PlanScreen() {
     });
   }, []);
 
-  const { savePlan, state: saveState } = useSavePlan();
+  const { savePlan, state: saveState, error: saveError } = useSavePlan();
 
   const handleSave = useCallback(async () => {
     if (savingRef.current || workingValues === null) return;
@@ -492,7 +492,7 @@ export function PlanScreen() {
                 baselineNeverFi={baseline.neverFi}
                 dirty={dirty}
                 saving={saveState === "pending"}
-                saveError={saveState === "error"}
+                saveError={saveState === "error" ? (saveError?.message ?? true) : false}
                 saveDisabled={planQuery.status === "error"}
                 onChange={handleChange}
                 onSave={handleSave}

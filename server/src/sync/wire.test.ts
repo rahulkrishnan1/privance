@@ -325,6 +325,45 @@ describe("GET /api/sync/objects/:id", () => {
     expect(res.status).toBe(404);
   });
 
+  it.each([false, true])(
+    "opt-in GET exposes tombstone metadata without changing live payload (deleted=%s)",
+    async (tombstone) => {
+      mockRepoGet.mockResolvedValue({
+        objectId: "obj-1",
+        kind: "account",
+        ciphertext: Buffer.from("ct"),
+        nonce: Buffer.from("n"),
+        version: 4n,
+        serverSeq: 9n,
+        tombstone,
+      });
+      const res = await server.fetch(
+        new Request(`${BASE}/api/sync/objects/obj-1?include_tombstone=true`, {
+          headers: { "X-User-Id": "isolated-user" },
+        }),
+      );
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({
+        object_id: "obj-1",
+        kind: "account",
+        ciphertext: Buffer.from("ct").toString("base64"),
+        nonce: Buffer.from("n").toString("base64"),
+        version: "4",
+        server_seq: "9",
+        tombstone,
+      });
+      expect(mockRepoGet).toHaveBeenCalledWith({ userId: "isolated-user", objectId: "obj-1" });
+    },
+  );
+
+  it("opt-in does not bypass authentication", async () => {
+    const res = await server.fetch(
+      new Request(`${BASE}/api/sync/objects/obj-1?include_tombstone=true`),
+    );
+    expect(res.status).toBe(401);
+    expect(mockRepoGet).not.toHaveBeenCalled();
+  });
+
   it("missing object → 404", async () => {
     mockRepoGet.mockRejectedValue(new NotFoundError("obj-99"));
 

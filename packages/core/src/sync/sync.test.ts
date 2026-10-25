@@ -71,7 +71,10 @@ async function makeInMemoryAdapter(): Promise<WebSqliteAdapter> {
 
 function makeStore(overrides?: Partial<LocalStore>): LocalStore {
   return {
+    mode: "opfs",
     init: vi.fn().mockResolvedValue(undefined),
+    putAndEnqueue: vi.fn().mockResolvedValue("queue-1"),
+    applyRemote: vi.fn().mockResolvedValue(true),
     put: vi.fn().mockResolvedValue(undefined),
     get: vi.fn().mockResolvedValue(null),
     list: vi.fn().mockResolvedValue([]),
@@ -155,10 +158,8 @@ describe("pushPending, happy path", () => {
       expect(result.results[0].serverSeq).toBe(10n);
       expect(result.results[0].version).toBe(1n);
     }
-    expect(store.put).toHaveBeenCalledWith(
-      expect.objectContaining({ objectId: OBJ_ID, serverSeq: 10n }),
-    );
-    expect(store.ackQueueItem).toHaveBeenCalledWith("queue-1");
+    expect(store.put).not.toHaveBeenCalled();
+    expect(store.ackQueueItem).toHaveBeenCalledWith("queue-1", { version: 1n, serverSeq: 10n });
   });
 
   it("returns empty results when queue is empty", async () => {
@@ -336,10 +337,10 @@ describe("pushPending, conflict resolution", () => {
 
     expect(onConflict).toHaveBeenCalledOnce();
     expect(conflictCallbackArg[0]?.objectId).toBe(OBJ_ID);
-    expect(store.ackQueueItem).toHaveBeenCalledWith("queue-1");
+    expect(store.ackQueueItem).toHaveBeenCalledWith("queue-1", { version: 3n, serverSeq: 6n });
   });
 
-  it("on 409 + server 500 → rethrows network error (handleConflict line 57)", async () => {
+  it("on 409 + server 500 → rethrows network error", async () => {
     const item = makeOutboundItem({ version: 1n });
     const store = makeStore({ drainQueue: vi.fn().mockResolvedValue([item]) });
 
@@ -359,42 +360,28 @@ describe("pushPending, conflict resolution", () => {
     ).rejects.toThrow();
   });
 
-  it("on 409 + server 404 → writes local tombstone and acks (server already deleted it)", async () => {
-    // CR-3 regression: handleConflict must not crash when the server has no
-    // record for the conflicting object. Treat as "already gone" and tombstone
-    // locally so the queue entry is acked.
-    const item = makeOutboundItem({ version: 1n });
-    const store = makeStore({
-      drainQueue: vi.fn().mockResolvedValue([item]),
-    });
-
+  it("retains intent when an older server hides a tombstone as 404", async () => {
+    const item = makeOutboundItem();
+    const store = makeStore({ drainQueue: vi.fn().mockResolvedValue([item]) });
     const fetchFn = mockFetch([
-      jsonResponse({
-        results: [{ id: OBJ_ID, ok: false, conflict: { current_version: "2" } }],
-      }),
-      jsonResponse({ error: "not_found" }, 404),
+      jsonResponse({ results: [{ id: OBJ_ID, ok: false, conflict: { current_version: "2" } }] }),
+      new Response(null, { status: 404 }),
     ]);
-
-    const onConflict = vi.fn();
-
-    await pushPending({
-      config: makeConfig(fetchFn),
-      store,
-      encryptEnvelope,
-      decryptEnvelope,
-      onConflict,
-    });
-
-    expect(onConflict).not.toHaveBeenCalled();
-    expect(store.put).toHaveBeenCalledWith(
-      expect.objectContaining({ objectId: OBJ_ID, tombstone: true }),
-    );
-    expect(store.ackQueueItem).toHaveBeenCalledWith("queue-1");
+    await expect(
+      pushPending({
+        config: makeConfig(fetchFn),
+        store,
+        encryptEnvelope,
+        decryptEnvelope,
+        onConflict: vi.fn(),
+      }),
+    ).rejects.toThrow(SyncNotFoundError);
+    expect(store.ackQueueItem).not.toHaveBeenCalled();
+    expect(store.applyRemote).not.toHaveBeenCalled();
   });
 
-  it("acks the queue entry on 409 when no onConflict handler is registered", async () => {
-    // Default policy: ack-and-drop so the queue doesn't grow unbounded across
-    // poll ticks. The conflict result is still surfaced via the return value.
+  it("retains the queue entry on 409 when no onConflict handler is registered", async () => {
+    // Missing a handler is never consent to discard local intent.
     const item = makeOutboundItem({ version: 1n });
     const store = makeStore({
       drainQueue: vi.fn().mockResolvedValue([item]),
@@ -419,7 +406,7 @@ describe("pushPending, conflict resolution", () => {
     if (!result.results[0]?.ok) {
       expect(result.results[0].conflict.currentVersion).toBe(2n);
     }
-    expect(store.ackQueueItem).toHaveBeenCalledWith("queue-1");
+    expect(store.ackQueueItem).not.toHaveBeenCalled();
   });
 });
 
@@ -452,7 +439,7 @@ describe("pullChanges, happy path", () => {
 
     expect(result.applied).toBe(1);
     expect(result.nextCursor).toBeNull();
-    expect(store.put).toHaveBeenCalledWith(
+    expect(store.applyRemote).toHaveBeenCalledWith(
       expect.objectContaining({ objectId: "obj-1", version: 3n, serverSeq: 10n }),
     );
     expect(store.setCursor).toHaveBeenCalledWith(10n);
@@ -539,7 +526,7 @@ describe("pullChanges, happy path", () => {
       decryptEnvelope: localDecrypt,
     });
 
-    expect(store.put).toHaveBeenCalledWith(
+    expect(store.applyRemote).toHaveBeenCalledWith(
       expect.objectContaining({ objectId: "obj-dead", tombstone: true }),
     );
     expect(localDecrypt).not.toHaveBeenCalled();
@@ -578,18 +565,18 @@ describe("pullChanges, local newer than server", () => {
       decryptEnvelope: localDecrypt,
     });
 
-    expect(result.applied).toBe(1);
+    expect(result.applied).toBe(0);
     expect(localDecrypt).not.toHaveBeenCalled();
-    expect(store.put).not.toHaveBeenCalled();
+    expect(store.applyRemote).not.toHaveBeenCalled();
     expect(store.setCursor).toHaveBeenCalledWith(7n);
   });
 });
 
-describe("pullChanges, LWW tie-break at equal version", () => {
-  it("clobbers the local copy when the server version equals local (strictly-greater guard)", async () => {
+describe("pullChanges, equal version without pending intent", () => {
+  it("applies equal server version through the atomic pending-intent guard", async () => {
     // The guard is `existing.version > change.version`. At equal version the
-    // guard is false, so the server's record is applied over the local one.
-    // This pins last-writer-wins semantics: a same-version server record wins.
+    // guard is false; the atomic storage operation still decides whether
+    // pending local intent permits applying this server record.
     const localSameVersion = makeStoredObject({ version: 4n, ciphertext: new Uint8Array([0x11]) });
     const store = makeStore({
       getCursor: vi.fn().mockResolvedValue(null),
@@ -619,9 +606,9 @@ describe("pullChanges, LWW tie-break at equal version", () => {
       decryptEnvelope: localDecrypt,
     });
 
-    // Server record decrypted and written over the local same-version copy.
+    // The storage operation decides atomically whether pending intent permits application.
     expect(localDecrypt).toHaveBeenCalledOnce();
-    expect(store.put).toHaveBeenCalledWith(
+    expect(store.applyRemote).toHaveBeenCalledWith(
       expect.objectContaining({ objectId: OBJ_ID, version: 4n, ciphertext: serverCipher }),
     );
     expect(store.setCursor).toHaveBeenCalledWith(9n);
@@ -960,7 +947,7 @@ describe("applyReconcile", () => {
       objectId: OBJ_ID,
       kind: KIND,
     });
-    expect(store.put).toHaveBeenCalledWith(
+    expect(store.applyRemote).toHaveBeenCalledWith(
       expect.objectContaining({ objectId: OBJ_ID, serverSeq: 8n }),
     );
   });
@@ -988,7 +975,7 @@ describe("applyReconcile", () => {
 
     expect(fetchFn).not.toHaveBeenCalled();
     expect(localEncrypt).not.toHaveBeenCalled();
-    expect(store.put).toHaveBeenCalledWith(
+    expect(store.applyRemote).toHaveBeenCalledWith(
       expect.objectContaining({
         objectId: OBJ_ID,
         version: 3n,
@@ -1022,8 +1009,8 @@ describe("applyReconcile", () => {
       { config: makeConfig(fetchFn), store, encryptEnvelope: localEncrypt },
     );
 
-    expect(store.put).toHaveBeenCalledTimes(2);
-    const calls = (store.put as ReturnType<typeof vi.fn>).mock.calls;
+    expect(store.applyRemote).toHaveBeenCalledTimes(2);
+    const calls = (store.applyRemote as ReturnType<typeof vi.fn>).mock.calls;
     const ids = calls.map((c: unknown[]) => (c[0] as { objectId: string }).objectId);
     expect(ids).toContain(NEW_ID);
     expect(ids).toContain(OBJ_ID);
@@ -1213,7 +1200,7 @@ describe("SyncClient, lifecycle", () => {
       theirServerSeq: 5n,
     });
 
-    expect(store.put).toHaveBeenCalled();
+    expect(store.applyRemote).toHaveBeenCalled();
   });
 });
 
@@ -1269,7 +1256,9 @@ describe("bigint wire format", () => {
 
     await pullChanges({ config: makeConfig(fetchFn), store, decryptEnvelope: localDecrypt });
 
-    expect(store.put).toHaveBeenCalledWith(expect.objectContaining({ version: 99999999999999n }));
+    expect(store.applyRemote).toHaveBeenCalledWith(
+      expect.objectContaining({ version: 99999999999999n }),
+    );
   });
 
   it("pullChanges parses next cursor as bigint", async () => {
@@ -1438,7 +1427,9 @@ describe("handleConflict, keep-theirs", () => {
       onConflict,
     });
 
-    expect(store.put).toHaveBeenCalledWith(
+    expect(store.ackQueueItem).toHaveBeenCalledWith(
+      item.id,
+      undefined,
       expect.objectContaining({ objectId: OBJ_ID, tombstone: false }),
     );
     expect(localEncrypt).not.toHaveBeenCalled();
@@ -1482,12 +1473,15 @@ describe("handleConflict, keep-both", () => {
       onConflict,
     });
 
-    expect(store.put).toHaveBeenCalledTimes(2);
-    const ids = (store.put as ReturnType<typeof vi.fn>).mock.calls.map(
-      (c: unknown[]) => (c[0] as { objectId: string }).objectId,
+    expect(store.applyRemote).toHaveBeenCalledOnce();
+    expect(store.applyRemote).toHaveBeenCalledWith(
+      expect.objectContaining({ objectId: NEW_OBJ_ID }),
     );
-    expect(ids).toContain(NEW_OBJ_ID);
-    expect(ids).toContain(OBJ_ID);
+    expect(store.ackQueueItem).toHaveBeenCalledWith(
+      item.id,
+      undefined,
+      expect.objectContaining({ objectId: OBJ_ID }),
+    );
   });
 });
 
@@ -1529,7 +1523,7 @@ describe("pushPending, delete (tombstone) items", () => {
 });
 
 describe("pushPending, server result for unknown objectId", () => {
-  it("gracefully handles ok result for an objectId not in the local queue", async () => {
+  it("rejects an unknown response ID without acknowledging any entries", async () => {
     const item = makeOutboundItem({ objectId: "obj-known" });
     const store = makeStore({ drainQueue: vi.fn().mockResolvedValue([item]) });
 
@@ -1542,15 +1536,16 @@ describe("pushPending, server result for unknown objectId", () => {
       }),
     ]);
 
-    const result = await pushPending({
-      config: makeConfig(fetchFn),
-      store,
-      encryptEnvelope,
-      decryptEnvelope,
-      onConflict: null,
-    });
-
-    expect(result.results).toHaveLength(2);
+    await expect(
+      pushPending({
+        config: makeConfig(fetchFn),
+        store,
+        encryptEnvelope,
+        decryptEnvelope,
+        onConflict: null,
+      }),
+    ).rejects.toThrow(SyncProtocolError);
+    expect(store.ackQueueItem).not.toHaveBeenCalled();
   });
 });
 
@@ -1727,14 +1722,16 @@ describe("handleConflict, keep-theirs stores server_seq correctly", () => {
       onConflict,
     });
 
-    expect(store.put).toHaveBeenCalledWith(
+    expect(store.ackQueueItem).toHaveBeenCalledWith(
+      item.id,
+      undefined,
       expect.objectContaining({ objectId: OBJ_ID, version: 3n, serverSeq: 42n }),
     );
   });
 });
 
 describe("pullChanges, decrypt failure handling", () => {
-  it("skips undecryptable objects, advances cursor past them, continues with rest", async () => {
+  it("skips undecryptable objects, stalls their cursor, continues with the rest", async () => {
     const store = makeStore({ getCursor: vi.fn().mockResolvedValue(null) });
 
     const changesBody = {
@@ -1785,8 +1782,10 @@ describe("pullChanges, decrypt failure handling", () => {
     expect(errors).toHaveLength(1);
     expect(errors[0]?.id).toBe("obj-bad");
     // Only the good object was stored.
-    expect(store.put).toHaveBeenCalledTimes(1);
-    expect(store.put).toHaveBeenCalledWith(expect.objectContaining({ objectId: "obj-good" }));
+    expect(store.applyRemote).toHaveBeenCalledTimes(1);
+    expect(store.applyRemote).toHaveBeenCalledWith(
+      expect.objectContaining({ objectId: "obj-good" }),
+    );
   });
 
   it("skips silently when onDecryptError is omitted", async () => {

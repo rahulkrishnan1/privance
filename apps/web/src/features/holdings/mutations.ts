@@ -55,51 +55,41 @@ type HoldingMutationResult = {
   creating: boolean;
   updating: boolean;
   deleting: boolean;
-  createHolding: (input: CreateHoldingInput) => Promise<string>;
+  createHolding: (input: CreateHoldingInput, id?: string) => Promise<string>;
   updateHolding: (input: UpdateHoldingInput) => Promise<void>;
   deleteHolding: (id: string) => Promise<void>;
 };
 
 export function useHoldingMutations(): HoldingMutationResult {
-  const { store, client, decrypt, tick } = useSync();
+  const { store, save, decrypt } = useSync();
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const createHolding = useCallback(
-    async (input: CreateHoldingInput): Promise<string> => {
+    async (input: CreateHoldingInput, id = newObjectId()): Promise<string> => {
       if (store === null) throw new Error("Store not ready");
       setCreating(true);
       try {
-        const id = newObjectId();
+        const existing = await store.get({ kind: KIND_HOLDING, objectId: id });
+        const prevVersion = existing?.version;
+        const version = prevVersion === undefined ? 1n : prevVersion + 1n;
         const { ciphertext, nonce } = encryptPayload(input, id, KIND_HOLDING);
-        const now = Date.now();
-        await store.put({
+        await save({
           kind: KIND_HOLDING,
           objectId: id,
           ciphertext,
           nonce,
-          version: 1n,
-          updatedAt: now,
-        });
-        await store.enqueue({
-          kind: KIND_HOLDING,
-          objectId: id,
-          ciphertext,
-          nonce,
-          version: 1n,
-          prevVersion: undefined,
+          version,
+          prevVersion,
           tombstone: false,
-          enqueuedAt: now,
-        } as Parameters<typeof store.enqueue>[0]);
-        tick();
-        void client?.pushPending();
+        });
         return id;
       } finally {
         setCreating(false);
       }
     },
-    [store, client, tick],
+    [store, save],
   );
 
   const updateHolding = useCallback(
@@ -122,17 +112,7 @@ export function useHoldingMutations(): HoldingMutationResult {
 
         const newVersion = existing.version + 1n;
         const { ciphertext, nonce } = encryptPayload(updated, id, KIND_HOLDING);
-        const now = Date.now();
-        await store.put({
-          kind: KIND_HOLDING,
-          objectId: id,
-          ciphertext,
-          nonce,
-          version: newVersion,
-          serverSeq: existing.serverSeq,
-          updatedAt: now,
-        });
-        await store.enqueue({
+        await save({
           kind: KIND_HOLDING,
           objectId: id,
           ciphertext,
@@ -140,15 +120,12 @@ export function useHoldingMutations(): HoldingMutationResult {
           version: newVersion,
           prevVersion: existing.version,
           tombstone: false,
-          enqueuedAt: now,
-        } as Parameters<typeof store.enqueue>[0]);
-        tick();
-        void client?.pushPending();
+        });
       } finally {
         setUpdating(false);
       }
     },
-    [store, client, decrypt, tick],
+    [store, save, decrypt],
   );
 
   const deleteHolding = useCallback(
@@ -160,18 +137,7 @@ export function useHoldingMutations(): HoldingMutationResult {
         if (existing === null) throw new Error("Holding not found");
 
         const newVersion = existing.version + 1n;
-        const now = Date.now();
-        await store.put({
-          kind: KIND_HOLDING,
-          objectId: id,
-          ciphertext: existing.ciphertext,
-          nonce: existing.nonce,
-          version: newVersion,
-          serverSeq: existing.serverSeq,
-          tombstone: true,
-          updatedAt: now,
-        });
-        await store.enqueue({
+        await save({
           kind: KIND_HOLDING,
           objectId: id,
           ciphertext: existing.ciphertext,
@@ -179,15 +145,12 @@ export function useHoldingMutations(): HoldingMutationResult {
           version: newVersion,
           prevVersion: existing.version,
           tombstone: true,
-          enqueuedAt: now,
-        } as Parameters<typeof store.enqueue>[0]);
-        tick();
-        void client?.pushPending();
+        });
       } finally {
         setDeleting(false);
       }
     },
-    [store, client, tick],
+    [store, save],
   );
 
   return { creating, updating, deleting, createHolding, updateHolding, deleteHolding };
@@ -200,51 +163,41 @@ type GroupMutationResult = {
   creating: boolean;
   updating: boolean;
   deleting: boolean;
-  createGroup: (input: CreateGroupInput) => Promise<string>;
+  createGroup: (input: CreateGroupInput, id?: string) => Promise<string>;
   updateGroup: (input: UpdateGroupInput) => Promise<void>;
   deleteGroup: (id: string) => Promise<void>;
 };
 
 export function useGroupMutations(): GroupMutationResult {
-  const { store, client, tick } = useSync();
+  const { store, save } = useSync();
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const createGroup = useCallback(
-    async (input: CreateGroupInput): Promise<string> => {
+    async (input: CreateGroupInput, id = newObjectId()): Promise<string> => {
       if (store === null) throw new Error("Store not ready");
       setCreating(true);
       try {
-        const id = newObjectId();
+        const existing = await store.get({ kind: KIND_GROUP, objectId: id });
+        const prevVersion = existing?.version;
+        const version = prevVersion === undefined ? 1n : prevVersion + 1n;
         const { ciphertext, nonce } = encryptPayload(input, id, KIND_GROUP);
-        const now = Date.now();
-        await store.put({
+        await save({
           kind: KIND_GROUP,
           objectId: id,
           ciphertext,
           nonce,
-          version: 1n,
-          updatedAt: now,
-        });
-        await store.enqueue({
-          kind: KIND_GROUP,
-          objectId: id,
-          ciphertext,
-          nonce,
-          version: 1n,
-          prevVersion: undefined,
+          version,
+          prevVersion,
           tombstone: false,
-          enqueuedAt: now,
-        } as Parameters<typeof store.enqueue>[0]);
-        tick();
-        void client?.pushPending();
+        });
         return id;
       } finally {
         setCreating(false);
       }
     },
-    [store, client, tick],
+    [store, save],
   );
 
   const updateGroup = useCallback(
@@ -258,17 +211,7 @@ export function useGroupMutations(): GroupMutationResult {
 
         const newVersion = existing.version + 1n;
         const { ciphertext, nonce } = encryptPayload(payload, id, KIND_GROUP);
-        const now = Date.now();
-        await store.put({
-          kind: KIND_GROUP,
-          objectId: id,
-          ciphertext,
-          nonce,
-          version: newVersion,
-          serverSeq: existing.serverSeq,
-          updatedAt: now,
-        });
-        await store.enqueue({
+        await save({
           kind: KIND_GROUP,
           objectId: id,
           ciphertext,
@@ -276,15 +219,12 @@ export function useGroupMutations(): GroupMutationResult {
           version: newVersion,
           prevVersion: existing.version,
           tombstone: false,
-          enqueuedAt: now,
-        } as Parameters<typeof store.enqueue>[0]);
-        tick();
-        void client?.pushPending();
+        });
       } finally {
         setUpdating(false);
       }
     },
-    [store, client, tick],
+    [store, save],
   );
 
   const deleteGroup = useCallback(
@@ -296,18 +236,7 @@ export function useGroupMutations(): GroupMutationResult {
         if (existing === null) throw new Error("Group not found");
 
         const newVersion = existing.version + 1n;
-        const now = Date.now();
-        await store.put({
-          kind: KIND_GROUP,
-          objectId: id,
-          ciphertext: existing.ciphertext,
-          nonce: existing.nonce,
-          version: newVersion,
-          serverSeq: existing.serverSeq,
-          tombstone: true,
-          updatedAt: now,
-        });
-        await store.enqueue({
+        await save({
           kind: KIND_GROUP,
           objectId: id,
           ciphertext: existing.ciphertext,
@@ -315,15 +244,12 @@ export function useGroupMutations(): GroupMutationResult {
           version: newVersion,
           prevVersion: existing.version,
           tombstone: true,
-          enqueuedAt: now,
-        } as Parameters<typeof store.enqueue>[0]);
-        tick();
-        void client?.pushPending();
+        });
       } finally {
         setDeleting(false);
       }
     },
-    [store, client, tick],
+    [store, save],
   );
 
   return { creating, updating, deleting, createGroup, updateGroup, deleteGroup };

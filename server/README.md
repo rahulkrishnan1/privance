@@ -21,6 +21,47 @@ See [ARCHITECTURE.md](../ARCHITECTURE.md) for the full server design and
 | `src/sync/` | Encrypted blob CRUD + change-feed endpoint |
 | `drizzle/` | Migration SQL files |
 
+## Sync write ordering and tombstones
+
+Public put, delete, and batch operations acquire a transaction-scoped PostgreSQL
+advisory lock for the user before checking versions or allocating `server_seq`.
+This serializes same-user writes across server instances, so a change-feed cursor
+cannot pass a lower sequence that commits later. The lock hashes a namespaced
+user ID; a hash collision only serializes unrelated users, never mixes their data.
+Batches hold the lock for the entire transaction.
+
+A delete checks `prev_version` and increments the stored version by one when
+writing the tombstone. Stale pre-delete updates therefore conflict. Batch delete
+results and the change feed report that new version; direct `DELETE` still
+returns **204 No Content**. No ciphertext or encryption format changes.
+
+`GET /api/sync/objects/:id` still returns 404 for tombstones by default.
+Conflict resolution can opt into `?include_tombstone=true` to receive the same
+object envelope plus a boolean `tombstone` discriminator (for live objects too).
+This exposes the current version and sequence for an explicit delete/restore
+choice without scanning the change feed. Tombstone ciphertext is not live data
+and must not be decrypted. Authentication and per-user scoping are unchanged.
+
+## Public market prices
+
+`POST /api/prices/refresh` keeps the existing `source: "yahoo" | "coingecko"`
+request and `{ prices, unknown }` response. All prices are USD decimal strings;
+there is no currency conversion. Yahoo stock/ETF quotes require metadata with
+exact currency `USD`. GBp (pence), GBP, EUR, missing currency, and other
+unvalidated currencies are returned in `unknown`, never interpreted as USD.
+Optional Finnhub failover first verifies `USD` via `/stock/profile2`, because
+its `/quote` endpoint does not identify currency. An explicit currency rejection
+cannot be overridden by fallback or a stale price.
+
+Stock-price cache rows now use the internal `yahoo-usd-v1` namespace, while the
+public source remains `yahoo`. Legacy `yahoo` rows are ignored even when fresh
+and must be revalidated upstream; no schema migration or user-data deletion is
+needed. Only validated stock quotes enter the new cache. Validated cached quotes
+can still be served stale during provider/network failures or cooldowns; an
+explicit currency rejection evicts the affected row. Clients must remove both
+current and prior prices for tickers in a fulfilled refresh's `unknown` list,
+while retaining cached prices when the refresh request itself fails.
+
 ## Development
 
 ```sh
