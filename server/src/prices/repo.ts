@@ -25,6 +25,14 @@ export class PricesRepo {
     return rows as CachedPriceRow[];
   }
 
+  async deleteMany(opts: { source: string; tickers: string[] }): Promise<void> {
+    const { source, tickers } = opts;
+    if (tickers.length === 0) return;
+    await this.db
+      .delete(prices)
+      .where(and(eq(prices.source, source), inArray(prices.ticker, tickers)));
+  }
+
   async upsertMany(rows: CachedPriceRow[]): Promise<void> {
     if (rows.length === 0) return;
 

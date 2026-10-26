@@ -59,16 +59,30 @@ export type EnqueueInput = Omit<OutboundItem, "id" | "enqueuedAt"> & {
   id?: string;
 };
 
+/** Metadata returned by the server for one exact queued revision. */
+export type QueueConfirmation = { version: bigint; serverSeq: bigint };
+
+export type StorageMode = "opfs" | "memory";
+
 /**
  * Thin adapter interface that abstracts local SQLite access.
  * Web implementation uses SAHPool VFS; native is a stub for v1.
  */
 export interface LocalStore {
+  /** Initialized backing mode. Throws before init or after close/destroy. */
+  readonly mode: StorageMode;
+
   /** Run DDL and prepare the database for use. Idempotent. */
   init(): Promise<void>;
 
   /** Upsert a ciphertext envelope. */
   put(input: PutObjectInput): Promise<void>;
+
+  /** Atomically store an unconfirmed envelope and its exact outbound entry. */
+  putAndEnqueue(input: EnqueueInput): Promise<string>;
+
+  /** Apply remote data only if no intent for this server objectId is queued, atomically. */
+  applyRemote(input: PutObjectInput): Promise<boolean>;
 
   /** Retrieve a single object, or null if absent. */
   get(input: { kind: string; objectId: string }): Promise<StoredObject | null>;
@@ -91,8 +105,20 @@ export interface LocalStore {
   /** Return all pending queue items (not yet acked), oldest first. */
   drainQueue(): Promise<OutboundItem[]>;
 
-  /** Remove a successfully-synced item from the queue. */
-  ackQueueItem(id: string): Promise<void>;
+  /**
+   * Atomically remove this exact queue ID and optionally confirm its stored metadata.
+   * Confirmation never replaces ciphertext, and updates metadata only if the entry
+   * still matches the current unconfirmed envelope and no later intent for its objectId exists.
+   * A replacement must match the captured entry's kind and objectId. In the same
+   * transaction, apply it only if no intent remains for that objectId. If the ID
+   * is already absent, do nothing; a failed replacement retains the entry and object.
+   * Without confirmation or replacement, only removes the queue item.
+   */
+  ackQueueItem(
+    id: string,
+    confirmed?: QueueConfirmation,
+    replacement?: PutObjectInput,
+  ): Promise<void>;
 
   /** Close the underlying database handle. */
   close(): Promise<void>;

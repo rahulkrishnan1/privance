@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { InvestmentAccount } from "@privance/core";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Button, Input, Select } from "@/components/index";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -16,7 +16,7 @@ type HoldingFormProps = {
   isEdit: boolean;
   onSubmit: (values: HoldingFormValues, opts: { proxyPrice?: string }) => void | Promise<void>;
   onLookupProxyPrice?: (ticker: string) => Promise<string | null>;
-  onCreateGroup: (name: string) => Promise<string>;
+  onCreateGroup: (name: string, id: string) => Promise<string>;
 };
 
 export function HoldingForm({
@@ -31,6 +31,7 @@ export function HoldingForm({
   const [advancedOpen, setAdvancedOpen] = useState(
     (initialValues?.proxyTicker ?? "").trim().length > 0,
   );
+  const createGroupId = useRef<string | null>(null);
   const [newGroupName, setNewGroupName] = useState("");
   const [groupNameError, setGroupNameError] = useState<string | undefined>(undefined);
   const [creatingGroup, setCreatingGroup] = useState(false);
@@ -81,9 +82,13 @@ export function HoldingForm({
     setGroupNameError(undefined);
     setCreatingGroup(true);
     try {
-      const id = await onCreateGroup(parsed.data.name);
+      createGroupId.current ??= crypto.randomUUID();
+      const id = await onCreateGroup(parsed.data.name, createGroupId.current);
+      createGroupId.current = null;
       setValue("groupId", id);
       setNewGroupName("");
+    } catch (err) {
+      setGroupNameError(err instanceof Error ? err.message : "Could not save this group.");
     } finally {
       setCreatingGroup(false);
     }

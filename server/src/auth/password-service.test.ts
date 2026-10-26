@@ -18,8 +18,8 @@ mock.module("./kdf.js", () => ({
   },
   deriveFakeKdfSalt: () => Buffer.alloc(16, 0x11),
   deriveFakeRecoveryBlob: () => ({
-    wrappedBlob: Buffer.alloc(48, 0x22),
-    blobIv: Buffer.alloc(12, 0x33),
+    recoveryBlob: Buffer.from(MOCK_ENCODED),
+    recoverySalt: Buffer.alloc(16, 0x33),
   }),
   SERVER_KDF_PARAMS: { memoryCost: 65536, timeCost: 3, parallelism: 4, hashLength: 32 },
 }));
@@ -72,7 +72,6 @@ function makeRepo(liveSessions: SessionRow[] = makeSessions()) {
     getUserByUsername: mock(async (): Promise<UserRow | null> => DEFAULT_USER),
     getUserAuthHashById: mock(async (): Promise<Buffer | null> => Buffer.from(MOCK_ENCODED)),
     createUser: mock(async (): Promise<UserRow> => DEFAULT_USER),
-    updateUserCredentials: mock(async (): Promise<void> => undefined),
     rotateCredentials: mock(async (): Promise<SessionRow> => {
       for (const s of liveSessions) s.revokedAt = new Date();
       const fresh = { ...DEFAULT_SESSION, sessionId: "sess-new", revokedAt: null };

@@ -58,6 +58,7 @@ function AccountDetailSheetBody({
   onDelete,
 }: AccountDetailSheetBodyProps) {
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const isInvestment = account.payload.kind === "investment";
   const sweepCents = isInvestment ? centsToDecimal(account.payload.cashBalanceCents) : null;
@@ -81,9 +82,12 @@ function AccountDetailSheetBody({
 
   async function handleDelete() {
     setDeleting(true);
+    setDeleteError(null);
     try {
       await onDelete(account);
       onClose();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Could not delete this account.");
     } finally {
       setDeleting(false);
     }
@@ -193,6 +197,11 @@ function AccountDetailSheetBody({
         </>
       )}
 
+      {deleteError && (
+        <p role="alert" className="mt-4 text-sm text-down">
+          {deleteError}
+        </p>
+      )}
       <SheetFooter className="border-t-0">
         <Button variant="secondary" onClick={() => onEdit(account)} className="flex-1">
           Edit account
@@ -227,6 +236,7 @@ export function AccountDetailSheet({
       <SheetContent>
         {account !== null && (
           <AccountDetailSheetBody
+            key={account.id}
             account={account}
             totalValue={totalValue}
             holdingValuations={holdingValuations}

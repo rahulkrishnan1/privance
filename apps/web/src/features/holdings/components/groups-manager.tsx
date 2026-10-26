@@ -17,6 +17,7 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: open toggle resets edit state
@@ -24,6 +25,7 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
     setEditingId(null);
     setEditName("");
     setPendingDelete(null);
+    setError(null);
   }, [open]);
 
   const startEdit = (group: LocalGroup) => {
@@ -41,10 +43,13 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
     const name = editName.trim();
     if (!name) return;
     setBusy(true);
+    setError(null);
     try {
       await onRename(id, name);
       setEditingId(null);
       setEditName("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save this group.");
     } finally {
       setBusy(false);
     }
@@ -52,9 +57,12 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
 
   const confirmDelete = async (id: string) => {
     setBusy(true);
+    setError(null);
     try {
       await onDelete(id);
       setPendingDelete(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save this group.");
     } finally {
       setBusy(false);
     }
@@ -73,6 +81,11 @@ export function GroupsManager({ open, groups, onClose, onRename, onDelete }: Gro
 
           <p className="text-sm text-dim leading-[1.6]">Your own buckets, your own taxonomy.</p>
 
+          {error && (
+            <p role="alert" className="text-sm text-down">
+              {error}
+            </p>
+          )}
           {groups.length === 0 && (
             <p className="text-sm text-faint text-center py-4">No groups yet</p>
           )}

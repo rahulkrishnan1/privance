@@ -1,5 +1,12 @@
 import type { LocalStore } from "../storage/types.js";
-import { fromBase64, parseBigIntField, parseStringField, toBase64 } from "./envelope.js";
+import {
+  fromBase64,
+  parseBigIntField,
+  parseBoolField,
+  parseStringField,
+  toBase64,
+} from "./envelope.js";
+import { serializeSync } from "./push.js";
 import type { ReconcileInput, SyncClientConfig } from "./types.js";
 import { SyncNetworkError, SyncNotFoundError } from "./types.js";
 
@@ -36,12 +43,13 @@ export async function fetchServerObject(
   version: bigint;
   serverSeq: bigint;
   plaintext: Uint8Array;
+  tombstone: boolean;
 }> {
   const { config, decryptEnvelope } = deps;
   /* c8 ignore next -- global-fetch fallback, tests always inject config.fetch */
   const fetchFn = config.fetch ?? fetch;
 
-  const url = `${config.serverUrl}/api/sync/objects/${encodeURIComponent(objectId)}`;
+  const url = `${config.serverUrl}/api/sync/objects/${encodeURIComponent(objectId)}?include_tombstone=true`;
   const response = await fetchFn(url, {
     method: "GET",
     credentials: "include",
@@ -64,9 +72,20 @@ export async function fetchServerObject(
   const ciphertext = fromBase64(ciphertextB64);
   const nonce = fromBase64(nonceB64);
 
-  const plaintext = await decryptEnvelope({ ciphertext, nonce, objectId, kind });
+  const tombstone =
+    body.tombstone === undefined ? false : parseBoolField(body.tombstone, "tombstone");
+  const plaintext = tombstone
+    ? new Uint8Array(0)
+    : await decryptEnvelope({ ciphertext, nonce, objectId, kind });
 
-  return { ciphertext, nonce, version, serverSeq, plaintext };
+  return {
+    ciphertext: tombstone ? new Uint8Array(0) : ciphertext,
+    nonce: tombstone ? new Uint8Array(0) : nonce,
+    version,
+    serverSeq,
+    plaintext,
+    tombstone,
+  };
 }
 
 /**
@@ -123,7 +142,14 @@ export async function pushResolution(
  * Apply a pre-resolved conflict decision supplied by the caller.
  * Used when the app has already presented the UI and has the user's choice.
  */
-export async function applyReconcile(
+export function applyReconcile(
+  input: ReconcileInput,
+  deps: Pick<ReconcileDeps, "config" | "store" | "encryptEnvelope">,
+): Promise<void> {
+  return serializeSync(deps.store, () => reconcileLive(input, deps));
+}
+
+async function reconcileLive(
   input: ReconcileInput,
   deps: Pick<ReconcileDeps, "config" | "store" | "encryptEnvelope">,
 ): Promise<void> {
@@ -139,6 +165,7 @@ export async function applyReconcile(
   } = input;
   const { config, store, encryptEnvelope } = deps;
 
+  if (choice.action === "defer") return;
   if (choice.action === "keep-mine") {
     const encrypted = await encryptEnvelope({ plaintext: myPlaintext, objectId, kind });
     const nextVersion = theirVersion + 1n;
@@ -151,7 +178,7 @@ export async function applyReconcile(
       theirVersion,
       { config },
     );
-    await store.put({
+    await store.applyRemote({
       kind,
       objectId,
       ciphertext: encrypted.ciphertext,
@@ -161,7 +188,7 @@ export async function applyReconcile(
       tombstone: false,
     });
   } else if (choice.action === "keep-theirs") {
-    await store.put({
+    await store.applyRemote({
       kind,
       objectId,
       ciphertext: theirCiphertext,
@@ -182,7 +209,7 @@ export async function applyReconcile(
       undefined,
       { config },
     );
-    await store.put({
+    await store.applyRemote({
       kind,
       objectId: newId,
       ciphertext: encrypted.ciphertext,
@@ -191,7 +218,7 @@ export async function applyReconcile(
       serverSeq: pushed.serverSeq,
       tombstone: false,
     });
-    await store.put({
+    await store.applyRemote({
       kind,
       objectId,
       ciphertext: theirCiphertext,

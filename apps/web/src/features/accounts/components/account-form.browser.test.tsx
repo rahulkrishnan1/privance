@@ -37,7 +37,7 @@ test("surfaces an inline error when the save fails (no longer silently swallowed
 
   await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
   await expect.element(screen.getByRole("alert")).toBeVisible();
-  await expect.element(screen.getByText("Could not save. Please try again.")).toBeVisible();
+  await expect.element(screen.getByRole("alert")).toHaveTextContent("encrypt failed");
 });
 
 test("submits the entered values and shows no error on success", async () => {
@@ -50,6 +50,7 @@ test("submits the entered values and shows no error on success", async () => {
   await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
   expect(onSubmit).toHaveBeenCalledWith(
     expect.objectContaining({ name: "My Cash", balance: "100.00" }),
+    expect.any(String),
   );
   expect(screen.container.querySelector('[role="alert"]')).toBeNull();
 });
@@ -71,6 +72,7 @@ test("first account (defaultKind investment) saves an investment subKind, not a 
   await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
   expect(onSubmit).toHaveBeenCalledWith(
     expect.objectContaining({ kind: "investment", subKind: "brokerage" }),
+    expect.any(String),
   );
 });
 
@@ -133,6 +135,7 @@ test("edit mode submits the edited values under Save changes", async () => {
   await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
   expect(onSubmit).toHaveBeenCalledWith(
     expect.objectContaining({ name: "New Name", kind: "cash", subKind: "checking" }),
+    expect.any(String),
   );
 });
 
@@ -162,6 +165,7 @@ test("edit mode prefills a liability rate and term and submits them", async () =
   await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
   expect(onSubmit).toHaveBeenCalledWith(
     expect.objectContaining({ interestRate: "6.25", termYears: "22" }),
+    expect.any(String),
   );
 });
 
@@ -172,9 +176,31 @@ test("a typed name is preserved when the parent re-renders", async () => {
   await screen.getByRole("textbox", { name: "Name" }).fill("Survives Rerender");
 
   // Re-render with the same props (simulates a parent re-render from new data)
-  screen.rerender(<AccountForm open onClose={() => {}} onSubmit={onSubmit} />);
+  await screen.rerender(<AccountForm open onClose={() => {}} onSubmit={onSubmit} />);
 
   await expect
     .element(screen.getByRole("textbox", { name: "Name" }))
     .toHaveValue("Survives Rerender");
+});
+
+test("reuses one create identity through an edited retry but not a newly opened form", async () => {
+  const ids: string[] = [];
+  const onSubmit = vi.fn(async (_values: unknown, id: string) => {
+    ids.push(id);
+    if (ids.length === 1) throw new Error("Response lost after commit");
+  });
+  const screen = await render(<AccountForm open onClose={() => {}} onSubmit={onSubmit} />);
+  await fillValidCashAccount(screen);
+  await screen.getByRole("button", { name: "Add account" }).click();
+  await expect.element(screen.getByRole("alert")).toHaveTextContent("Response lost after commit");
+  await screen.getByRole("textbox", { name: "Name" }).fill("Changed cash");
+  await screen.getByRole("button", { name: "Add account" }).click();
+  await vi.waitFor(() => expect(ids).toHaveLength(2));
+  expect(ids[1]).toBe(ids[0]);
+  await screen.rerender(<AccountForm open={false} onClose={() => {}} onSubmit={onSubmit} />);
+  await screen.rerender(<AccountForm open onClose={() => {}} onSubmit={onSubmit} />);
+  await fillValidCashAccount(screen);
+  await screen.getByRole("button", { name: "Add account" }).click();
+  await vi.waitFor(() => expect(ids).toHaveLength(3));
+  expect(ids[2]).not.toBe(ids[0]);
 });

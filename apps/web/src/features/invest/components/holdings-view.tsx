@@ -54,7 +54,10 @@ export function HoldingsView() {
   const [sort, setSort] = useState<SortState>(() => getSavedSort(userId));
   const [filter, setFilter] = useState<FilterState>({ kind: "all" });
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState<HoldingDialogMode>({ kind: "add" });
+  const [dialogMode, setDialogMode] = useState<HoldingDialogMode>(() => ({
+    kind: "add",
+    id: crypto.randomUUID(),
+  }));
   const [detailHolding, setDetailHolding] = useState<LocalHolding | null>(null);
   const shownDetailHolding = useKeepLastNonNull(detailHolding);
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -210,7 +213,7 @@ export function HoldingsView() {
   // provider because it survives HoldingsView unmounts during tab switches.
   useEffect(() => {
     if (!consumeAddHoldingSignal(addHoldingSignal)) return;
-    openDialog({ kind: "add" });
+    openDialog({ kind: "add", id: crypto.randomUUID() });
   }, [addHoldingSignal, consumeAddHoldingSignal, openDialog]);
 
   // Overview's "+ Add holding" routes here via router state to auto-open the
@@ -227,7 +230,7 @@ export function HoldingsView() {
         preventScrollReset: true,
       });
       if (state.highlightId) setHighlightId(state.highlightId);
-      if (state.openAddHolding) openDialog({ kind: "add" });
+      if (state.openAddHolding) openDialog({ kind: "add", id: crypto.randomUUID() });
     }
   }, [location.state, location.pathname, navigate, openDialog]);
 
@@ -288,7 +291,7 @@ export function HoldingsView() {
         } as const;
 
         if (mode.kind === "add") {
-          await holdingMutations.createHolding(baseInput);
+          await holdingMutations.createHolding(baseInput, mode.id);
         } else {
           await holdingMutations.updateHolding({ id: mode.holding.id, ...baseInput });
         }
@@ -301,7 +304,7 @@ export function HoldingsView() {
   );
 
   const handleCreateGroup = useCallback(
-    async (name: string): Promise<string> => groupMutations.createGroup({ name }),
+    async (name: string, id: string): Promise<string> => groupMutations.createGroup({ name }, id),
     [groupMutations],
   );
 
@@ -312,6 +315,7 @@ export function HoldingsView() {
         setDetailHolding(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to delete holding");
+        throw err;
       }
     },
     [holdingMutations],
@@ -391,7 +395,7 @@ export function HoldingsView() {
             loading={loading}
             onSortChange={handleSortChange}
             onRowClick={setDetailHolding}
-            onAdd={() => openDialog({ kind: "add" })}
+            onAdd={() => openDialog({ kind: "add", id: crypto.randomUUID() })}
             dayChangeByHoldingId={dayChangeByHoldingId}
             highlightedHoldingId={validatedHighlightId ?? undefined}
           />
@@ -429,6 +433,7 @@ export function HoldingsView() {
           onLookupProxyPrice={handleLookupProxyPrice}
           onCreateGroup={handleCreateGroup}
           submitting={holdingMutations.creating || holdingMutations.updating}
+          error={error}
         />
 
         <GroupsManager

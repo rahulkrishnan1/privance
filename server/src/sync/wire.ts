@@ -88,8 +88,11 @@ function buildRouter(sessionMiddleware: MiddlewareHandler): Hono {
 
     const service = makeService();
     const result = await service.get({ userId, objectId });
-    if (result.tombstone) throw new HTTPException(404, { message: "not_found" });
+    const includeTombstone = c.req.query("include_tombstone") === "true";
+    if (result.tombstone && !includeTombstone)
+      throw new HTTPException(404, { message: "not_found" });
     return c.json({
+      ...(includeTombstone ? { tombstone: result.tombstone } : {}),
       object_id: result.objectId,
       kind: result.kind,
       ciphertext: result.ciphertext.toString("base64"),

@@ -6,7 +6,7 @@ import {
   type SpendCategory,
   type SpendGroup,
 } from "@privance/core";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, type Resolver, useForm } from "react-hook-form";
 import { DateField } from "@/components/DateField";
 import { Button, Input, Select } from "@/components/index";
@@ -28,7 +28,7 @@ type SpendFormProps = {
   onClose: () => void;
   item?: LocalSpendItem;
   submitting: boolean;
-  onSave: (values: SpendFormValues) => Promise<void>;
+  onSave: (values: SpendFormValues, createId: string) => Promise<void>;
 };
 
 const EMPTY_FORM: SpendFormValues = {
@@ -49,6 +49,8 @@ function centsToDisplay(amountCents: string): string {
 }
 
 export function SpendForm({ open, onClose, item, submitting, onSave }: SpendFormProps) {
+  const createId = useRef<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const isEdit = item !== undefined;
   const formId = "spend-form";
 
@@ -66,6 +68,8 @@ export function SpendForm({ open, onClose, item, submitting, onSave }: SpendForm
 
   useEffect(() => {
     if (open) {
+      createId.current = crypto.randomUUID();
+      setSaveError(null);
       reset(
         item !== undefined
           ? {
@@ -84,7 +88,13 @@ export function SpendForm({ open, onClose, item, submitting, onSave }: SpendForm
   }, [open, item, reset]);
 
   const onSubmit = handleSubmit(async (values: SpendFormValues) => {
-    await onSave(values);
+    setSaveError(null);
+    try {
+      createId.current ??= crypto.randomUUID();
+      await onSave(values, createId.current);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Could not save this expense.");
+    }
   });
 
   const titleId = `${formId}-title`;
@@ -321,6 +331,11 @@ export function SpendForm({ open, onClose, item, submitting, onSave }: SpendForm
           </form>
         </SheetBody>
 
+        {saveError && (
+          <p role="alert" className="text-sm text-down">
+            {saveError}
+          </p>
+        )}
         <SheetFooter className="static mt-4 shrink-0">
           <Button
             type="button"

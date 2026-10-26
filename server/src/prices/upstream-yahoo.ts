@@ -1,4 +1,4 @@
-import type { FetchLike, UpstreamPrice } from "./types.js";
+import type { FetchLike, StockPriceResult, UpstreamPrice } from "./types.js";
 import { UpstreamUnavailableError } from "./types.js";
 
 const YAHOO_BASE = "https://query1.finance.yahoo.com";
@@ -19,6 +19,7 @@ const FETCH_TIMEOUT_MS = 15_000;
 const FETCH_CONCURRENCY = 6;
 
 type YahooMeta = {
+  currency?: unknown;
   regularMarketPrice?: number;
   previousClose?: number;
   chartPreviousClose?: number;
@@ -37,7 +38,10 @@ function parseChartMeta(body: unknown): YahooMeta | null {
   return meta as YahooMeta;
 }
 
-async function fetchOneTicker(ticker: string, fetcher: FetchLike): Promise<UpstreamPrice | null> {
+async function fetchOneTicker(
+  ticker: string,
+  fetcher: FetchLike,
+): Promise<UpstreamPrice | "unsupported" | null> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
@@ -78,6 +82,7 @@ async function fetchOneTicker(ticker: string, fetcher: FetchLike): Promise<Upstr
 
   const meta = parseChartMeta(body);
   if (meta === null) return null;
+  if (meta.currency !== "USD") return "unsupported";
 
   const price = meta.regularMarketPrice;
   if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) return null;
@@ -100,16 +105,15 @@ async function fetchOneTicker(ticker: string, fetcher: FetchLike): Promise<Upstr
 
 /**
  * Fetches prices from Yahoo Finance for a list of tickers.
- * Returns a map of ticker → price entry; tickers with no data are omitted.
- * Throws UpstreamUnavailableError on network failure or upstream 5xx/429.
+ * Returns validated USD prices and currency-rejected tickers separately.
+ * Network failures and upstream 5xx/429 are isolated to the affected ticker.
  */
 export async function fetchYahooPrices(
   tickers: string[],
   fetcher: FetchLike = globalThis.fetch,
-): Promise<Map<string, UpstreamPrice>> {
-  if (tickers.length === 0) return new Map();
-
+): Promise<StockPriceResult> {
   const out = new Map<string, UpstreamPrice>();
+  const unsupported = new Set<string>();
   let next = 0;
   async function worker(): Promise<void> {
     while (next < tickers.length) {
@@ -117,7 +121,8 @@ export async function fetchYahooPrices(
       if (ticker === undefined) return;
       try {
         const result = await fetchOneTicker(ticker, fetcher);
-        if (result !== null) out.set(ticker, result);
+        if (result === "unsupported") unsupported.add(ticker);
+        else if (result !== null) out.set(ticker, result);
       } catch (err) {
         // Per-ticker upstream failure isolated to "unknown": one bad ticker
         // shouldn't fail the whole batch.
@@ -128,5 +133,5 @@ export async function fetchYahooPrices(
 
   const workers = Array.from({ length: Math.min(FETCH_CONCURRENCY, tickers.length) }, worker);
   await Promise.all(workers);
-  return out;
+  return { prices: out, unsupported };
 }

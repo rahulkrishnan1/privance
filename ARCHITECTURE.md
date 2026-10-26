@@ -159,21 +159,24 @@ Pure TypeScript. No DOM, no Bun, no Node built-ins. Can run in the browser, in a
 ### Create account (mutation)
 
 ```
-UI (AccountsScreen)
-  → useAccountMutations().createAccount(payload)
+UI (AccountForm)
+  → useCreateAccount().create(input)
     → encrypt payload JSON with DEK (AES-GCM, AAD = {recordUuid, kind, labelVersion=1, kdfParamVersion=1})
-    → store.put(kind="account", objectId, ciphertext, nonce, version=1n)
-    → store.enqueue(outbound item)
-    → client.pushPending()                          ← or next background sync tick
+    → useSync().save(encrypted outbound item)
+      → store.putAndEnqueue(item)                    ← one object + queue transaction
+      → OPFS: return local-first success, push in background (retry on failure)
+      → memory: await exact queue-ID server confirmation before reporting success
 
 SyncClient.pushPending()
   → store.drainQueue()
   → POST /api/sync/batch { puts: [{object_id, kind, ciphertext, nonce, version}] }
   → server writes row to sync_objects (ciphertext only)
   → server returns {results: [{id, ok, server_seq, version}]}
-  → store.put(..., serverSeq = result.server_seq)
-  → store.ackQueueItem(id)
+  → store.ackQueueItem(queueId, {version, serverSeq}) ← atomic identity-safe confirmation
+  → onConfirmed([queueId])                          ← also for background/early-batch uploads
 ```
+
+Create forms retain one object ID across retries within the same open form session. An edited retry appends a revision to that object instead of creating a duplicate or resetting versions; a newly opened create intent gets a new ID. Lost-response conflicts retain pending revisions for explicit resolution. Accepting the server version uses `ackQueueItem(queueId, undefined, serverEnvelope)` to atomically remove only that captured intent and apply the matching server envelope only if no intent remains for its object ID. An absent queue ID is a no-op; a failed write retains the queue entry and local data. Discards do not emit `onConfirmed`.
 
 ### Sync pull
 
@@ -274,8 +277,9 @@ In the browser, storage is managed by `packages/core/src/storage/web-adapter.ts`
 
 - A dedicated Web Worker is spawned at `/sqlite/privance-worker.mjs` (served as a static asset from `apps/web/public/`).
 - The database filename is scoped per user (`/privance-<userId>.sqlite3`) so a sign-out and sign-in as a different user on the same browser cannot decrypt the previous user's rows with the new user's DEK. The legacy filename `/privance.sqlite3` remains as a fallback for the locked-rehydration state where the userId is briefly out of memory.
-- The worker hosts `@sqlite.org/sqlite-wasm`. It first tries to install the **SAH Pool VFS** for OPFS-backed persistence (`createSyncAccessHandle`); if OPFS is unavailable (Safari Private Browsing, restricted WKWebView hosts, ephemeral profiles), it falls back to an in-memory `sqlite3.oo1.DB`. The startup message includes a `mode: "opfs" | "memory"` field for consumers that want to surface ephemeral-session UX.
-- In the in-memory branch the local store re-populates from the server's ciphertext on every session via `drainAllChanges()`. Per-tab persistence only; no data is lost because the server is the authoritative store.
+- The worker hosts `@sqlite.org/sqlite-wasm`. It first tries to install the **SAH Pool VFS** for OPFS-backed persistence (`createSyncAccessHandle`); if OPFS is unavailable (Safari Private Browsing, restricted WKWebView hosts, ephemeral profiles), it falls back to an in-memory `sqlite3.oo1.DB`. The startup message includes a validated `mode: "opfs" | "memory"` field, exposed after initialization as `LocalStore.mode`. The app visibly warns when storage is temporary.
+- All feature writes (including snapshots and tombstones) atomically commit the encrypted object and outbound queue entry with `putAndEnqueue()`. OPFS saves remain local-first and work offline; failed background pushes leave durable intent queued for retry.
+- In-memory storage lasts only for this worker session. Saves report success only after the server confirms that exact queue ID, including confirmations from overlapping background pushes or an early successful batch. Conflicts, network failure, accepting the server copy, and another revision's acknowledgement are not confirmation. Unconfirmed saves show an explicit warning/error; reloading can lose them. Confirmed ciphertext re-populates on reload via `drainAllChanges()`. No raw DEK is persisted.
 - All SQLite operations are dispatched via a message-based RPC protocol from the main thread to the worker, because `createSyncAccessHandle` requires a dedicated worker context.
 - In tests (Node.js), an injected synchronous `Database` object bypasses the Worker, enabling full unit test coverage without a browser.
 

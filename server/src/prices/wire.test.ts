@@ -17,6 +17,7 @@ import { createFeatureRouter } from "./wire.js";
 type StubRepo = {
   getMany(opts: { source: string; tickers: string[] }): Promise<CachedPriceRow[]>;
   upsertMany(rows: CachedPriceRow[]): Promise<void>;
+  deleteMany(opts: { source: string; tickers: string[] }): Promise<void>;
 };
 
 function createStubRepo(initial: CachedPriceRow[] = []): StubRepo {
@@ -29,6 +30,9 @@ function createStubRepo(initial: CachedPriceRow[] = []): StubRepo {
         if (r) out.push(r);
       }
       return out;
+    },
+    async deleteMany({ source, tickers }) {
+      for (const t of tickers) rows.delete(`${source} ${t}`);
     },
     async upsertMany(input) {
       for (const r of input) rows.set(`${r.source} ${r.ticker}`, r);

@@ -167,31 +167,61 @@ async function methodInit({ dbFilename: filename, ddl }) {
   return null;
 }
 
-function methodPut({ kind, objectId, ciphertext, nonce, version, serverSeq, tombstone, updatedAt }) {
-  const d = assertOpen();
+function writeObject(d, { kind, objectId, ciphertext, nonce, version, serverSeq, tombstone, updatedAt }) {
   const now = updatedAt ?? Date.now();
   const seq = serverSeq ?? null;
   const tomb = tombstone ?? false;
 
-  d.transaction(() => {
-    d.exec({
-      sql: `
-        INSERT INTO sync_objects
-          (kind, object_id, ciphertext, nonce, version, server_seq, tombstone, updated_at)
-        VALUES
-          (?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT (kind, object_id) DO UPDATE SET
-          ciphertext  = excluded.ciphertext,
-          nonce       = excluded.nonce,
-          version     = excluded.version,
-          server_seq  = excluded.server_seq,
-          tombstone   = excluded.tombstone,
-          updated_at  = excluded.updated_at
-      `,
-      bind: [kind, objectId, ciphertext, nonce, version, seq, tomb ? 1 : 0, now],
-    });
+  d.exec({
+    sql: `
+      INSERT INTO sync_objects
+        (kind, object_id, ciphertext, nonce, version, server_seq, tombstone, updated_at)
+      VALUES
+        (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT (kind, object_id) DO UPDATE SET
+        ciphertext  = excluded.ciphertext,
+        nonce       = excluded.nonce,
+        version     = excluded.version,
+        server_seq  = excluded.server_seq,
+        tombstone   = excluded.tombstone,
+        updated_at  = excluded.updated_at
+    `,
+    bind: [kind, objectId, ciphertext, nonce, version, seq, tomb ? 1 : 0, now],
   });
+}
+
+function methodPut(input) {
+  const d = assertOpen();
+  d.transaction(() => writeObject(d, input));
   return null;
+}
+
+function methodPutAndEnqueue(input) {
+  const d = assertOpen();
+  const id = input.id ?? randomId();
+  d.transaction(() => {
+    writeObject(d, { ...input, serverSeq: null, updatedAt: Date.now() });
+    insertQueueItem(d, { ...input, id });
+  });
+  return id;
+}
+
+function methodApplyRemote(input) {
+  const d = assertOpen();
+  let applied = false;
+  d.transaction(() => {
+    const pending = d.exec({
+      sql: "SELECT 1 FROM outbound_queue WHERE object_id = ? LIMIT 1",
+      bind: [input.objectId],
+      returnValue: "resultRows",
+      rowMode: "object",
+    });
+    if (pending.length === 0) {
+      writeObject(d, input);
+      applied = true;
+    }
+  });
+  return applied;
 }
 
 function methodGet({ kind, objectId }) {
@@ -256,22 +286,24 @@ function methodSetCursor({ seq }) {
   return null;
 }
 
-function methodEnqueue({ id, kind, objectId, ciphertext, nonce, version, prevVersion, tombstone }) {
-  const d = assertOpen();
+function insertQueueItem(d, { id, kind, objectId, ciphertext, nonce, version, prevVersion, tombstone }) {
   const itemId = id ?? randomId();
   const now = Date.now();
   const prev = prevVersion != null ? prevVersion : null;
 
-  d.transaction(() => {
-    d.exec({
-      sql: `
-        INSERT INTO outbound_queue
-          (id, kind, object_id, ciphertext, nonce, version, prev_version, tombstone, enqueued_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-      bind: [itemId, kind, objectId, ciphertext, nonce, version, prev, tombstone ? 1 : 0, now],
-    });
+  d.exec({
+    sql: `
+      INSERT INTO outbound_queue
+        (id, kind, object_id, ciphertext, nonce, version, prev_version, tombstone, enqueued_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    bind: [itemId, kind, objectId, ciphertext, nonce, version, prev, tombstone ? 1 : 0, now],
   });
+}
+
+function methodEnqueue(input) {
+  const d = assertOpen();
+  d.transaction(() => insertQueueItem(d, input));
   return null;
 }
 
@@ -281,7 +313,7 @@ function methodDrainQueue() {
     sql: `
       SELECT id, kind, object_id, ciphertext, nonce, version, prev_version, tombstone, enqueued_at
       FROM outbound_queue
-      ORDER BY enqueued_at ASC
+      ORDER BY enqueued_at ASC, rowid ASC
     `,
     returnValue: "resultRows",
     rowMode: "object",
@@ -289,9 +321,52 @@ function methodDrainQueue() {
   return rows.map(rowToOutboundItem);
 }
 
-function methodAckQueueItem({ id }) {
+function methodAckQueueItem({ id, confirmed, replacement }) {
   const d = assertOpen();
-  d.exec({ sql: `DELETE FROM outbound_queue WHERE id = ?`, bind: [id] });
+  d.transaction(() => {
+    if (replacement !== undefined) {
+      const [captured] = d.exec({
+        sql: "SELECT kind, object_id FROM outbound_queue WHERE id = ?",
+        bind: [id],
+        returnValue: "resultRows",
+        rowMode: "object",
+      });
+      if (captured === undefined) return;
+      if (captured.kind !== replacement.kind || captured.object_id !== replacement.objectId)
+        throw new Error("Replacement must match the captured queue object's kind and ID");
+    }
+    if (confirmed !== undefined) {
+      d.exec({
+        sql: `
+          UPDATE sync_objects SET version = ?, server_seq = ?
+          WHERE server_seq IS NULL AND EXISTS (
+            SELECT 1 FROM outbound_queue AS q
+            WHERE q.id = ? AND q.kind = sync_objects.kind
+              AND q.object_id = sync_objects.object_id
+              AND q.ciphertext = sync_objects.ciphertext
+              AND q.nonce = sync_objects.nonce
+              AND q.version = sync_objects.version
+              AND q.tombstone = sync_objects.tombstone
+              AND NOT EXISTS (
+                SELECT 1 FROM outbound_queue AS newer
+                WHERE newer.object_id = q.object_id AND newer.rowid > q.rowid
+              )
+          )
+        `,
+        bind: [confirmed.version, confirmed.serverSeq, id],
+      });
+    }
+    d.exec({ sql: `DELETE FROM outbound_queue WHERE id = ?`, bind: [id] });
+    if (replacement !== undefined) {
+      const pending = d.exec({
+        sql: "SELECT 1 FROM outbound_queue WHERE object_id = ? LIMIT 1",
+        bind: [replacement.objectId],
+        returnValue: "resultRows",
+        rowMode: "object",
+      });
+      if (pending.length === 0) writeObject(d, replacement);
+    }
+  });
   return null;
 }
 
@@ -331,6 +406,8 @@ function methodDestroy() {
 const DISPATCH = {
   init: methodInit,
   put: methodPut,
+  putAndEnqueue: methodPutAndEnqueue,
+  applyRemote: methodApplyRemote,
   get: methodGet,
   list: methodList,
   delete: methodDelete,

@@ -1,10 +1,10 @@
-import type { FetchLike, UpstreamPrice } from "./types.js";
+import type { FetchLike, StockPriceResult, UpstreamPrice } from "./types.js";
 import { UpstreamUnavailableError } from "./types.js";
 
 const FINNHUB_BASE = "https://finnhub.io/api/v1";
 
-function quoteUrl(ticker: string, apiKey: string): string {
-  return `${FINNHUB_BASE}/quote?symbol=${encodeURIComponent(ticker)}&token=${encodeURIComponent(apiKey)}`;
+function providerUrl(path: string, ticker: string, apiKey: string): string {
+  return `${FINNHUB_BASE}/${path}?symbol=${encodeURIComponent(ticker)}&token=${encodeURIComponent(apiKey)}`;
 }
 
 const FETCH_TIMEOUT_MS = 15_000;
@@ -23,42 +23,38 @@ function parseQuote(body: unknown): FinnhubQuote | null {
   return body as FinnhubQuote;
 }
 
+async function fetchBody(url: string, fetcher: FetchLike): Promise<unknown> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetcher(url, {
+      signal: controller.signal,
+      headers: { Accept: "application/json" },
+    });
+    if (res.status === 429 || res.status >= 500) {
+      throw new UpstreamUnavailableError("upstream returned non-2xx");
+    }
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    throw new UpstreamUnavailableError("upstream request failed");
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function fetchOneTicker(
   ticker: string,
   apiKey: string,
   fetcher: FetchLike,
-): Promise<UpstreamPrice | null> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-  let res: Response;
-  try {
-    res = await fetcher(quoteUrl(ticker, apiKey), {
-      signal: controller.signal,
-      headers: { Accept: "application/json" },
-    });
-  } catch (err) {
-    clearTimeout(timeoutId);
-    throw new UpstreamUnavailableError(`network error fetching upstream: ${String(err)}`);
+): Promise<UpstreamPrice | "unsupported" | null> {
+  // /quote has no currency; profile2 must positively establish USD first.
+  const profile = await fetchBody(providerUrl("stock/profile2", ticker, apiKey), fetcher);
+  if (profile === null) return null;
+  if (typeof profile !== "object" || (profile as { currency?: unknown }).currency !== "USD") {
+    return "unsupported";
   }
-  clearTimeout(timeoutId);
-
-  if (res.status === 429 || res.status >= 500) {
-    // Mask upstream 429/5xx, do not expose upstream choice to callers.
-    throw new UpstreamUnavailableError("upstream returned non-2xx");
-  }
-
-  if (!res.ok) {
-    // 4xx other than 429 (e.g. 403 bad key, 404 unknown ticker) → treat as unknown.
-    return null;
-  }
-
-  let body: unknown;
-  try {
-    body = await res.json();
-  } catch {
-    throw new UpstreamUnavailableError("malformed upstream response");
-  }
+  const body = await fetchBody(providerUrl("quote", ticker, apiKey), fetcher);
 
   const quote = parseQuote(body);
   if (quote === null) return null;
@@ -85,17 +81,16 @@ async function fetchOneTicker(
 
 /**
  * Fetches prices from Finnhub for a list of tickers.
- * Returns a map of ticker → price entry; tickers with no data are omitted.
- * Throws UpstreamUnavailableError on network failure or upstream 5xx/429.
+ * Returns validated USD prices and currency-rejected tickers separately.
+ * Network failures and upstream 5xx/429 are isolated to the affected ticker.
  */
 export async function fetchFinnhubPrices(
   tickers: string[],
   apiKey: string,
   fetcher: FetchLike = globalThis.fetch,
-): Promise<Map<string, UpstreamPrice>> {
-  if (tickers.length === 0) return new Map();
-
+): Promise<StockPriceResult> {
   const out = new Map<string, UpstreamPrice>();
+  const unsupported = new Set<string>();
   let next = 0;
   async function worker(): Promise<void> {
     while (next < tickers.length) {
@@ -103,7 +98,8 @@ export async function fetchFinnhubPrices(
       if (ticker === undefined) return;
       try {
         const result = await fetchOneTicker(ticker, apiKey, fetcher);
-        if (result !== null) out.set(ticker, result);
+        if (result === "unsupported") unsupported.add(ticker);
+        else if (result !== null) out.set(ticker, result);
       } catch (err) {
         // Per-ticker upstream failure isolated to "unknown": one bad ticker
         // shouldn't fail the whole batch.
@@ -114,5 +110,5 @@ export async function fetchFinnhubPrices(
 
   const workers = Array.from({ length: Math.min(FETCH_CONCURRENCY, tickers.length) }, worker);
   await Promise.all(workers);
-  return out;
+  return { prices: out, unsupported };
 }

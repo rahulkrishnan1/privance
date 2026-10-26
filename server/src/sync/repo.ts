@@ -23,6 +23,14 @@ export async function purgeUserData(opts: { tx: Tx; userId: string }): Promise<v
 export class SyncRepo {
   constructor(private readonly db: Db) {}
 
+  private async lockUserWrites(tx: Tx, userId: string): Promise<void> {
+    // Lock before lookups/sequence allocation, including creates. Hash collisions
+    // only serialize unrelated users; the transaction holds the lock to commit.
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${`sync_objects:${userId}`}, 0))`,
+    );
+  }
+
   async put(opts: {
     userId: string;
     objectId: string;
@@ -32,7 +40,10 @@ export class SyncRepo {
     version: bigint;
     prevVersion?: bigint;
   }): Promise<PutResult> {
-    return this.db.transaction((tx) => this.putTx(tx, opts));
+    return this.db.transaction(async (tx) => {
+      await this.lockUserWrites(tx, opts.userId);
+      return this.putTx(tx, opts);
+    });
   }
 
   private async putTx(
@@ -115,7 +126,10 @@ export class SyncRepo {
     objectId: string;
     prevVersion: bigint;
   }): Promise<{ serverSeq: bigint; version: bigint }> {
-    return this.db.transaction((tx) => this.deleteTx(tx, opts));
+    return this.db.transaction(async (tx) => {
+      await this.lockUserWrites(tx, opts.userId);
+      return this.deleteTx(tx, opts);
+    });
   }
 
   private async deleteTx(
@@ -142,6 +156,7 @@ export class SyncRepo {
       .update(syncObjects)
       .set({
         tombstone: true,
+        version: sql`${syncObjects.version} + 1`,
         serverSeq: sql`nextval(pg_get_serial_sequence('sync_objects', 'server_seq'))`,
         updatedAt: sql`now()`,
       })
@@ -194,6 +209,7 @@ export class SyncRepo {
   async batch(opts: BatchInput): Promise<BatchResult> {
     const { userId, puts, deletes } = opts;
     return this.db.transaction(async (tx) => {
+      await this.lockUserWrites(tx, userId);
       const results: BatchResultItem[] = [];
       for (const item of puts) {
         results.push(await this.batchPut({ tx, userId, item }));

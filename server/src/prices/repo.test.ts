@@ -142,3 +142,22 @@ describe("PricesRepo multi-source isolation", () => {
     expect(cgRows[0]?.price).toBe("999.00000000");
   });
 });
+
+describe("PricesRepo.deleteMany", () => {
+  it("is a no-op for empty tickers", async () => {
+    await expect(repo.deleteMany({ source: TEST_SOURCE_A, tickers: [] })).resolves.toBeUndefined();
+  });
+
+  it("evicts only the requested source and tickers", async () => {
+    const row = { price: "100.00000000", previousPrice: null, fetchedAt: new Date() };
+    await repo.upsertMany([
+      { ...row, source: TEST_SOURCE_A, ticker: TEST_TICKER },
+      { ...row, source: TEST_SOURCE_B, ticker: TEST_TICKER },
+      { ...row, source: TEST_SOURCE_A, ticker: TEST_TICKER_2 },
+    ]);
+    await repo.deleteMany({ source: TEST_SOURCE_A, tickers: [TEST_TICKER] });
+    expect(await repo.getMany({ source: TEST_SOURCE_A, tickers: [TEST_TICKER] })).toEqual([]);
+    expect(await repo.getMany({ source: TEST_SOURCE_B, tickers: [TEST_TICKER] })).toHaveLength(1);
+    expect(await repo.getMany({ source: TEST_SOURCE_A, tickers: [TEST_TICKER_2] })).toHaveLength(1);
+  });
+});

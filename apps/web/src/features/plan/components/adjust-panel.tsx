@@ -21,7 +21,7 @@ type AdjustPanelProps = {
   dirty: boolean;
   saving: boolean;
   /** The last save failed; show a retry prompt next to the Save button. */
-  saveError?: boolean;
+  saveError?: boolean | string;
   saveDisabled?: boolean;
   onChange: (patch: Partial<PlanFormValues>) => void;
   onSave: () => void;
@@ -261,8 +261,8 @@ export function AdjustPanel({
     });
   };
 
-  const showSaved = !dirty && !saving;
-  const canSave = dirty && !saving && !saveDisabled;
+  const showSaved = !dirty && !saving && !saveError;
+  const canSave = (dirty || !!saveError) && !saving && !saveDisabled;
 
   return (
     <div className="glass rounded-[10px] p-6">
@@ -308,7 +308,9 @@ export function AdjustPanel({
 
       {saveError && (
         <p role="alert" className="mb-4 font-mono text-xs text-signal">
-          Could not save your plan. Check your connection and try again.
+          {typeof saveError === "string"
+            ? saveError
+            : "Could not save your plan. Check your connection and try again."}
         </p>
       )}
 

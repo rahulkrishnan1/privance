@@ -4,6 +4,8 @@ export type {
   LocalStore,
   OutboundItem,
   PutObjectInput,
+  QueueConfirmation,
+  StorageMode,
   StoredObject,
 } from "./types.js";
 export { StorageError, StorageNotInitializedError } from "./types.js";

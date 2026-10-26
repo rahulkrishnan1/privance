@@ -48,23 +48,25 @@ type SpendMutationResult = {
   creating: boolean;
   updating: boolean;
   deleting: boolean;
-  createItem: (values: SpendFormValues) => Promise<string>;
+  createItem: (values: SpendFormValues, id?: string) => Promise<string>;
   updateItem: (id: string, values: SpendFormValues) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
 };
 
 export function useSpendMutations(): SpendMutationResult {
-  const { store, client, decrypt, tick } = useSync();
+  const { store, save, decrypt } = useSync();
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const createItem = useCallback(
-    async (values: SpendFormValues): Promise<string> => {
+    async (values: SpendFormValues, id = newObjectId()): Promise<string> => {
       if (store === null) throw new Error("Store not ready");
       setCreating(true);
       try {
-        const id = newObjectId();
+        const existing = await store.get({ kind: KIND_SPEND, objectId: id });
+        const prevVersion = existing?.version;
+        const version = prevVersion === undefined ? 1n : prevVersion + 1n;
         // Validate through the payload schema before encrypting, mirroring
         // updateItem. The form values are string-typed for placeholder handling;
         // parse narrows and rejects anything the form refinements somehow missed
@@ -80,33 +82,21 @@ export function useSpendMutations(): SpendMutationResult {
           status: values.status,
         });
         const { ciphertext, nonce } = encryptPayload(payload, id, KIND_SPEND);
-        const now = Date.now();
-        await store.put({
+        await save({
           kind: KIND_SPEND,
           objectId: id,
           ciphertext,
           nonce,
-          version: 1n,
-          updatedAt: now,
-        });
-        await store.enqueue({
-          kind: KIND_SPEND,
-          objectId: id,
-          ciphertext,
-          nonce,
-          version: 1n,
-          prevVersion: undefined,
+          version,
+          prevVersion,
           tombstone: false,
-          enqueuedAt: now,
-        } as Parameters<typeof store.enqueue>[0]);
-        tick();
-        void client?.pushPending();
+        });
         return id;
       } finally {
         setCreating(false);
       }
     },
-    [store, client, tick],
+    [store, save],
   );
 
   const updateItem = useCallback(
@@ -140,17 +130,7 @@ export function useSpendMutations(): SpendMutationResult {
 
         const newVersion = existing.version + 1n;
         const { ciphertext, nonce } = encryptPayload(updated, id, KIND_SPEND);
-        const now = Date.now();
-        await store.put({
-          kind: KIND_SPEND,
-          objectId: id,
-          ciphertext,
-          nonce,
-          version: newVersion,
-          serverSeq: existing.serverSeq,
-          updatedAt: now,
-        });
-        await store.enqueue({
+        await save({
           kind: KIND_SPEND,
           objectId: id,
           ciphertext,
@@ -158,15 +138,12 @@ export function useSpendMutations(): SpendMutationResult {
           version: newVersion,
           prevVersion: existing.version,
           tombstone: false,
-          enqueuedAt: now,
-        } as Parameters<typeof store.enqueue>[0]);
-        tick();
-        void client?.pushPending();
+        });
       } finally {
         setUpdating(false);
       }
     },
-    [store, client, decrypt, tick],
+    [store, save, decrypt],
   );
 
   const deleteItem = useCallback(
@@ -178,18 +155,7 @@ export function useSpendMutations(): SpendMutationResult {
         if (existing === null) throw new Error("Item not found");
 
         const newVersion = existing.version + 1n;
-        const now = Date.now();
-        await store.put({
-          kind: KIND_SPEND,
-          objectId: id,
-          ciphertext: existing.ciphertext,
-          nonce: existing.nonce,
-          version: newVersion,
-          serverSeq: existing.serverSeq,
-          tombstone: true,
-          updatedAt: now,
-        });
-        await store.enqueue({
+        await save({
           kind: KIND_SPEND,
           objectId: id,
           ciphertext: existing.ciphertext,
@@ -197,15 +163,12 @@ export function useSpendMutations(): SpendMutationResult {
           version: newVersion,
           prevVersion: existing.version,
           tombstone: true,
-          enqueuedAt: now,
-        } as Parameters<typeof store.enqueue>[0]);
-        tick();
-        void client?.pushPending();
+        });
       } finally {
         setDeleting(false);
       }
     },
-    [store, client, tick],
+    [store, save],
   );
 
   return { creating, updating, deleting, createItem, updateItem, deleteItem };

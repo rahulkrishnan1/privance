@@ -14,9 +14,11 @@ import type {
   LocalStore,
   OutboundItem,
   PutObjectInput,
+  QueueConfirmation,
+  StorageMode,
   StoredObject,
 } from "./types.js";
-import { StorageNotInitializedError } from "./types.js";
+import { StorageError, StorageNotInitializedError } from "./types.js";
 
 /**
  * Synchronous subset of @sqlite.org/sqlite-wasm Database used only by the
@@ -72,6 +74,8 @@ function rowToOutboundItem(row: Record<string, unknown>): OutboundItem {
 
 interface LocalStoreImpl {
   put(input: PutObjectInput): Promise<void>;
+  putAndEnqueue(input: EnqueueInput): Promise<string>;
+  applyRemote(input: PutObjectInput): Promise<boolean>;
   get(input: { kind: string; objectId: string }): Promise<StoredObject | null>;
   list(input: { kind: string }): Promise<StoredObject[]>;
   delete(input: { kind: string; objectId: string }): Promise<void>;
@@ -79,45 +83,101 @@ interface LocalStoreImpl {
   setCursor(seq: bigint): Promise<void>;
   enqueue(item: EnqueueInput): Promise<void>;
   drainQueue(): Promise<OutboundItem[]>;
-  ackQueueItem(id: string): Promise<void>;
+  ackQueueItem(
+    id: string,
+    confirmed?: QueueConfirmation,
+    replacement?: PutObjectInput,
+  ): Promise<void>;
   close(): Promise<void>;
   destroy(): Promise<void>;
+}
+
+function writeObject(db: TestDb, input: PutObjectInput): void {
+  const now = input.updatedAt ?? Date.now();
+  const serverSeq = input.serverSeq ?? null;
+  const tombstone = input.tombstone ?? false;
+  db.exec({
+    sql: `
+      INSERT INTO sync_objects
+        (kind, object_id, ciphertext, nonce, version, server_seq, tombstone, updated_at)
+      VALUES
+        (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT (kind, object_id) DO UPDATE SET
+        ciphertext  = excluded.ciphertext,
+        nonce       = excluded.nonce,
+        version     = excluded.version,
+        server_seq  = excluded.server_seq,
+        tombstone   = excluded.tombstone,
+        updated_at  = excluded.updated_at
+    `,
+    bind: [
+      input.kind,
+      input.objectId,
+      input.ciphertext,
+      input.nonce,
+      input.version,
+      serverSeq,
+      tombstone ? 1 : 0,
+      now,
+    ],
+  });
+}
+
+function insertQueueItem(db: TestDb, item: EnqueueInput): void {
+  const id = item.id ?? randomId();
+  const now = Date.now();
+  const prevVersion = item.prevVersion != null ? item.prevVersion : null;
+  db.exec({
+    sql: `
+      INSERT INTO outbound_queue
+        (id, kind, object_id, ciphertext, nonce, version, prev_version, tombstone, enqueued_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    bind: [
+      id,
+      item.kind,
+      item.objectId,
+      item.ciphertext,
+      item.nonce,
+      item.version,
+      prevVersion,
+      item.tombstone ? 1 : 0,
+      now,
+    ],
+  });
 }
 
 function makeSyncImpl(db: TestDb): LocalStoreImpl {
   return {
     put(input: PutObjectInput): Promise<void> {
-      const now = input.updatedAt ?? Date.now();
-      const serverSeq = input.serverSeq ?? null;
-      const tombstone = input.tombstone ?? false;
-      db.transaction(() => {
-        db.exec({
-          sql: `
-            INSERT INTO sync_objects
-              (kind, object_id, ciphertext, nonce, version, server_seq, tombstone, updated_at)
-            VALUES
-              (?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT (kind, object_id) DO UPDATE SET
-              ciphertext  = excluded.ciphertext,
-              nonce       = excluded.nonce,
-              version     = excluded.version,
-              server_seq  = excluded.server_seq,
-              tombstone   = excluded.tombstone,
-              updated_at  = excluded.updated_at
-          `,
-          bind: [
-            input.kind,
-            input.objectId,
-            input.ciphertext,
-            input.nonce,
-            input.version,
-            serverSeq,
-            tombstone ? 1 : 0,
-            now,
-          ],
-        });
-      });
+      db.transaction(() => writeObject(db, input));
       return Promise.resolve();
+    },
+
+    putAndEnqueue(input: EnqueueInput): Promise<string> {
+      const id = input.id ?? randomId();
+      db.transaction(() => {
+        writeObject(db, { ...input, serverSeq: null, updatedAt: Date.now() });
+        insertQueueItem(db, { ...input, id });
+      });
+      return Promise.resolve(id);
+    },
+
+    applyRemote(input: PutObjectInput): Promise<boolean> {
+      let applied = false;
+      db.transaction(() => {
+        const pending = db.exec({
+          sql: "SELECT 1 FROM outbound_queue WHERE object_id = ? LIMIT 1",
+          bind: [input.objectId],
+          returnValue: "resultRows",
+          rowMode: "object",
+        });
+        if (pending.length === 0) {
+          writeObject(db, input);
+          applied = true;
+        }
+      });
+      return Promise.resolve(applied);
     },
 
     get(input: { kind: string; objectId: string }): Promise<StoredObject | null> {
@@ -181,29 +241,7 @@ function makeSyncImpl(db: TestDb): LocalStoreImpl {
     },
 
     enqueue(item: EnqueueInput): Promise<void> {
-      const id = item.id ?? randomId();
-      const now = Date.now();
-      const prevVersion = item.prevVersion != null ? item.prevVersion : null;
-      db.transaction(() => {
-        db.exec({
-          sql: `
-            INSERT INTO outbound_queue
-              (id, kind, object_id, ciphertext, nonce, version, prev_version, tombstone, enqueued_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `,
-          bind: [
-            id,
-            item.kind,
-            item.objectId,
-            item.ciphertext,
-            item.nonce,
-            item.version,
-            prevVersion,
-            item.tombstone ? 1 : 0,
-            now,
-          ],
-        });
-      });
+      db.transaction(() => insertQueueItem(db, item));
       return Promise.resolve();
     },
 
@@ -212,7 +250,7 @@ function makeSyncImpl(db: TestDb): LocalStoreImpl {
         sql: `
           SELECT id, kind, object_id, ciphertext, nonce, version, prev_version, tombstone, enqueued_at
           FROM outbound_queue
-          ORDER BY enqueued_at ASC
+          ORDER BY enqueued_at ASC, rowid ASC
         `,
         returnValue: "resultRows",
         rowMode: "object",
@@ -220,8 +258,57 @@ function makeSyncImpl(db: TestDb): LocalStoreImpl {
       return Promise.resolve(rows.map(rowToOutboundItem));
     },
 
-    ackQueueItem(id: string): Promise<void> {
-      db.exec({ sql: `DELETE FROM outbound_queue WHERE id = ?`, bind: [id] });
+    ackQueueItem(
+      id: string,
+      confirmed?: QueueConfirmation,
+      replacement?: PutObjectInput,
+    ): Promise<void> {
+      db.transaction(() => {
+        if (replacement !== undefined) {
+          const [captured] = db.exec({
+            sql: "SELECT kind, object_id FROM outbound_queue WHERE id = ?",
+            bind: [id],
+            returnValue: "resultRows",
+            rowMode: "object",
+          });
+          if (captured === undefined) return;
+          if (captured.kind !== replacement.kind || captured.object_id !== replacement.objectId)
+            throw new StorageError(
+              "Replacement must match the captured queue object's kind and ID",
+            );
+        }
+        if (confirmed !== undefined) {
+          db.exec({
+            sql: `
+              UPDATE sync_objects SET version = ?, server_seq = ?
+              WHERE server_seq IS NULL AND EXISTS (
+                SELECT 1 FROM outbound_queue AS q
+                WHERE q.id = ? AND q.kind = sync_objects.kind
+                  AND q.object_id = sync_objects.object_id
+                  AND q.ciphertext = sync_objects.ciphertext
+                  AND q.nonce = sync_objects.nonce
+                  AND q.version = sync_objects.version
+                  AND q.tombstone = sync_objects.tombstone
+                  AND NOT EXISTS (
+                    SELECT 1 FROM outbound_queue AS newer
+                    WHERE newer.object_id = q.object_id AND newer.rowid > q.rowid
+                  )
+              )
+            `,
+            bind: [confirmed.version, confirmed.serverSeq, id],
+          });
+        }
+        db.exec({ sql: `DELETE FROM outbound_queue WHERE id = ?`, bind: [id] });
+        if (replacement !== undefined) {
+          const pending = db.exec({
+            sql: "SELECT 1 FROM outbound_queue WHERE object_id = ? LIMIT 1",
+            bind: [replacement.objectId],
+            returnValue: "resultRows",
+            rowMode: "object",
+          });
+          if (pending.length === 0) writeObject(db, replacement);
+        }
+      });
       return Promise.resolve();
     },
 
@@ -251,6 +338,7 @@ interface WorkerRequest {
 interface WorkerReply {
   id?: string;
   ready?: boolean;
+  mode?: StorageMode;
   ok?: boolean;
   result?: unknown;
   error?: string;
@@ -261,7 +349,7 @@ function makeWorkerImpl(
   workerUrl: string,
   dbFilename: string,
 ): {
-  init(): Promise<void>;
+  init(): Promise<StorageMode>;
   impl: LocalStoreImpl;
 } {
   let worker: Worker | null = null;
@@ -297,12 +385,10 @@ function makeWorkerImpl(
     return send<unknown>(method, args).then(() => undefined);
   }
 
-  async function init(): Promise<void> {
-    if (worker !== null) return;
-
-    let readyResolve: (() => void) | null = null;
+  async function init(): Promise<StorageMode> {
+    let readyResolve: ((mode: StorageMode) => void) | null = null;
     let readyReject: ((e: Error) => void) | null = null;
-    const readyPromise = new Promise<void>((resolve, reject) => {
+    const readyPromise = new Promise<StorageMode>((resolve, reject) => {
       readyResolve = resolve;
       readyReject = reject;
     });
@@ -313,8 +399,8 @@ function makeWorkerImpl(
       const msg = ev.data;
 
       if (msg.ready !== undefined) {
-        if (msg.ready === true) {
-          readyResolve?.();
+        if (msg.ready === true && (msg.mode === "opfs" || msg.mode === "memory")) {
+          readyResolve?.(msg.mode);
         } else {
           readyReject?.(new Error(`worker init failed: ${msg.error ?? "unknown"}`));
         }
@@ -355,9 +441,16 @@ function makeWorkerImpl(
       globalThis.addEventListener("pagehide", pagehideHandler);
     }
 
-    await readyPromise;
-
-    await sendVoid("init", { dbFilename, ddl: DDL });
+    try {
+      const mode = await readyPromise;
+      await sendVoid("init", { dbFilename, ddl: DDL });
+      return mode;
+    } catch (error) {
+      worker?.terminate();
+      worker = null;
+      removePagehideHandler();
+      throw error;
+    }
   }
 
   const impl: LocalStoreImpl = {
@@ -372,6 +465,8 @@ function makeWorkerImpl(
         tombstone: input.tombstone ?? false,
         updatedAt: input.updatedAt ?? Date.now(),
       }),
+    putAndEnqueue: (input) => send<string>("putAndEnqueue", { ...input }),
+    applyRemote: (input) => send<boolean>("applyRemote", { ...input }),
     get: (input) =>
       send<StoredObject | null>("get", {
         kind: input.kind,
@@ -393,7 +488,8 @@ function makeWorkerImpl(
         tombstone: item.tombstone,
       }),
     drainQueue: () => send<OutboundItem[]>("drainQueue"),
-    ackQueueItem: (id) => sendVoid("ackQueueItem", { id }),
+    ackQueueItem: (id, confirmed, replacement) =>
+      sendVoid("ackQueueItem", { id, confirmed, replacement }),
     async close() {
       if (worker !== null) {
         await sendVoid("close");
@@ -427,11 +523,13 @@ export class WebSqliteAdapter implements LocalStore {
 
   // Bound after init(). Null before init() or after close()/destroy().
   #impl: LocalStoreImpl | null = null;
+  #mode: StorageMode | null = null;
 
   /**
    * @param options.workerUrl  - Absolute URL the host serves the worker at (web).
    * @param options.dbFilename - SAHPool database filename. Defaults to "/privance.sqlite3".
-   * @param options.injectedDb - Synchronous Database for tests only; skips the Worker.
+   * @param options.injectedDb - Tests only; skips the Worker and models opfs durability
+   *   semantics for logic tests, even when the injected DB itself is in-memory.
    */
   constructor(options: {
     workerUrl: string;
@@ -449,13 +547,19 @@ export class WebSqliteAdapter implements LocalStore {
     if (this.#injectedDb !== null) {
       this.#injectedDb.exec(DDL);
       this.#impl = makeSyncImpl(this.#injectedDb);
+      this.#mode = "opfs";
       return;
     }
 
     /* c8 ignore next 3, worker path requires a browser (OPFS/Worker API) */
     const { init, impl } = makeWorkerImpl(this.#workerUrl, this.#dbFilename);
-    await init();
+    this.#mode = await init();
     this.#impl = impl;
+  }
+
+  get mode(): StorageMode {
+    if (this.#mode === null) throw new StorageNotInitializedError();
+    return this.#mode;
   }
 
   #assertImpl(): LocalStoreImpl {
@@ -465,6 +569,14 @@ export class WebSqliteAdapter implements LocalStore {
 
   async put(input: PutObjectInput): Promise<void> {
     return this.#assertImpl().put(input);
+  }
+
+  async putAndEnqueue(input: EnqueueInput): Promise<string> {
+    return this.#assertImpl().putAndEnqueue(input);
+  }
+
+  async applyRemote(input: PutObjectInput): Promise<boolean> {
+    return this.#assertImpl().applyRemote(input);
   }
 
   async get(input: { kind: string; objectId: string }): Promise<StoredObject | null> {
@@ -495,19 +607,25 @@ export class WebSqliteAdapter implements LocalStore {
     return this.#assertImpl().drainQueue();
   }
 
-  async ackQueueItem(id: string): Promise<void> {
-    return this.#assertImpl().ackQueueItem(id);
+  async ackQueueItem(
+    id: string,
+    confirmed?: QueueConfirmation,
+    replacement?: PutObjectInput,
+  ): Promise<void> {
+    return this.#assertImpl().ackQueueItem(id, confirmed, replacement);
   }
 
   async close(): Promise<void> {
     if (this.#impl !== null) {
       await this.#impl.close();
       this.#impl = null;
+      this.#mode = null;
     }
   }
 
   async destroy(): Promise<void> {
     await this.#assertImpl().destroy();
     this.#impl = null;
+    this.#mode = null;
   }
 }

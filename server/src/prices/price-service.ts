@@ -22,6 +22,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 type PricesRepoLike = {
   getMany(opts: { source: string; tickers: string[] }): Promise<CachedPriceRow[]>;
   upsertMany(rows: CachedPriceRow[]): Promise<void>;
+  deleteMany(opts: { source: string; tickers: string[] }): Promise<void>;
 };
 
 type PriceServiceOptions = {
@@ -57,8 +58,10 @@ export class PriceService {
     }
     const dataSource: DataSource = source;
 
+    // Legacy Yahoo rows have no validated denomination and must never be reused.
+    const cacheSource = dataSource === "yahoo" ? "yahoo-usd-v1" : dataSource;
     const now = Date.now();
-    const cached = await this.#pricesRepo.getMany({ source: dataSource, tickers });
+    const cached = await this.#pricesRepo.getMany({ source: cacheSource, tickers });
 
     const freshCached = cached.filter((r) => now - r.fetchedAt.getTime() < CACHE_TTL_MS);
     const freshMap = new Map(freshCached.map((r) => [r.ticker, r]));
@@ -78,6 +81,7 @@ export class PriceService {
 
     let upstream: Map<string, { price: string; previousPrice: string | null; fetchedAt: string }> =
       new Map();
+    const unsupported = new Set<string>();
     let upstreamFailed = false;
     let finnhubUsed = false;
 
@@ -87,11 +91,15 @@ export class PriceService {
       // Start the cooldown on attempt so a failing upstream can't be hammered.
       rateLimit.recordRefresh(userId, dataSource, this.#cooldownMs);
       try {
-        upstream = USE_FAKE_UPSTREAM
-          ? fetchFakePrices(needFetch)
-          : dataSource === "yahoo"
-            ? await fetchYahooPrices(needFetch, this.#fetcher)
-            : await fetchCoinGeckoPrices(needFetch, this.#fetcher);
+        if (USE_FAKE_UPSTREAM) {
+          upstream = fetchFakePrices(needFetch);
+        } else if (dataSource === "yahoo") {
+          const yahoo = await fetchYahooPrices(needFetch, this.#fetcher);
+          upstream = yahoo.prices;
+          for (const ticker of yahoo.unsupported) unsupported.add(ticker);
+        } else {
+          upstream = await fetchCoinGeckoPrices(needFetch, this.#fetcher);
+        }
       } catch (err) {
         if (err instanceof UpstreamUnavailableError) {
           upstream = new Map();
@@ -105,14 +113,15 @@ export class PriceService {
       // failure is swallowed so they fall through to the stale-cache / unknown path.
       const finnhubApiKey = process.env.FINNHUB_API_KEY?.trim() || undefined;
       if (!USE_FAKE_UPSTREAM && dataSource === "yahoo" && finnhubApiKey !== undefined) {
-        const stillMissing = needFetch.filter((t) => !upstream.has(t));
+        const stillMissing = needFetch.filter((t) => !upstream.has(t) && !unsupported.has(t));
         if (stillMissing.length > 0) {
           try {
             const finnhub = await fetchFinnhubPrices(stillMissing, finnhubApiKey, this.#fetcher);
-            for (const [ticker, entry] of finnhub) {
+            for (const ticker of finnhub.unsupported) unsupported.add(ticker);
+            for (const [ticker, entry] of finnhub.prices) {
               upstream.set(ticker, entry);
             }
-            if (finnhub.size > 0) finnhubUsed = true;
+            if (finnhub.prices.size > 0) finnhubUsed = true;
           } catch (err) {
             if (!(err instanceof UpstreamUnavailableError)) throw err;
           }
@@ -120,9 +129,14 @@ export class PriceService {
       }
     }
 
+    if (unsupported.size > 0) {
+      // Evict rejected rows so cooldowns and later outages cannot revive them.
+      await this.#pricesRepo.deleteMany({ source: cacheSource, tickers: [...unsupported] });
+    }
+
     if (upstream.size > 0) {
       const newRows = [...upstream.entries()].map(([ticker, entry]) => ({
-        source: dataSource,
+        source: cacheSource,
         ticker,
         price: entry.price,
         previousPrice: entry.previousPrice,
@@ -146,7 +160,9 @@ export class PriceService {
     );
 
     const staleByTicker = new Map(
-      cached.filter((r) => !freshMap.has(r.ticker)).map((r) => [r.ticker, r]),
+      cached
+        .filter((r) => !freshMap.has(r.ticker) && !unsupported.has(r.ticker))
+        .map((r) => [r.ticker, r]),
     );
 
     const prices: PriceEntry[] = [];

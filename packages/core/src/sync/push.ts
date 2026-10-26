@@ -64,6 +64,13 @@ function parseBatchResult(raw: unknown): PushItemResult[] {
   }
   const items = (raw as Record<string, unknown[]>).results ?? [];
   return items.map((item) => {
+    if (
+      typeof item !== "object" ||
+      item === null ||
+      typeof (item as BatchResponseItem).ok !== "boolean"
+    ) {
+      throw new SyncProtocolError("invalid batch result");
+    }
     const r = item as BatchResponseItem;
     if (r.ok) {
       return {
@@ -74,6 +81,8 @@ function parseBatchResult(raw: unknown): PushItemResult[] {
       };
     }
     if (r.conflict !== undefined) {
+      if (typeof r.conflict !== "object" || r.conflict === null)
+        throw new SyncProtocolError("invalid conflict result");
       return {
         id: parseStringField(r.id, "id"),
         ok: false as const,
@@ -85,7 +94,7 @@ function parseBatchResult(raw: unknown): PushItemResult[] {
     return {
       id: parseStringField(r.id, "id"),
       ok: false as const,
-      error: r.error ?? "unknown server error",
+      error: r.error === undefined ? "unknown server error" : parseStringField(r.error, "error"),
     };
   });
 }
@@ -130,82 +139,107 @@ async function postBatch(
   return parseBatchResult(body);
 }
 
-/**
- * Drain the outbound queue and push all pending items to the server via
- * the batch endpoint. Conflicts are routed to onConflict if registered;
- * otherwise they are surfaced as conflict results in the return value.
- */
-export async function pushPending(deps: PushDeps): Promise<PushResult> {
-  const { config, store, encryptEnvelope, decryptEnvelope, onConflict } = deps;
+// A store is the serialization boundary, including the standalone public function.
+const operations = new WeakMap<LocalStore, Promise<unknown>>();
 
-  const items = await store.drainQueue();
-  if (items.length === 0) {
-    return { results: [] };
-  }
+export function serializeSync<T>(store: LocalStore, run: () => Promise<T>): Promise<T> {
+  const pending = (operations.get(store) ?? Promise.resolve()).catch(() => {}).then(run);
+  operations.set(store, pending);
+  return pending;
+}
 
-  const putItems = items.filter((i) => !i.tombstone);
-  const deleteItems = items.filter((i) => i.tombstone);
+export function pushPending(deps: PushDeps): Promise<PushResult> {
+  return serializeSync(deps.store, () => drainPending(deps));
+}
 
-  const puts: BatchPutWire[] = putItems.map(buildPutWire);
-  // prev_version is the version the server currently holds, not the new tombstone
-  // version. Sending i.version here sends V+1 and the server's CAS check rejects
-  // every delete with 409, so the row is never tombstoned server-side.
-  const deletes: BatchDeleteWire[] = deleteItems.map((i) => ({
-    object_id: i.objectId,
-    prev_version: (i.prevVersion ?? i.version - BIGINT_ONE).toString(),
-  }));
-
-  const results = await postBatch(config, puts, deletes);
-
+async function drainPending(deps: PushDeps): Promise<PushResult> {
+  const { config, store, onConflict } = deps;
   const finalResults: PushItemResult[] = [];
+  const confirmedQueueIds: string[] = [];
+  const blocked = new Set<string>();
+  const attempted = new Set<string>();
+  const confirmedVersions = new Map<string, bigint>();
+  let conflictError: unknown;
 
-  for (const result of results) {
-    const item = items.find((i) => i.objectId === result.id);
-
-    if (result.ok) {
-      if (item !== undefined) {
-        await store.put({
-          kind: item.kind,
-          objectId: result.id,
-          ciphertext: item.ciphertext,
-          nonce: item.nonce,
-          version: result.version,
-          serverSeq: result.serverSeq,
-          tombstone: item.tombstone,
+  for (;;) {
+    const items = await store.drainQueue();
+    const selected = new Map<string, OutboundItem>();
+    const puts: BatchPutWire[] = [];
+    const deletes: BatchDeleteWire[] = [];
+    let bytes = new TextEncoder().encode(JSON.stringify({ puts, deletes })).length;
+    for (const queued of items) {
+      if (blocked.has(queued.objectId) || selected.has(queued.objectId) || attempted.has(queued.id))
+        continue;
+      const previous = confirmedVersions.get(queued.objectId);
+      const item =
+        previous === undefined
+          ? queued
+          : { ...queued, prevVersion: previous, version: previous + BIGINT_ONE };
+      const wire = item.tombstone
+        ? {
+            object_id: item.objectId,
+            prev_version: (item.prevVersion ?? item.version - BIGINT_ONE).toString(),
+          }
+        : buildPutWire(item);
+      const array = item.tombstone ? deletes : puts;
+      const extra =
+        new TextEncoder().encode(JSON.stringify(wire)).length + (array.length > 0 ? 1 : 0);
+      if (bytes + extra > 5 * 1024 * 1024) {
+        if (selected.size > 0) break;
+        // Leave this record queued, but do not starve smaller unrelated records.
+        blocked.add(item.objectId);
+        finalResults.push({
+          id: item.objectId,
+          ok: false,
+          error: "Record exceeds the 5 MiB sync limit. Reduce its size and save again.",
         });
-        await store.ackQueueItem(item.id);
+        continue;
       }
+      if (item.tombstone) deletes.push(wire as BatchDeleteWire);
+      else puts.push(wire as BatchPutWire);
+      bytes += extra;
+      selected.set(item.objectId, queued);
+      if (selected.size === 500) break;
+    }
+    if (selected.size === 0) {
+      if (conflictError !== undefined) throw conflictError;
+      break;
+    }
+    const results = await postBatch(config, puts, deletes);
+    const seen = new Set<string>();
+    for (const result of results) {
+      if (!selected.has(result.id) || seen.has(result.id))
+        throw new SyncProtocolError("batch response contains unexpected or duplicate ID");
+      seen.add(result.id);
+    }
+    if (seen.size !== selected.size)
+      throw new SyncProtocolError("batch response missing selected IDs");
 
+    // Confirm all successful entries before a conflict callback can fail.
+    for (const result of results) {
+      const item = selected.get(result.id) as OutboundItem;
+      attempted.add(item.id);
       finalResults.push(result);
-    } else if ("error" in result) {
-      // Server reported a per-item failure that isn't a conflict. Surface it
-      // without acking so the next push retries. If it's a permanent failure
-      // (e.g. bad data) we'd loop forever; for now lean on the operator to
-      // notice via logs rather than silently dropping the user's write.
-      finalResults.push(result);
-    } else {
-      if (onConflict !== null && item !== undefined) {
-        await handleConflict(item, result.conflict.currentVersion, {
-          config,
-          store,
-          encryptEnvelope,
-          decryptEnvelope,
+      if (result.ok) {
+        await store.ackQueueItem(item.id, { version: result.version, serverSeq: result.serverSeq });
+        confirmedQueueIds.push(item.id);
+        config.onConfirmed?.([item.id]);
+        confirmedVersions.set(item.objectId, result.version);
+      } else blocked.add(item.objectId);
+    }
+    for (const result of results) {
+      if (result.ok || !("conflict" in result) || onConflict === null) continue;
+      const item = selected.get(result.id) as OutboundItem;
+      try {
+        const resolution = await handleConflict(item, result.conflict.currentVersion, {
+          ...deps,
           onConflict,
         });
-        await store.ackQueueItem(item.id);
-        finalResults.push(result);
-      } else if (item !== undefined) {
-        // No conflict handler registered. Acking prevents the queue from growing
-        // unbounded on every poll tick. The next pull pulls the server's newer
-        // version into the local store; if the user had local intent that needs
-        // preserving, they should register an onConflict handler.
-        await store.ackQueueItem(item.id);
-        finalResults.push(result);
-      } else {
-        finalResults.push(result);
+        if (resolution.uploaded) confirmedQueueIds.push(item.id);
+      } catch (err) {
+        conflictError ??= err;
       }
     }
   }
-
-  return { results: finalResults };
+  return { results: finalResults, confirmedQueueIds };
 }

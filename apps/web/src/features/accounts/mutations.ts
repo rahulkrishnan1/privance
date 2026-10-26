@@ -2,8 +2,10 @@ import type { Account, AccountKind } from "@privance/core";
 import {
   Decimal,
   encryptAead,
+  HoldingPayloadSchema,
   KDF_PARAM_VERSION,
   KIND_ACCOUNT,
+  KIND_HOLDING,
   LABEL_VERSION,
   SCALE_CENTS,
 } from "@privance/core";
@@ -115,7 +117,7 @@ export function useCreateAccount(): {
   state: MutationState;
   error: Error | null;
 } {
-  const { store, client, tick } = useSync();
+  const { store, save } = useSync();
   const [state, setState] = useState<MutationState>("idle");
   const [error, setError] = useState<Error | null>(null);
 
@@ -125,29 +127,21 @@ export function useCreateAccount(): {
       setState("pending");
       setError(null);
       try {
+        const existing = await store.get({ kind: KIND_ACCOUNT, objectId: input.id });
+        const prevVersion = existing?.version;
+        const version = prevVersion === undefined ? 1n : prevVersion + 1n;
         const payload = buildPayload(input);
         const { ciphertext, nonce } = encryptPayload({ payload, objectId: input.id });
-        await store.put({
+        await save({
           kind: KIND_ACCOUNT,
           objectId: input.id,
           ciphertext,
           nonce,
-          version: 1n,
-          tombstone: false,
-          updatedAt: Date.now(),
-        });
-        await store.enqueue({
-          kind: KIND_ACCOUNT,
-          objectId: input.id,
-          ciphertext,
-          nonce,
-          version: 1n,
-          prevVersion: undefined,
+          version,
+          prevVersion,
           tombstone: false,
         });
         setState("idle");
-        tick();
-        void client?.pushPending();
       } catch (err) {
         const e = err instanceof Error ? err : new Error(String(err));
         setError(e);
@@ -155,7 +149,7 @@ export function useCreateAccount(): {
         throw e;
       }
     },
-    [store, client, tick],
+    [store, save],
   );
 
   return { create, state, error };
@@ -182,7 +176,7 @@ export function useUpdateAccount(): {
   state: MutationState;
   error: Error | null;
 } {
-  const { store, client, tick } = useSync();
+  const { store, save } = useSync();
   const [state, setState] = useState<MutationState>("idle");
   const [error, setError] = useState<Error | null>(null);
 
@@ -282,16 +276,7 @@ export function useUpdateAccount(): {
         }
 
         const { ciphertext, nonce } = encryptPayload({ payload: merged, objectId });
-        await store.put({
-          kind: KIND_ACCOUNT,
-          objectId,
-          ciphertext,
-          nonce,
-          version: nextVersion,
-          tombstone: false,
-          updatedAt: Date.now(),
-        });
-        await store.enqueue({
+        await save({
           kind: KIND_ACCOUNT,
           objectId,
           ciphertext,
@@ -301,8 +286,6 @@ export function useUpdateAccount(): {
           tombstone: false,
         });
         setState("idle");
-        tick();
-        void client?.pushPending();
       } catch (err) {
         const e = err instanceof Error ? err : new Error(String(err));
         setError(e);
@@ -310,7 +293,7 @@ export function useUpdateAccount(): {
         throw e;
       }
     },
-    [store, client, tick],
+    [store, save],
   );
 
   return { update, state, error };
@@ -322,7 +305,7 @@ export function useDeleteAccount(): {
   state: MutationState;
   error: Error | null;
 } {
-  const { store, client, tick } = useSync();
+  const { store, save, decrypt } = useSync();
   const [state, setState] = useState<MutationState>("idle");
   const [error, setError] = useState<Error | null>(null);
 
@@ -333,6 +316,16 @@ export function useDeleteAccount(): {
       setError(null);
       try {
         const objectId = account.id;
+        const holdings = await store.list({ kind: KIND_HOLDING });
+        for (const holding of holdings) {
+          if (holding.tombstone) continue;
+          const plaintext = decrypt({ ...holding, kind: KIND_HOLDING });
+          const payload = HoldingPayloadSchema.parse(
+            JSON.parse(new TextDecoder().decode(plaintext)),
+          );
+          if (payload.accountId === objectId)
+            throw new Error("Move or delete holdings first before deleting this account.");
+        }
         const existing = await store.get({ kind: KIND_ACCOUNT, objectId });
         const prevVersion = existing?.version ?? 1n;
         const nextVersion = prevVersion + 1n;
@@ -342,16 +335,7 @@ export function useDeleteAccount(): {
           objectId,
         });
 
-        await store.put({
-          kind: KIND_ACCOUNT,
-          objectId,
-          ciphertext,
-          nonce,
-          version: nextVersion,
-          tombstone: true,
-          updatedAt: Date.now(),
-        });
-        await store.enqueue({
+        await save({
           kind: KIND_ACCOUNT,
           objectId,
           ciphertext,
@@ -361,8 +345,6 @@ export function useDeleteAccount(): {
           tombstone: true,
         });
         setState("idle");
-        tick();
-        void client?.pushPending();
       } catch (err) {
         const e = err instanceof Error ? err : new Error(String(err));
         setError(e);
@@ -370,7 +352,7 @@ export function useDeleteAccount(): {
         throw e;
       }
     },
-    [store, client, tick],
+    [store, save, decrypt],
   );
 
   return { deleteAccount, state, error };

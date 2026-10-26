@@ -342,8 +342,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # happy-dom (dev-only test dep) has an unpatched advisory incompatible with
-      # the locked vitest; it ships zero bytes to production.
       - name: Run pnpm audit (high+)
         run: pnpm audit --audit-level=high
         continue-on-error: true

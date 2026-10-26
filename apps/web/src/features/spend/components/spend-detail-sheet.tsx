@@ -43,7 +43,7 @@ function SpendDetailBody({
   onDelete,
 }: Omit<SpendDetailSheetProps, "open" | "item"> & { item: LocalSpendItem }) {
   const [deleting, setDeleting] = useState(false);
-  const [deleteFailed, setDeleteFailed] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const amount = Decimal.fromMinorUnits(BigInt(item.amountCents), SCALE_CENTS);
   const cadence = cadenceUnit(item);
   const nextBill = item.nextRenewalAt
@@ -52,11 +52,13 @@ function SpendDetailBody({
 
   async function handleDelete() {
     setDeleting(true);
-    setDeleteFailed(false);
+    setDeleteError(null);
     try {
       await onDelete(item);
-    } catch {
-      setDeleteFailed(true);
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : "Couldn't delete this expense. Please try again.",
+      );
     } finally {
       setDeleting(false);
     }
@@ -100,9 +102,9 @@ function SpendDetailBody({
         <DetailRow label="Status">{item.status === "active" ? "Active" : "Paused"}</DetailRow>
       </div>
 
-      {deleteFailed && (
+      {deleteError && (
         <p className="mt-3 font-mono text-xs text-down" role="alert">
-          Couldn't delete this expense. Please try again.
+          {deleteError}
         </p>
       )}
 

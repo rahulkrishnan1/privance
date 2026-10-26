@@ -112,7 +112,7 @@ type DecryptedData = {
 };
 
 export function useDashboardData(): DashboardData {
-  const { store, client, initialising, decrypt, storeClock, tick } = useSync();
+  const { store, save, initialising, decrypt, storeClock } = useSync();
   const [data, setData] = useState<DashboardData>({ status: "loading" });
   const [decryptedData, setDecryptedData] = useState<DecryptedData | null>(null);
   const snapshotWritingRef = useRef(false);
@@ -327,7 +327,7 @@ export function useDashboardData(): DashboardData {
   // by overwriting it once per session. After a successful write, tick()
   // refreshes the decrypt effect which picks up the new snapshot.
   //
-  // snapshotWritingRef guards the brief async window between store.put and
+  // snapshotWritingRef guards the brief async window between the atomic save and
   // the next decrypt cycle (in-memory dedup, since nextSnapshotAction("skip")
   // only catches the persistent case once decryptedData reflects the new
   // row). snapshotRewroteRef caps self-heal to once per session so intraday
@@ -385,28 +385,15 @@ export function useDashboardData(): DashboardData {
 
         let version: bigint;
         let prevVersion: bigint | undefined;
-        let serverSeq: bigint | null | undefined;
         if (stored === null) {
           version = 1n;
           prevVersion = undefined;
-          serverSeq = undefined;
         } else {
           version = stored.version + 1n;
           prevVersion = stored.version;
-          serverSeq = stored.serverSeq;
         }
 
-        const now = Date.now();
-        await store.put({
-          kind: KIND_SNAPSHOT,
-          objectId,
-          ciphertext: blob.ciphertext,
-          nonce: blob.nonce as Uint8Array,
-          version,
-          serverSeq,
-          updatedAt: now,
-        });
-        await store.enqueue({
+        await save({
           kind: KIND_SNAPSHOT,
           objectId,
           ciphertext: blob.ciphertext,
@@ -416,8 +403,6 @@ export function useDashboardData(): DashboardData {
           tombstone: false,
         });
         if (action.type === "update" && stored !== null) snapshotRewroteRef.current = true;
-        tick();
-        void client?.pushPending();
       } catch (err) {
         // Non-blocking: snapshot failure does not break the dashboard. The
         // next dashboard mount will retry. Log a name + message marker only
@@ -438,7 +423,7 @@ export function useDashboardData(): DashboardData {
         snapshotWritingRef.current = false;
       }
     })();
-  }, [netWorthCentsTrigger, snapshotsKeyTrigger, store, client, tick]);
+  }, [netWorthCentsTrigger, snapshotsKeyTrigger, store, save]);
 
   return data;
 }
