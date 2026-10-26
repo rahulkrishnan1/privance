@@ -3,8 +3,7 @@
 Pure TypeScript library shared across the Privance monorepo. No DOM, no Bun, no
 Node built-ins. Runs in the browser, in a Web Worker, and in Node/Bun test harnesses.
 
-All crypto primitives live here. The web app and (future) native apps depend on this
-package directly. The server depends on it only for domain types and audit-event
+All client-side crypto primitives live here. The web app depends on this package directly. The server depends on it only for domain types and audit-event
 constants, it does not perform client-side crypto.
 
 See [ARCHITECTURE.md](../../ARCHITECTURE.md) for how `core` fits into the overall
@@ -14,7 +13,7 @@ system.
 
 | Path | Purpose |
 |---|---|
-| `src/crypto/labels.ts` | HKDF label constants (frozen; bumping = migration) |
+| `src/crypto/labels.ts` | HKDF label constants; see the [security contracts](../../SECURITY.md#security-contracts-for-changes) before crypto changes |
 | `src/crypto/kdf.ts` | `stretchMasterPassword()`, Argon2id via hash-wasm |
 | `src/crypto/keys.ts` | HKDF key derivation for auth hash, KEK, recovery seed |
 | `src/crypto/aead.ts` | AES-256-GCM encrypt/decrypt with AAD binding |
@@ -25,35 +24,29 @@ system.
 | `src/sync/push.ts` | Outbound queue drain + batch push to server |
 | `src/sync/pull.ts` | Change feed pull + local store merge |
 
-## Exports
+## Module conventions
 
+```text
+packages/core/src/<module>/
+├── index.ts            # Public barrel
+├── types.ts            # Branded types, errors
+├── <feature>.ts        # Pure logic
+└── <feature>.test.ts    # Public-API behavior and invariants
 ```
-@privance/core             # everything
-@privance/core/crypto      # key derivation, AES-GCM, HKDF, BIP39
-@privance/core/storage     # LocalStore interface, WebSqliteAdapter, DDL
-@privance/core/sync        # SyncClient, push, pull, reconcile
-@privance/core/domain      # Account, Holding, Price, branded ID types
-@privance/core/decimal     # BigInt minor-unit arithmetic
-@privance/core/networth    # Net-worth aggregation
-@privance/core/projection  # FIRE simulation engine (Monte Carlo + historical replay)
-@privance/core/audit-events # Audit event name constants
-```
+
+Keep shared logic runtime-independent; browser lifecycle and API wiring belong in `apps/web`, server persistence in `server`. Follow the existing adapter boundary for storage rather than adding browser globals to domain logic.
+
+Use the [package export map](package.json) for available entry points and update the relevant barrel when adding a public API. Money arithmetic follows the [Decimal guardrail](../../AGENTS.md#guardrails). Before changing crypto or key serialization, read [SECURITY.md](../../SECURITY.md#security-contracts-for-changes).
 
 ## Development
 
+From the repository root:
+
 ```sh
-# Run tests with coverage (gate: >= 90%)
-pnpm test
-
-# Watch mode
-pnpm test:watch
-
-# Type check
-pnpm typecheck
-
-# Build (emits to dist/)
-pnpm build
+pnpm --filter @privance/core test
+pnpm --filter @privance/core test:watch
+pnpm --filter @privance/core typecheck
+pnpm --filter @privance/core build
 ```
 
-Tests use Vitest. Property-based tests use `fast-check` for crypto round-trips,
-decimal arithmetic invariants, and sync conflict resolution.
+See [CONTRIBUTING.md](../../CONTRIBUTING.md#tests) for test conventions and coverage requirements. The build also verifies the projection returns dataset's recorded hash before emitting `dist/`.

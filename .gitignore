@@ -1,42 +1,39 @@
-# Dependencies & build output
+# Dependencies and build output
 node_modules/
+.pnpm-store/
+.turbo/
 dist/
 build/
 out/
-.turbo/
 *.tsbuildinfo
 *.tgz
-.pnpm-store/
-apps/web/public/sim/
-apps/web/ios/App/Pods/
-apps/web/android/app/build/
-apps/web/android/.gradle/
+/apps/web/public/sim/
 
-# Env & secrets
-.env
-.env.local
-.env.*.local
+# Environment and secrets; example configuration stays trackable
+.env*
 !.env.example
 /secrets/*
 !/secrets/.gitkeep
 
-# Test output
+# Test coverage
 coverage/
 .nyc_output/
-.playwright-mcp/
-.opencode/
 
 # Logs
 *.log
+npm-debug.log*
+.pnpm-debug.log*
 
-# Editor & OS
+# Editors and OS
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 
-# Local-only, never committed
+# Local agent state and scratch work
 .hermes/
+.opencode/
+.playwright-mcp/
 .claude/settings.local.json
 .claude/plans/
 .claude/scratch/
@@ -48,8 +45,10 @@ scratch/
 .worktrees/
 TODO.local.md
 NOTES.local.md
-infra/compose.override.yaml
-infra/compose.override.yml
 docs/plans/
 docs/brainstorms/
 docs/ideation/
+
+# Local deployment overrides
+infra/compose.override.yaml
+infra/compose.override.yml

@@ -2,15 +2,18 @@
 
 Step-by-step guide to provision a hardened Hetzner Cloud VPS and prepare it for a Privance deployment. This guide ends with a host that has Docker installed, a dedicated deploy user, UFW configured, and `/etc/privance/env.d/` ready. Continue with the [Self-hosting quickstart](README.md) from there.
 
-## Choosing a region and SKU
+## Before provisioning
 
-| SKU | Arch | Regions | vCPU/RAM/Disk/Traffic |
-|-----|------|---------|----------------------|
-| CX23 | x86 | EU (fsn1, nbg1, hel1) | 2 / 4 GB / 40 GB / 20 TB |
-| CAX11 | ARM64 | EU (fsn1, nbg1, hel1) | 2 / 4 GB / 40 GB / 20 TB |
-| CPX22 | x86 | Global (ash, sin) | 2 / 4 GB / 40 GB / 1 TB |
+Use a new host; do not apply the account, firewall, or deletion examples blindly to an existing server. Keep console recovery available throughout SSH/firewall changes.
 
-Default CX23. CPX22 if non-EU. Region cannot be changed after creation; server can be resized within a family only. Consult Hetzner's pricing page for current rates.
+Choose the access mode before creating firewall rules:
+
+| Mode | Provider and host firewall policy |
+|---|---|
+| Public HTTPS via Caddy | Allow SSH plus 80/TCP, 443/TCP, and 443/UDP |
+| Private HTTPS via Tailscale Serve | Keep public web ports closed; preserve a tested SSH/console recovery path and use the [deployment loopback bindings](README.md#reverse-proxy-or-private-network) |
+
+Choose a current [cloud SKU](https://www.hetzner.com/cloud/) with at least 2 vCPU, 4 GB RAM, and 40 GB disk in your preferred location. Releases support both amd64 and arm64; the [release workflow](../.github/workflows/release.yml) is authoritative. Verify current availability, price, and resize restrictions instead of relying on a cached SKU list.
 
 ## Step 1: Register your SSH key with Hetzner
 
@@ -35,7 +38,7 @@ For [private Tailscale access](README.md#private-network-tailscale), omit the th
 
 In the Hetzner Console, Servers > Add Server: Ubuntu 24.04 LTS, the SKU and region from above, both IPv4 and IPv6, SSH key from Step 1, `privance-edge` firewall from Step 2, no volumes, Backups off, no placement group, a hostname of your choice, empty cloud config.
 
-Hetzner Backups are off because restic to a different provider handles backups (see the backup section in infra/README.md). Record the Public IPv4 and IPv6.
+Record the public IPv4 and IPv6 and confirm the intended SSH key and firewall are attached before connecting. This example leaves provider backups off in favor of [restic backups](backups.md); until those are configured and restore-tested, there is no verified offsite recovery path.
 
 ## Step 4: First SSH and base update
 
@@ -52,7 +55,7 @@ apt-get install -y update-notifier-common ufw unattended-upgrades
 [ -f /var/run/reboot-required ] && echo "REBOOT NEEDED" || echo "no reboot needed"
 ```
 
-If reboot needed, `reboot` then reconnect.
+If a reboot is needed, run `reboot` and reconnect. Continue only when updates succeeded and SSH works after any reboot.
 
 ## Step 5: Create the deploy user and plant the SSH key
 
@@ -72,6 +75,8 @@ chmod 440 /etc/sudoers.d/<deploy-user>
 visudo -cf /etc/sudoers.d/<deploy-user>
 # Expected: "/etc/sudoers.d/<deploy-user>: parsed OK"
 ```
+
+Complete step 5 only when `visudo` reports the file parsed successfully. Keep the root session open for the next step.
 
 ## Step 6: Verify the deploy user, then harden sshd
 
@@ -124,12 +129,13 @@ sudo ufw allow 443/tcp comment 'HTTPS'
 sudo ufw allow 443/udp comment 'HTTPS/3 (QUIC)'
 sudo ufw --force enable
 sudo ufw status verbose
-# Expected: four rules each on IPv4 and IPv6: 22/tcp LIMIT, 80/tcp ALLOW, 443/tcp ALLOW, 443/udp ALLOW
+# Public mode: 22/tcp LIMIT plus the three web ALLOW rules on IPv4/IPv6.
+# Private mode: public SSH only; no public web ALLOW rules.
 ```
 
 For private access, allow `tailscale0` in UFW and use the guide's loopback Docker bindings; UFW alone does not restrict published ports. If migrating an existing instance, remove public web rules from host and provider firewalls only after [verifying private browser access](README.md#step-6-verify).
 
-From your workstation, `nmap -Pn -p 5432 <ipv4>` should report 5432 as filtered.
+Complete when UFW is active with the selected mode's rules and a fresh SSH connection still works. From the workstation, port 5432 must not accept connections; test both configured public address families. Recheck that boundary after Docker starts because published ports can bypass UFW.
 
 ## Step 8: Unattended-upgrades
 
@@ -206,7 +212,7 @@ systemctl is-active docker
 apt-mark showhold
 ```
 
-To upgrade later: `sudo apt-mark unhold docker-ce docker-ce-cli containerd.io`, upgrade, re-hold.
+Complete when Docker Engine is at least version 28, Compose is available, the Docker service reports `active`, and the three held packages appear in `apt-mark showhold`. To upgrade later: `sudo apt-mark unhold docker-ce docker-ce-cli containerd.io`, upgrade, re-hold.
 
 ## Step 10: Add the deploy user to the `docker` group
 
@@ -231,13 +237,13 @@ stat -c '%a %U %G %n' /etc/privance /etc/privance/env.d
 # Expected: two lines, "700 <deploy-user> <deploy-user> ..."
 ```
 
-The host is now ready. Continue with the [Self-hosting quickstart](README.md) starting at Step 1 (GHCR login). Step 11 above already created `/etc/privance/env.d/`, so skip the directory-creation command at the top of quickstart Step 3 and go straight to writing the config files.
+Provisioning is complete when a fresh deploy-user login can use sudo and Docker, root/password SSH remains rejected, the selected firewall rules are active, and both secrets directories have the expected ownership and mode. Continue with [deployment step 1](README.md#step-1-authenticate-with-ghcr-only-for-private-forks); skip the directory creation in deployment step 3 because this step already performed it.
 
 ## Rollback notes
 
-- Wrong region or SKU: delete and recreate; within-family resize works in-place.
+- Wrong location or SKU: check provider resize options first. Deleting a host destroys its local data; only recreate after verifying backups or confirming it is still disposable.
 - Locked out by sshd: `sudo rm /etc/ssh/sshd_config.d/00-privance.conf && sudo systemctl reload ssh`. If no session remains, use the Hetzner Console KVM (root login works there).
 - UFW broke routing: `sudo ufw disable`, then re-apply Step 7.
 - Unattended-upgrades misbehaving: `sudo rm /etc/apt/apt.conf.d/52privance-unattended-upgrades`.
 - Wrong Docker version: unhold, reinstall at the correct version, re-hold.
-- Wrong deploy user: `sudo userdel -r <name>` then re-run Step 5.
+- Wrong deploy user: confirm a separate working administrator session first. `sudo userdel -r <name>` deletes that account and its home directory; use it only after preserving needed files, then repeat step 5.
