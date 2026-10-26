@@ -21,7 +21,7 @@
     "@fontsource-variable/schibsted-grotesk": "5.3.0",
     "@fontsource-variable/spline-sans-mono": "5.3.0",
     "@fontsource/instrument-serif": "5.3.0",
-    "@hookform/resolvers": "5.9.2",
+    "@hookform/resolvers": "6.0.0",
     "@privance/core": "workspace:*",
     "@sqlite.org/sqlite-wasm": "3.53.0-build1",
     "@tanstack/react-query": "5.104.4",
