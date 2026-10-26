@@ -1,153 +1,46 @@
-# CLAUDE.md, Privance conventions
+# Privance: agent instructions
 
-Operating manual for code work in this repo. Architecture lives in `ARCHITECTURE.md`, threat analysis in `THREAT_MODEL.md`, stack rationale under `docs/adr/`. This file is just the rules that shape day-to-day decisions.
+`AGENTS.md` is a symlink to this file. Edit this source; keep the symlink.
 
-## Identity
+Privance is a self-hostable, zero-knowledge personal finance app. Financial records are encrypted in the browser; the server stores ciphertext and required metadata, not decryption keys. Losing both the master password and recovery phrase means permanent data loss.
 
-**Privance**, self-hostable, zero-knowledge encryption personal finance app. Server stores ciphertext only; all crypto runs in the browser. Loss of master password + recovery phrase = permanent data loss by design.
+## Workflow
 
-## Stack
+1. **Scope:** read the affected code, callers, and tests. State assumptions and checkable success criteria; ask when an unresolved choice changes behavior or security.
+2. **Implement:** reuse the nearest module's patterns. Make the smallest complete change, including affected callers, fixtures, exports, and docs. Keep unrelated refactors and speculative abstractions out of the diff.
+3. **Check:** run the relevant checks in [CONTRIBUTING.md](CONTRIBUTING.md#verification). For a bug fix, demonstrate that the regression test fails without the fix and passes with it.
+4. **Report:** state what changed, which checks passed or failed, and what was skipped. Address every flagged review finding or explicitly report why it remains unresolved. Reserve “verified clean” for the full verification bar.
 
-- Monorepo: pnpm workspaces + Turborepo
-- Server: Bun 1.3 + Hono 4.13 + postgres.js + Drizzle + pino, PG 17
-- Shared: TypeScript `packages/core`, crypto (@noble/* + hash-wasm + @scure/bip39), decimal math, domain types, sync client, storage adapter
-- Client (`apps/web`): Vite 8 + React Router v8 (library mode, static SPA) + React 19 + Tailwind 4 + Base UI (unstyled primitives) + TanStack Query 5 + Zod 4 + Recharts.
-- Storage on the client: `@sqlite.org/sqlite-wasm` in a Web Worker. Uses the SAH Pool VFS (OPFS-backed) where available, falls back to an in-memory DB on OPFS-disabled hosts (Safari Private Browsing, restricted WKWebView).
-- Tests: Vitest + fast-check (core/web logic), Vitest Browser Mode + `vitest-browser-react` (web component rendering in real Chromium), `bun test` (server), Playwright (E2E: chromium, firefox, webkit, plus iPhone and Pixel 5 mobile projects; CI runs all five projects via a reduced-KDF v2 that keeps WebKit's Argon2id auth flows within the time budget)
-- Lint/format: Biome (replaces ESLint + Prettier)
+## Read before the relevant task
 
-Exact-pinned versions in the lockfile, never `^` or `~` (Shai-Hulud lesson).
+Paths are relative to the repository root. Follow the matching links before editing; unrelated branches need not be loaded.
 
-## Commands
+| Task | Read |
+|---|---|
+| Setup, commands, tests, or verification | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Server routes, services, repositories, or migrations | [server/README.md](server/README.md) |
+| Shared crypto, decimal, domain, sync, or storage code | [packages/core/README.md](packages/core/README.md) |
+| Web features, browser storage, UI, or PWA behavior | [apps/web/README.md](apps/web/README.md) |
+| Cross-workspace changes, routing, or data flow | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Auth, crypto, key persistence, logging, or server-visible data | [SECURITY.md](SECURITY.md#security-contracts-for-changes) and the affected asset in [THREAT_MODEL.md](THREAT_MODEL.md) |
+| Session persistence or auto-lock | [ADR-0004](docs/adr/0004-session-persistence.md) |
+| Passkeys or biometric unlock | [ADR-0005](docs/adr/0005-biometric-unlock.md) |
+| Test-layer or browser-runner changes | [ADR-0003](docs/adr/0003-component-testing.md) |
+| Stack or deployment design decisions | [ADR-0001](docs/adr/0001-stack.md) or [ADR-0002](docs/adr/0002-deployment.md) |
+| Deployment, proxies, backups, or restores | [infra/README.md](infra/README.md); for host provisioning, [infra/hetzner-vps.md](infra/hetzner-vps.md) |
+| Commits, pushes, or PRs | [CONTRIBUTING.md](CONTRIBUTING.md#commits-and-pull-requests) and the [PR template](.github/pull_request_template.md) |
 
-- Install: `pnpm install`
-- Dev (server + web): `pnpm dev`  (server :3000, web :8081)
-- Lint + format check: `pnpm lint` / `pnpm fmt:check`
-- Typecheck all workspaces: `pnpm typecheck`
-- Unit tests: `pnpm test`  (or per workspace: `pnpm --filter @privance/{core,server,web} test`)
-- Web E2E: `pnpm --filter @privance/web e2e`
-- Build (web static export): `pnpm --filter @privance/web build`
-- DB migrate (local): `pnpm --filter @privance/server db:migrate`
+## Guardrails
 
-## Module template
+- **Money:** use `Decimal` (BigInt minor-units) for balances and amount arithmetic. Keep floating-point conversion at display/chart boundaries, never in financial calculations; serialize using the existing decimal/minor-unit string formats.
+- **Keys:** preserve the frozen HKDF labels, AAD bindings, and versioned KDF migration contracts in [SECURITY.md](SECURITY.md#security-contracts-for-changes). Persist only approved wrapped-key forms, never raw DEK bytes.
+- **Privacy:** keep passwords, keys, recovery phrases, and decrypted user data out of logs. Encrypt or omit new user data; a new plaintext server field needs a written justification in the spec explaining why the server needs it.
+- **Mutations:** require `X-Requested-With` on state-changing API routes. Keep database access in repositories and domain-error mapping at the wire boundary.
+- **Migrations:** backward-incompatible changes use **expand → backfill → contract**, across three deploys. A single-deploy destructive rename is not safe.
+- **Dependencies:** pin direct dependency versions exactly (no `^` or `~`); use workspace links for internal packages.
+- **Public files:** keep personal names, emails, handles, absolute local paths, and specific personal locations out of tracked content. Use placeholders for examples.
+- **Git safety:** get explicit authorization before destructive operations and create `git branch backup-<context>` before a reset, rebase, or force-push. Never rewrite pushed `main` history. Merge only after green CI and explicit maintainer local-test approval.
 
-Mirror existing modules exactly. Don't invent new patterns; if tempted, justify it.
+## Documentation sources
 
-```
-server/src/<feature>/
-├── index.ts            # Barrel, never export service classes
-├── types.ts            # <Module>Error + subclasses, result types, constants
-├── schema.ts           # Drizzle tables
-├── repo.ts             # ONLY layer that imports schema. Kw-arg options object.
-├── wire.ts             # Routes + single error mapper per module
-├── <flow>-service.ts   # One per cohesive flow. Constructor = options object.
-└── _helpers.ts         # Optional
-
-packages/core/src/<module>/
-├── index.ts            # Barrel
-├── types.ts            # Branded types, errors
-├── <feature>.ts        # Pure functions
-└── <feature>.test.ts
-
-apps/web/src/features/<feature>/   # reference: apps/web/src/features/accounts/
-├── index.ts
-├── types.ts
-├── queries.ts          # read hooks (local store)
-├── mutations.ts
-└── components/
-```
-
-## Working principles
-
-**Think before coding.** Don't assume; don't hide confusion.
-- When a clear industry standard exists, use it.
-- When no clear standard exists, surface tradeoffs and ask - don't pick silently.
-- State your assumptions explicitly. If uncertain, ask.
-- Present interpretations when the request is ambiguous.
-
-**Simplicity first.** Minimum code that solves the problem.
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- No comments restating what the code already says; explain why when it isn't obvious.
-- If you write 200 lines and it could be 50, rewrite it.
-
-**Surgical changes.** Touch only what the task demands.
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- Address every flagged finding (Critical / Important / Minor) with the minimum diff per fix.
-
-**Goal-driven execution.** Define success criteria; loop until verified.
-- Transform tasks into verifiable goals: "Fix the bug" becomes "test reproduces, then passes."
-- For multi-step work, state the checks up front.
-
-## Wiring rules
-
-- Repo is the only layer touching Drizzle. Services never import `schema.ts`.
-- Services take options objects (kw-arg style), never positional.
-- Domain errors bubble; one error mapper per module at the wire boundary.
-- Two log channels, audit via `repo.logEvent`, operational via pino, never merged.
-- CSRF `X-Requested-With` header required on all state-changing routes.
-- **Money math uses `Decimal` (BigInt minor-units) end-to-end.** Never coerce balances or amounts to `Number` or use floating-point arithmetic on them. Format-for-display at the UI boundary is the only place `.toString()` lives.
-- Routes catch specific errors **only** to record rate-limit side-effects, then re-raise:
-  ```ts
-  try { const r = await service.method(input); rateLimit.recordSuccess(input.username); return r; }
-  catch (e) { if (e instanceof SpecificError) rateLimit.recordFailure(input.username); throw e; }
-  ```
-  Repeated `try/catch` in routes for any other reason is a smell, it's the error mapper's job.
-
-## Security contracts (never drift)
-
-- HKDF labels are **frozen**: `finance/auth-v1`, `finance/kek-v1`, `finance/recovery-v1`, `finance/biometric-v1`. Bumping = migration, not a code change.
-- Argon2id params are versioned in stored hashes. Param bumps follow expand/contract.
-- AEAD AAD = `{recordUuid, kind, labelVersion, kdfParamVersion}`, prevents record-swap, cross-kind, and downgrade. `biometric_protector` records additionally carry `pubKeyDigest` (SHA-256 of the stored protector public key) in the AAD; no other kind uses it.
-- DEK lives in JS memory via `globalThis[Symbol.for("privance.dekStore.v1")]`. The survive-refresh vault (`session-vault.ts`, ADR-0004) can restore it after a reload within a 15-min TTL by storing only a non-extractable-key-wrapped copy, never the raw bytes. Cleared on auto-lock and once the TTL lapses. Never persist the raw DEK.
-- Constant-time compare via `equalBytes` (`@noble/ciphers/utils`).
-- Password quality is enforced client-side only (strength meter + minimum length); Privance makes no third-party breach-database call, in keeping with no unnecessary external requests.
-- Username enumeration prevention via deterministic fake KDF params at matched latency.
-- Never log secrets, passwords, DEKs, recovery phrases, or any decrypted user data.
-
-## Server stores the minimum
-
-Default = encrypt or omit. Adding a plaintext field requires a written *why does the server need this?* justification in the spec. Write-only metadata fields are a smell, if no code reads it, drop it.
-
-## Schema migrations
-
-Backward-incompatible changes follow **expand → backfill → contract** (three deploys). Single-deploy renames are forbidden.
-
-## Tests
-
-- Test through the public API only. No reaching into `_private` names.
-- Property tests (`fast-check`) for crypto, decimal math, sync conflict logic.
-- E2E selectors: `getByRole` > `getByLabel` > `getByTestId`. Never Tailwind classes.
-- E2E auth flows go through `apps/web/tests/e2e/helpers/auth.ts` (`signup`, `login`, `logout`, `capturePhrase`, `acknowledgePhrase`). Never copy-paste auth helpers across specs.
-- Distinct username per E2E test (alice, bob, dave, ...) for cleanState isolation.
-- A test that calls `.skip()` on the condition it's testing, or whose name claims behavior its body doesn't verify, is broken, delete or fix it.
-- Assert user-observable outcomes, never Tailwind class strings or mere element existence. A class/`toBeVisible`-only assertion passes while the UI is visibly broken (it once let a flat-lined chart ship under green tests). Every test must fail if its behavior regresses; if you can't make it fail without the fix, it isn't a real test.
-- Pick the layer by what's under test: pure logic → Vitest `unit` project (happy-dom); component rendering/interaction → Vitest `browser` project (`*.browser.test.tsx`, real Chromium via `vitest-browser-react`, because happy-dom/jsdom lay out at 0×0 and never render Recharts/SVG); full user flows + device viewports → Playwright E2E.
-- Coverage gates: `packages/core` ≥ 90%, `server` ≥ 85%, `apps/web` ≥ 80% (E2E covers screens). Coverage is a floor, not the goal, a high number of fluff tests is worse than fewer real ones.
-
-## Commits
-
-- Conventional Commits (`feat / fix / refactor / chore / test / docs / ci`).
-- Identity = the GitHub noreply already configured in `git config user.email`. Never override per-commit; never reintroduce a real email.
-- **Never** add a `Co-Authored-By` trailer. Verify with `git log -1 --format=%B` before push.
-- Feature branches off `main`, squashed locally to one commit before push. Subject ≤72 chars, imperative mood; body leads with motivation (problem solved, debt closed, risk reduced), the diff shows what. PR title + body (per `.github/pull_request_template.md`) become the main-line commit verbatim on squash-merge. Merge only after CI green and maintainer local-test approval.
-- Make a backup branch (`git branch backup-<context>`) before any destructive git op (reset --hard, rebase, force-push). Stop and ask if a request needs destructive action you weren't explicitly authorized for.
-- **Never rewrite `main` history once anything has been pushed.** No force-push, no rebase, no reset onto remote main.
-- **No personal info in tracked files**, no real names, personal emails, GitHub handles, absolute `/Users/...` paths, or specific cities/regions in committed docs. Treat anything tracked as public-facing even when the repo is private.
-
-## Verification bar
-
-"Verified clean" means **all** of these pass:
-
-1. `pnpm biome check` + `tsc --noEmit` (every workspace)
-2. `packages/core`: `vitest run --coverage` ≥ 90%
-3. `server`: `bun test` ≥ 85% + `bun audit` clean
-4. `apps/web`: `vitest run` + `vite build` + `pnpm audit` clean
-5. E2E: Playwright on chromium + firefox + webkit + mobile against real backend + real Postgres
-6. Manual: signup → recovery → login cycle in a real browser for any auth-touching change
-
-Skipping any of these: state it explicitly. Don't claim "verified" without backing.
+Keep each rule in its authoritative home: workflow here, setup/tests/commits in `CONTRIBUTING.md`, module conventions in workspace READMEs, security contracts in `SECURITY.md`, threat analysis in `THREAT_MODEL.md`, and rationale in ADRs. Link instead of copying. Package scripts, manifests, and test configs define current commands and versions; inspect them when changing tooling. Update the affected documentation when behavior changes.

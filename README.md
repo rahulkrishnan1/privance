@@ -65,16 +65,7 @@ The full procedure (private or public HTTPS, secrets, optional encrypted offsite
 
 ## Development
 
-```sh
-git clone https://github.com/rahulkrishnan1/privance.git
-cd privance
-pnpm install
-cp server/.env.example server/.env   # set ENUMERATION_SECRET: openssl rand -base64 48
-pnpm --filter @privance/server db:migrate
-pnpm dev                             # web on :8081, server on :3000
-```
-
-Needs Bun >= 1.3.14, Node.js >= 22, pnpm >= 11, and Postgres 17. The full setup, test, and lint workflow is in [CONTRIBUTING.md](CONTRIBUTING.md).
+Follow [CONTRIBUTING.md](CONTRIBUTING.md#setup) to install prerequisites, configure the database, and start the app. It also covers tests, verification, and PRs. Coding agents should start with [AGENTS.md](AGENTS.md) for guardrails and task-specific reading.
 
 ```
 apps/web/      Vite 8 PWA (React, Tailwind, React Router, static SPA)
@@ -85,7 +76,7 @@ infra/         Compose stack, deploy procedure, env templates
 
 ## Architecture and security
 
-[ARCHITECTURE.md](ARCHITECTURE.md) maps the modules and data flow. [SECURITY.md](SECURITY.md) lists the guaranteed properties and [THREAT_MODEL.md](THREAT_MODEL.md) the full STRIDE analysis. Found a vulnerability? Use [GitHub private vulnerability reporting](https://github.com/rahulkrishnan1/privance/security/advisories/new), not a public issue.
+[ARCHITECTURE.md](ARCHITECTURE.md) maps the modules and data flow. [SECURITY.md](SECURITY.md) lists the security contracts and [THREAT_MODEL.md](THREAT_MODEL.md) the full STRIDE analysis. Found a vulnerability? Use [GitHub private vulnerability reporting](https://github.com/rahulkrishnan1/privance/security/advisories/new), not a public issue.
 
 ## License
 

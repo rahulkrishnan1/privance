@@ -1,224 +1,141 @@
 # Contributing
 
+Start with [AGENTS.md](AGENTS.md) for repository guardrails and task-specific reading. This guide owns setup, test conventions, verification, and the contribution workflow. Run commands from the repository root unless a different directory is stated.
+
 ## Setup
 
 ### Prerequisites
 
-- **Bun** ≥ 1.3.14
-- **Node.js** ≥ 22.0.0
-- **pnpm** ≥ 11.0.0
-- **PostgreSQL** 17 (or Docker to run it)
-
-### Install
+Use the pnpm version in the root [`package.json`](package.json), Node.js satisfying its `engines`, Bun satisfying [`server/package.json`](server/package.json), and PostgreSQL 17. Docker can provide a local Postgres. CI tool versions are in [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ```sh
 git clone <repo-url> privance
 cd privance
-pnpm install        # installs all workspaces; also runs lefthook install via prepare
-```
-
-### Environment variables
-
-```sh
-# Server
+pnpm install
 cp server/.env.example server/.env
-# Edit server/.env:
-#   DATABASE_URL      , postgres connection string
-#   ENUMERATION_SECRET, base64-encoded random secret >= 32 bytes
-#     generate: openssl rand -base64 48
-
-# Web app
-# No env setup needed: vite.config.ts proxies /api to the server on :3000.
 ```
 
-### Database setup
+In `server/.env`, set `DATABASE_URL` and a unique `ENUMERATION_SECRET` (generate with `openssl rand -base64 48`). The [environment template](server/.env.example) describes the settings; [server/README.md](server/README.md#environment-variables) covers additional options. Web development needs no env file: Vite proxies `/api` to the API on port 3000.
+
+For a **disposable local development database**, using the template's credentials:
 
 ```sh
-# Start Postgres (Docker example)
 docker run -d --name privance-pg \
   -e POSTGRES_USER=privance -e POSTGRES_PASSWORD=privance -e POSTGRES_DB=privance \
-  -p 5432:5432 postgres:17-alpine
+  -p 127.0.0.1:5432:5432 postgres:17-alpine
+```
 
-# Run migrations
+Wait for `docker exec privance-pg pg_isready -U privance -d privance` to succeed, then:
+
+```sh
 pnpm --filter @privance/server db:migrate
+pnpm dev
 ```
 
----
+Open `http://localhost:8081`. Setup is complete when signup, recovery-phrase verification, and arrival at the Investments overview succeed. The API runs on port 3000. To start one workspace, use `pnpm --filter @privance/server dev` or `pnpm --filter @privance/web dev`.
 
-## Development loop
+## Implementing changes
 
-```sh
-pnpm dev        # starts server (port 3000) + web app (port 8081) in parallel via Turborepo
-```
+Read the affected workspace's conventions before adding a module:
 
-Open `http://localhost:8081` and run through the signup flow to verify the full stack is wired. A successful signup ends on the Investments overview.
+- [Server](server/README.md#module-conventions): routes, services, repositories, and migrations; reference `server/src/auth/`.
+- [Core](packages/core/README.md#module-conventions): runtime-independent shared logic.
+- [Web](apps/web/README.md#feature-conventions): feature modules; reference `apps/web/src/features/accounts/`.
 
-To run workspaces individually:
-
-```sh
-pnpm --filter @privance/server dev   # Bun hot-reload server
-pnpm --filter @privance/web dev      # Vite dev server (port 8081, /api proxied to :3000)
-```
-
----
+Reuse the existing structure and create only files the feature needs. Justify a new pattern in the PR. Document API changes and write an ADR from [the template](docs/adr/0000-template.md) for non-obvious design decisions.
 
 ## Tests
 
-### Unit tests, `packages/core`
+### Choose the layer
 
-```sh
-pnpm --filter @privance/core test   # coverage runs automatically; gate is >= 90%
-```
+| Behavior under test | Layer | Command |
+|---|---|---|
+| Shared logic, crypto, decimal math, sync | Core Vitest (Node), with `fast-check` for invariants | `pnpm --filter @privance/core test` |
+| API services, repositories, routes | Server Bun tests, including real Postgres integration | `pnpm --filter @privance/server test` |
+| Web logic without rendering | Vitest `unit` project (happy-dom) | `pnpm --filter @privance/web exec vitest run --project unit` |
+| Component rendering, interaction, browser APIs | Vitest `browser` project (real Chromium), `*.browser.test.{ts,tsx}` | `pnpm --filter @privance/web exec vitest run --project browser` |
+| Full flows, cross-engine behavior, device viewports | Playwright E2E | `pnpm --filter @privance/web e2e` |
 
-Tests use Vitest. Property tests use `fast-check` for crypto, decimal math, and sync conflict logic.
+`pnpm test` runs all workspace test scripts; `pnpm --filter @privance/web test` runs both web projects. Core coverage runs automatically. Use the server's test script rather than bare `bun test`: it isolates test files and supplies test defaults. The outer Bun process can load `server/.env` before the wrapper starts; the child's `--no-env-file` does not clear inherited values. Always explicitly set `DATABASE_URL` to a disposable, migrated test database before running server tests, including through `pnpm test` or pre-push hooks. Do not assume the default connection or env-file handling isolates development data.
 
-### Unit tests, `server`
+The web `browser` project needs Chromium: `pnpm --filter @privance/web exec playwright install chromium`. happy-dom/jsdom do not lay out Recharts/SVG; rendering assertions belong in a real browser. See [ADR-0003](docs/adr/0003-component-testing.md) for the runner decision and module-mocking constraints.
 
-```sh
-pnpm --filter @privance/server test
-```
+### Test conventions
 
-Uses `bun test`. A real Postgres connection is required (`DATABASE_URL`).
+- Test through public APIs rather than `_private` implementation details.
+- Assert user-observable behavior: rendered values, chart ranges, focus changes, saved data, or error recovery. Class strings, bare element existence, and visibility alone do not establish correct behavior.
+- Make each regression test fail when the behavior regresses. Fix or remove tests whose names claim unasserted behavior, or which skip on the condition they should test.
+- Use `fast-check` for crypto round-trips, decimal invariants, and sync conflict logic.
+- E2E selectors: `getByRole` first, then `getByLabel`, then `getByTestId` when needed. Use semantic selectors, not Tailwind classes.
+- E2E auth uses [`apps/web/tests/e2e/helpers/auth.ts`](apps/web/tests/e2e/helpers/auth.ts): `signup`, `login`, `logout`, `capturePhrase`, and `acknowledgePhrase`. Keep those flows out of individual specs.
+- Follow the existing fixture and `beforeEach` cleanup pattern for the spec. Tests creating users need distinct usernames; shared fixtures require isolated sync state.
 
-### Unit + component tests, `apps/web`
+### E2E setup and execution
 
-```sh
-pnpm --filter @privance/web test                    # both projects
-pnpm --filter @privance/web exec vitest --project unit     # logic only (happy-dom)
-pnpm --filter @privance/web exec vitest --project browser  # components (real Chromium)
-```
+**Use a disposable test database, never a personal or production vault.** On local fixture reuse, [global setup](apps/web/playwright/global-setup.ts) deletes the fixture users' sync rows and clears the entire price and symbol-profile caches. Its local-host guard is not a substitute for choosing a test database.
 
-Two Vitest projects: `unit` runs pure logic in `happy-dom`; `browser` runs `*.browser.test.{ts,tsx}` in real Chromium via Vitest Browser Mode (`vitest-browser-react`), needed because happy-dom/jsdom can't lay out or render Recharts/SVG, or faithfully back browser APIs like IndexedDB and WebCrypto. The browser project needs a Chromium binary (`pnpm --filter @privance/web exec playwright install chromium`). Component CSS and full flows are covered in E2E; see [ADR-0003](docs/adr/0003-component-testing.md).
+1. Start Postgres and apply migrations as in [Setup](#setup). If exporting a different `DATABASE_URL`, use it for both migrations and E2E.
+2. Install browsers once: `pnpm --filter @privance/web e2e:install` (Linux hosts may also need Playwright's `install --with-deps`).
+3. Stop development servers on the selected E2E ports, then run:
 
-### Run all tests
-
-```sh
-pnpm test        # Turborepo runs all three in dependency order
-```
-
-### E2E tests
-
-```sh
-# Install browsers (one-time)
-pnpm --filter @privance/web e2e:install
-
-# Run (requires server + DB running)
-pnpm --filter @privance/web e2e
-
-# Headed mode for debugging
-pnpm --filter @privance/web e2e:headed
-```
-
-E2E specs live in `apps/web/tests/e2e/`. Auth flows go through the helpers in `apps/web/tests/e2e/helpers/auth.ts`, do not copy-paste auth steps into specs. Use a distinct username per test (alice, bob, dave, ...) for `cleanState` isolation. Prefer `getByRole` / `getByLabel` selectors; `getByTestId` only when role/label are not unique. Never use Tailwind class names as selectors.
-
-Playwright runs five projects with tiered coverage: `chromium` runs critical user journeys (auth, accounts, holdings, dashboard, session, landing, plan, spend, settings, biometric PRF), `firefox` runs auth + session smoke, `webkit` runs storage verification + auth smoke, and `mobile-safari` (iPhone) and `mobile-chrome` (Pixel 5) run `*.mobile.spec.ts` against the mobile UI. Target one with `pnpm --filter @privance/web e2e --project=<name>`. All five run locally (macOS/Linux) and in CI (KDF cost is reduced via `VITE_PRIVANCE_KDF_REDUCED=true`).
-
-### Deployment checks
-
-```sh
-bash infra/test.sh
-# With the local Docker trial running (see README):
-node infra/test-browser.mjs
-```
-
-The browser smoke checks the local Compose stack through Caddy in Chromium and WebKit.
-
----
-
-## Lint and format
-
-```sh
-pnpm lint           # biome check (lint + format check), all workspaces
-pnpm lint:fix       # auto-fix lint issues
-pnpm fmt            # biome format --write
-pnpm fmt:check      # biome format check (no writes)
-```
-
-Biome is the single tool for linting and formatting. There is no ESLint or Prettier.
-
----
-
-## Type checking
-
-```sh
-pnpm typecheck      # tsc --noEmit in all workspaces via Turborepo
-```
-
-Or per workspace:
-
-```sh
-pnpm --filter @privance/core typecheck
-pnpm --filter @privance/server typecheck
-pnpm --filter @privance/web typecheck
-```
-
----
-
-## Pre-commit hooks
-
-Lefthook is installed automatically by `pnpm install` (via the `prepare` script).
-
-- **pre-commit:** `biome check --write` on staged `.js/.ts/.tsx/.jsx/.json` files; auto-stages fixes.
-- **pre-push:** `pnpm -r run typecheck` + `pnpm -r run test` + `pnpm audit --audit-level=high`.
-
-Do not skip hooks without an explicit reason. If a hook fails, fix the underlying issue rather than bypassing it.
-
----
-
-## Commit conventions
-
-- Use **Conventional Commits**: `feat`, `fix`, `refactor`, `chore`, `test`, `docs`, `ci`. Scope is optional: `feat(auth): add recovery phrase UI`.
-- Keep each branch focused; the maintainer squash-merges PRs, so a clean Conventional Commits subject is what lands on `main`.
-- No personal information in tracked files: no real names, personal emails, or absolute local paths in committed content. Treat anything tracked as public-facing.
-
----
-
-## Adding a feature
-
-1. Read an existing feature module as the template.
-   - **Server:** `server/src/auth/` is the richest example.
-   - **Web feature module:** `apps/web/src/features/accounts/` is the reference.
-2. Mirror the file structure exactly. If a new pattern is genuinely needed, justify it in the PR description.
-3. Server module template:
+   ```sh
+   pnpm --filter @privance/web e2e
+   # Focused iteration:
+   pnpm --filter @privance/web e2e --project=chromium
+   pnpm --filter @privance/web e2e:headed
+   pnpm --filter @privance/web e2e:ui
    ```
-   server/src/<feature>/
-   ├── index.ts            # Barrel; never export service classes
-   ├── types.ts            # Errors, result types, constants
-   ├── schema.ts           # Drizzle table definitions
-   ├── repo.ts             # Only layer that imports schema
-   ├── wire.ts             # Hono routes + single error mapper per module
-   └── <flow>-service.ts   # One per cohesive flow
-   ```
-4. Web feature module template:
-   ```
-   apps/web/src/features/<feature>/
-   ├── index.ts
-   ├── types.ts
-   ├── queries.ts          # TanStack Query hooks
-   ├── mutations.ts
-   └── components/
-   ```
-5. Money values must use `Decimal` (BigInt minor-unit arithmetic from `@privance/core/decimal`). Never coerce to `Number` or use floating-point arithmetic on amounts.
-6. Tests must go through the public API only, do not reach into `_private` names.
 
----
+Playwright boots the Bun API and builds/serves the production SPA automatically. It sets a test-only enumeration secret, lifts auth rate limits, uses fake market-price upstreams, and enables reduced-KDF v2 for the web build. Keep invite gating disabled (`INVITE_REQUIRED` unset/empty or `false`) for test signups.
 
-## Pull request expectations
+Local runs reuse existing servers. A reused dev server can silently defeat the reduced-KDF build and fake-provider settings; let Playwright boot its own servers. For concurrent checkouts, select unused ports:
 
-Before opening a PR:
+```sh
+E2E_WEB_PORT=8181 E2E_SERVER_PORT=3100 pnpm --filter @privance/web e2e
+```
 
-1. `pnpm lint` passes with no new errors
-2. `pnpm typecheck` passes in all workspaces
-3. `pnpm test` passes with no regressions, and new or changed behavior ships with a test that fails without the change, at the right layer (unit / `browser` / E2E)
-4. E2E tests pass on chromium, firefox, webkit, and mobile
-5. If you changed the server API: document the change
-6. If you changed auth or crypto: manually verify a signup, recovery, and login cycle in a real browser
-7. Fill in `.github/pull_request_template.md` for the PR title and body. The maintainer reviews and squash-merges once CI passes.
+Ports do not isolate database state or shared price caches; use a separate test database for concurrent runs. Fixture users are cached in the gitignored `apps/web/.playwright-fixtures.json`; after a database wipe, use `FORCE_SETUP=1` to recreate them.
 
-For non-obvious design decisions, write an ADR under `docs/adr/`.
+All five projects run locally and in CI: `chromium`, `firefox`, `webkit`, `mobile-safari`, and `mobile-chrome`. Coverage is tiered, not the full suite on every engine; [`playwright.config.ts`](apps/web/playwright.config.ts) owns the exact spec selection. Global setup uses Chromium even when targeting another project.
 
----
+Failure screenshots go to `apps/web/test-results/`; traces and videos are captured on the first retry. Local runs have no retries by default; use `--retries=1` when those artifacts are needed. Use `e2e:ui` for interactive debugging.
 
-## License and contributions
+## Verification
 
-Privance is licensed under [AGPL-3.0](LICENSE). By contributing, you agree that your contributions are licensed under the same AGPL-3.0 license (inbound = outbound). You retain copyright to your contributions.
+For focused iteration, run the affected workspace/test project first. Before a PR, run the full bar below or explicitly list each omitted check and why. A green focused test or CI run alone is not “verified clean.”
+
+| Check | Command / completion criterion |
+|---|---|
+| Lint and formatting | `pnpm lint` (Biome check); `pnpm fmt:check` for formatting alone |
+| Types | `pnpm typecheck` (all workspaces) |
+| Core tests and coverage | `pnpm --filter @privance/core test`; at least 90% lines, branches, functions, statements |
+| Server tests and coverage | `pnpm --filter @privance/server test` against real Postgres; project floor 85% overall |
+| Web logic and components | `pnpm --filter @privance/web test`; project coverage floor 80%, with E2E covering screens |
+| Static build | `pnpm --filter @privance/web build` |
+| Dependency audits | `pnpm audit` and, from `server/`, `bun audit`; both clean, with any findings reported |
+| E2E | `pnpm --filter @privance/web e2e`; all five projects, real API and Postgres |
+| Auth/crypto manual check | Signup → recovery → login in a real browser |
+
+Coverage policy and enforcement differ: [core config](packages/core/vitest.config.ts) enforces 90%; [Bun config](server/bunfig.toml) enforces a 65% per-file threshold with exclusions, not the 85% overall policy; [web config](apps/web/vitest.config.ts) has no automated coverage gate. Do not infer those policy floors passed from a green test exit. CI's dependency audit is advisory (`continue-on-error`); the pre-push audit is blocking.
+
+For deployment changes, also run `bash infra/test.sh`; with the local Compose trial running, run `node infra/test-browser.mjs` (Chromium and WebKit through Caddy). Follow [infra/README.md](infra/README.md) for deployment and restore checks.
+
+For targeted auto-fixes, use `pnpm exec biome check --write <paths>` or `pnpm exec biome format --write <paths>`. The root `pnpm lint:fix` and `pnpm fmt` scripts write across the repository; inspect their diffs for unrelated changes.
+
+## Hooks
+
+[`lefthook.yml`](lefthook.yml) defines the hooks: pre-commit fixes and stages supported code/JSON files; pre-push runs workspace typechecks, tests, and a high-severity dependency audit. Fix hook failures instead of bypassing them; disclose any explicit reason for a bypass.
+
+`pnpm install` installs hooks in a normal clone. In a linked worktree, `.git` is a file and the current `prepare` script skips installation; use `pnpm exec lefthook install` if hooks are not already installed in the shared repository.
+
+## Commits and pull requests
+
+- Branch from `main`; keep the branch focused and squash locally to one commit before push. History rewrites require authorization and a backup branch as specified in [AGENTS.md](AGENTS.md#guardrails).
+- Use Conventional Commits: `feat`, `fix`, `refactor`, `chore`, `test`, `docs`, or `ci`; scope is optional. Keep the subject imperative and at most 72 characters. Lead the body with motivation, not a diff summary.
+- Use the configured GitHub noreply identity (`git config user.email`); do not override it per commit. Omit `Co-Authored-By` trailers. Check `git log -1 --format=%B` before push.
+- Fill in the [PR template](.github/pull_request_template.md), including verification results, skips, and API/design documentation updates. The PR title and body become the main-line squash commit verbatim.
+- Merge only after CI is green and the maintainer has local-tested the pushed branch and explicitly approved it.
+
+## License
+
+Contributions use [AGPL-3.0](LICENSE), the same license as the project (inbound = outbound). You retain copyright to your contributions.

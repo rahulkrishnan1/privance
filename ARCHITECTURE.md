@@ -1,5 +1,7 @@
 # Architecture
 
+Use this map for cross-workspace changes, routing, and data flow. Module conventions live in the [server](server/README.md#module-conventions), [core](packages/core/README.md#module-conventions), and [web](apps/web/README.md#feature-conventions) READMEs; [SECURITY.md](SECURITY.md#security-contracts-for-changes) owns security contracts. Diagrams summarize behavior; linked source files define current schemas and interfaces.
+
 ## High-level diagram
 
 ```
@@ -36,7 +38,7 @@ User's device  (browser)
     └─ Argon2id off the main thread for login/signup; main-thread hash-wasm fallback
 
          ↕  HTTPS + CSRF (X-Requested-With)
-            only encrypted blobs + session cookie cross this line
+            encrypted financial records; auth proofs, metadata, and public-price requests
 
 Bun + Hono server  (server/)
 ├─ /health                     liveness probe
@@ -58,48 +60,18 @@ PostgreSQL 17
 
 ## Module structure
 
-### `apps/web/` , Vite 8 PWA
+### `apps/web/`: static SPA / PWA
 
 The public-facing web application. It is a **static SPA** , no SSR, no API routes in the app layer. All server communication goes to the Bun/Hono server.
 
-**Key directories:**
+- `src/app/` composes route screens; see [Routing](#routing) for the route map.
+- `src/features/` owns feature queries, mutations, and components. Dashboard is an Invest sub-module, not a route.
+- `src/lib/` owns API wrappers, browser crypto/storage, worker clients, and server-backed price/profile queries.
+- `src/providers/` owns auth, local-store/sync lifecycle, and query-cache wiring.
 
-```
-apps/web/src/
-├── main.tsx              # Entry: providers + RouterProvider
-├── router.tsx            # Route tree (createBrowserRouter)
-├── app/                  # Route components (layouts + pages)
-│   ├── (app)/            # Auth-gated route group
-│   │   ├── layout.tsx    # Top bar + bottom nav; redirects if not unlocked
-│   │   ├── page.tsx      # Investments overview (net worth, allocation, holdings)
-│   │   ├── accounts/     # Account list + create/edit
-│   │   ├── holdings/     # Holdings list
-│   │   ├── plan/         # FIRE projections
-│   │   ├── spend/        # Spending
-│   │   └── settings/     # User settings
-│   ├── auth/             # Unauthenticated flows
-│   │   ├── login/
-│   │   ├── signup/
-│   │   └── recovery/
-│   └── unlock/           # Session exists but DEK not in memory (cookie-only state)
-├── features/             # Feature modules (accounts, holdings, invest, plan, spend, settings; dashboard is an Invest sub-module, not a route)
-│   └── accounts/         # Reference module: queries.ts, mutations.ts, types.ts, components/
-├── lib/
-│   ├── api/              # Raw fetch wrappers (auth, account, prices, symbol-profiles, client)
-│   ├── crypto/           # KDF worker client, WebAuthn PRF
-│   ├── storage/          # session-vault, biometric-store, per-user-store
-│   ├── sim/              # Sim worker client + wire types
-│   ├── queries/          # TanStack Query hooks (prices, profiles)
-│   └── auth-crypto.ts    # Browser-side crypto helpers for login/signup flows
-└── providers/
-    ├── auth-context.tsx  # DEK store, auth state machine, auto-lock idle timer
-    ├── sync-context.tsx  # LocalStore + SyncClient lifecycle
-    └── query-client.tsx  # TanStack Query provider
-```
+The [web key-file map](apps/web/README.md#key-files) identifies the entry points. Dependencies include `packages/core` and `@sqlite.org/sqlite-wasm` (via Worker).
 
-**Dependencies on:** `packages/core`, `@sqlite.org/sqlite-wasm` (via Worker).
-
-### `server/` , Bun + Hono API
+### `server/`: Bun + Hono API
 
 The backend. Stores only opaque ciphertext in Postgres. Has no ability to decrypt user data.
 
@@ -134,23 +106,11 @@ server/src/
 
 **Dependencies on:** `packages/core` (domain types, audit event constants only , no crypto).
 
-### `packages/core/` , Shared TypeScript library
+### `packages/core/`: shared TypeScript library
 
 Pure TypeScript. No DOM, no Bun, no Node built-ins. Can run in the browser, in a Web Worker, or in a Node/Bun test harness.
 
-**Exports:**
-
-| Export path | Contents |
-|---|---|
-| `@privance/core` | Re-exports from all submodules |
-| `@privance/core/crypto` | Key derivation, AES-GCM encrypt/decrypt, HKDF, BIP39 recovery |
-| `@privance/core/storage` | `LocalStore` interface, `WebSqliteAdapter`, schema DDL |
-| `@privance/core/sync` | `SyncClient`, push, pull, reconcile, conflict handling |
-| `@privance/core/domain` | Domain types: `Account`, `Holding`, `Price`, branded IDs |
-| `@privance/core/decimal` | `Decimal` BigInt minor-unit arithmetic |
-| `@privance/core/networth` | Net-worth aggregation functions |
-| `@privance/core/projection` | FIRE simulation engine (Monte Carlo + historical replay) |
-| `@privance/core/audit-events` | Audit event name constants |
+The [core README](packages/core/README.md) maps key files and module boundaries; [`packages/core/package.json`](packages/core/package.json) defines the public export paths.
 
 ---
 
@@ -195,7 +155,8 @@ SyncClient.pullChanges()
 ### Login / unlock
 
 ```
-User enters password
+User enters username and password
+  → GET /api/auth/kdf-params?username            ← real or deterministic fake parameters
   → stretchMasterPassword(password, kdfSalt, argon2id params)  ← hash-wasm Argon2id in browser
   → deriveAuthHash(stretchedKey)                ← HKDF finance/auth-v1, 32 bytes
   → POST /api/auth/login { username, auth_hash }
@@ -209,9 +170,9 @@ User enters password
   → SyncProvider boots LocalStore + SyncClient
 ```
 
-**Session persistence and auto-lock** (`lib/storage/session-vault.ts`): the DEK is also held wrapped in IndexedDB under a non-extractable key, bounded by a single 15-minute window covering both idle-while-open and time-since-last-seen. On boot, AuthProvider holds in a transient `loading` state while it reads the vault: a same-tab reload within the window unwraps locally and resumes `unlocked` with no password or server round-trip; an expired or absent vault resolves to `locked` and routes to `/unlock`. The window slides forward on activity (throttled) and on tab-hide. Explicit lock, window expiry, and logout purge the vault. The non-secret username and userId live in `localStorage` so a reopen after a real close can still reach `/unlock` prefilled; in private browsing the browser wipes all of this on close, so closing locks instantly. See `THREAT_MODEL.md` for the posture tradeoff.
+**Boot and locking:** [`AuthProvider`](apps/web/src/providers/auth-context.tsx) stays `loading` while reading the [session vault](apps/web/src/lib/storage/session-vault.ts). A fresh wrapped key restores `unlocked`; an absent, expired, or explicitly locked vault resolves to `locked` and `/unlock`. Activity slides the 15-minute restore window. Expiry is enforced by the running app and on subsequent reads, not by timed deletion while the app is closed. Non-secret username/userId values in `localStorage` support the locked screen. [ADR-0004](docs/adr/0004-session-persistence.md) records the browser-tab versus installed-PWA behavior.
 
-**Biometric unlock** (`lib/storage/biometric-store.ts`, `lib/crypto/webauthn-prf.ts`, `packages/core/src/crypto/biometric.ts`): an opt-in second unlock path layered on the locked state. Enrollment (Settings, while unlocked) creates a platform passkey with the WebAuthn PRF extension and a local RSA-OAEP protector keypair; the items key is wrapped under the protector public key and the protector private key is AEAD-sealed under a KEK derived from the passkey's PRF output (`finance/biometric-v1` HKDF label). The record lives in its own IndexedDB database (`privance.biometric`), is scoped to the enrolling userId, and is governed by a 14-day cadence: past it the wrapped items key is destroyed in place and the next password-derived unlock re-wraps it without re-enrollment. On `/unlock`, an enrolled device leads with the biometric action (PRF assertion unseals the protector key, which unwraps the items key) and keeps the password form one tap behind a reveal. Logout, cross-user mismatch, and tamper purge the whole record; explicit lock retains it. See `docs/adr/0005-biometric-unlock.md` and `THREAT_MODEL.md` section 3.2.
+**Biometric unlock:** an optional, user-scoped enrollment provides a second path from `locked` to `unlocked`, while password unlock remains available. Browser ceremonies live in [`webauthn-prf.ts`](apps/web/src/lib/crypto/webauthn-prf.ts), enrollment persistence in [`biometric-store.ts`](apps/web/src/lib/storage/biometric-store.ts), and protector-key crypto in [`core/crypto/biometric.ts`](packages/core/src/crypto/biometric.ts). [ADR-0005](docs/adr/0005-biometric-unlock.md) owns the key hierarchy and password-unlock cadence; [the DEK threat analysis](THREAT_MODEL.md#32-dek-items-key) records residual risks.
 
 ---
 
@@ -238,20 +199,6 @@ User enters password
       wrapped_dek_recovery, wrapped_dek_recovery_iv
     }
 12. Server stores everything; argon2id-hashes auth_hash again for storage
-```
-
-### Login
-
-```
-1. GET /api/auth/kdf-params?username  → { kdf_salt, kdf_params }
-   (fake params returned for unknown usernames at matched timing)
-2. Argon2id(password, kdf_salt) → stretchedMasterKey
-3. HKDF(stretchedMasterKey, "finance/auth-v1") → authHash
-4. POST /api/auth/login { username, auth_hash }
-   → server verifies; returns { wrapped_dek, wrapped_dek_iv }
-5. HKDF(stretchedMasterKey, "finance/kek-v1") → KEK
-6. AES-GCM-decrypt(wrapped_dek, KEK, wrapped_dek_iv) → DEK
-7. DEK stored in globalThis Symbol slot
 ```
 
 ### Recovery (password reset via phrase)
@@ -288,38 +235,13 @@ In the browser, storage is managed by `packages/core/src/storage/web-adapter.ts`
 FIRE projections run in a second worker, `/sim/sim-worker.mjs`, using the storage worker's RPC contract (ready handshake, `{id, method, args}` request, `{id, ok, result|error}` response, pending map, per-request timeout).
 
 - Built, not hand-written: `apps/web/scripts/build-sim-worker.mjs` bundles `sim-worker-entry.ts` plus the pure `packages/core/src/projection/` engine into `public/sim/sim-worker.mjs`, verifying the returns dataset against its recorded SHA-256 hash.
-- Receives plaintext sim inputs over `postMessage`; never the DEK, ciphertext, or storage (see THREAT_MODEL.md 3.10). `worker-client.ts` memoizes per session and falls back to the main-thread engine when the worker cannot boot or times out (restricted WKWebView, strict CSP); the fallback latches for the session.
+- Receives plaintext sim inputs over `postMessage`; never the DEK, ciphertext, or storage (see [the sim-worker threat analysis](THREAT_MODEL.md#310-plan-record-and-sim-worker)). `worker-client.ts` memoizes per session and falls back to the main-thread engine when the worker cannot boot or times out (restricted WKWebView, strict CSP); the fallback latches for the session.
 
-### Schema
+### Schema and sync boundaries
 
-Defined in `packages/core/src/storage/schema.ts`:
+[`packages/core/src/storage/schema.ts`](packages/core/src/storage/schema.ts) defines the local encrypted-object cache, sync cursor, and outbound-intent queue. [`LocalStore`](packages/core/src/storage/types.ts) defines the adapter contract. The server's [`sync/schema.ts`](server/src/sync/schema.ts) adds user scoping and server sequencing; it is not an identical copy of the local schema.
 
-```sql
-sync_objects (
-  kind        TEXT,       -- "account", "holding", etc.
-  object_id   TEXT,       -- UUID
-  ciphertext  BLOB,       -- AES-GCM encrypted payload
-  nonce       BLOB,       -- 12-byte GCM nonce
-  version     INTEGER,    -- optimistic concurrency version
-  server_seq  INTEGER,    -- NULL until server confirms
-  tombstone   INTEGER,    -- 0 or 1
-  updated_at  INTEGER     -- Unix epoch ms
-  PRIMARY KEY (kind, object_id)
-)
-
-sync_cursor (
-  key   TEXT PRIMARY KEY,  -- always "server_seq"
-  value TEXT               -- last confirmed server sequence number
-)
-
-outbound_queue (
-  id           TEXT PRIMARY KEY,
-  kind, object_id, ciphertext, nonce, version, prev_version, tombstone,
-  enqueued_at  INTEGER
-)
-```
-
-The schema is identical in structure to the server's `sync_objects` table, enabling round-trip transport without transformation.
+Keep the encrypted envelope compatible across the transport boundary, and preserve atomic object-plus-queue writes and queue-ID acknowledgements. For server write ordering, tombstone versions, and conflict reads, see [server sync semantics](server/README.md#sync-write-ordering-and-tombstones).
 
 ---
 
@@ -374,4 +296,4 @@ Produces a static site in `apps/web/out/`. Deploy to any static host (Caddy, ngi
 pnpm --filter @privance/server build
 ```
 
-Produces `server/dist/server.js` , a single Bun bundle. Run with `bun server/dist/server.js`.
+Produces `server/dist/server.js`, a single Bun bundle. Run with `bun server/dist/server.js`.

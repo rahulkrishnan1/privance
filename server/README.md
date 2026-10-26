@@ -64,21 +64,17 @@ while retaining cached prices when the refresh request itself fails.
 
 ## Development
 
+Follow [CONTRIBUTING.md](../CONTRIBUTING.md#setup) for environment/database setup and [server tests](../CONTRIBUTING.md#tests) for the isolated test runner. From the repository root:
+
 ```sh
-# Start with hot reload
-bun run dev         # port 3000
-
-# Run tests
-bun test
-
-# Migrations
-bun run db:migrate  # apply pending migrations
-bun run db:generate # generate a new migration from schema changes
-bun run db:studio   # Drizzle Studio (DB browser)
-
-# Type check
-bun run typecheck
+pnpm --filter @privance/server dev
+pnpm --filter @privance/server test
+pnpm --filter @privance/server typecheck
+pnpm --filter @privance/server db:generate
+pnpm --filter @privance/server db:migrate
 ```
+
+Explicitly set `DATABASE_URL` to a disposable, migrated database before running tests. The child runner disables env-file loading, but the outer Bun process can load `server/.env` first and pass its values through; do not rely on env-file isolation.
 
 ## Environment variables
 
@@ -98,18 +94,24 @@ bun run typecheck
 | `FINNHUB_API_KEY` | No | Failover source for stock/ETF prices and profiles when Yahoo is unavailable. Free key at finnhub.io; unset = Yahoo only. |
 | `COINGECKO_API_KEY` | No | CoinGecko Demo key for higher crypto-price rate limits. Free at coingecko.com/en/api; unset = keyless tier. |
 
-## Module template
+## Module conventions
 
-Every feature follows the same structure:
+Use [`src/auth/`](src/auth/) as the reference. Match the existing module's structure; create only files the feature needs.
 
-```
+```text
 server/src/<feature>/
-├── index.ts            # Barrel; never export service classes
-├── types.ts            # Errors, result types, constants
-├── schema.ts           # Drizzle table definitions
-├── repo.ts             # Only layer that imports schema and queries the DB
-├── wire.ts             # Hono routes + single error mapper per module
-└── <flow>-service.ts   # One per cohesive flow; constructor takes options object
+├── index.ts            # Public barrel; service classes stay internal
+├── types.ts            # <Module>Error + subclasses, result types, constants
+├── schema.ts           # Drizzle tables
+├── repo.ts             # Feature DB access; options-object arguments
+├── wire.ts             # Hono routes + one domain-error mapper
+├── <flow>-service.ts   # One cohesive flow; options-object constructor
+└── _helpers.ts         # Optional internal helpers
 ```
 
-The `auth/` module is the richest reference implementation.
+- **Repository boundary:** repositories own feature queries and schema imports. Services depend on repositories, not Drizzle or `schema.ts`; schema aggregation and migration tooling are infrastructure exceptions.
+- **Errors:** domain errors bubble to one mapper per module at the wire boundary. A route catches a specific error only to record rate-limit failure, then rethrows; successful calls record rate-limit success. Keep response mapping out of repeated route-level `try/catch` blocks.
+- **Logs:** audit events go through `repo.logEvent`; operational events use pino. Keep the channels separate and obey the [security logging contract](../SECURITY.md#security-contracts-for-changes).
+- **Migrations:** generate with `db:generate`, review the SQL, then apply with `db:migrate`. Backward-incompatible changes follow the repository's [three-deploy migration rule](../AGENTS.md#guardrails).
+
+Before changing auth, validation, CSRF, or persisted plaintext, read [SECURITY.md](../SECURITY.md#security-contracts-for-changes).

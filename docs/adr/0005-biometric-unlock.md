@@ -2,10 +2,11 @@
 
 - **Status:** Accepted
 - **Date:** 2026-06-05
+- **Clarification:** Cadence expiry is enforced when the app reads enrollment; it is not a timed disk-erasure guarantee.
 
 ## Context
 
-ADR-0004 built a session vault that persists a wrapped copy of the items key in IndexedDB for up to 15 minutes, so a same-tab reload does not force a full re-authentication. It explicitly deferred biometric unlock as a future layer.
+[ADR-0004](0004-session-persistence.md) introduced a wrapped session vault with a 15-minute application restore window. It deferred biometric unlock as a separate layer.
 
 The remaining friction point is the cold-launch unlock and the post-expiry re-auth: every time the 15-minute window has passed the user must enter their master password and wait through a multi-second Argon2id derivation. On phones with a strong master password this is the most frequent source of friction in daily use. ADR-0004 was designed to accept biometric layering; the session vault and auth state machine have explicit integration points for it.
 
@@ -19,29 +20,38 @@ Feature support is uneven across platform and browser version. Any enrolled or u
 
 Add optional biometric unlock using the WebAuthn PRF extension, with a protector-keypair indirection layer and a 14-day cadence requirement.
 
-**Key hierarchy and protector-keypair indirection.** At enrollment a local asymmetric protector keypair is generated via `crypto.subtle.generateKey` (RSA-OAEP, SHA-256, 2048-bit, `encrypt`/`decrypt` only). The public key is stored plaintext. The private key is exported as PKCS8 and sealed under a biometric KEK derived from the passkey's PRF output. The items key is wrapped under the public key via `crypto.subtle.encrypt` with RSA-OAEP; `wrapKey`/`unwrapKey` is not used, which removes engine-variance risk from the path. Unlock reverses the chain: assertion releases the PRF output, HKDF derives the biometric KEK, the sealed private key is opened, and the private key decrypts the wrapped items key blob.
+### Key hierarchy and binding
+
+**Protector-keypair indirection.** At enrollment a local asymmetric protector keypair is generated via `crypto.subtle.generateKey` (RSA-OAEP, SHA-256, 2048-bit, `encrypt`/`decrypt` only). The public key is stored plaintext. The private key is exported as PKCS8 and sealed under a biometric KEK derived from the passkey's PRF output. The items key is wrapped under the public key via `crypto.subtle.encrypt` with RSA-OAEP; `wrapKey`/`unwrapKey` is not used, which removes engine-variance risk from the path. Unlock reverses the chain: assertion releases the PRF output, HKDF derives the biometric KEK, the sealed private key is opened, and the private key decrypts the wrapped items key blob.
 
 The indirection exists to satisfy the re-arm requirement without a biometric prompt mid-login. After a password-derived unlock the stored public key re-wraps the current items key without touching the authenticator: the biometric credential is not needed to update the wrapped blob, only to open it. This is a fresh wrap, not a timestamp extension.
 
-**HKDF label.** PRF output (32 bytes) is fed to the existing `deriveKey` HKDF helper with the new frozen label `finance/biometric-v1`, added to `packages/core/src/crypto/labels.ts`. This label is frozen alongside the existing three; bumping it is a migration requiring key re-wrap, not a code change.
+**HKDF label.** Derive the biometric KEK from the 32-byte PRF output using `finance/biometric-v1`. The frozen-label and migration rules live in [SECURITY.md](../../SECURITY.md#security-contracts-for-changes).
 
 **Tamper detection: two bindings.** First, the RSA plaintext embeds the enrollment's `recordUuid` beside the 32 key bytes. The unwrap step (`unwrapItemsKeyRsa` in `apps/web/src/lib/storage/biometric-store.ts`) verifies the embedded UUID against the stored record; a substituted wrapped blob fails deterministically and triggers the purge path rather than yielding garbage bytes. Second, the AEAD seal over the PKCS8 private key includes a SHA-256 digest of the stored public key bytes in the AAD (via `sealProtectorKey` in `packages/core/src/crypto/biometric.ts`). Swapping the stored public key breaks the next private-key unseal. Both bindings are defense-in-depth; same-origin script compromise is already accepted as full session compromise.
 
-**AEAD seal for the private key.** `encryptAead` from core with AAD `{recordUuid, kind: "biometric_protector", labelVersion, kdfParamVersion, pubKeyDigest}`, matching the convention in `items-key.ts`. Tamper detection is AES-GCM's authentication tag; a tag failure throws `DecryptionError`, which is treated as the R17 purge signal.
+**AEAD seal for the private key.** `encryptAead` from core with AAD `{recordUuid, kind: "biometric_protector", labelVersion, kdfParamVersion, pubKeyDigest}`, matching the convention in `items-key.ts`. Tamper detection is AES-GCM's authentication tag; an authentication failure throws `DecryptionError` and triggers enrollment purge.
 
 **Per-enrollment 32-byte salt with dual roles.** A fresh random 32-byte value is generated at enrollment. It is stored in the record and serves two functions: the HKDF salt input to `deriveBiometricKek`, and the PRF eval input (`prf.eval.first`) passed to the WebAuthn create and assert calls. One value, two documented roles.
 
-**Durable biometric store, separate DB.** The enrollment record lives in its own IndexedDB database named `privance.biometric` (module: `apps/web/src/lib/storage/biometric-store.ts`). It is separate from `privance.session` because its lifecycle differs: it is exempt from the 15-minute TTL and the cold-launch purge. The store mirrors the session vault's module shape: pure `withStore` wrapper, best-effort degrade on storage faults, dev-only warnings. The single record key is `"current"`.
+### Enrollment lifecycle
 
-**User-scoped record.** The record holds the enrolling user's `userId`. `loadEnrollment` purges and returns null when the `userId` in the record does not match the `userId` argument. This prevents a failed logout purge (interrupted tab close) from leaving one user's wrapped items key accessible to a different user on the same device.
+Use a separate IndexedDB database, `privance.biometric`, because enrollment survives session-vault expiry and installed-PWA cold launch. Each record is scoped to its enrolling `userId`.
 
-**14-day cadence.** `lastPasswordUnlockAt` is stored in the record. When `now - lastPasswordUnlockAt` exceeds 14 days (`CADENCE_TTL_MS`), `loadEnrollment` destroys the wrapped items key in place and returns null; the enrollment bookkeeping (credential id, salt, protector keypair material, none of which contains user key material) survives so the next password-derived unlock re-arms without re-enrollment, per the origin R9 contract. Full-record purges are reserved for logout, userId mismatch, and tamper. The check is fail-closed: a negative age (clock moved backwards) is treated as stale. The timestamp is origin-local and script-writable; tampering can only delay the destruction of an existing blob, never bypass the PRF gate.
+| Event | Enrollment effect |
+|---|---|
+| Password-derived login or unlock | Re-wrap the current items key under the stored public key and reset `lastPasswordUnlockAt`; no biometric prompt |
+| Biometric unlock or silent session restoration | Leave the password-unlock cadence unchanged |
+| Explicit lock | Retain enrollment |
+| Enrollment read older than 14 days, or with a future timestamp | Reject biometric unlock and clear only the wrapped items key; retain credential/protector bookkeeping so a password unlock can re-arm without re-enrollment |
+| Logout, user mismatch, invalid record, or cryptographic tamper | Attempt full-record purge; locked-screen sign-out uses the same policy |
+| Missing enrollment during re-arm | No-op; a concurrent logout must not resurrect the record |
 
-**Re-arm triage in auth-context.** `login()` always re-arms. `unlock()` re-arms unless `payload.persistence === "biometric"` (a biometric unlock must never extend its own cadence; only password-derived unlocks reset the 14-day window). The boot rehydrate effect never re-arms (silent resume is not password-derived). `lock()` is untouched; it does not purge the biometric record (locking and logging out are distinct operations). `reArm` is a no-op when no record exists, so a re-arm racing a cross-tab logout purge cannot resurrect a deleted record. A `userId` mismatch during `reArm` purges instead of wrapping.
+The cadence check is application-enforced and the timestamp is script-writable. No timer deletes the record while the app is closed; a stale blob can remain until the next read, and storage failures can prevent deletion. Altering the timestamp cannot bypass the PRF gate.
 
-**Logout purge ordering.** `logout()` in `apps/web/src/providers/auth-context.tsx` awaits `purgeEnrollment()` before `finishLogout` removes `USERNAME_KEY` and broadcasts to sibling tabs. Sibling tabs therefore reload into an already-purged state. A comment at the purge site notes that any future DEK-rotation flow must also purge here, because a rotated items key would otherwise be wrapped under an enrollment keyed to the old key.
+Attempt logout purge before removing local identity and broadcasting logout, so sibling tabs do not reload into a still-usable enrollment. For current transaction and race-handling details, read [`biometric-store.ts`](../../apps/web/src/lib/storage/biometric-store.ts) and [`auth-context.tsx`](../../apps/web/src/providers/auth-context.tsx).
 
-**Locked-screen sign-out.** `handleSignOut` in `apps/web/src/app/unlock/page.tsx` calls `purgeEnrollment()` directly before `logout()`, mirroring the pattern that already calls `destroyUserStore` directly from that page.
+### Browser support and module ownership
 
 **Feature detection.** `isBiometricSupported()` in `apps/web/src/lib/crypto/webauthn-prf.ts` gates on `isSecureContext` and `PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()`. `getClientCapabilities()` is not consulted: iOS omits `extension:prf` from that list while fully supporting PRF (verified by spike on iPhone Safari 26.5 standalone PWA). PRF support is confirmed at enrollment from the created credential's PRF result; absence after both the create and a fallback assertion is treated as unsupported (`BiometricUnsupportedError`).
 
@@ -51,17 +61,17 @@ The indirection exists to satisfy the re-arm requirement without a biometric pro
 
 ## Consequences
 
-**At-rest window extension, hardware-gated.** A durable wrapped copy of the items key now exists in IndexedDB (database `privance.biometric`) for up to 14 days after the last password-derived unlock. The unwrap barrier is the platform authenticator's PRF gate, not wall-clock expiry alone. This is a deliberate, bounded extension of the at-rest posture recorded in ADR-0004; it is recorded in `THREAT_MODEL.md` section 3.2.
+**Durable storage, hardware-gated.** Enrollment adds a wrapped copy beyond the session vault's restore window. The app permits biometric unlock within the 14-day password cadence, but the stored bytes may persist longer. The unwrap barrier is the authenticator's PRF gate, not cryptographic expiry. See [the DEK threat analysis](../../THREAT_MODEL.md#32-dek-items-key).
 
-**Per-device enrollment.** Each device's platform authenticator holds its own passkey and its own wrapped blob. Cross-device enrollment sync is out of scope for this version.
+**Per-device enrollment.** The browser stores its own wrapped blob; the platform authenticator manages the passkey. Cross-device synchronization of Privance enrollment records is out of scope.
 
-**Script-writable timestamp, bounded impact.** `lastPasswordUnlockAt` is stored in IndexedDB and is origin-writable by any same-origin script. Tampering with it can at most delay the purge of an existing blob; it cannot bypass the PRF gate. The PRF output never leaves the authenticator.
+**Script-writable timestamp, bounded impact.** `lastPasswordUnlockAt` is stored in IndexedDB and is origin-writable by any same-origin script. Tampering with it can at most delay the purge of an existing blob; it cannot bypass the PRF gate. The authenticator releases PRF output to the browser after user verification; the browser uses it transiently for KEK derivation, without persistence or transmission to the server.
 
 **DEK-rotation constraint.** No current flow rotates the items key. Any future flow that does must purge the biometric store and require a password-derived unlock to re-arm; the wrapped blob would otherwise reference the old key. This constraint is noted in a comment at the `purgeEnrollment()` call in `logout()`.
 
 **Orphaned OS-side passkey on disable or failed save.** Web apps cannot delete platform passkeys via any standard API. When the user disables biometric unlock from settings, or when a settings-save fails after a successful passkey creation, the OS-side passkey remains in the credential manager. The UI discloses this and directs the user to their OS credential manager to remove it manually.
 
-**Private browsing and IDB-disabled hosts.** In private browsing, site storage including the biometric store is wiped when the session ends; biometric unlock degrades to password-only on reopen with no special handling needed. On hosts where IDB is disabled (certain restricted WKWebView configurations), the store degrades to null silently and the app behaves as password-only.
+**Private browsing and IDB-disabled hosts.** When the browser ends a private session and clears its storage, biometric enrollment is lost and unlock falls back to the password path. Closing one tab does not universally end a private session. On hosts where IDB is disabled (certain restricted WKWebView configurations), the store degrades to null silently and the app behaves as password-only.
 
 ## Alternatives considered
 
@@ -77,5 +87,5 @@ The indirection exists to satisfy the re-arm requirement without a biometric pro
 
 ## References
 
-- ADR-0004: `docs/adr/0004-session-persistence.md`
+- [ADR-0004: Session persistence and auto-lock](0004-session-persistence.md)
 - W3C PRF extension specification: https://w3c.github.io/webauthn/#prf-extension
