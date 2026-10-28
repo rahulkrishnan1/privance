@@ -24,7 +24,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
-  globalThis.localStorage = realLocalStorage;
 });
 
 describe("theme preference", () => {
@@ -74,7 +73,7 @@ describe("theme preference", () => {
       key: () => null,
       length: 0,
     } as Storage;
-    globalThis.localStorage = failingStorage;
+    vi.stubGlobal("localStorage", failingStorage);
 
     setThemePreference("light");
 
@@ -135,7 +134,7 @@ describe("theme preference", () => {
         throw new Error("blocked");
       },
     } as unknown as Storage;
-    globalThis.localStorage = failingStorage;
+    vi.stubGlobal("localStorage", failingStorage);
 
     setThemePreference("light");
 
@@ -159,12 +158,12 @@ describe("theme preference", () => {
       removeListener: () => undefined,
       dispatchEvent: () => true,
     } as MediaQueryList;
-    globalThis.localStorage = {
+    vi.stubGlobal("localStorage", {
       getItem: () => "dark",
       setItem: () => {
         throw new Error("writes blocked");
       },
-    } as unknown as Storage;
+    });
     vi.stubGlobal("matchMedia", () => media);
 
     const stop = startThemeController();

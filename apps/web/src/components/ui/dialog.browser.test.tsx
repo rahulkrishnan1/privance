@@ -83,6 +83,7 @@ test("DialogContent receives focus when opened", async () => {
 // need to block it opt out via onOpenChange (see change-password-dialog).
 test("Dialog closes on Escape", async () => {
   const onOpenChange = vi.fn();
+  // biome-ignore lint/correctness/noComponentHookFactories: test-local harness; identity is stable within one render
   function Harness() {
     const [open, setOpen] = useState(true);
     return (

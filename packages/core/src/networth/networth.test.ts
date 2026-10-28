@@ -421,6 +421,7 @@ describe("computeNetWorth, currency mismatch", () => {
           const bd = computeNetWorth({ accounts, holdings: [], prices: new Map(), asOf: AS_OF });
           // Counts tie (one account each), so value decides; equal value -> lower code.
           const expectedPrimary =
+            // biome-ignore lint/complexity/useMathMinMax: currencies are strings; Math.min returns NaN
             balA > balB ? curA : balB > balA ? curB : curA < curB ? curA : curB;
           const flaggedAccount = expectedPrimary === curA ? "ca-b" : "ca-a";
           const primaryAccount = expectedPrimary === curA ? "ca-a" : "ca-b";

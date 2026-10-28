@@ -2,13 +2,13 @@
 
 - **Status:** Accepted
 - **Date:** 2026-05-31
-- **Last updated:** 2026-10-21
+- **Last updated:** 2026-10-26
 
 ## Context
 
 The web unit layer rendered components with `renderToStaticMarkup` under `happy-dom` and asserted Tailwind class strings. That cannot lay out or render Recharts/SVG (`ResponsiveContainer` measures 0x0 in jsdom/happy-dom), and a class-string assertion passes whether or not the user-visible result is correct. The cost was real: a net-worth chart that rendered as a flat line pinned to a $0-anchored axis shipped while the test suite was green.
 
-We need component rendering and interaction tested the way a user experiences them, in a real browser, so a rendered regression fails CI automatically. Industry standard for React + Vite is Vitest + React-Testing-Library-style component tests + Playwright for E2E; Vitest Browser Mode became stable in Vitest 4 (we are on 4.1.x).
+We need component rendering and interaction tested the way a user experiences them, in a real browser, so a rendered regression fails CI automatically. Industry standard for React + Vite is Vitest + React-Testing-Library-style component tests + Playwright for E2E; Vitest Browser Mode became stable in Vitest 4 (we are on 5.0.x).
 
 ## Decision
 
@@ -19,7 +19,7 @@ Run component rendering/interaction tests in Vitest Browser Mode (`vitest-browse
 - Render-sensitive bugs (charts, dialogs, focus) are caught automatically.
 - The `browser` project needs a Chromium binary in CI and runs slower than happy-dom, so pure logic stays in the fast `unit` project.
 - CSS-dependent outcomes (computed colors, tap-target sizes) are still asserted in E2E where the app's compiled Tailwind is present.
-- Request interception stays armed for the whole `browser` project (pinned `@vitest/browser-playwright` patch in `patches/`, see vitest-dev/vitest#11083), because disarming it between files can resume a module-mock request against the real server; Chromium therefore keeps HTTP caching off for these tests, which is acceptable since they assert rendering and interaction.
+- Request interception stays armed for the whole `browser` project, because disarming it between files can resume a module-mock request against the real server; Chromium therefore keeps HTTP caching off for these tests, which is acceptable since they assert rendering and interaction. Vitest 5 arms this itself (`armInterception` in `@vitest/browser-playwright`).
 - Reversing this means moving the browser tests to E2E and dropping the project.
 
 ## Alternatives considered

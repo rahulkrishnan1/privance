@@ -58,25 +58,25 @@ it("evicts current and prior prices on fulfilled unknown without blacking out ot
   const screen = await mount();
   await expect
     .element(screen.getByLabelText("AAPL"))
-    .toHaveTextContent("100.00000000 / 99.00000000");
+    .toMatchTextContent("100.00000000 / 99.00000000");
   await expect
     .element(screen.getByLabelText("bitcoin"))
-    .toHaveTextContent("300.00000000 / 299.00000000");
+    .toMatchTextContent("300.00000000 / 299.00000000");
   refresh.mockImplementation(async (_tickers, source) => ({
     prices: source === "yahoo" ? [entry("MSFT", "201", "200")] : [entry("bitcoin", "301", "300")],
     unknown: source === "yahoo" ? ["AAPL"] : [],
   }));
   await client.invalidateQueries({ queryKey: ["prices"] });
-  await expect.element(screen.getByLabelText("AAPL")).toHaveTextContent("unpriced / no prior");
+  await expect.element(screen.getByLabelText("AAPL")).toMatchTextContent("unpriced / no prior");
   await expect
     .element(screen.getByLabelText("MSFT"))
-    .toHaveTextContent("201.00000000 / 200.00000000");
+    .toMatchTextContent("201.00000000 / 200.00000000");
   await expect
     .element(screen.getByLabelText("bitcoin"))
-    .toHaveTextContent("301.00000000 / 300.00000000");
+    .toMatchTextContent("301.00000000 / 300.00000000");
   await expect
     .element(screen.getByLabelText("unrelated"))
-    .toHaveTextContent("400.00000000 / no prior");
+    .toMatchTextContent("400.00000000 / no prior");
 });
 
 it("evicts a warmed price on fulfilled unknown", async () => {
@@ -86,7 +86,7 @@ it("evicts a warmed price on fulfilled unknown", async () => {
     unknown: source === "yahoo" ? ["AAPL"] : [],
   }));
   const screen = await mount();
-  await expect.element(screen.getByLabelText("AAPL")).toHaveTextContent("unpriced / no prior");
+  await expect.element(screen.getByLabelText("AAPL")).toMatchTextContent("unpriced / no prior");
 });
 
 for (const failedSource of ["yahoo", "coingecko"] as const) {
@@ -98,10 +98,10 @@ for (const failedSource of ["yahoo", "coingecko"] as const) {
     const screen = await mount();
     await expect
       .element(screen.getByLabelText("AAPL"))
-      .toHaveTextContent("100.00000000 / 99.00000000");
+      .toMatchTextContent("100.00000000 / 99.00000000");
     await expect
       .element(screen.getByLabelText("bitcoin"))
-      .toHaveTextContent("300.00000000 / 299.00000000");
+      .toMatchTextContent("300.00000000 / 299.00000000");
     refresh.mockImplementation(async (_tickers, source) => {
       if (source === failedSource) throw new Error("network unavailable");
       return {
@@ -111,15 +111,15 @@ for (const failedSource of ["yahoo", "coingecko"] as const) {
       };
     });
     await client.invalidateQueries({ queryKey: ["prices"] });
-    await expect.element(screen.getByLabelText("Price status")).toHaveTextContent("error");
+    await expect.element(screen.getByLabelText("Price status")).toMatchTextContent("error");
     await expect
       .element(screen.getByLabelText("AAPL"))
-      .toHaveTextContent(
+      .toMatchTextContent(
         failedSource === "yahoo" ? "100.00000000 / 99.00000000" : "101.00000000 / 100.00000000",
       );
     await expect
       .element(screen.getByLabelText("bitcoin"))
-      .toHaveTextContent(
+      .toMatchTextContent(
         failedSource === "coingecko"
           ? "300.00000000 / 299.00000000"
           : "301.00000000 / 300.00000000",

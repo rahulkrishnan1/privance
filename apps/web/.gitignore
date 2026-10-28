@@ -7,6 +7,7 @@
 /.playwright-fixtures.json
 
 # Vitest browser-mode output
+.vitest/
 .vitest-attachments/
 __screenshots__/
 

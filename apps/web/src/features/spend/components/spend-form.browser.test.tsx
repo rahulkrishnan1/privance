@@ -21,7 +21,7 @@ it("keeps the expense form open with the exact unconfirmed-save message", async 
   await screen.getByRole("combobox", { name: "Interval unit" }).selectOptions("month");
   await screen.getByRole("combobox", { name: "Category" }).selectOptions("housing");
   await screen.getByRole("button", { name: "Add expense" }).click();
-  await expect.element(screen.getByRole("dialog").getByRole("alert")).toHaveTextContent(message);
+  await expect.element(screen.getByRole("dialog").getByRole("alert")).toMatchTextContent(message);
   await expect.element(screen.getByRole("textbox", { name: "Name" })).toHaveValue("Rent");
   expect(onClose).not.toHaveBeenCalled();
 });
@@ -43,7 +43,7 @@ it("retains expense create identity on retry but not when the form is reopened",
   };
   await fill();
   await screen.getByRole("button", { name: "Add expense" }).click();
-  await expect.element(screen.getByRole("alert")).toHaveTextContent("Response lost after commit");
+  await expect.element(screen.getByRole("alert")).toMatchTextContent("Response lost after commit");
   await screen.getByRole("textbox", { name: "Name" }).fill("Changed expense");
   await screen.getByRole("button", { name: "Add expense" }).click();
   await vi.waitFor(() => expect(ids).toHaveLength(2));

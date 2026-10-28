@@ -130,7 +130,7 @@ beforeEach(async () => {
   );
   await expect
     .element(screen.getByRole("status", { name: "Sync status: synced" }))
-    .toHaveTextContent("synced");
+    .toMatchTextContent("synced");
   await vi.waitFor(() => expect(api.store).not.toBeNull());
   if (!api.store || !api.client) throw new Error("Sync did not initialize");
   store = api.store;
@@ -150,18 +150,18 @@ it("refreshes a remote edited balance and deletion in the mounted query; empty p
   await api.client?.pullChanges();
   await expect
     .element(screen.getByRole("status", { name: "Sync status: synced" }))
-    .toHaveTextContent("synced");
-  await expect.element(screen.getByLabelText("Accounts")).toHaveTextContent("Cash: 100");
+    .toMatchTextContent("synced");
+  await expect.element(screen.getByLabelText("Accounts")).toMatchTextContent("Cash: 100");
   expect(api.storeClock).toBe(initialClock + 1);
   changes = [await envelope("250", 2)];
   await api.client?.pullChanges();
-  await expect.element(screen.getByLabelText("Accounts")).toHaveTextContent("Cash: 250");
+  await expect.element(screen.getByLabelText("Accounts")).toMatchTextContent("Cash: 250");
   const clock = api.storeClock;
   await api.client?.pullChanges();
   expect(api.storeClock).toBe(clock);
   changes = [await envelope("250", 3, true)];
   await api.client?.pullChanges();
-  await expect.element(screen.getByLabelText("Accounts")).toHaveTextContent("No accounts");
+  await expect.element(screen.getByLabelText("Accounts")).toMatchTextContent("No accounts");
   expect(api.storeClock).toBe(clock + 1);
 });
 
@@ -179,14 +179,14 @@ async function conflict(tombstone = false) {
   api.tick();
   await syncClient.pushPending();
   await screen.getByRole("button", { name: "Review conflict" }).click();
-  await expect.element(screen.getByRole("dialog")).toHaveTextContent("Resolve sync conflict");
+  await expect.element(screen.getByRole("dialog")).toMatchTextContent("Resolve sync conflict");
   return id;
 }
 
 it("offers explicit Use server version and updates the query without treating it as upload", async () => {
   await conflict();
   await screen.getByRole("button", { name: "Use server version" }).click();
-  await expect.element(screen.getByLabelText("Accounts")).toHaveTextContent("Cash: 900");
+  await expect.element(screen.getByLabelText("Accounts")).toMatchTextContent("Cash: 900");
   await vi.waitFor(() => expect(api.conflicts).toHaveLength(0));
   expect(await store.drainQueue()).toEqual([]);
   expect(requests.some((request) => request.method === "PUT")).toBe(false);
@@ -200,12 +200,12 @@ it("visibly dismisses and reopens a conflict without resolving, discarding, or u
   const resolve = vi.spyOn(syncClient, "resolveConflict");
   await screen.getByRole("button", { name: "Close", exact: true }).click();
   await expect.element(screen.getByRole("dialog")).not.toBeInTheDocument();
-  await expect.element(screen.getByLabelText("Accounts")).toHaveTextContent("Cash: 100");
+  await expect.element(screen.getByLabelText("Accounts")).toMatchTextContent("Cash: 100");
   expect(await store.drainQueue()).toEqual(pending);
   expect(await store.get({ kind: "account", objectId })).toEqual(local);
   expect(api.conflicts.map((entry) => entry.queueId)).toEqual([id]);
   await screen.getByRole("button", { name: "Review conflict" }).click();
-  await expect.element(screen.getByRole("dialog")).toHaveTextContent("This device: saved record");
+  await expect.element(screen.getByRole("dialog")).toMatchTextContent("This device: saved record");
   expect(await store.drainQueue()).toEqual(pending);
   expect(await store.get({ kind: "account", objectId })).toEqual(local);
   expect(resolve).not.toHaveBeenCalled();
@@ -215,7 +215,7 @@ it("visibly dismisses and reopens a conflict without resolving, discarding, or u
 it("shows tombstone choices and preserves a later local edit when accepting server deletion", async () => {
   serverObject = await envelope("900", 5, true);
   const first = await conflict();
-  await expect.element(screen.getByRole("dialog")).toHaveTextContent("Server: deleted");
+  await expect.element(screen.getByRole("dialog")).toMatchTextContent("Server: deleted");
   const next = await envelope("275", 2);
   const nextId = await store.putAndEnqueue({
     kind: "account",
@@ -228,7 +228,7 @@ it("shows tombstone choices and preserves a later local edit when accepting serv
   });
   api.tick();
   await screen.getByRole("button", { name: "Use server version" }).click();
-  await expect.element(screen.getByLabelText("Accounts")).toHaveTextContent("Cash: 275");
+  await expect.element(screen.getByLabelText("Accounts")).toMatchTextContent("Cash: 275");
   await vi.waitFor(() =>
     expect(api.conflicts.some((entry) => entry.queueId === first)).toBe(false),
   );
@@ -241,12 +241,12 @@ it("Keep this device reports a failed CAS without losing intent, then retries su
   await screen.getByRole("button", { name: "Keep this device" }).click();
   await expect
     .element(screen.getByRole("dialog"))
-    .toHaveTextContent("Your device's changes are still pending");
+    .toMatchTextContent("Your device's changes are still pending");
   expect((await store.drainQueue()).map((entry) => entry.id)).toEqual([id]);
   failResolution = false;
   await screen.getByRole("button", { name: "Keep this device" }).click();
   await vi.waitFor(() => expect(api.conflicts).toHaveLength(0));
-  await expect.element(screen.getByLabelText("Accounts")).toHaveTextContent("Cash: 100");
+  await expect.element(screen.getByLabelText("Accounts")).toMatchTextContent("Cash: 100");
   expect(await store.drainQueue()).toEqual([]);
   expect((await store.get({ kind: "account", objectId }))?.serverSeq).toBe(6n);
 });

@@ -215,7 +215,7 @@ function runMonteCarlo(
       // the weight-blended dataset; advanced mode overrides them). Clamp the
       // draw at -100%: an unlevered portfolio cannot lose more than everything.
       const draw = mu + sigma * z;
-      returns.push(draw < -1 ? -1 : draw);
+      returns.push(Math.max(-1, draw));
     }
 
     const path = simulatePath(

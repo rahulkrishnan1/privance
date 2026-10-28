@@ -91,7 +91,7 @@ test("surfaces an inline error when the save fails (no longer silently swallowed
 
   await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
   await expect.element(screen.getByRole("alert")).toBeVisible();
-  await expect.element(screen.getByRole("alert")).toHaveTextContent("encrypt failed");
+  await expect.element(screen.getByRole("alert")).toMatchTextContent("encrypt failed");
 });
 
 test("submits the entered values and shows no error on success", async () => {
@@ -138,7 +138,7 @@ test("blocks save until an account type is chosen", async () => {
   await screen.getByRole("textbox", { name: "Current balance" }).fill("50.00");
   await screen.getByRole("button", { name: "Add account" }).click();
 
-  await expect.element(screen.getByRole("alert")).toHaveTextContent("Select an account type");
+  await expect.element(screen.getByRole("alert")).toMatchTextContent("Select an account type");
   expect(onSubmit).not.toHaveBeenCalled();
 });
 
@@ -246,7 +246,7 @@ test("reuses one create identity through an edited retry but not a newly opened 
   const screen = await render(<AccountForm open onClose={() => {}} onSubmit={onSubmit} />);
   await fillValidCashAccount(screen);
   await screen.getByRole("button", { name: "Add account" }).click();
-  await expect.element(screen.getByRole("alert")).toHaveTextContent("Response lost after commit");
+  await expect.element(screen.getByRole("alert")).toMatchTextContent("Response lost after commit");
   await screen.getByRole("textbox", { name: "Name" }).fill("Changed cash");
   await screen.getByRole("button", { name: "Add account" }).click();
   await vi.waitFor(() => expect(ids).toHaveLength(2));

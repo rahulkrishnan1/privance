@@ -37,7 +37,7 @@ it("starts a new inline-group create intent when the same holding form is reopen
   const screen = await render(<HoldingDialog open {...props} />);
   await screen.getByRole("textbox", { name: "New group name" }).fill("Pending group");
   await screen.getByRole("button", { name: "Create group" }).click();
-  await expect.element(screen.getByRole("alert")).toHaveTextContent("Unconfirmed group");
+  await expect.element(screen.getByRole("alert")).toMatchTextContent("Unconfirmed group");
   await screen.rerender(<HoldingDialog open={false} {...props} />);
   await screen.rerender(<HoldingDialog open {...props} />);
   await screen.getByRole("textbox", { name: "New group name" }).fill("Fresh group");

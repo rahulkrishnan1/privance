@@ -106,13 +106,13 @@ The implementer, including a coding agent, owns testing and verification end-to-
 
 | Check | Command / completion criterion |
 |---|---|
-| Lint and formatting | `pnpm lint` (Biome check); `pnpm fmt:check` for formatting alone |
+| Lint and formatting | `pnpm lint` (Biome check); `pnpm fmt:check` for formatting alone. Biome formats code only: Markdown and YAML (including `pnpm-lock.yaml`) are excluded in `biome.json` |
 | Types | `pnpm typecheck` (all workspaces) |
 | Core tests and coverage | `pnpm --filter @privance/core test`; at least 90% lines, branches, functions, statements |
 | Server tests and coverage | `pnpm --filter @privance/server test` against real Postgres; project floor 85% overall |
 | Web logic and components | `pnpm --filter @privance/web test`; project coverage floor 80%, with E2E covering screens |
 | Static build | `pnpm --filter @privance/web build` |
-| Dependency audits | `pnpm audit` and, from `server/`, `bun audit`; both clean, with any findings reported |
+| Dependency audits | `pnpm audit --audit-level=high` (same command as CI and the pre-push hook); report any findings rather than ignoring them. The workspace has one lockfile, so this also covers the server's dependencies |
 | E2E | `pnpm --filter @privance/web e2e`; all five projects, real API and Postgres |
 | UI/mobile interaction | [Browser and iOS Simulator checks](#browser-and-ios-simulator-checks) for the affected flows |
 | Auth/crypto browser flow | Exercise signup → recovery → login in a real browser using a disposable test account |

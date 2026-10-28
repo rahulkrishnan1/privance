@@ -190,7 +190,7 @@ describe("app shell figures veil", () => {
 
     await expect
       .element(screen.getByRole("alert"))
-      .toHaveTextContent("Couldn’t lock securely. Your session is still open.");
+      .toMatchTextContent("Couldn’t lock securely. Your session is still open.");
   });
 
   it("keeps the mobile navigation discoverable with one selected destination", async () => {
@@ -206,7 +206,7 @@ describe("app shell figures veil", () => {
     const links = nav.querySelectorAll("a");
     expect(links).toHaveLength(4);
     expect(links[0]).toHaveAttribute("aria-current", "page");
-    expect(links[0]).toHaveTextContent("Invest");
+    expect(links[0]).toMatchTextContent("Invest");
   });
 
   it("blurs figures the moment the user veils and persists the choice", async () => {
