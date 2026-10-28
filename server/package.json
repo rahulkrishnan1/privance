@@ -22,7 +22,7 @@
     "@privance/core": "workspace:*",
     "drizzle-orm": "0.45.4",
     "hash-wasm": "4.12.0",
-    "hono": "4.13.13",
+    "hono": "4.13.14",
     "pino": "10.4.0",
     "postgres": "3.4.9"
   },
