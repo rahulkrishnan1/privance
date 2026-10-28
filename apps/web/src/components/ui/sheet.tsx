@@ -2,6 +2,7 @@ import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer";
 import * as React from "react";
 
 import { CloseButton } from "@/components/CloseButton";
+import { keyboardInsetStyle, useKeyboardInset } from "@/lib/use-keyboard-inset";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 import { DialogFooter } from "./dialog";
@@ -70,6 +71,7 @@ const SheetContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Popup>,
   SheetContentProps
 >(({ className, children, scrollable = true, style, ...props }, ref) => {
+  const kb = useKeyboardInset();
   return (
     <DrawerPrimitive.VirtualKeyboardProvider>
       <DrawerPrimitive.Portal>
@@ -77,11 +79,11 @@ const SheetContent = React.forwardRef<
         <DrawerPrimitive.Viewport className="fixed inset-0 z-50 flex items-stretch justify-end max-md:items-end max-md:justify-stretch">
           <DrawerPrimitive.Popup
             ref={ref}
-            style={style}
+            style={{ ...keyboardInsetStyle(kb, "100dvh"), ...style }}
             className={cn(
               "group/drawer-popup relative flex h-dvh w-[440px] max-w-[100vw] flex-col overflow-hidden border-l border-line bg-panel text-cream shadow-[0_24px_60px_-20px_var(--surface-shadow)] outline-none overscroll-contain touch-auto",
               "[transform:translateX(var(--drawer-swipe-movement-x))] transition-transform duration-[220ms] ease-drawer will-change-transform data-swiping:select-none data-swiping:duration-0 data-[swipe-direction=right]:data-[starting-style]:translate-x-full data-[swipe-direction=right]:data-[ending-style]:translate-x-full data-[ending-style]:duration-[calc(var(--drawer-swipe-strength)*220ms)]",
-              "max-md:mb-[var(--drawer-keyboard-inset,0px)] max-md:h-auto max-md:max-h-[min(82dvh,calc(100dvh-var(--drawer-keyboard-inset,0px)))] max-md:w-full max-md:rounded-t-[22px] max-md:border-l-0 max-md:border-t max-md:[transform:translateY(var(--drawer-swipe-movement-y))] max-md:data-[swipe-direction=down]:data-[starting-style]:translate-y-full max-md:data-[swipe-direction=down]:data-[ending-style]:translate-y-full",
+              "max-md:mb-[var(--drawer-keyboard-inset,0px)] max-md:h-auto max-md:max-h-[min(82dvh,calc(var(--kb-maxh)-env(safe-area-inset-top,0px)-0.75rem))] max-md:w-full max-md:rounded-t-[22px] max-md:border-l-0 max-md:border-t max-md:[transform:translateY(var(--drawer-swipe-movement-y))] max-md:data-[swipe-direction=down]:data-[starting-style]:translate-y-full max-md:data-[swipe-direction=down]:data-[ending-style]:translate-y-full",
               "motion-reduce:transition-opacity motion-reduce:duration-150 motion-reduce:data-[starting-style]:opacity-0 motion-reduce:data-[ending-style]:opacity-0 motion-reduce:data-[starting-style]:translate-x-0 motion-reduce:data-[ending-style]:translate-x-0 motion-reduce:max-md:data-[starting-style]:translate-y-0 motion-reduce:max-md:data-[ending-style]:translate-y-0",
               className,
             )}
@@ -93,7 +95,8 @@ const SheetContent = React.forwardRef<
             />
             <DrawerPrimitive.Content
               className={cn(
-                "flex min-h-0 flex-1 flex-col overscroll-contain p-7 max-md:p-5 max-md:pt-3",
+                "flex min-h-0 flex-1 flex-col overscroll-contain p-7 max-md:p-5 max-md:pt-3 max-md:pb-[max(0.75rem,var(--kb-safe-bottom))]",
+                // Own the bottom inset once; footers must not add it again.
                 scrollable ? "overflow-y-auto" : "overflow-hidden",
               )}
             >

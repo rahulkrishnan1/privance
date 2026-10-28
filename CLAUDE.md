@@ -8,7 +8,7 @@ Privance is a self-hostable, zero-knowledge personal finance app. Financial reco
 
 1. **Scope:** read the affected code, callers, and tests. State assumptions and checkable success criteria; ask when an unresolved choice changes behavior or security.
 2. **Implement:** reuse the nearest module's patterns. Make the smallest complete change, including affected callers, fixtures, exports, and docs. Keep unrelated refactors and speculative abstractions out of the diff.
-3. **Check:** run the relevant checks in [CONTRIBUTING.md](CONTRIBUTING.md#verification). For a bug fix, demonstrate that the regression test fails without the fix and passes with it.
+3. **Check:** own testing and verification end-to-end using [CONTRIBUTING.md](CONTRIBUTING.md#verification), including its browser/Simulator checks for UI changes. For a bug fix, demonstrate that the regression test fails without the fix and passes with it.
 4. **Report:** state what changed, which checks passed or failed, and what was skipped. Address every flagged review finding or explicitly report why it remains unresolved. Reserve “verified clean” for the full verification bar.
 
 ## Read before the relevant task
@@ -39,7 +39,7 @@ Paths are relative to the repository root. Follow the matching links before edit
 - **Migrations:** backward-incompatible changes use **expand → backfill → contract**, across three deploys. A single-deploy destructive rename is not safe.
 - **Dependencies:** pin direct dependency versions exactly (no `^` or `~`); use workspace links for internal packages.
 - **Public files:** keep personal names, emails, handles, absolute local paths, and specific personal locations out of tracked content. Use placeholders for examples.
-- **Git safety:** get explicit authorization before destructive operations and create `git branch backup-<context>` before a reset, rebase, or force-push. Never rewrite pushed `main` history. Merge only after green CI and explicit maintainer local-test approval.
+- **Git safety:** get explicit authorization before destructive operations and create `git branch backup-<context>` before a reset, rebase, or force-push. Never rewrite pushed `main` history. Merge only after green CI and explicit merge authorization.
 
 ## Documentation sources
 

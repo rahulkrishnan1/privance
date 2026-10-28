@@ -48,7 +48,7 @@ test.describe("mobile navigation", () => {
     const mainPaddingBottom = await page
       .getByRole("main")
       .evaluate((main) => Number.parseFloat(getComputedStyle(main).paddingBottom));
-    expect(mainPaddingBottom).toBeGreaterThanOrEqual(navBounds.height);
+    expect(mainPaddingBottom).toBeGreaterThanOrEqual(navBounds.height + 16);
     // Settle the initial local-store load + first sync before asserting per-screen
     // content: the Plan heading is gated on the accounts/plan queries leaving
     // "initialising", so navigating before sync races them on a slow runner.

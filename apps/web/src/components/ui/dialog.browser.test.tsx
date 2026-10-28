@@ -1,8 +1,42 @@
 import { useState } from "react";
-import { expect, test, vi } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
+import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import "@/app/globals.css";
 import { Dialog, DialogContent, DialogTitle } from "./dialog";
+
+const realViewport = Object.getOwnPropertyDescriptor(window, "visualViewport");
+
+afterEach(async () => {
+  if (realViewport) Object.defineProperty(window, "visualViewport", realViewport);
+  await page.viewport(1280, 800);
+});
+
+test.for([60, 300])(
+  "mobile Dialog leaves top clearance when the keyboard pans the viewport (offset %i)",
+  async (offsetTop) => {
+    await page.viewport(390, 800);
+    const viewport = Object.assign(new EventTarget(), { height: 800, offsetTop: 0, scale: 1 });
+    Object.defineProperty(window, "visualViewport", { configurable: true, value: viewport });
+    await render(
+      <Dialog open>
+        <DialogContent aria-labelledby="mobile-title">
+          <DialogTitle id="mobile-title">Edit details</DialogTitle>
+          <input aria-label="Name" />
+          <div style={{ height: 1200 }}>Long form</div>
+        </DialogContent>
+      </Dialog>,
+    );
+    const popup = document.querySelector<HTMLElement>("[role=dialog]");
+    if (!popup) throw new Error("dialog not found");
+    viewport.height = 420;
+    viewport.offsetTop = offsetTop;
+    viewport.dispatchEvent(new Event("resize"));
+    await expect.poll(() => popup.getBoundingClientRect().bottom).toBeCloseTo(420 + offsetTop, 0);
+    expect(popup.getBoundingClientRect().top).toBeGreaterThanOrEqual(offsetTop + 12);
+    expect(popup.clientHeight).toBeLessThan(popup.scrollHeight);
+  },
+);
 
 // A tall dialog must stay within the viewport and scroll its own body, rather
 // than overflowing off-screen with no way to reach the bottom (the spend form

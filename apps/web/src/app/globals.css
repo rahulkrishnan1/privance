@@ -47,7 +47,7 @@
   --status-signal: #b45309;
   --surface-highlight: rgba(255, 255, 255, 0.8);
   --surface-shadow: rgba(15, 23, 42, 0.14);
-  --mobile-nav-height: 3.5rem;
+  --mobile-nav-height: 3rem;
 }
 
 .dark {
@@ -333,6 +333,10 @@ html {
   /* Clears the 66px sticky landing header, plus a little breathing room. Sections
      must NOT also set scroll-mt or the offsets stack and anchor jumps overshoot. */
   scroll-padding-top: 67px;
+}
+/* Route resets must not inherit the landing page's smooth anchor scrolling. */
+html:has(.app-shell) {
+  scroll-behavior: auto;
 }
 @keyframes reveal-up {
   from {

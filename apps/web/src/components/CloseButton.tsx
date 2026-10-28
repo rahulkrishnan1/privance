@@ -14,6 +14,8 @@ export function CloseButton({
     <button
       type="button"
       onClick={onClick}
+      // Avoid blur validation moving an auto-height sheet before the click lands.
+      onPointerDown={(event) => event.preventDefault()}
       aria-label={label}
       className={cn(
         "flex min-h-11 min-w-11 items-center justify-center text-faint hover:text-cream cursor-pointer transition ease-out duration-150 active:scale-[0.97] motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",

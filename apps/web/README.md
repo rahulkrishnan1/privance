@@ -4,6 +4,8 @@ Vite 8 static-SPA PWA for Privance.
 
 All client-side crypto runs in the browser. There is no server-side rendering; the build produces `apps/web/out/`. Start with [CONTRIBUTING.md](../../CONTRIBUTING.md#setup) for local setup and commands.
 
+For frontend design work, use [PRODUCT.md](PRODUCT.md) for product direction and fixed commitments, and [DESIGN.md](DESIGN.md) for the current visual system and responsive component conventions.
+
 Before changing auth or browser key persistence, read [SECURITY.md](../../SECURITY.md#security-contracts-for-changes), [ADR-0004](../../docs/adr/0004-session-persistence.md) for the session vault, and [ADR-0005](../../docs/adr/0005-biometric-unlock.md) for biometric enrollment.
 
 ## Key files
@@ -65,4 +67,5 @@ pnpm --filter @privance/web test
 
 - **Logic vs rendering:** follow [Choose the layer](../../CONTRIBUTING.md#choose-the-layer). The test script runs both `unit` and real-Chromium `browser` projects, not just unit tests.
 - **E2E:** follow [E2E setup and execution](../../CONTRIBUTING.md#e2e-setup-and-execution), including the disposable-database requirement, fixture resets, and existing-server reuse warning.
+- **UI/PWA verification:** follow [Browser and iOS Simulator checks](../../CONTRIBUTING.md#browser-and-ios-simulator-checks); the implementing agent owns browser and installed-PWA verification.
 - **Runner changes:** read [ADR-0003](../../docs/adr/0003-component-testing.md) before changing browser tests or module-mocking setup.

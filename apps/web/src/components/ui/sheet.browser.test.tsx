@@ -3,7 +3,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import "@/app/globals.css";
-import { Sheet, SheetContent, SheetTitle } from "./sheet";
+import { Sheet, SheetBody, SheetContent, SheetFooter, SheetTitle, SheetTitleRow } from "./sheet";
 
 class FakeViewport extends EventTarget {
   height = 800;
@@ -54,6 +54,49 @@ test("Sheet closes on Escape", async () => {
   await expect.poll(() => document.querySelector("[role=dialog]")).toBeNull();
   expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything());
 });
+
+test.for([0, 60])(
+  "Sheet keeps its header and actions within the keyboard viewport (offset %i)",
+  async (offsetTop) => {
+    await page.viewport(390, 800);
+    const viewport = new FakeViewport();
+    Object.defineProperty(window, "visualViewport", { configurable: true, value: viewport });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+    await render(
+      <Sheet open>
+        <SheetContent aria-labelledby="tall-sheet" scrollable={false}>
+          <SheetTitleRow title="Add expense" titleId="tall-sheet" onClose={() => {}} />
+          <SheetBody>
+            <input aria-label="Name" />
+            <div style={{ height: 1200 }}>Long form</div>
+          </SheetBody>
+          <SheetFooter className="static mt-4 shrink-0">
+            <button type="button">Cancel</button>
+            <button type="button">Save</button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>,
+    );
+    const popup = document.querySelector<HTMLElement>("[role=dialog]");
+    if (!popup) throw new Error("sheet not found");
+    await page.getByRole("textbox", { name: "Name" }).click();
+    viewport.offsetTop = offsetTop;
+    viewport.height = 420;
+    viewport.dispatchEvent(new Event("resize"));
+    await expect
+      .poll(() => popup.getBoundingClientRect().bottom)
+      .toBeCloseTo(offsetTop + viewport.height, 0);
+    await expect
+      .poll(() => popup.getBoundingClientRect().top)
+      .toBeGreaterThanOrEqual(offsetTop + 12);
+    const save = page.getByRole("button", { name: "Save", exact: true }).element();
+    expect(save.getBoundingClientRect().bottom).toBeLessThanOrEqual(offsetTop + viewport.height);
+    expect(
+      popup.getBoundingClientRect().bottom - save.getBoundingClientRect().bottom,
+    ).toBeLessThanOrEqual(13);
+    await expect.element(page.getByRole("button", { name: "Close", exact: true })).toBeVisible();
+  },
+);
 
 test("Sheet stays above the software keyboard while editing", async () => {
   await page.viewport(390, 800);
