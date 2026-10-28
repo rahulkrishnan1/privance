@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 // Import the real stylesheet so `.veil-on .vfig { filter: blur }` is in effect
@@ -78,6 +79,61 @@ afterEach(() => {
   localStorage.clear();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+});
+
+it("keeps the mobile bar compact without shrinking its tap targets", async () => {
+  await page.viewport(390, 844);
+  try {
+    const screen = await render(
+      <MemoryRouter>
+        <AppLayout>{figure}</AppLayout>
+      </MemoryRouter>,
+    );
+    const nav = screen.getByRole("navigation", { name: "Mobile navigation" }).element();
+    expect(nav.getBoundingClientRect().height).toBeCloseTo(49, 0);
+    expect(nav.getBoundingClientRect().bottom).toBeCloseTo(window.innerHeight, 0);
+    for (const link of nav.querySelectorAll("a")) {
+      expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+      expect(link.querySelector("svg")?.getBoundingClientRect().height).toBe(24);
+      const labelBottom = link.lastElementChild?.getBoundingClientRect().bottom;
+      const safeBottom = Number.parseFloat(getComputedStyle(nav).paddingBottom);
+      expect(labelBottom).toBeCloseTo(nav.getBoundingClientRect().bottom - safeBottom - 1, 1);
+      expect(link.firstElementChild?.getBoundingClientRect().bottom).toBeCloseTo(
+        link.lastElementChild?.getBoundingClientRect().top ?? Number.NaN,
+        1,
+      );
+    }
+    const main = screen.getByRole("main").element();
+    expect(Number.parseFloat(getComputedStyle(main).paddingBottom)).toBeGreaterThanOrEqual(
+      nav.getBoundingClientRect().height + 16,
+    );
+  } finally {
+    await page.viewport(1280, 800);
+  }
+});
+
+it("leaves a card-sized gutter above the mobile bar at the end of the page", async () => {
+  await page.viewport(390, 844);
+  try {
+    const screen = await render(
+      <MemoryRouter>
+        <AppLayout>
+          <div data-testid="last-card" style={{ height: 1600 }}>
+            Last card
+          </div>
+        </AppLayout>
+      </MemoryRouter>,
+    );
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" });
+    const nav = screen.getByRole("navigation", { name: "Mobile navigation" }).element();
+    const card = screen.getByTestId("last-card").element();
+    expect(
+      nav.getBoundingClientRect().top - card.getBoundingClientRect().bottom,
+    ).toBeGreaterThanOrEqual(16);
+  } finally {
+    window.scrollTo({ top: 0, behavior: "instant" });
+    await page.viewport(1280, 800);
+  }
 });
 
 describe("app shell figures veil", () => {

@@ -102,7 +102,7 @@ Failure screenshots go to `apps/web/test-results/`; traces and videos are captur
 
 ## Verification
 
-For focused iteration, run the affected workspace/test project first. Before a PR, run the full bar below or explicitly list each omitted check and why. A green focused test or CI run alone is not “verified clean.”
+The implementer, including a coding agent, owns testing and verification end-to-end; maintainer hands-on testing is not a prerequisite. For focused iteration, run the affected workspace/test project first. Before a PR, run the full bar below or explicitly list each omitted check and why. A green focused test or CI run alone is not “verified clean.”
 
 | Check | Command / completion criterion |
 |---|---|
@@ -114,13 +114,25 @@ For focused iteration, run the affected workspace/test project first. Before a P
 | Static build | `pnpm --filter @privance/web build` |
 | Dependency audits | `pnpm audit` and, from `server/`, `bun audit`; both clean, with any findings reported |
 | E2E | `pnpm --filter @privance/web e2e`; all five projects, real API and Postgres |
-| Auth/crypto manual check | Signup → recovery → login in a real browser |
+| UI/mobile interaction | [Browser and iOS Simulator checks](#browser-and-ios-simulator-checks) for the affected flows |
+| Auth/crypto browser flow | Exercise signup → recovery → login in a real browser using a disposable test account |
 
 Coverage policy and enforcement differ: [core config](packages/core/vitest.config.ts) enforces 90%; [Bun config](server/bunfig.toml) enforces a 65% per-file threshold with exclusions, not the 85% overall policy; [web config](apps/web/vitest.config.ts) has no automated coverage gate. Do not infer those policy floors passed from a green test exit. CI's dependency audit is advisory (`continue-on-error`); the pre-push audit is blocking.
 
 For deployment changes, also run `bash infra/test.sh`; with the local Compose trial running, run `node infra/test-browser.mjs` (Chromium and WebKit through Caddy). Follow [infra/README.md](infra/README.md) for deployment and restore checks.
 
 For targeted auto-fixes, use `pnpm exec biome check --write <paths>` or `pnpm exec biome format --write <paths>`. The root `pnpm lint:fix` and `pnpm fmt` scripts write across the repository; inspect their diffs for unrelated changes.
+
+### Browser and iOS Simulator checks
+
+For web UI and PWA changes, the implementing agent independently:
+
+1. Runs the relevant automated tests and exercises the affected flows in real browsers. Browser viewport emulation alone does not establish installed-PWA behavior.
+2. Uses Orca with an existing iOS Simulator device/runtime to test Safari and the installed Home Screen PWA separately; confirms standalone mode for the latter. Uses touch to open the software keyboard when testing fields, rather than relying only on desktop typing or mocked viewport events.
+3. Checks affected safe areas, scrolling, focus, dismissal, gestures, and form actions, including shared callers and relevant viewport/theme variants. For native-style changes, uses platform guidance and a native app on the same Simulator as references. For spacing changes, compares rendered before/after geometry, not just CSS values or overall component height.
+4. Records the browser/device modes, exercised flows, results, and any blocked checks in the completion report or PR. Resolves environment problems where possible and reports remaining blockers rather than claiming untested behavior is verified or handing routine testing to the maintainer.
+
+These Simulator checks satisfy mobile-device verification; a physical phone is not a required gate. They supplement, rather than replace, the automated checks above. Read-only synthetic fixtures are suitable for visual checks, but do not replace real API/database verification for authentication, persistence, or sync changes. Keep all test data disposable as required by [E2E setup](#e2e-setup-and-execution).
 
 ## Hooks
 
@@ -134,7 +146,7 @@ For targeted auto-fixes, use `pnpm exec biome check --write <paths>` or `pnpm ex
 - Use Conventional Commits: `feat`, `fix`, `refactor`, `chore`, `test`, `docs`, or `ci`; scope is optional. Keep the subject imperative and at most 72 characters. Lead the body with motivation, not a diff summary.
 - Use the configured GitHub noreply identity (`git config user.email`); do not override it per commit. Omit `Co-Authored-By` trailers. Check `git log -1 --format=%B` before push.
 - Fill in the [PR template](.github/pull_request_template.md), including verification results, skips, and API/design documentation updates. The PR title and body become the main-line squash commit verbatim.
-- Merge only after CI is green and the maintainer has local-tested the pushed branch and explicitly approved it.
+- Merge only after CI is green and explicit merge authorization has been given, as required by [AGENTS.md](AGENTS.md#guardrails).
 
 ## License
 

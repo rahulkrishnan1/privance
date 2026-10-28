@@ -9,8 +9,9 @@ risk reduced. The diff shows what changed; the body says why. -->
 
 ## Test plan
 
-<!-- Automated coverage added + any manual verification steps. For
-auth/crypto changes, include a real-browser signup → recovery → login. -->
+<!-- Record automated coverage and implementer-run browser/Simulator results,
+including Safari vs installed PWA for UI changes. Disclose blocked/skipped checks.
+For auth/crypto changes, include a real-browser signup → recovery → login. -->
 
 - 
 
@@ -18,4 +19,5 @@ auth/crypto changes, include a real-browser signup → recovery → login. -->
 
 - [ ] Local gate green: lint, typecheck, unit, build, E2E (chromium + firefox + webkit + mobile)
 - [ ] CI green on this branch
-- [ ] Maintainer local-tested the pushed branch and explicitly approved
+- [ ] Applicable browser/Simulator checks completed by the implementer (see CONTRIBUTING.md)
+- [ ] Explicit merge authorization received

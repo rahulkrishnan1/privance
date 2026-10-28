@@ -33,12 +33,11 @@ const DialogContent = React.forwardRef<
       <DialogBackdrop />
       <DialogPrimitive.Popup
         ref={ref}
-        // On phones the bottom sheet lifts above the soft keyboard (max-h 90vh
-        // when none is shown); see keyboardInsetStyle.
-        style={{ ...keyboardInsetStyle(kb, "90vh"), ...style }}
+        // Keep the sheet below the status bar, including when iOS pans the viewport.
+        style={{ ...keyboardInsetStyle(kb, "90dvh"), ...style }}
         className={cn(
           "fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-line bg-panel p-6 text-cream shadow-[0_24px_60px_-20px_var(--surface-shadow)] outline-none transition-[opacity,transform] duration-200 ease-out data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 data-[ending-style]:duration-150 md:data-[starting-style]:scale-95 md:data-[ending-style]:scale-95 motion-reduce:data-[starting-style]:scale-100 motion-reduce:data-[ending-style]:scale-100 max-md:transition-transform max-md:duration-200 max-md:ease-drawer max-md:motion-reduce:transition-opacity max-md:motion-reduce:duration-150",
-          "max-md:left-0 max-md:top-auto max-md:bottom-(--kb-bottom) max-md:max-h-(--kb-maxh) max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-2xl max-md:border-x-0 max-md:border-b-0 max-md:data-[starting-style]:translate-y-full max-md:data-[ending-style]:translate-y-full motion-reduce:max-md:data-[starting-style]:translate-y-0 motion-reduce:max-md:data-[ending-style]:translate-y-0",
+          "max-md:left-0 max-md:top-auto max-md:bottom-(--kb-bottom) max-md:max-h-[min(90dvh,calc(var(--kb-maxh)-env(safe-area-inset-top,0px)-0.75rem))] max-md:pb-[max(0.75rem,var(--kb-safe-bottom))] max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-2xl max-md:border-x-0 max-md:border-b-0 max-md:data-[starting-style]:translate-y-full max-md:data-[ending-style]:translate-y-full motion-reduce:max-md:data-[starting-style]:translate-y-0 motion-reduce:max-md:data-[ending-style]:translate-y-0",
           className,
         )}
         {...props}
@@ -63,7 +62,7 @@ const DialogFooter = ({
     className={cn(
       "flex gap-2.5 [&>*]:flex-1",
       sticky &&
-        "sticky bottom-0 z-10 -mx-1 mt-5 border-t border-line bg-panel/95 px-1 pt-4 pb-[max(0px,env(safe-area-inset-bottom))] backdrop-blur-md",
+        "sticky bottom-0 z-10 -mx-1 mt-5 border-t border-line bg-panel/95 px-1 pt-4 backdrop-blur-md",
       className,
     )}
     {...props}

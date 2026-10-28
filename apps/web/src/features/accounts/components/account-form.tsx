@@ -219,16 +219,15 @@ export function AccountForm({
       }}
     >
       <SheetContent aria-labelledby="account-form-title" scrollable={false}>
+        <div className="mb-5 shrink-0">
+          <SheetTitleRow
+            titleId="account-form-title"
+            title={isEditMode ? "Edit account" : "Add account"}
+            onClose={onClose}
+          />
+        </div>
         <SheetBody>
           <div className="flex flex-col">
-            <div className="mb-5 shrink-0">
-              <SheetTitleRow
-                titleId="account-form-title"
-                title={isEditMode ? "Edit account" : "Add account"}
-                onClose={onClose}
-              />
-            </div>
-
             <form
               id="account-form"
               onSubmit={(e) => {

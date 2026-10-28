@@ -1,0 +1,730 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-27T19:59:05.053Z",
+  "title": "Design System: Privance",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Deep Teal",
+        "tonalRamp": [
+          "oklch(15% 0.0426 183.29)",
+          "oklch(27% 0.0704 183.29)",
+          "oklch(38% 0.0872 183.29)",
+          "oklch(50% 0.0938 183.29)",
+          "oklch(61% 0.0883 183.29)",
+          "oklch(73% 0.0704 183.29)",
+          "oklch(84% 0.0452 183.29)",
+          "oklch(95% 0.0147 183.29)"
+        ]
+      },
+      "accent-dim": {
+        "role": "primary",
+        "displayName": "Accent Dim",
+        "tonalRamp": [
+          "oklch(15% 0.0391 186.39)",
+          "oklch(27% 0.0646 186.39)",
+          "oklch(38% 0.0800 186.39)",
+          "oklch(50% 0.0861 186.39)",
+          "oklch(61% 0.0810 186.39)",
+          "oklch(73% 0.0646 186.39)",
+          "oklch(84% 0.0415 186.39)",
+          "oklch(95% 0.0135 186.39)"
+        ]
+      },
+      "accent-hover": {
+        "role": "primary",
+        "displayName": "Accent Hover",
+        "tonalRamp": [
+          "oklch(15% 0.0377 183.62)",
+          "oklch(27% 0.0623 183.62)",
+          "oklch(38% 0.0772 183.62)",
+          "oklch(50% 0.0830 183.62)",
+          "oklch(61% 0.0781 183.62)",
+          "oklch(73% 0.0623 183.62)",
+          "oklch(84% 0.0400 183.62)",
+          "oklch(95% 0.0130 183.62)"
+        ]
+      },
+      "control-primary": {
+        "role": "primary",
+        "displayName": "Control Primary",
+        "tonalRamp": [
+          "oklch(15% 0.0426 183.29)",
+          "oklch(27% 0.0704 183.29)",
+          "oklch(38% 0.0872 183.29)",
+          "oklch(50% 0.0938 183.29)",
+          "oklch(61% 0.0883 183.29)",
+          "oklch(73% 0.0704 183.29)",
+          "oklch(84% 0.0452 183.29)",
+          "oklch(95% 0.0147 183.29)"
+        ]
+      },
+      "data-primary": {
+        "role": "primary",
+        "displayName": "Data Primary",
+        "tonalRamp": [
+          "oklch(15% 0.0454 185.15)",
+          "oklch(27% 0.0750 185.15)",
+          "oklch(38% 0.0929 185.15)",
+          "oklch(50% 0.0999 185.15)",
+          "oklch(61% 0.0940 185.15)",
+          "oklch(73% 0.0750 185.15)",
+          "oklch(84% 0.0481 185.15)",
+          "oklch(95% 0.0156 185.15)"
+        ]
+      },
+      "vault": {
+        "role": "neutral",
+        "displayName": "Cool Paper",
+        "tonalRamp": [
+          "oklch(15% 0.0013 128.49)",
+          "oklch(27% 0.0021 128.49)",
+          "oklch(38% 0.0026 128.49)",
+          "oklch(50% 0.0028 128.49)",
+          "oklch(61% 0.0027 128.49)",
+          "oklch(73% 0.0021 128.49)",
+          "oklch(84% 0.0014 128.49)",
+          "oklch(95% 0.0004 128.49)"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Panel",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(27% 0.0000 89.88)",
+          "oklch(38% 0.0000 89.88)",
+          "oklch(50% 0.0000 89.88)",
+          "oklch(61% 0.0000 89.88)",
+          "oklch(73% 0.0000 89.88)",
+          "oklch(84% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ]
+      },
+      "panel-2": {
+        "role": "neutral",
+        "displayName": "Raised Panel",
+        "tonalRamp": [
+          "oklch(15% 0.0019 157.18)",
+          "oklch(27% 0.0031 157.18)",
+          "oklch(38% 0.0039 157.18)",
+          "oklch(50% 0.0041 157.18)",
+          "oklch(61% 0.0039 157.18)",
+          "oklch(73% 0.0031 157.18)",
+          "oklch(84% 0.0020 157.18)",
+          "oklch(95% 0.0006 157.18)"
+        ]
+      },
+      "cream": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "tonalRamp": [
+          "oklch(15% 0.0034 229.34)",
+          "oklch(27% 0.0056 229.34)",
+          "oklch(38% 0.0069 229.34)",
+          "oklch(50% 0.0075 229.34)",
+          "oklch(61% 0.0070 229.34)",
+          "oklch(73% 0.0056 229.34)",
+          "oklch(84% 0.0036 229.34)",
+          "oklch(95% 0.0012 229.34)"
+        ]
+      },
+      "cream-soft": {
+        "role": "neutral",
+        "displayName": "Cream Soft",
+        "tonalRamp": [
+          "oklch(15% 0.0074 214.51)",
+          "oklch(27% 0.0121 214.51)",
+          "oklch(38% 0.0151 214.51)",
+          "oklch(50% 0.0162 214.51)",
+          "oklch(61% 0.0152 214.51)",
+          "oklch(73% 0.0121 214.51)",
+          "oklch(84% 0.0078 214.51)",
+          "oklch(95% 0.0025 214.51)"
+        ]
+      },
+      "dim": {
+        "role": "neutral",
+        "displayName": "Dim",
+        "tonalRamp": [
+          "oklch(15% 0.0079 212.05)",
+          "oklch(27% 0.0131 212.05)",
+          "oklch(38% 0.0162 212.05)",
+          "oklch(50% 0.0174 212.05)",
+          "oklch(61% 0.0164 212.05)",
+          "oklch(73% 0.0131 212.05)",
+          "oklch(84% 0.0084 212.05)",
+          "oklch(95% 0.0027 212.05)"
+        ]
+      },
+      "faint": {
+        "role": "neutral",
+        "displayName": "Faint",
+        "tonalRamp": [
+          "oklch(15% 0.0069 214.43)",
+          "oklch(27% 0.0115 214.43)",
+          "oklch(38% 0.0142 214.43)",
+          "oklch(50% 0.0153 214.43)",
+          "oklch(61% 0.0144 214.43)",
+          "oklch(73% 0.0115 214.43)",
+          "oklch(84% 0.0074 214.43)",
+          "oklch(95% 0.0024 214.43)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Line",
+        "tonalRamp": [
+          "oklch(15% 0.0034 229.34)",
+          "oklch(27% 0.0056 229.34)",
+          "oklch(38% 0.0069 229.34)",
+          "oklch(50% 0.0075 229.34)",
+          "oklch(61% 0.0070 229.34)",
+          "oklch(73% 0.0056 229.34)",
+          "oklch(84% 0.0036 229.34)",
+          "oklch(95% 0.0012 229.34)"
+        ]
+      },
+      "line-soft": {
+        "role": "neutral",
+        "displayName": "Line Soft",
+        "tonalRamp": [
+          "oklch(15% 0.0034 229.34)",
+          "oklch(27% 0.0056 229.34)",
+          "oklch(38% 0.0069 229.34)",
+          "oklch(50% 0.0075 229.34)",
+          "oklch(61% 0.0070 229.34)",
+          "oklch(73% 0.0056 229.34)",
+          "oklch(84% 0.0036 229.34)",
+          "oklch(95% 0.0012 229.34)"
+        ]
+      },
+      "up": {
+        "role": "status",
+        "displayName": "Up",
+        "tonalRamp": [
+          "oklch(15% 0.0622 150.07)",
+          "oklch(27% 0.1028 150.07)",
+          "oklch(38% 0.1275 150.07)",
+          "oklch(50% 0.1371 150.07)",
+          "oklch(61% 0.1290 150.07)",
+          "oklch(73% 0.1028 150.07)",
+          "oklch(84% 0.0660 150.07)",
+          "oklch(95% 0.0214 150.07)"
+        ]
+      },
+      "down": {
+        "role": "status",
+        "displayName": "Down",
+        "tonalRamp": [
+          "oklch(15% 0.0898 16.93)",
+          "oklch(27% 0.1484 16.93)",
+          "oklch(38% 0.1839 16.93)",
+          "oklch(50% 0.1978 16.93)",
+          "oklch(61% 0.1861 16.93)",
+          "oklch(73% 0.1484 16.93)",
+          "oklch(84% 0.0953 16.93)",
+          "oklch(95% 0.0309 16.93)"
+        ]
+      },
+      "signal": {
+        "role": "status",
+        "displayName": "Signal",
+        "tonalRamp": [
+          "oklch(15% 0.0661 49.00)",
+          "oklch(27% 0.1091 49.00)",
+          "oklch(38% 0.1353 49.00)",
+          "oklch(50% 0.1455 49.00)",
+          "oklch(61% 0.1369 49.00)",
+          "oklch(73% 0.1091 49.00)",
+          "oklch(84% 0.0701 49.00)",
+          "oklch(95% 0.0228 49.00)"
+        ]
+      },
+      "dark-accent": {
+        "role": "primary",
+        "displayName": "Luminous Mint",
+        "tonalRamp": [
+          "oklch(15% 0.0568 181.07)",
+          "oklch(27% 0.0938 181.07)",
+          "oklch(38% 0.1163 181.07)",
+          "oklch(50% 0.1251 181.07)",
+          "oklch(61% 0.1177 181.07)",
+          "oklch(73% 0.0938 181.07)",
+          "oklch(84% 0.0603 181.07)",
+          "oklch(95% 0.0196 181.07)"
+        ]
+      },
+      "dark-accent-dim": {
+        "role": "primary",
+        "displayName": "Dark Accent Dim",
+        "tonalRamp": [
+          "oklch(15% 0.0602 181.91)",
+          "oklch(27% 0.0994 181.91)",
+          "oklch(38% 0.1232 181.91)",
+          "oklch(50% 0.1325 181.91)",
+          "oklch(61% 0.1247 181.91)",
+          "oklch(73% 0.0994 181.91)",
+          "oklch(84% 0.0638 181.91)",
+          "oklch(95% 0.0207 181.91)"
+        ]
+      },
+      "dark-accent-hover": {
+        "role": "primary",
+        "displayName": "Dark Accent Hover",
+        "tonalRamp": [
+          "oklch(15% 0.0460 182.35)",
+          "oklch(27% 0.0760 182.35)",
+          "oklch(38% 0.0943 182.35)",
+          "oklch(50% 0.1014 182.35)",
+          "oklch(61% 0.0954 182.35)",
+          "oklch(73% 0.0760 182.35)",
+          "oklch(84% 0.0488 182.35)",
+          "oklch(95% 0.0159 182.35)"
+        ]
+      },
+      "dark-control-primary": {
+        "role": "primary",
+        "displayName": "Dark Control Primary",
+        "tonalRamp": [
+          "oklch(15% 0.0011 228.78)",
+          "oklch(27% 0.0019 228.78)",
+          "oklch(38% 0.0024 228.78)",
+          "oklch(50% 0.0025 228.78)",
+          "oklch(61% 0.0024 228.78)",
+          "oklch(73% 0.0019 228.78)",
+          "oklch(84% 0.0012 228.78)",
+          "oklch(95% 0.0004 228.78)"
+        ]
+      },
+      "dark-data-primary": {
+        "role": "primary",
+        "displayName": "Dark Data Primary",
+        "tonalRamp": [
+          "oklch(15% 0.0568 181.07)",
+          "oklch(27% 0.0938 181.07)",
+          "oklch(38% 0.1163 181.07)",
+          "oklch(50% 0.1251 181.07)",
+          "oklch(61% 0.1177 181.07)",
+          "oklch(73% 0.0938 181.07)",
+          "oklch(84% 0.0603 181.07)",
+          "oklch(95% 0.0196 181.07)"
+        ]
+      },
+      "dark-vault": {
+        "role": "neutral",
+        "displayName": "Graphite",
+        "tonalRamp": [
+          "oklch(15% 0.0023 262.32)",
+          "oklch(27% 0.0039 262.32)",
+          "oklch(38% 0.0048 262.32)",
+          "oklch(50% 0.0051 262.32)",
+          "oklch(61% 0.0048 262.32)",
+          "oklch(73% 0.0039 262.32)",
+          "oklch(84% 0.0025 262.32)",
+          "oklch(95% 0.0008 262.32)"
+        ]
+      },
+      "dark-panel": {
+        "role": "neutral",
+        "displayName": "Dark Panel",
+        "tonalRamp": [
+          "oklch(15% 0.0040 264.33)",
+          "oklch(27% 0.0066 264.33)",
+          "oklch(38% 0.0082 264.33)",
+          "oklch(50% 0.0088 264.33)",
+          "oklch(61% 0.0083 264.33)",
+          "oklch(73% 0.0066 264.33)",
+          "oklch(84% 0.0042 264.33)",
+          "oklch(95% 0.0014 264.33)"
+        ]
+      },
+      "dark-panel-2": {
+        "role": "neutral",
+        "displayName": "Dark Panel 2",
+        "tonalRamp": [
+          "oklch(15% 0.0057 264.27)",
+          "oklch(27% 0.0095 264.27)",
+          "oklch(38% 0.0118 264.27)",
+          "oklch(50% 0.0127 264.27)",
+          "oklch(61% 0.0119 264.27)",
+          "oklch(73% 0.0095 264.27)",
+          "oklch(84% 0.0061 264.27)",
+          "oklch(95% 0.0020 264.27)"
+        ]
+      },
+      "dark-cream": {
+        "role": "neutral",
+        "displayName": "Pale Foreground",
+        "tonalRamp": [
+          "oklch(15% 0.0011 228.78)",
+          "oklch(27% 0.0019 228.78)",
+          "oklch(38% 0.0024 228.78)",
+          "oklch(50% 0.0025 228.78)",
+          "oklch(61% 0.0024 228.78)",
+          "oklch(73% 0.0019 228.78)",
+          "oklch(84% 0.0012 228.78)",
+          "oklch(95% 0.0004 228.78)"
+        ]
+      },
+      "dark-cream-soft": {
+        "role": "neutral",
+        "displayName": "Dark Cream Soft",
+        "tonalRamp": [
+          "oklch(15% 0.0035 241.68)",
+          "oklch(27% 0.0059 241.68)",
+          "oklch(38% 0.0073 241.68)",
+          "oklch(50% 0.0078 241.68)",
+          "oklch(61% 0.0074 241.68)",
+          "oklch(73% 0.0059 241.68)",
+          "oklch(84% 0.0038 241.68)",
+          "oklch(95% 0.0012 241.68)"
+        ]
+      },
+      "dark-dim": {
+        "role": "neutral",
+        "displayName": "Dark Dim",
+        "tonalRamp": [
+          "oklch(15% 0.0068 248.06)",
+          "oklch(27% 0.0113 248.06)",
+          "oklch(38% 0.0140 248.06)",
+          "oklch(50% 0.0151 248.06)",
+          "oklch(61% 0.0142 248.06)",
+          "oklch(73% 0.0113 248.06)",
+          "oklch(84% 0.0073 248.06)",
+          "oklch(95% 0.0024 248.06)"
+        ]
+      },
+      "dark-faint": {
+        "role": "neutral",
+        "displayName": "Dark Faint",
+        "tonalRamp": [
+          "oklch(15% 0.0082 245.24)",
+          "oklch(27% 0.0135 245.24)",
+          "oklch(38% 0.0168 245.24)",
+          "oklch(50% 0.0180 245.24)",
+          "oklch(61% 0.0170 245.24)",
+          "oklch(73% 0.0135 245.24)",
+          "oklch(84% 0.0087 245.24)",
+          "oklch(95% 0.0028 245.24)"
+        ]
+      },
+      "dark-line": {
+        "role": "neutral",
+        "displayName": "Dark Line",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(27% 0.0000 89.88)",
+          "oklch(38% 0.0000 89.88)",
+          "oklch(50% 0.0000 89.88)",
+          "oklch(61% 0.0000 89.88)",
+          "oklch(73% 0.0000 89.88)",
+          "oklch(84% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ]
+      },
+      "dark-line-soft": {
+        "role": "neutral",
+        "displayName": "Dark Line Soft",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(27% 0.0000 89.88)",
+          "oklch(38% 0.0000 89.88)",
+          "oklch(50% 0.0000 89.88)",
+          "oklch(61% 0.0000 89.88)",
+          "oklch(73% 0.0000 89.88)",
+          "oklch(84% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ]
+      },
+      "dark-up": {
+        "role": "status",
+        "displayName": "Dark Up",
+        "tonalRamp": [
+          "oklch(15% 0.0827 151.71)",
+          "oklch(27% 0.1366 151.71)",
+          "oklch(38% 0.1693 151.71)",
+          "oklch(50% 0.1821 151.71)",
+          "oklch(61% 0.1713 151.71)",
+          "oklch(73% 0.1366 151.71)",
+          "oklch(84% 0.0877 151.71)",
+          "oklch(95% 0.0285 151.71)"
+        ]
+      },
+      "dark-down": {
+        "role": "status",
+        "displayName": "Dark Down",
+        "tonalRamp": [
+          "oklch(15% 0.0767 13.43)",
+          "oklch(27% 0.1268 13.43)",
+          "oklch(38% 0.1571 13.43)",
+          "oklch(50% 0.1690 13.43)",
+          "oklch(61% 0.1590 13.43)",
+          "oklch(73% 0.1268 13.43)",
+          "oklch(84% 0.0814 13.43)",
+          "oklch(95% 0.0264 13.43)"
+        ]
+      },
+      "dark-signal": {
+        "role": "status",
+        "displayName": "Dark Signal",
+        "tonalRamp": [
+          "oklch(15% 0.0722 55.93)",
+          "oklch(27% 0.1193 55.93)",
+          "oklch(38% 0.1479 55.93)",
+          "oklch(50% 0.1590 55.93)",
+          "oklch(61% 0.1496 55.93)",
+          "oklch(73% 0.1193 55.93)",
+          "oklch(84% 0.0766 55.93)",
+          "oklch(95% 0.0249 55.93)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Investment hero upper endpoint; use the documented fluid sizing in app layouts."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Screen headings."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card and dialog headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Prose and ordinary row labels."
+      },
+      "data": {
+        "displayName": "Data",
+        "purpose": "Dense financial values and tickers."
+      },
+      "field": {
+        "displayName": "Field",
+        "purpose": "Editable field text; keep at 16px or above."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Static uppercase labels."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Uppercase action and desktop navigation labels."
+      },
+      "mobile-navigation": {
+        "displayName": "Mobile Navigation",
+        "purpose": "Compact sans-serif bottom-bar labels."
+      }
+    },
+    "shadows": [
+      {
+        "name": "glass",
+        "value": "0 12px 32px -14px var(--surface-shadow), inset 0 1px 0 var(--surface-highlight)",
+        "purpose": "Restrained card material; not every panel requires it."
+      },
+      {
+        "name": "floating-material",
+        "value": "0 18px 42px -20px var(--surface-shadow), inset 0 1px 0 var(--surface-highlight)",
+        "purpose": "Floating surfaces with backdrop-filter and solid accessibility fallbacks."
+      },
+      {
+        "name": "dialog-sheet",
+        "value": "0 24px 60px -20px var(--surface-shadow)",
+        "purpose": "Structural separation for dialogs and drawers."
+      },
+      {
+        "name": "primary-action",
+        "value": "0 6px 24px -6px color-mix(in srgb, var(--brand-accent) 45%, transparent)",
+        "purpose": "Existing accent glow for primary buttons."
+      },
+      {
+        "name": "primary-action-hover",
+        "value": "0 8px 30px -6px color-mix(in srgb, var(--brand-accent) 60%, transparent)",
+        "purpose": "Primary button hover feedback."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.23, 1, 0.32, 1)",
+        "purpose": "Shared enter/exit easing."
+      },
+      {
+        "name": "ease-in-out",
+        "value": "cubic-bezier(0.77, 0, 0.175, 1)",
+        "purpose": "Shared on-screen movement and segment-indicator easing."
+      },
+      {
+        "name": "ease-drawer",
+        "value": "cubic-bezier(0.32, 0.72, 0, 1)",
+        "purpose": "Drawer motion."
+      },
+      {
+        "name": "button-feedback",
+        "value": "100ms",
+        "purpose": "Shared Button transition duration."
+      },
+      {
+        "name": "control-feedback",
+        "value": "150ms",
+        "purpose": "Common control and reduced-motion opacity duration."
+      },
+      {
+        "name": "dialog-segment",
+        "value": "200ms",
+        "purpose": "Dialog entry and segmented indicator duration."
+      },
+      {
+        "name": "detail-drawer",
+        "value": "220ms",
+        "purpose": "Detail Sheet motion before swipe-strength exit adjustment."
+      },
+      {
+        "name": "route-exit",
+        "value": "250ms",
+        "purpose": "Old route exits; reduced-motion uses a 150ms opacity-only fade."
+      },
+      {
+        "name": "route-enter",
+        "value": "450ms",
+        "purpose": "New route enters; persistent chrome is isolated from the crossfade."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Shared Button primary variant, default size; theme-aware and responsive.",
+      "html": "<button type=\"button\" class=\"ds-button-primary\">Save changes</button>",
+      "css": ".ds-button-primary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 16px;border:0;border-radius:6px;font-family:var(--font-spline-mono, \"Spline Sans Mono Variable\", monospace);font-size:12px;font-weight:400;line-height:16px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:color 100ms var(--ease-out),background-color 100ms var(--ease-out),border-color 100ms var(--ease-out),box-shadow 100ms var(--ease-out),transform 100ms var(--ease-out);background:var(--brand-accent);color:var(--surface-vault);box-shadow:0 6px 24px -6px color-mix(in srgb,var(--brand-accent) 45%,transparent);}.ds-button-primary:hover:not(:disabled){background:var(--brand-accent-hover);box-shadow:0 8px 30px -6px color-mix(in srgb,var(--brand-accent) 60%,transparent);}.ds-button-primary:focus-visible{outline:2px solid var(--brand-accent);outline-offset:2px;}.ds-button-primary:active:not(:disabled){transform:scale(.97);}.ds-button-primary:disabled{opacity:.5;cursor:not-allowed;}@media(min-width:640px){.ds-button-primary{min-height:40px;padding-left:20px;padding-right:20px;}}@media(prefers-reduced-motion:reduce){.ds-button-primary:active:not(:disabled){transform:none;}}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Shared Button secondary variant, default size; theme-aware and responsive.",
+      "html": "<button type=\"button\" class=\"ds-button-secondary\">Cancel</button>",
+      "css": ".ds-button-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 16px;border:0;border-radius:6px;font-family:var(--font-spline-mono, \"Spline Sans Mono Variable\", monospace);font-size:12px;font-weight:400;line-height:16px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:color 100ms var(--ease-out),background-color 100ms var(--ease-out),border-color 100ms var(--ease-out),box-shadow 100ms var(--ease-out),transform 100ms var(--ease-out);border:1px solid var(--border-line);background:transparent;color:var(--text-cream);}.ds-button-secondary:hover:not(:disabled){border-color:color-mix(in srgb,var(--text-cream-soft) 40%,transparent);background:color-mix(in srgb,var(--text-cream) 3%,transparent);}.ds-button-secondary:focus-visible{outline:2px solid var(--brand-accent);outline-offset:2px;}.ds-button-secondary:active:not(:disabled){transform:scale(.97);}.ds-button-secondary:disabled{opacity:.5;cursor:not-allowed;}@media(min-width:640px){.ds-button-secondary{min-height:40px;padding-left:20px;padding-right:20px;}}@media(prefers-reduced-motion:reduce){.ds-button-secondary:active:not(:disabled){transform:none;}}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Shared Button ghost variant, default size; theme-aware and responsive.",
+      "html": "<button type=\"button\" class=\"ds-button-ghost\">View details</button>",
+      "css": ".ds-button-ghost{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 16px;border:0;border-radius:6px;font-family:var(--font-spline-mono, \"Spline Sans Mono Variable\", monospace);font-size:12px;font-weight:400;line-height:16px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:color 100ms var(--ease-out),background-color 100ms var(--ease-out),border-color 100ms var(--ease-out),box-shadow 100ms var(--ease-out),transform 100ms var(--ease-out);background:transparent;color:var(--text-cream-soft);}.ds-button-ghost:hover:not(:disabled){color:var(--text-cream);}.ds-button-ghost:focus-visible{outline:2px solid var(--brand-accent);outline-offset:2px;}.ds-button-ghost:active:not(:disabled){transform:scale(.97);}.ds-button-ghost:disabled{opacity:.5;cursor:not-allowed;}@media(min-width:640px){.ds-button-ghost{min-height:40px;padding-left:20px;padding-right:20px;}}@media(prefers-reduced-motion:reduce){.ds-button-ghost:active:not(:disabled){transform:none;}}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Shared Button danger variant, default size; theme-aware and responsive.",
+      "html": "<button type=\"button\" class=\"ds-button-danger\">Delete record</button>",
+      "css": ".ds-button-danger{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 16px;border:0;border-radius:6px;font-family:var(--font-spline-mono, \"Spline Sans Mono Variable\", monospace);font-size:12px;font-weight:400;line-height:16px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:color 100ms var(--ease-out),background-color 100ms var(--ease-out),border-color 100ms var(--ease-out),box-shadow 100ms var(--ease-out),transform 100ms var(--ease-out);background:var(--status-down);color:var(--surface-vault);}.ds-button-danger:hover:not(:disabled){background:color-mix(in srgb,var(--status-down) 90%,transparent);}.ds-button-danger:focus-visible{outline:2px solid var(--status-down);outline-offset:2px;}.ds-button-danger:active:not(:disabled){transform:scale(.97);}.ds-button-danger:disabled{opacity:.5;cursor:not-allowed;}@media(min-width:640px){.ds-button-danger{min-height:40px;padding-left:20px;padding-right:20px;}}@media(prefers-reduced-motion:reduce){.ds-button-danger:active:not(:disabled){transform:none;}}"
+    },
+    {
+      "name": "Danger Outline Button",
+      "kind": "button",
+      "refersTo": "button-danger-outline",
+      "description": "Shared Button danger-outline variant, default size; theme-aware and responsive.",
+      "html": "<button type=\"button\" class=\"ds-button-danger-outline\">Delete record</button>",
+      "css": ".ds-button-danger-outline{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 16px;border:0;border-radius:6px;font-family:var(--font-spline-mono, \"Spline Sans Mono Variable\", monospace);font-size:12px;font-weight:400;line-height:16px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:color 100ms var(--ease-out),background-color 100ms var(--ease-out),border-color 100ms var(--ease-out),box-shadow 100ms var(--ease-out),transform 100ms var(--ease-out);border:1px solid color-mix(in srgb,var(--status-down) 35%,transparent);background:transparent;color:var(--status-down);}.ds-button-danger-outline:hover:not(:disabled){background:color-mix(in srgb,var(--status-down) 10%,transparent);}.ds-button-danger-outline:focus-visible{outline:2px solid var(--status-down);outline-offset:2px;}.ds-button-danger-outline:active:not(:disabled){transform:scale(.97);}.ds-button-danger-outline:disabled{opacity:.5;cursor:not-allowed;}@media(min-width:640px){.ds-button-danger-outline{min-height:40px;padding-left:20px;padding-right:20px;}}@media(prefers-reduced-motion:reduce){.ds-button-danger-outline:active:not(:disabled){transform:none;}}"
+    },
+    {
+      "name": "Labelled Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "App-level field with connected label and invalid-state treatment.",
+      "html": "<div class=\"ds-field\"><label for=\"ds-account-name\" class=\"ds-field-label\">Account name</label><input id=\"ds-account-name\" class=\"ds-field-input\" placeholder=\"Account name\" /><p id=\"ds-field-error\" class=\"ds-field-error\" role=\"alert\" hidden>Enter an account name.</p></div>",
+      "css": ".ds-field{display:flex;flex-direction:column;gap:8px;color:var(--text-cream);}.ds-field-label{font-family:var(--font-spline-mono, \"Spline Sans Mono Variable\", monospace);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);}.ds-field-input{box-sizing:border-box;width:100%;min-width:0;min-height:44px;padding:12px 14px;border:1px solid var(--border-line);border-radius:8px;background:var(--surface-panel-2);color:var(--text-cream);font-family:var(--font-spline-mono, \"Spline Sans Mono Variable\", monospace);font-size:16px;line-height:24px;outline:none;transition:border-color 150ms,box-shadow 150ms;}.ds-field-input::placeholder{color:var(--text-faint);}.ds-field-input:focus{border-color:var(--brand-accent-dim);}.ds-field-input:focus-visible{box-shadow:0 0 0 2px var(--surface-panel),0 0 0 4px color-mix(in srgb,var(--brand-accent) 25%,transparent);}.ds-field-input[aria-invalid=true]{border-color:var(--status-signal);}.ds-field-input:disabled{opacity:.5;cursor:not-allowed;}.ds-field-error{font-family:var(--font-schibsted, \"Schibsted Grotesk Variable\", sans-serif);font-size:14px;color:var(--status-signal);}"
+    },
+    {
+      "name": "Enabled Status Badge",
+      "kind": "chip",
+      "refersTo": "status-chip",
+      "description": "Informational enabled-state badge, not an interactive filter.",
+      "html": "<span class=\"ds-status-chip\">Enabled</span>",
+      "css": ".ds-status-chip{display:inline-block;flex-shrink:0;border:1px solid color-mix(in srgb,var(--brand-accent) 25%,transparent);border-radius:9999px;padding:5px 11px;background:transparent;color:var(--brand-accent);font-family:var(--font-spline-mono, \"Spline Sans Mono Variable\", monospace);font-size:12px;line-height:16px;letter-spacing:.12em;text-transform:uppercase;}"
+    },
+    {
+      "name": "Data Card",
+      "kind": "card",
+      "refersTo": "data-card",
+      "description": "Compact panel based on the shared top-holdings container; sample content is illustrative.",
+      "html": "<section class=\"ds-card\"><h3 class=\"ds-card-title\">Top holdings</h3><p class=\"ds-card-caption\">No holdings yet.</p></section>",
+      "css": ".ds-card{padding:24px;border:1px solid var(--border-line);border-radius:10px;background:var(--surface-panel);color:var(--text-cream);box-shadow:0 12px 32px -14px var(--surface-shadow),inset 0 1px 0 var(--surface-highlight);}.ds-card-title{margin:0 0 16px;font-family:var(--font-instrument-serif, \"Instrument Serif\", serif);font-size:24px;font-weight:400;line-height:32px;letter-spacing:-.005em;}.ds-card-caption{margin:0;font-family:var(--font-schibsted, \"Schibsted Grotesk Variable\", sans-serif);font-size:14px;line-height:20px;color:var(--text-dim);}"
+    },
+    {
+      "name": "Desktop Primary Navigation",
+      "kind": "nav",
+      "refersTo": "navigation-active",
+      "description": "Current pill navigation; labels document the incumbent grouping, not permanent information architecture.",
+      "html": "<nav aria-label=\"Primary navigation preview\" class=\"ds-nav\"><a href=\"#ds-invest\" aria-current=\"page\">Invest</a><a href=\"#ds-spend\">Spend</a><a href=\"#ds-plan\">Plan</a><a href=\"#ds-settings\">Settings</a></nav>",
+      "css": ".ds-nav{display:flex;flex-wrap:wrap;gap:4px;width:fit-content;padding:4px;border:1px solid var(--border-line);border-radius:9999px;background:var(--surface-panel);}.ds-nav a{padding:8px 18px;border-radius:9999px;color:var(--text-dim);font-family:var(--font-spline-mono, \"Spline Sans Mono Variable\", monospace);font-size:12px;line-height:16px;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;transition:color 150ms,background-color 150ms;}.ds-nav a:hover{color:var(--text-cream);}.ds-nav a[aria-current=page]{background:var(--control-primary);color:var(--surface-vault);}.ds-nav a:focus-visible{outline:2px solid var(--brand-accent);outline-offset:2px;}"
+    },
+    {
+      "name": "Mobile Primary Navigation",
+      "kind": "nav",
+      "refersTo": "navigation-active",
+      "description": "Current equal-width mobile links, active icon tile, and sans-serif labels; shown in flow for preview.",
+      "html": "<nav aria-label=\"Mobile navigation preview\" class=\"ds-mobile-nav\"><a href=\"#ds-mobile-invest\" aria-current=\"page\"><span class=\"ds-mobile-icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M16 7h6v6\"></path><path d=\"m22 7-8.5 8.5-5-5L2 17\"></path></svg></span><span>Invest</span></a><a href=\"#ds-mobile-spend\"><span class=\"ds-mobile-icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"20\" height=\"14\" x=\"2\" y=\"5\" rx=\"2\"></rect><line x1=\"2\" x2=\"22\" y1=\"10\" y2=\"10\"></line><path d=\"M6 14h2\"></path></svg></span><span>Spend</span></a><a href=\"#ds-mobile-plan\"><span class=\"ds-mobile-icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"></circle><circle cx=\"12\" cy=\"12\" r=\"6\"></circle><circle cx=\"12\" cy=\"12\" r=\"2\"></circle></svg></span><span>Plan</span></a><a href=\"#ds-mobile-settings\"><span class=\"ds-mobile-icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"></path><circle cx=\"12\" cy=\"12\" r=\"3\"></circle></svg></span><span>Settings</span></a></nav>",
+      "css": ".ds-mobile-nav{display:flex;width:100%;border-top:1px solid var(--border-line);background:var(--surface-panel);padding-left:max(8px,env(safe-area-inset-left));padding-right:max(8px,env(safe-area-inset-right));padding-bottom:env(safe-area-inset-bottom);}.ds-mobile-nav a{display:flex;min-width:0;min-height:48px;flex:1;flex-direction:column;align-items:center;justify-content:flex-end;border-radius:6px;color:var(--text-dim);font-family:var(--font-schibsted, \"Schibsted Grotesk Variable\", sans-serif);font-size:12px;font-weight:500;line-height:1;text-decoration:none;transition:color 150ms;}.ds-mobile-nav a > span:last-child{margin-bottom:1px;}.ds-mobile-icon{display:flex;width:40px;height:28px;align-items:center;justify-content:center;border-radius:6px;}.ds-mobile-icon svg{width:24px;height:24px;}.ds-mobile-nav a[aria-current=page]{color:var(--text-cream);}.ds-mobile-nav a[aria-current=page] .ds-mobile-icon{background:var(--control-primary);color:var(--surface-vault);}.ds-mobile-nav a:focus-visible{outline:2px solid var(--brand-accent);outline-offset:-2px;}.ds-mobile-nav a:active{transform:scale(.98);}@media(prefers-reduced-motion:reduce){.ds-mobile-nav a{transition:none;}.ds-mobile-nav a:active{transform:none;}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Private Ledger",
+    "overview": "Calm, precise, and quietly editorial. Expressive serif headings and prominent figures give the interface a human voice; clear sans-serif prose and monospaced data keep financial tasks legible. The name is descriptive shorthand, not a requirement to imitate a physical ledger or add vault decoration.\n\nThe system supports equally important desktop and mobile experiences. It combines compact data presentation with breathing room around major figures and task boundaries. Controls are refined and restrained, with clear feedback. Depth is layered, not floating: tones and fine borders establish everyday structure, while overlays receive stronger separation.",
+    "keyCharacteristics": [
+      "Editorial serif hierarchy balanced by practical sans-serif text and precise mono data.",
+      "Paired light and dark themes with a shared teal/mint identity.",
+      "Fine borders, softly rounded containers, and restrained surface layering.",
+      "Responsive navigation and overlays rather than a shrunken desktop layout.",
+      "Visible focus, subtle press feedback, and reduced-motion alternatives."
+    ],
+    "rules": [
+      {
+        "name": "The Role Before Hue Rule",
+        "body": "Use the existing semantic role and its theme mapping; a selected control, a brand accent, and a data series are not automatically the same color.",
+        "section": "colors"
+      },
+      {
+        "name": "The Three Voices Rule",
+        "body": "Preserve the serif / sans / mono division of work; do not turn everyday body copy into mono or every financial value into display type.",
+        "section": "typography"
+      },
+      {
+        "name": "The Depth Has a Job Rule",
+        "body": "Use ordinary surface layering for content; reserve stronger separation for overlays and the existing primary-action treatment.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use semantic, theme-aware colors and preserve the distinction between action, control, status, and data roles.",
+      "Do keep serif hierarchy, sans-serif reading text, and mono data/controls in their observed roles.",
+      "Do keep editable field text at 16px or above and preserve visible keyboard focus.",
+      "Do adapt navigation, sheets, safe-area spacing, and keyboard handling for mobile rather than shrinking desktop components.",
+      "Do reuse shared components and their accessibility, disabled, loading, and reduced-motion behavior."
+    ],
+    "donts": [
+      "Don't treat current navigation labels, the North Star name, or source-local exceptions as immutable product requirements.",
+      "Don't hardcode dark-theme mint or graphite into new theme-aware app surfaces.",
+      "Don't use categorical chart colors as additional action accents or add overlay-strength shadows to ordinary panels.",
+      "Don't mistake the veil's visual masking for secure locking or claim accessibility compliance from these style descriptions alone."
+    ]
+  }
+}

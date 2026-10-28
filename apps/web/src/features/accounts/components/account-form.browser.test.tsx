@@ -1,6 +1,7 @@
 import type { Account, AccountId, UserId } from "@privance/core";
 import { asId, asIsoDateTime } from "@privance/core";
 import { expect, test, vi } from "vitest";
+import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
 // Real stylesheet so Tailwind positioning applies; without it the modal Popup is
 // unpositioned and Base UI's inline-styled internal backdrop covers the content.
@@ -27,6 +28,59 @@ async function fillValidCashAccount(screen: Awaited<ReturnType<typeof render>>) 
   await screen.getByRole("combobox", { name: "Account type" }).selectOptions("checking");
   await screen.getByRole("textbox", { name: "Current balance" }).fill("100.00");
 }
+
+test("keeps the account title and close action visible while editing on a phone", async () => {
+  const realViewport = Object.getOwnPropertyDescriptor(window, "visualViewport");
+  await page.viewport(390, 800);
+  const viewport = Object.assign(new EventTarget(), { height: 800, offsetTop: 0, scale: 1 });
+  Object.defineProperty(window, "visualViewport", { configurable: true, value: viewport });
+  try {
+    const onClose = vi.fn(() => document.activeElement);
+    const screen = await render(
+      <AccountForm open defaultKind="investment" onClose={onClose} onSubmit={vi.fn()} />,
+    );
+    const popup = screen.getByRole("dialog").element();
+    await screen.getByRole("textbox", { name: "Name", exact: true }).click();
+    viewport.height = 420;
+    viewport.dispatchEvent(new Event("resize"));
+    await expect.poll(() => popup.getBoundingClientRect().bottom).toBeCloseTo(420, 0);
+    await expect
+      .poll(
+        () =>
+          screen
+            .getByRole("textbox", { name: "Name", exact: true })
+            .element()
+            .getBoundingClientRect().bottom,
+      )
+      .toBeLessThanOrEqual(
+        screen
+          .getByRole("button", { name: "Add account", exact: true })
+          .element()
+          .getBoundingClientRect().top,
+      );
+    screen
+      .getByRole("textbox", { name: "Name", exact: true })
+      .element()
+      .scrollIntoView({ block: "center" });
+    await expect
+      .poll(() => {
+        const title = screen.getByRole("heading", { name: "Add account", exact: true }).element();
+        return title.getBoundingClientRect().top - popup.getBoundingClientRect().top;
+      })
+      .toBeGreaterThanOrEqual(0);
+    viewport.height = 800;
+    viewport.dispatchEvent(new Event("resize"));
+    await expect.poll(() => popup.getBoundingClientRect().bottom).toBeCloseTo(800, 0);
+    await screen.getByRole("button", { name: "Close", exact: true }).click();
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(onClose.mock.results[0]?.value).toBe(
+      screen.getByRole("textbox", { name: "Name", exact: true }).element(),
+    );
+  } finally {
+    if (realViewport) Object.defineProperty(window, "visualViewport", realViewport);
+    await page.viewport(1280, 800);
+  }
+});
 
 test("surfaces an inline error when the save fails (no longer silently swallowed)", async () => {
   const onSubmit = vi.fn(() => Promise.reject(new Error("encrypt failed")));

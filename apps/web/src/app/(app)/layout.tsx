@@ -164,7 +164,7 @@ function BottomNav() {
               preventScrollReset={isInvestPath(location.pathname) && isInvestPath(href)}
               aria-current={active ? "page" : undefined}
               className={[
-                "flex min-h-[var(--mobile-nav-height)] flex-1 flex-col items-center justify-center gap-0.5 rounded-md font-sans text-xs font-medium leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",
+                "flex min-h-[var(--mobile-nav-height)] flex-1 flex-col items-center justify-end rounded-md font-sans text-xs font-medium leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",
                 active ? "text-cream" : "text-dim",
               ].join(" ")}
             >
@@ -174,9 +174,9 @@ function BottomNav() {
                   active ? "bg-control-primary text-vault" : "",
                 ].join(" ")}
               >
-                <Icon className="h-5 w-5" aria-hidden="true" />
+                <Icon className="h-6 w-6" aria-hidden="true" />
               </span>
-              <span>{label}</span>
+              <span className="mb-px">{label}</span>
             </Link>
           );
         })}
@@ -215,9 +215,8 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
       activeElement instanceof HTMLSelectElement ||
       (activeElement instanceof HTMLElement && activeElement.isContentEditable);
     if (!skipFocus) {
-      mainRef.current?.focus({
-        preventScroll: isInvestPath(previousPathname) && isInvestPath(pathname),
-      });
+      // The router owns scrolling; focusing a tall main can pan iOS's viewport.
+      mainRef.current?.focus({ preventScroll: true });
     }
   }, [pathname, navigationType]);
 
@@ -242,7 +241,7 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
   }
 
   return (
-    <div className="min-h-svh bg-vault text-cream">
+    <div className="app-shell min-h-svh bg-vault text-cream">
       <TopBar veiled={veiled} onToggleVeil={toggleVeil} onLock={lock} />
       {lockFailed && (
         <div className="mx-4 md:mx-8">
@@ -255,7 +254,7 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
       <main
         ref={mainRef}
         tabIndex={-1}
-        className="outline-none pb-[calc(var(--mobile-nav-height)_+_1px_+_env(safe-area-inset-bottom))] md:pb-4"
+        className="outline-none pb-[calc(var(--mobile-nav-height)_+_1px_+_env(safe-area-inset-bottom)_+_1rem)] md:pb-4"
       >
         {children ?? <Outlet />}
       </main>

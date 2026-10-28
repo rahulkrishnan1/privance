@@ -14,6 +14,10 @@ describe("keyboardInset", () => {
     expect(keyboardInset(800, 460, 40)).toEqual({ height: 300, available: 460 });
   });
 
+  test("keeps keyboard state when viewport panning leaves only a small bottom inset", () => {
+    expect(keyboardInset(714, 384, 292)).toEqual({ height: 38, available: 384 });
+  });
+
   test("ignores sub-keyboard insets (toolbar collapse jitter)", () => {
     expect(keyboardInset(800, 720, 0)).toEqual({ height: 0, available: null });
   });
@@ -28,6 +32,7 @@ describe("keyboardInsetStyle", () => {
     expect(keyboardInsetStyle({ height: 0, available: null }, "90vh")).toEqual({
       "--kb-bottom": "0px",
       "--kb-maxh": "90vh",
+      "--kb-safe-bottom": "env(safe-area-inset-bottom, 0px)",
     });
   });
 
@@ -35,6 +40,7 @@ describe("keyboardInsetStyle", () => {
     expect(keyboardInsetStyle({ height: 300, available: 500 }, "90vh")).toEqual({
       "--kb-bottom": "300px",
       "--kb-maxh": "500px",
+      "--kb-safe-bottom": "0px",
     });
   });
 });
