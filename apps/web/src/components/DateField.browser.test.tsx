@@ -68,6 +68,7 @@ test("fires onBlur when the picker closes, so react-hook-form onBlur validation 
 test("stays interactive inside a shadcn Dialog", async () => {
   // The forms render the date field inside a Dialog. A nested Popover must
   // remain clickable rather than be blocked by the dialog's layer.
+  // biome-ignore lint/correctness/noComponentHookFactories: test-local harness; identity is stable within one render
   function Dialoged({ onChange }: { onChange: (v: string) => void }) {
     const [value, setValue] = useState("2026-06-15");
     return (

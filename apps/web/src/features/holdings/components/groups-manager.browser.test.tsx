@@ -27,12 +27,12 @@ it.each(["rename", "delete"] as const)(
       await screen.getByRole("button", { name: "Delete Group" }).click();
       await screen.getByRole("button", { name: "Confirm delete" }).click();
     }
-    await expect.element(screen.getByRole("dialog").getByRole("alert")).toHaveTextContent(message);
+    await expect.element(screen.getByRole("dialog").getByRole("alert")).toMatchTextContent(message);
     expect(reject).toHaveBeenCalledTimes(1);
     if (action === "rename")
       await expect
         .element(screen.getByRole("textbox", { name: "Group name" }))
         .toHaveValue("Changed");
-    else await expect.element(screen.getByRole("dialog")).toHaveTextContent('Delete "Group"?');
+    else await expect.element(screen.getByRole("dialog")).toMatchTextContent('Delete "Group"?');
   },
 );

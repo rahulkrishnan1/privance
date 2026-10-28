@@ -228,6 +228,7 @@ test("typing keeps in-progress text even when the committed value clamps it", as
   // Regression: the committed value (clamped to 16) used to overwrite the
   // in-progress "4" via the resync effect, so a multi-digit age couldn't be
   // typed. The field stays focused, so the typed text must survive the clamp.
+  // biome-ignore lint/correctness/noComponentHookFactories: test-local harness; identity is stable within one render
   function Controlled() {
     const [v, setV] = useState<PlanFormValues>(VALUES);
     return (
@@ -255,7 +256,7 @@ test("typing keeps in-progress text even when the committed value clamps it", as
 test("shows the exact unconfirmed-save warning rather than a generic retry prompt", async () => {
   const message = "Not saved to the server. Reloading can lose these changes.";
   const screen = await renderPanel({ dirty: true, saveError: message });
-  await expect.element(screen.getByRole("alert")).toHaveTextContent(message);
+  await expect.element(screen.getByRole("alert")).toMatchTextContent(message);
 });
 
 test("never labels a locally observed but unconfirmed plan as Saved", async () => {

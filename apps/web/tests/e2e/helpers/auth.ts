@@ -344,7 +344,8 @@ export async function capturePhrase(page: Page): Promise<string> {
 
   const words: string[] = [];
   for (let i = 0; i < count; i++) {
-    const raw = (await wordCells.nth(i).innerText()).trim();
+    // Cell text is "<num><word>": the leading digit run is stripped below.
+    const raw = ((await wordCells.nth(i).textContent()) ?? "").trim();
     // Strip leading number (e.g. "1 word" -> "word")
     words.push(raw.replace(/^\d+\s*/, "").trim());
   }

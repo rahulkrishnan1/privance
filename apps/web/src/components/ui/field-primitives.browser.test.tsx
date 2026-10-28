@@ -31,6 +31,7 @@ test("composite Input has no error wiring when valid", async () => {
 });
 
 test("composite Input forwards its ref to the underlying control (RHF focus-on-error)", async () => {
+  // biome-ignore lint/correctness/noComponentHookFactories: test-local harness; identity is stable within one render
   function Harness() {
     const ref = useRef<HTMLInputElement>(null);
     return (

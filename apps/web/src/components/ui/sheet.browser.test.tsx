@@ -24,6 +24,7 @@ afterEach(async () => {
 // focus containment are contracts that every account/holding detail relies on.
 test("Sheet closes on Escape", async () => {
   const onOpenChange = vi.fn();
+  // biome-ignore lint/correctness/noComponentHookFactories: test-local harness; identity is stable within one render
   function Harness() {
     const [open, setOpen] = useState(true);
     return (
@@ -103,6 +104,7 @@ test("Sheet stays above the software keyboard while editing", async () => {
   const viewport = new FakeViewport();
   Object.defineProperty(window, "visualViewport", { configurable: true, value: viewport });
   Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+  // biome-ignore lint/correctness/noComponentHookFactories: test-local harness; identity is stable within one render
   function Harness() {
     return (
       <Sheet open>

@@ -37,6 +37,7 @@ test("RadioGroup selects the next option on ArrowRight", async () => {
 });
 
 test("ToggleGroup (single) reflects the selected item as pressed", async () => {
+  // biome-ignore lint/correctness/noComponentHookFactories: test-local harness; identity is stable within one render
   function Harness() {
     const [value, setValue] = useState("class");
     return (
@@ -62,6 +63,7 @@ test("ToggleGroup (single) reflects the selected item as pressed", async () => {
 });
 
 test("ToggleGroup (single) keeps its selection when the active item is re-clicked", async () => {
+  // biome-ignore lint/correctness/noComponentHookFactories: test-local harness; identity is stable within one render
   function Harness() {
     const [value, setValue] = useState("class");
     return (
@@ -87,6 +89,7 @@ test("ToggleGroup (single) keeps its selection when the active item is re-clicke
 });
 
 test("Switch toggles aria-checked when clicked", async () => {
+  // biome-ignore lint/correctness/noComponentHookFactories: test-local harness; identity is stable within one render
   function Harness() {
     const [on, setOn] = useState(false);
     return <Switch checked={on} onCheckedChange={setOn} aria-label="Start veiled" />;

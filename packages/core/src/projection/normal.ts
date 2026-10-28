@@ -160,6 +160,6 @@ function probit(p: number): number {
 export function normalSample(rng: Sfc32): number {
   const u = rng.next();
   // Clamp deterministically away from exact 0 and 1.
-  const p = u < U_MIN ? U_MIN : u > U_MAX ? U_MAX : u;
+  const p = Math.min(Math.max(u, U_MIN), U_MAX);
   return probit(p);
 }

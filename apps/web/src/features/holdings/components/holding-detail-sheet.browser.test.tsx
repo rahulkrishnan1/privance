@@ -236,6 +236,7 @@ test("two-tap delete: first tap shows Tap again to delete, second calls onDelete
 test("Edit holding button calls onEdit with the holding", async () => {
   const onEdit = vi.fn();
   const holding = makeHolding();
+  // biome-ignore lint/correctness/noComponentHookFactories: test-local harness; identity is stable within one render
   function Harness() {
     const [open, setOpen] = useState(true);
     return (
@@ -301,6 +302,6 @@ test("keeps holding details open and shows the exact failed-save warning on dele
   );
   await screen.getByRole("button", { name: "Delete", exact: true }).click();
   await screen.getByRole("button", { name: "Tap again to delete" }).click();
-  await expect.element(screen.getByRole("dialog").getByRole("alert")).toHaveTextContent(message);
+  await expect.element(screen.getByRole("dialog").getByRole("alert")).toMatchTextContent(message);
   expect(onClose).not.toHaveBeenCalled();
 });

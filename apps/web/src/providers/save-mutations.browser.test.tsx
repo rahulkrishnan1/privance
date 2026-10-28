@@ -318,12 +318,12 @@ it("keeps the Spend draft and retry identity through a delayed failed memory-mod
   await screen.getByRole("combobox", { name: "Category" }).selectOptions("housing");
   await screen.getByRole("button", { name: "Add expense", exact: true }).click();
   try {
-    await expect.element(screen.getByTestId("spend-monthly-total")).toHaveTextContent("$1,000");
+    await expect.element(screen.getByTestId("spend-monthly-total")).toMatchTextContent("$1,000");
   } finally {
     release();
   }
   const dialog = screen.getByRole("dialog", { name: "Add expense" });
-  await expect.element(dialog.getByRole("alert")).toHaveTextContent("Not saved to the server");
+  await expect.element(dialog.getByRole("alert")).toMatchTextContent("Not saved to the server");
   await expect
     .element(dialog.getByRole("textbox", { name: "Name", exact: true }))
     .toHaveValue("Rent draft");
@@ -340,7 +340,7 @@ it("keeps the Spend draft and retry identity through a delayed failed memory-mod
   expect([...serverRecords.keys()]).toEqual([pending[0]?.objectId]);
   expect(await store.drainQueue()).toEqual([]);
   await reload({ spendScreen: true });
-  await expect.element(screen.getByTestId("spend-monthly-total")).toHaveTextContent("$1,200");
+  await expect.element(screen.getByTestId("spend-monthly-total")).toMatchTextContent("$1,200");
   expect(await api.store?.list({ kind: "spend_item" })).toHaveLength(1);
 });
 
@@ -388,12 +388,12 @@ it("requires exact online memory-mode confirmation and restores the record from 
   await mount();
   await expect
     .element(screen.getByText("Temporary storage:", { exact: false }))
-    .toHaveTextContent("saves require server confirmation");
+    .toMatchTextContent("saves require server confirmation");
   await create.create(cashInput());
   expect(await api.store?.drainQueue()).toEqual([]);
   expect(serverRecords.get("saved-account")?.ciphertext).toBeTruthy();
   await reload();
-  await expect.element(screen.getByLabelText("Accounts")).toHaveTextContent("Saved cash");
+  await expect.element(screen.getByLabelText("Accounts")).toMatchTextContent("Saved cash");
   expect((await api.store?.get({ kind: KIND_ACCOUNT, objectId: "saved-account" }))?.serverSeq).toBe(
     1n,
   );
@@ -408,10 +408,10 @@ it("shows unconfirmed memory-mode saves in the actual form, not success, even wh
   await screen.getByRole("combobox", { name: "Account type" }).selectOptions("checking");
   await screen.getByRole("textbox", { name: "Current balance" }).fill("10.00");
   await screen.getByRole("button", { name: "Add account" }).click();
-  await expect.element(screen.getByRole("dialog")).toHaveTextContent("Not saved to the server");
+  await expect.element(screen.getByRole("dialog")).toMatchTextContent("Not saved to the server");
   await expect
     .element(screen.getByRole("dialog"))
-    .toHaveTextContent("Reloading can lose these changes");
+    .toMatchTextContent("Reloading can lose these changes");
   expect(await api.store?.drainQueue()).toHaveLength(1);
   expect(serverRecords.size).toBe(0);
   offline = false;
@@ -499,7 +499,7 @@ it("retains durable OPFS offline local-first saves across worker recreation with
   await create.create(cashInput());
   expect(await api.store?.drainQueue()).toHaveLength(1);
   await reload();
-  await expect.element(screen.getByLabelText("Accounts")).toHaveTextContent("Saved cash");
+  await expect.element(screen.getByLabelText("Accounts")).toMatchTextContent("Saved cash");
   expect(await api.store?.drainQueue()).toHaveLength(1);
   expect(api.saveError).toBeNull();
 });
@@ -525,7 +525,7 @@ it("rejects deleting an account with live encrypted holdings visibly in its actu
   await screen.getByRole("button", { name: "Tap again to delete" }).click();
   await expect
     .element(screen.getByRole("dialog"))
-    .toHaveTextContent("Move or delete holdings first");
+    .toMatchTextContent("Move or delete holdings first");
   expect(await api.store?.get({ kind: KIND_ACCOUNT, objectId: "saved-account" })).toEqual(before);
   expect(await api.store?.drainQueue()).toEqual(queue);
   expect(posts).toBe(writes);
@@ -549,7 +549,7 @@ it("migrates account, holding, group, spend and plan create/update/delete caller
   const enqueue = vi.spyOn(store, "enqueue");
   const atomic = vi.spyOn(store, "putAndEnqueue");
   await create.create({ ...cashInput(), kind: "investment" });
-  await expect.element(screen.getByLabelText("Accounts")).toHaveTextContent("Saved cash");
+  await expect.element(screen.getByLabelText("Accounts")).toMatchTextContent("Saved cash");
   await update.update({
     account: currentAccount(),
     name: "Updated",
@@ -642,7 +642,7 @@ it("uses exact acknowledged atomic background snapshots, restoring them from ser
   expect(enqueue).not.toHaveBeenCalled();
   expect(atomic.mock.calls.map(([input]) => input.kind)).toEqual([KIND_SNAPSHOT]);
   await reload({ snapshot: true });
-  await expect.element(screen.getByLabelText("Dashboard status")).toHaveTextContent("ready");
+  await expect.element(screen.getByLabelText("Dashboard status")).toMatchTextContent("ready");
   expect(await api.store?.list({ kind: KIND_SNAPSHOT })).toHaveLength(1);
 });
 
@@ -658,7 +658,7 @@ it("surfaces unconfirmed memory-mode background snapshots instead of silent succ
   await vi.waitFor(() => expect(api.saveError).toContain("A save could not be confirmed"));
   await expect
     .element(screen.getByRole("alert"))
-    .toHaveTextContent("Reloading can lose unconfirmed changes");
+    .toMatchTextContent("Reloading can lose unconfirmed changes");
   expect((await api.store?.drainQueue())?.map((row) => row.kind)).toEqual([KIND_SNAPSHOT]);
   expect([...serverRecords.values()].some((record) => record.kind === KIND_SNAPSHOT)).toBe(false);
 });

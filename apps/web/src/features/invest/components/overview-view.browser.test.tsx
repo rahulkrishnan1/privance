@@ -85,5 +85,5 @@ test("passes the dashboard net-worth delta to the Today tile", async () => {
 
   const screen = await render(<OverviewView />);
 
-  await expect.element(screen.getByTestId("today-delta")).toHaveTextContent("12.34");
+  await expect.element(screen.getByTestId("today-delta")).toMatchTextContent("12.34");
 });

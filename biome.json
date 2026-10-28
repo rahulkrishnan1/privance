@@ -62,6 +62,16 @@
       "arrowParentheses": "always"
     }
   },
+  "markdown": {
+    "formatter": {
+      "enabled": false
+    }
+  },
+  "yaml": {
+    "formatter": {
+      "enabled": false
+    }
+  },
   "json": {
     "formatter": {
       "indentWidth": 2,

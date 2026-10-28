@@ -178,11 +178,11 @@ describe("sign out", () => {
     const dialog = screen.getByRole("dialog", { name: "Sign out" });
     await expect
       .element(dialog)
-      .toHaveTextContent(
+      .toMatchTextContent(
         "Clears this device. You’ll need your master password or recovery phrase to get back in.",
       );
-    await expect.element(dialog).not.toHaveTextContent("Everything stays encrypted");
-    await expect.element(dialog).not.toHaveTextContent("Know your password");
+    await expect.element(dialog).not.toMatchTextContent("Everything stays encrypted");
+    await expect.element(dialog).not.toMatchTextContent("Know your password");
   });
 });
 
@@ -209,7 +209,7 @@ describe("change master password", () => {
 
     // Success state shows the replaced-phrase copy and the new words.
     await expect.element(screen.getByText(/replaced your recovery phrase/)).toBeVisible();
-    await expect.element(screen.getByText("yellow")).toBeVisible();
+    await expect.element(screen.getByText("yellow", { exact: false })).toBeVisible();
 
     // current_auth_hash from deriveLoginCrypto must be forwarded to the server.
     expect(authApiMock.passwordChange).toHaveBeenCalledWith(
@@ -283,7 +283,7 @@ describe("recovery phrase check", () => {
     await screen.getByLabelText(/Recovery phrase/).fill(VALID_PHRASE);
     await screen.getByRole("button", { name: "Verify", exact: true }).click();
 
-    await expect.element(screen.getByRole("status")).toHaveTextContent(/Verified/);
+    await expect.element(screen.getByRole("status")).toMatchTextContent(/Verified/);
   });
 
   it("reports a mismatch when the unwrap fails to decrypt", async () => {

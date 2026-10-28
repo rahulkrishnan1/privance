@@ -24,7 +24,7 @@ export function useCooldown(): { cooldownMs: number; refresh: () => void } {
     const id = setInterval(() => {
       setCooldownMs((prev) => {
         const next = prev - 1000;
-        return next <= 0 ? 0 : next;
+        return Math.max(0, next);
       });
     }, 1000);
     return () => clearInterval(id);

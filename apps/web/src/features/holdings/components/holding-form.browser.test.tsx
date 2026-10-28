@@ -18,7 +18,7 @@ it("shows an unconfirmed inline group create without selecting it or clearing th
   );
   await screen.getByRole("textbox", { name: "New group name" }).fill("Unsaved group");
   await screen.getByRole("button", { name: "Create group" }).click();
-  await expect.element(screen.getByRole("alert")).toHaveTextContent(message);
+  await expect.element(screen.getByRole("alert")).toMatchTextContent(message);
   await expect
     .element(screen.getByRole("textbox", { name: "New group name" }))
     .toHaveValue("Unsaved group");
@@ -43,7 +43,7 @@ it("scopes group identity to a failed create attempt, not later independent grou
   );
   await screen.getByRole("textbox", { name: "New group name" }).fill("First");
   await screen.getByRole("button", { name: "Create group" }).click();
-  await expect.element(screen.getByRole("alert")).toHaveTextContent("Response lost after commit");
+  await expect.element(screen.getByRole("alert")).toMatchTextContent("Response lost after commit");
   await screen.getByRole("textbox", { name: "New group name" }).fill("Changed");
   await screen.getByRole("button", { name: "Create group" }).click();
   await expect.element(screen.getByRole("textbox", { name: "New group name" })).toHaveValue("");

@@ -163,7 +163,7 @@ describe("simulate()", () => {
     const wireResult = toWireResult(expected);
     const { w } = makeMockWorker({ respondWith: () => wireResult });
     // Use a class-like stub so 'new Worker(...)' returns our mock object.
-    vi.stubGlobal("Worker", function MockWorkerCtor() {
+    vi.stubGlobal("Worker", function mockWorkerCtor() {
       return w;
     });
 
@@ -178,7 +178,7 @@ describe("simulate()", () => {
 
   it("worker error propagates as rejected promise with the worker's message", async () => {
     const { w } = makeMockWorker({ rejectWith: "internal engine error" });
-    vi.stubGlobal("Worker", function MockWorkerCtor() {
+    vi.stubGlobal("Worker", function mockWorkerCtor() {
       return w;
     });
 
@@ -188,7 +188,7 @@ describe("simulate()", () => {
   it("timeout triggers in-thread fallback and result matches engine", async () => {
     vi.useFakeTimers();
     const { w, postMessageMock } = makeMockWorker({ noResponse: true });
-    vi.stubGlobal("Worker", function MockWorkerCtor() {
+    vi.stubGlobal("Worker", function mockWorkerCtor() {
       return w;
     });
 
@@ -212,7 +212,7 @@ describe("simulate()", () => {
   it("fallback latches: after timeout subsequent calls skip the worker entirely", async () => {
     vi.useFakeTimers();
     const { w, postMessageMock } = makeMockWorker({ noResponse: true });
-    vi.stubGlobal("Worker", function MockWorkerCtor() {
+    vi.stubGlobal("Worker", function mockWorkerCtor() {
       return w;
     });
 
@@ -270,7 +270,7 @@ describe("simulate()", () => {
       postMessage: postMessageMock,
     };
 
-    vi.stubGlobal("Worker", function MockWorkerCtor() {
+    vi.stubGlobal("Worker", function mockWorkerCtor() {
       return w;
     });
 
@@ -316,7 +316,7 @@ describe("simulate()", () => {
     const expected = inThreadResult();
     const wireResult = toWireResult(expected);
     const { w, postMessageMock } = makeMockWorker({ respondWith: () => wireResult });
-    vi.stubGlobal("Worker", function MockWorkerCtor() {
+    vi.stubGlobal("Worker", function mockWorkerCtor() {
       return w;
     });
 
@@ -401,7 +401,7 @@ describe("simulate()", () => {
       }),
     };
 
-    vi.stubGlobal("Worker", function MockWorkerCtor() {
+    vi.stubGlobal("Worker", function mockWorkerCtor() {
       return w;
     });
 

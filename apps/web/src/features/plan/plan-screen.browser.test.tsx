@@ -348,7 +348,7 @@ test("the Monte Carlo / Historical toggle switches the confidence figure", async
   expect(screen.getByTestId("confidence-rate").element().textContent).toContain("87%");
 
   await screen.getByRole("button", { name: "Historical replay" }).click();
-  await expect.element(screen.getByTestId("confidence-rate")).toHaveTextContent("91%");
+  await expect.element(screen.getByTestId("confidence-rate")).toMatchTextContent("91%");
   expect(screen.container.textContent).toContain("of real markets since 1871 survived");
 });
 

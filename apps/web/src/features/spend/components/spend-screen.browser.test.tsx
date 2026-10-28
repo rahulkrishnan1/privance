@@ -55,7 +55,7 @@ function mockQueryReturn(items: LocalSpendItem[]) {
 test("empty state renders heading and CTA button", async () => {
   mockQueryReturn([]);
   const screen = await render(<SpendScreen />);
-  await expect.element(screen.getByText("Nothing recurring,")).toBeVisible();
+  await expect.element(screen.getByText("Nothing recurring,", { exact: false })).toBeVisible();
   await expect
     .element(screen.getByRole("button", { name: "Add a recurring expense" }))
     .toBeVisible();
@@ -75,8 +75,8 @@ test("populated state renders both group panels", async () => {
   const screen = await render(<SpendScreen />);
   await expect.element(screen.getByRole("heading", { name: "Essentials" })).toBeVisible();
   await expect.element(screen.getByRole("heading", { name: "Subscriptions" })).toBeVisible();
-  await expect.element(screen.getByText("Rent")).toBeVisible();
-  await expect.element(screen.getByText("Netflix")).toBeVisible();
+  await expect.element(screen.getByText("Rent", { exact: false })).toBeVisible();
+  await expect.element(screen.getByText("Netflix", { exact: false })).toBeVisible();
 });
 
 test("keeps expense details mounted through the edit close transition", async () => {
@@ -86,12 +86,15 @@ test("keeps expense details mounted through the edit close transition", async ()
   await screen.getByRole("button", { name: /Rent/ }).click();
   const details = screen.getByRole("dialog", { name: "Rent" });
   await expect.element(details).toBeVisible();
+  // Hold the element: the closing details dialog is inert while the edit dialog
+  // mounts, so resolving it by role again would fail. It must stay mounted to
+  // finish its exit transition.
+  const detailsEl = details.element();
   await details.getByRole("button", { name: "Edit expense" }).click();
 
   const editDialog = screen.getByRole("dialog", { name: "Edit Rent" });
-  await expect.poll(() => details.element().hasAttribute("data-ending-style")).toBe(true);
+  await expect.poll(() => detailsEl.hasAttribute("data-ending-style")).toBe(true);
   expect(editDialog.query()).toBeNull();
-  await expect.poll(() => details.element().hasAttribute("data-ending-style")).toBe(false);
   await expect.element(editDialog).toBeVisible();
   await editDialog.getByRole("button", { name: "Close" }).click();
   await expect.poll(() => editDialog.query()).toBeNull();
@@ -227,7 +230,7 @@ test("rows within a panel are sorted by monthly value, highest first", async () 
     makeTestItem({ id: "3", name: "Mid", amountCents: "50000", group: "essentials" }),
   ]);
   const screen = await render(<SpendScreen />);
-  await expect.element(screen.getByText("Pricey")).toBeVisible();
+  await expect.element(screen.getByText("Pricey", { exact: false })).toBeVisible();
   const order = [...screen.container.querySelectorAll("button")]
     .map((b) => b.textContent ?? "")
     .filter((t) => /Pricey|Mid|Cheap/.test(t));
@@ -246,7 +249,7 @@ test("an item is placed by its group, not its category", async () => {
     makeTestItem({ id: "1", name: "Restaurants", category: "food", group: "essentials" }),
   ]);
   const screen = await render(<SpendScreen />);
-  await expect.element(screen.getByText("Restaurants")).toBeVisible();
+  await expect.element(screen.getByText("Restaurants", { exact: false })).toBeVisible();
   // Only the Essentials panel renders. Panel titles are level-3 headings; the
   // always-on split cards above use plain text, so querying h3 by role isolates
   // the panels.
@@ -269,11 +272,11 @@ test("paused items are excluded from the monthly total", async () => {
     }),
   ]);
   const screen = await render(<SpendScreen />);
-  await expect.element(screen.getByText("Gym")).toBeVisible();
+  await expect.element(screen.getByText("Gym", { exact: false })).toBeVisible();
   await expect.element(screen.getByText("paused", { exact: true })).toBeVisible();
   const total = screen.getByTestId("spend-monthly-total");
-  await expect.element(total).toHaveTextContent("$1,000");
-  await expect.element(total).not.toHaveTextContent("$1,500");
+  await expect.element(total).toMatchTextContent("$1,000");
+  await expect.element(total).not.toMatchTextContent("$1,500");
   // The subscriptions subtotal reflects the active/paused split.
   await expect.element(screen.getByText("0 active, 1 paused")).toBeVisible();
 });
@@ -308,8 +311,8 @@ test("yearly item keeps the per-cycle amount out of the regular row", async () =
   const screen = await render(<SpendScreen />);
   const row = screen.getByRole("button", { name: /Prime/ });
   // The regular row shows the comparable monthly figure, not the per-cycle yearly amount.
-  await expect.element(row).not.toHaveTextContent("$139/yr");
-  await expect.element(row).toHaveTextContent("$11.58");
+  await expect.element(row).not.toMatchTextContent("$139/yr");
+  await expect.element(row).toMatchTextContent("$11.58");
 });
 
 test("multi-unit cadence keeps the per-cycle amount out of the regular row", async () => {
@@ -327,8 +330,8 @@ test("multi-unit cadence keeps the per-cycle amount out of the regular row", asy
   const screen = await render(<SpendScreen />);
   const row = screen.getByRole("button", { name: /Domain/ });
   // $240 every 2 years = $120/yr = $10/mo; the regular row only shows the comparable monthly figure.
-  await expect.element(row).not.toHaveTextContent("$240/2yr");
-  await expect.element(row).toHaveTextContent("$10");
+  await expect.element(row).not.toMatchTextContent("$240/2yr");
+  await expect.element(row).toMatchTextContent("$10");
 });
 
 test("regular rows show the next bill date without the per-cycle amount", async () => {
@@ -356,13 +359,13 @@ test("regular rows show the next bill date without the per-cycle amount", async 
   // Dated: verb + always-year date, without the per-cycle amount.
   await expect
     .element(screen.getByRole("button", { name: /Prime/ }))
-    .toHaveTextContent("renews Mar 15, 2099");
+    .toMatchTextContent("renews Mar 15, 2099");
   await expect
     .element(screen.getByRole("button", { name: /Prime/ }))
-    .not.toHaveTextContent("$139/yr");
+    .not.toMatchTextContent("$139/yr");
   // Dateless: no orphaned per-cycle amount is rendered.
   const dateless = screen.getByRole("button", { name: /Domain/ });
-  await expect.element(dateless).not.toHaveTextContent("$139/yr");
+  await expect.element(dateless).not.toMatchTextContent("$139/yr");
 });
 
 test("category stays in the row accessible name for screen readers", async () => {
@@ -387,11 +390,11 @@ test("yearly billed amount is only shown after opening details", async () => {
   ]);
   const screen = await render(<SpendScreen />);
   const row = screen.getByRole("button", { name: /Prime/ });
-  await expect.element(row).not.toHaveTextContent("$139/yr");
+  await expect.element(row).not.toMatchTextContent("$139/yr");
   await row.click();
   const detail = screen.getByRole("dialog", { name: "Prime" });
-  await expect.element(detail.getByTestId("spend-detail-amount")).toHaveTextContent("$139/year");
-  await expect.element(detail).toHaveTextContent("Every year");
+  await expect.element(detail.getByTestId("spend-detail-amount")).toMatchTextContent("$139/year");
+  await expect.element(detail).toMatchTextContent("Every year");
 });
 
 test("weekly item renders the rounded monthly equivalent ($43.33)", async () => {
@@ -408,9 +411,9 @@ test("weekly item renders the rounded monthly equivalent ($43.33)", async () => 
   const screen = await render(<SpendScreen />);
   // $10/week * 52 / 12 = $43.33 (banker rounding), shown with cents.
   const row = screen.getByRole("button", { name: /Locker/ });
-  await expect.element(row).toHaveTextContent("$43.33");
+  await expect.element(row).toMatchTextContent("$43.33");
   // The regular row omits the per-cycle amount; open the item to see its cadence.
-  await expect.element(row).not.toHaveTextContent("$10/wk");
+  await expect.element(row).not.toMatchTextContent("$10/wk");
 });
 
 test("cadence units render with a tight slash across the overview and rows", async () => {
@@ -431,7 +434,9 @@ test("cadence units render with a tight slash across the overview and rows", asy
   // The annual equivalent appears once in the headline context.
   expect(text).toContain("$18,000/year");
   // The compact item row keeps the abbreviation, same tight slash.
-  await expect.element(screen.getByRole("button", { name: /Rent/ })).toHaveTextContent("$1,500/mo");
+  await expect
+    .element(screen.getByRole("button", { name: /Rent/ }))
+    .toMatchTextContent("$1,500/mo");
   // Guards the spacing: no figure may render the spaced "$1,500 / mo" form.
   expect(text).not.toMatch(/ \/ /);
 });
@@ -452,10 +457,10 @@ test("sub-line shows 'due' for essentials and 'renews' for subscriptions with th
   const screen = await render(<SpendScreen />);
   await expect
     .element(screen.getByRole("button", { name: /Rent/ }))
-    .toHaveTextContent("due May 1, 2099");
+    .toMatchTextContent("due May 1, 2099");
   await expect
     .element(screen.getByRole("button", { name: /Netflix/ }))
-    .toHaveTextContent("renews May 22, 2099");
+    .toMatchTextContent("renews May 22, 2099");
 });
 
 test("a past anchor rolls forward: a monthly bill never shows a date in the past", async () => {
@@ -465,8 +470,8 @@ test("a past anchor rolls forward: a monthly bill never shows a date in the past
   ]);
   const screen = await render(<SpendScreen />);
   const row = screen.getByRole("button", { name: /Rent/ });
-  await expect.element(row).toHaveTextContent("due");
-  await expect.element(row).not.toHaveTextContent("2020");
+  await expect.element(row).toMatchTextContent("due");
+  await expect.element(row).not.toMatchTextContent("2020");
 });
 
 test("loading state shows neither the empty state nor the total", async () => {
@@ -485,8 +490,8 @@ test("error state shows an alert and Retry re-runs the query", async () => {
   });
   const screen = await render(<SpendScreen />);
   const alert = screen.getByRole("alert");
-  await expect.element(alert).toHaveTextContent("Failed to load.");
-  await expect.element(alert).toHaveTextContent("DB unavailable");
+  await expect.element(alert).toMatchTextContent("Failed to load.");
+  await expect.element(alert).toMatchTextContent("DB unavailable");
   await screen.getByRole("button", { name: "Retry" }).click();
   expect(tick).toHaveBeenCalledTimes(1);
 });
@@ -516,14 +521,16 @@ test("clicking a row opens read-only details before edit", async () => {
     }),
   ]);
   const screen = await render(<SpendScreen />);
-  await screen.getByText("Netflix").click();
+  await screen.getByText("Netflix", { exact: false }).click();
   const detail = screen.getByRole("dialog", { name: "Netflix" });
   await expect.element(screen.getByRole("heading", { name: "Netflix" })).toBeVisible();
-  await expect.element(detail).toHaveTextContent("Streaming");
-  await expect.element(detail).toHaveTextContent("Active");
-  await expect.element(detail.getByTestId("spend-detail-amount")).toHaveTextContent("$15.49/month");
-  expect(detail).not.toHaveTextContent("Monthly equivalent");
-  expect(detail).not.toHaveTextContent("Annual equivalent");
+  await expect.element(detail).toMatchTextContent("Streaming");
+  await expect.element(detail).toMatchTextContent("Active");
+  await expect
+    .element(detail.getByTestId("spend-detail-amount"))
+    .toMatchTextContent("$15.49/month");
+  expect(detail).not.toMatchTextContent("Monthly equivalent");
+  expect(detail).not.toMatchTextContent("Annual equivalent");
   expect(screen.getByRole("textbox", { name: "Amount" }).query()).toBeNull();
   await expect.element(screen.getByRole("button", { name: "Edit expense" })).toBeVisible();
 });
@@ -538,7 +545,7 @@ test("shows a deletion error and keeps expense details open when delete fails", 
   await detail.getByRole("button", { name: "Delete" }).click();
   await detail.getByRole("button", { name: "Tap again to delete" }).click();
 
-  await expect.element(detail.getByRole("alert")).toHaveTextContent("delete failed");
+  await expect.element(detail.getByRole("alert")).toMatchTextContent("delete failed");
   await expect.element(detail).toBeVisible();
 });
 
@@ -583,10 +590,10 @@ test("paused expense details do not present its old date as a scheduled bill", a
     }),
   ]);
   const screen = await render(<SpendScreen />);
-  await screen.getByText("Paused gym").click();
+  await screen.getByText("Paused gym", { exact: false }).click();
   const detail = screen.getByRole("dialog", { name: "Paused gym" });
-  await expect.element(detail).toHaveTextContent("Not scheduled");
-  await expect.element(detail).not.toHaveTextContent("Oct 1, 2099");
+  await expect.element(detail).toMatchTextContent("Not scheduled");
+  await expect.element(detail).not.toMatchTextContent("Oct 1, 2099");
   await detail.getByRole("button", { name: "Close expense details" }).click();
   await expect.poll(() => detail.query()).toBeNull();
 });
@@ -652,7 +659,7 @@ test("status toggle present in edit mode", async () => {
     }),
   ]);
   const screen = await render(<SpendScreen />);
-  await screen.getByText("Spotify").click();
+  await screen.getByText("Spotify", { exact: false }).click();
   await screen.getByRole("button", { name: "Edit expense" }).click();
   await expect.element(screen.getByRole("radiogroup", { name: "Status" })).toBeVisible();
 });
