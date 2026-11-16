@@ -21,8 +21,8 @@
     "@noble/hashes": "2.4.0",
     "@privance/core": "workspace:*",
     "drizzle-orm": "0.45.4",
-    "hash-wasm": "4.12.0",
-    "hono": "4.13.14",
+    "hash-wasm": "4.13.0",
+    "hono": "4.13.18",
     "pino": "10.4.0",
     "postgres": "3.4.9"
   },
